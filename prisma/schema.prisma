@@ -1,0 +1,210 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BucketPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+enum TransactionStatus {
+  APPROVED
+  DECLINED
+}
+
+/// Unified spend/reward category enum
+enum RewardCategory {
+  DINING
+  GROCERIES
+  GAS
+  TRAVEL
+  AIR_TRAVEL
+  HOTEL
+  CAR_RENTAL
+  ONLINE_SHOPPING
+  ENTERTAINMENT
+  HEALTH
+  UTILITIES
+  GENERAL_MERCHANDISE
+  OTHER
+}
+
+// Internal MCC tagging enums (not exposed to user-facing APIs)
+enum MerchantVertical {
+  LODGING
+  TRANSPORT
+  RETAIL
+  FOOD_DRINK
+  DIGITAL_SERVICES
+  HEALTHCARE
+  PROFESSIONAL
+  FINANCIAL
+  GOVERNMENT
+  NONPROFIT
+  ENTERTAINMENT
+  EDUCATION
+  MISC
+}
+
+enum MerchantChannel {
+  ONLINE
+  OFFLINE
+  MIXED
+}
+
+enum SpendDomain {
+  NECESSITY
+  DISCRETIONARY
+  INVESTMENT
+  TRANSFER
+}
+
+enum MerchantRiskProfile {
+  NORMAL
+  QUASI_CASH
+  GAMBLING
+  HIGH_CHARGEBACK
+  INTERNAL_ONLY
+}
+
+enum MerchantLifeCategory {
+  TRAVEL
+  HOME
+  AUTO
+  HEALTH
+  BUSINESS
+  PERSONAL_SERVICES
+  EDUCATION
+  CHARITY
+  GOVERNMENT
+  OTHER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cards       Card[]
+  buckets     Bucket[]
+  simulations SimulatedTransaction[]
+}
+
+model Card {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  nickname  String // "Amex Gold", "Chase Freedom"
+  issuer    String // "AMEX", "CHASE"
+  network   String // "VISA", "MASTERCARD", "AMEX", etc.
+  isCredit  Boolean
+  annualFee Int? // cents
+
+  rewardRules RewardRule[]
+  simulations SimulatedTransaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RewardRule {
+  id     String @id @default(cuid())
+  card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardId String
+
+  category         RewardCategory
+  multiplier       Float?         // points multiplier (e.g., 4.0 = 4x)
+  cashbackPercent  Float?         // e.g., 2.0 = 2%
+  capAmount        Int?           // optional cap in cents
+  promoStart       DateTime?
+  promoEnd         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Bucket {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  name          String // "Food", "Fun", "Gas"
+  period        BucketPeriod
+  budgetAmount  Int // total budget for the period (cents)
+  currentAmount Int // remaining amount in this period (cents)
+  strictMode    Boolean      @default(true) // decline if over
+  category      RewardCategory
+
+  simulations SimulatedTransaction[]
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+}
+
+model MerchantCategory {
+  id                String   @id @default(cuid())
+  mccCode           Int      @unique
+  description       String
+  networkVisa       Boolean  @default(false)
+  networkMastercard Boolean  @default(false)
+  networkTsys       Boolean  @default(false)
+  notes             String?
+
+  // Internal tagging metadata (nullable to allow progressive backfill)
+  vertical      MerchantVertical?
+  channel       MerchantChannel?
+  spendDomain   SpendDomain?
+  riskProfile   MerchantRiskProfile?
+  lifeCategory  MerchantLifeCategory?
+
+  mappings MccToRewardCategory[]
+}
+
+model MccToRewardCategory {
+  id             String           @id @default(cuid())
+  mcc            MerchantCategory @relation(fields: [mccCode], references: [mccCode], onDelete: Cascade)
+  mccCode        Int
+  category       RewardCategory
+  isDefault      Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([mccCode, isDefault])
+  @@index([mccCode])
+}
+
+model SimulatedTransaction {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  amount            Int // cents
+  currency          String  @default("USD")
+  merchantName      String?
+  mccCode           Int?
+  resolvedCategory  RewardCategory
+  rewardRuleCategory RewardCategory?
+  multiplier        Float?
+  cashbackPercent   Float?
+  rewardsEarnedPoints Int?
+  rewardsEarnedCents  Int?
+  bucketBeforeCents Int?
+  bucketAfterCents  Int?
+
+  chosenCard   Card?   @relation(fields: [chosenCardId], references: [id])
+  chosenCardId String?
+  bucket       Bucket? @relation(fields: [bucketId], references: [id])
+  bucketId     String?
+
+  status        TransactionStatus
+  reason        String?
+
+  createdAt DateTime @default(now())
+}

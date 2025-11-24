@@ -4,6 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { RewardCategory } from '@prisma/client';
 
 // TODO: replace with authenticated user once auth lands.
 const DEMO_USER_ID = 'demo-user-id';
@@ -73,6 +74,14 @@ export async function POST(
       status: 400,
     });
   }
+  const normalizedCategory = category.toUpperCase();
+  const allowed = Object.values(RewardCategory);
+  if (!allowed.includes(normalizedCategory as RewardCategory)) {
+    return new NextResponse(
+      `Invalid category. Allowed: ${allowed.join(', ')}`,
+      { status: 400 }
+    );
+  }
 
   if (multiplier == null || typeof multiplier !== 'number' || multiplier <= 0) {
     return new NextResponse('multiplier is required and must be > 0', {
@@ -98,7 +107,7 @@ export async function POST(
   const rewardRule = await prisma.rewardRule.create({
     data: {
       cardId: card.id,
-      category,
+      category: normalizedCategory as RewardCategory,
       multiplier,
       capAmount: capAmountCents ?? null,
     },

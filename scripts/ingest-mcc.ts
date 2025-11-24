@@ -1,423 +1,361 @@
 /**
- * Ingest Merchant Category Codes (MCC) from a PDF or CSV into the DB and map
- * them to RewardCategory values. Idempotent: upserts MerchantCategory rows and
- * overwrites the single mapping per MCC (MccToRewardCategory).
+ * MCC ingest from sanitized TSV.
  *
- * Usage:
- *   npm run ingest:mcc [path/to/mcc.pdf|mcc.csv]
+ * Expected input (default: data/mcc/sanitized-mcc.tsv):
+ *   <mccCode>\t<description>\t<networkIndicator>\t<notes...>
  *
- * Defaults to data/mcc.pdf or data/mcc.csv in the repo root if no arg given.
+ * - mccCode: int
+ * - description: string
+ * - networkIndicator: "V, M" | "TSYS" | "V" | "M"
+ * - notes: optional; any remaining columns joined with space
  *
- * Mapping: update MCC_RANGE_MAPPING below as business logic evolves.
+ * Behavior:
+ * - Upsert MerchantCategory (mccCode int, description, networkVisa/Mastercard/Tsys, notes)
+ * - Rebuild MccToRewardCategory using mapping rules
+ * - Idempotent: clears MccToRewardCategory and repopulates
+ *
+ * Run:
+ *   npm run ingest:mcc [optional path]
  */
 
 import fs from 'fs';
 import path from 'path';
-import * as XLSX from 'xlsx';
-import { RewardCategory } from '@prisma/client';
+import {
+  RewardCategory,
+  MerchantVertical,
+  MerchantChannel,
+  SpendDomain,
+  MerchantRiskProfile,
+  MerchantLifeCategory,
+} from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper';
 
-type ParsedMcc = {
-  code: string;
+const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
+const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');
+
+type ParsedRow = {
+  mccCode: number;
   description: string;
-  section?: string | null;
-  notes?: string | null;
-  validBrands?: string[];
-  requiredAbbreviations?: string[];
+  networkIndicator: string;
+  notes: string | null;
+  networkVisa: boolean;
+  networkMastercard: boolean;
+  networkTsys: boolean;
 };
 
-type RangeMapping = {
-  start: number;
-  end: number;
-  category: RewardCategory | string;
-};
-
-const missingCategoryLogPath = path.join(
-  process.cwd(),
-  'data',
-  'mcc',
-  'missing-reward-categories.json'
-);
-
-const unmappedMccLogPath = path.join(
-  process.cwd(),
-  'data',
-  'mcc',
-  'unmapped-mcc.json'
-);
-
-function parseBrandTokens(raw: string | undefined): string[] {
-  if (!raw) return [];
-  return raw
-    .split(/[\s,/&]+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
-}
-
-function recordMissingCategory(category: string) {
-  fs.mkdirSync(path.dirname(missingCategoryLogPath), { recursive: true });
-  let list: string[] = [];
-  if (fs.existsSync(missingCategoryLogPath)) {
+function logUnmapped(mcc: number) {
+  fs.mkdirSync(path.dirname(unmappedPath), { recursive: true });
+  let list: number[] = [];
+  if (fs.existsSync(unmappedPath)) {
     try {
-      list = JSON.parse(fs.readFileSync(missingCategoryLogPath, 'utf8'));
-    } catch (error) {
-      console.warn('Unable to parse missing category log, resetting file.', error);
+      list = JSON.parse(fs.readFileSync(unmappedPath, 'utf8'));
+    } catch {
+      list = [];
     }
   }
-  if (!list.includes(category)) {
-    list.push(category);
-    list.sort();
-    fs.writeFileSync(missingCategoryLogPath, JSON.stringify(list, null, 2));
-    console.warn(`RewardCategory "${category}" not in schema; logged for follow-up.`);
+  if (!list.includes(mcc)) {
+    list.push(mcc);
+    list.sort((a, b) => a - b);
+    fs.writeFileSync(unmappedPath, JSON.stringify(list, null, 2));
   }
 }
 
-function recordUnmappedMcc(code: string) {
-  fs.mkdirSync(path.dirname(unmappedMccLogPath), { recursive: true });
-  let list: string[] = [];
-  if (fs.existsSync(unmappedMccLogPath)) {
-    try {
-      list = JSON.parse(fs.readFileSync(unmappedMccLogPath, 'utf8'));
-    } catch (error) {
-      console.warn('Unable to parse unmapped MCC log, resetting file.', error);
-    }
+function parseTsv(filePath: string): ParsedRow[] {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const rows: ParsedRow[] = [];
+  for (const line of lines) {
+    if (!/^\d{4}\b/.test(line)) continue;
+    const parts = line.split('\t');
+    if (parts.length < 3) continue;
+    const mccCode = Number(parts[0]);
+    if (!Number.isFinite(mccCode)) continue;
+    const description = parts[1] ?? '';
+    const networkIndicator = (parts[2] ?? '').trim();
+    const notes = parts.length > 3 ? parts.slice(3).join(' ').trim() || null : null;
+    const hasVisa = /V/.test(networkIndicator);
+    const hasMc = /M/.test(networkIndicator);
+    const hasTsys = /TSYS/i.test(networkIndicator);
+    rows.push({
+      mccCode,
+      description,
+      networkIndicator,
+      notes,
+      networkVisa: hasVisa,
+      networkMastercard: hasMc,
+      networkTsys: hasTsys,
+    });
   }
-  if (!list.includes(code)) {
-    list.push(code);
-    list.sort();
-    fs.writeFileSync(unmappedMccLogPath, JSON.stringify(list, null, 2));
-    console.warn(`MCC ${code} not mapped; logged under data/mcc/unmapped-mcc.json.`);
-  }
+  return rows;
 }
 
-function resolveRewardCategory(category: RewardCategory | string): RewardCategory {
-  if (typeof category !== 'string') {
-    return category;
-  }
-
-  const mapped = (RewardCategory as Record<string, RewardCategory | undefined>)[category];
-  if (mapped) {
-    return mapped;
-  }
-
-  recordMissingCategory(category);
+function mapMccToCategory(mcc: number, description: string): RewardCategory {
+  // Kept for backward compatibility in case tags fail.
+  if (mcc === 5411) return RewardCategory.GROCERIES;
+  if (mcc === 5812 || mcc === 5814) return RewardCategory.DINING;
+  if (mcc >= 3000 && mcc <= 3299) return RewardCategory.AIR_TRAVEL;
+  if (mcc >= 3351 && mcc <= 3499 && /rent|car/i.test(description)) return RewardCategory.CAR_RENTAL;
+  if (mcc >= 3500 && mcc <= 3831 && /(hotel|inn|motel|resort|lodge)/i.test(description))
+    return RewardCategory.HOTEL;
+  if ([4111, 4112, 4411, 4511, 4582, 4722].includes(mcc)) return RewardCategory.TRAVEL;
+  if (mcc === 4900) return RewardCategory.UTILITIES;
+  if ([5300, 5310, 5311, 5331, 5399, 5999].includes(mcc)) return RewardCategory.GENERAL_MERCHANDISE;
+  if (/grocery|market|supermarket/i.test(description)) return RewardCategory.GROCERIES;
+  if (/restaurant|dining|food/i.test(description)) return RewardCategory.DINING;
+  if (/gas|fuel/i.test(description)) return RewardCategory.GAS;
+  if (/air|flight/i.test(description)) return RewardCategory.AIR_TRAVEL;
+  if (/hotel|motel|resort|inn/i.test(description)) return RewardCategory.HOTEL;
+  if (/online|e-?commerce|direct marketing/i.test(description))
+    return RewardCategory.ONLINE_SHOPPING;
+  if (/utility|water|electric|power/i.test(description)) return RewardCategory.UTILITIES;
+  if (/health|medical|pharmacy|drug/i.test(description)) return RewardCategory.HEALTH;
+  if (/entertainment|amusement|movie|theatre|concert/i.test(description))
+    return RewardCategory.ENTERTAINMENT;
   return RewardCategory.OTHER;
 }
 
-// Editable mapping from MCC ranges to our RewardCategory enum.
-const MCC_RANGE_MAPPING: RangeMapping[] = [
-  // Broad coverage (specific entries below will override where overlapping)
-  { start: 1, end: 1499, category: RewardCategory.GENERAL }, // Agricultural services
-  { start: 1500, end: 2999, category: RewardCategory.HOME_IMPROVEMENT }, // Contracted/trade services
-  { start: 3000, end: 3299, category: RewardCategory.FLIGHTS }, // Airlines
-  { start: 3300, end: 3499, category: RewardCategory.TRAVEL }, // Car rental
-  { start: 3500, end: 3999, category: RewardCategory.HOTELS }, // Lodging
-  { start: 4000, end: 4799, category: RewardCategory.TRANSIT }, // Transportation services
-  { start: 4800, end: 4999, category: RewardCategory.UTILITIES }, // Utility/telecom
-  { start: 5000, end: 5599, category: RewardCategory.DEPARTMENT_STORES }, // Retail outlets
-  { start: 5600, end: 5699, category: RewardCategory.DEPARTMENT_STORES }, // Clothing stores
-  { start: 5700, end: 7299, category: RewardCategory.ONLINE_RETAIL }, // Misc. retail/services
-  { start: 7300, end: 7999, category: RewardCategory.GENERAL }, // Business services
-  { start: 8000, end: 8999, category: RewardCategory.GENERAL }, // Professional/membership
-  { start: 9000, end: 9999, category: RewardCategory.OTHER }, // Government services
+function inferTagsFromMcc(mccCode: number, description: string): {
+  vertical: MerchantVertical;
+  channel: MerchantChannel;
+  spendDomain: SpendDomain;
+  riskProfile: MerchantRiskProfile;
+  lifeCategory: MerchantLifeCategory;
+} {
+  const desc = description.toLowerCase();
 
-  // Specific high-priority mappings
-  { start: 5810, end: 5814, category: RewardCategory.DINING }, // restaurants/bars
-  { start: 5815, end: 5815, category: RewardCategory.DELIVERY_APPS },
-  { start: 4120, end: 4121, category: RewardCategory.RIDESHARE },
-  { start: 4110, end: 4119, category: RewardCategory.TRANSIT },
-  { start: 4130, end: 4131, category: RewardCategory.TRANSIT },
-  { start: 4510, end: 4511, category: RewardCategory.FLIGHTS },
-  { start: 4720, end: 4722, category: RewardCategory.TRAVEL },
-  { start: 4780, end: 4789, category: RewardCategory.TRAVEL },
-  { start: 5541, end: 5542, category: RewardCategory.GAS },
-  { start: 5300, end: 5300, category: RewardCategory.WHOLESALE_CLUBS },
-  { start: 5411, end: 5411, category: RewardCategory.GROCERIES },
-  { start: 5732, end: 5732, category: RewardCategory.ELECTRONICS },
-  { start: 5691, end: 5699, category: RewardCategory.DEPARTMENT_STORES },
-  { start: 5651, end: 5651, category: RewardCategory.DEPARTMENT_STORES },
-  { start: 5940, end: 5949, category: RewardCategory.ONLINE_RETAIL },
-  { start: 5960, end: 5969, category: RewardCategory.ONLINE_RETAIL },
-  { start: 5999, end: 5999, category: RewardCategory.ONLINE_RETAIL },
-  { start: 6300, end: 6399, category: RewardCategory.OTHER }, // insurance/finance catch-all
-  { start: 4812, end: 4814, category: RewardCategory.UTILITIES },
-  { start: 7011, end: 7012, category: RewardCategory.HOTELS },
-  { start: 7030, end: 7033, category: RewardCategory.TRAVEL },
-  { start: 7990, end: 7999, category: RewardCategory.ENTERTAINMENT },
-  { start: 7830, end: 7830, category: RewardCategory.MOVIES_STREAMING },
-  { start: 7841, end: 7841, category: RewardCategory.MOVIES_STREAMING },
-  { start: 4899, end: 4899, category: RewardCategory.STREAMING },
-  { start: 4900, end: 4900, category: RewardCategory.UTILITIES },
-  { start: 8020, end: 8099, category: RewardCategory.PHARMACY },
-];
-
-function mapMccToRewardCategory(code: string): RewardCategory {
-  const num = Number.parseInt(code, 10);
-  if (!Number.isFinite(num)) {
-    recordUnmappedMcc(code);
-    return RewardCategory.OTHER;
-  }
-  const match = MCC_RANGE_MAPPING.find((r) => num >= r.start && num <= r.end);
-  if (!match) {
-    recordUnmappedMcc(code);
-    return RewardCategory.OTHER;
-  }
-  return resolveRewardCategory(match.category);
-}
-
-async function parseCsv(filePath: string): Promise<ParsedMcc[]> {
-  const raw = await fs.promises.readFile(filePath, 'utf8');
-  const lines = raw.split(/\r?\n/).filter(Boolean);
-  const rows: ParsedMcc[] = [];
-  for (const line of lines) {
-    const [
-      code,
-      description = '',
-      section = '',
-      notes = '',
-      validBrandsRaw = '',
-      requiredAbbreviationsRaw = '',
-    ] = line
-      .split(',')
-      .map((s) => s.trim());
-    if (!code || code === 'code') continue;
-    rows.push({
-      code,
-      description,
-      section,
-      notes,
-      validBrands: parseBrandTokens(validBrandsRaw),
-      requiredAbbreviations: parseBrandTokens(requiredAbbreviationsRaw),
-    });
-  }
-  return rows;
-}
-
-async function parsePdf(filePath: string): Promise<ParsedMcc[]> {
-  // Lazy import to keep dependency optional in runtime paths.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const pdfModule = require('pdf-parse') as any;
-  const buffer = await fs.promises.readFile(filePath);
-
-  let text = '';
-
-  if (typeof pdfModule === 'function') {
-    // Legacy pdf-parse versions exported a callable function.
-    const data = await pdfModule(buffer);
-    text = data?.text ?? '';
-  } else if (pdfModule?.PDFParse) {
-    // pdf-parse >=2 exposes a PDFParse class.
-    const parser = new pdfModule.PDFParse({ data: buffer });
-    await parser.load();
-    const result = await parser.getText();
-    text = result?.text ?? '';
-  } else {
-    throw new Error('pdf-parse export shape unsupported. Update ingest script.');
-  }
-
-  const headerRegex = /MCC\s+Description\s+Valid Payment Brand/i;
-  const rawLines = text.split(/\r?\n/).map((l: string) => l.trim());
-  const normalizedLines: string[] = [];
-  for (const line of rawLines) {
-    if (!line) continue;
-    if (headerRegex.test(line)) continue;
-    const mccMatch = line.match(/^(\d{4})\b/);
-    if (mccMatch) {
-      normalizedLines.push(line);
-    } else if (normalizedLines.length) {
-      const lastIndex = normalizedLines.length - 1;
-      normalizedLines[lastIndex] = `${normalizedLines[lastIndex]} ${line}`.replace(/\s+/g, ' ').trim();
-    }
-  }
-
-  type Block = { code: string; lines: string[] };
-  const blocks: Block[] = [];
-  let current: Block | null = null;
-
-  for (const line of normalizedLines) {
-    const mccMatch = line.match(/^(\d{4})\b/);
-    if (!mccMatch) continue;
-    if (current) {
-      blocks.push(current);
-    }
-    current = { code: mccMatch[1], lines: [line] };
-  }
-  if (current) blocks.push(current);
-
-  const rows: ParsedMcc[] = blocks.map((block) => {
-    const joined = block.lines.join(' ');
-    const normalized = joined.replace(/\s+/g, ' ').trim();
-    const body = normalized.replace(/^\d{4}\s+/, '');
-
-    const terminatorMatch = body.match(/\b(V,\s*M|TSYS|V|M)\b/);
-    if (!terminatorMatch) {
-      recordUnmappedMcc(block.code);
-      return { code: block.code, description: body, validBrands: [], requiredAbbreviations: [] };
-    }
-
-    const terminator = terminatorMatch[0].replace(/\s+/g, ' ');
-    const termIndex = terminatorMatch.index ?? 0;
-    const description = body.slice(0, termIndex).trim();
-    const remainder = body.slice(termIndex + terminator.length).trim();
-
-    const isAirline = Number(block.code) >= 3000 && Number(block.code) <= 3299;
-
-    // Brand tokens anywhere in the row that look like TOKEN (V/M/...)
-    const brandPattern = /[A-Z0-9][A-Z0-9\s'&\.-]*?\([A-Z]\)/g;
-    const brandTokens = Array.from(body.matchAll(brandPattern)).map((m) => m[0].trim());
-
-    // Airline abbreviation tokens after the terminator
-    const abbreviationPattern = /[A-Z0-9][A-Z0-9\s'&\.-]*(?:\([A-Z]\))?/g;
-    const abbreviations = isAirline
-      ? Array.from(remainder.matchAll(abbreviationPattern)).map((m) => m[0].trim())
-      : [];
-
-    const validBrands = Array.from(new Set([terminator, ...brandTokens, ...abbreviations])).filter(
-      Boolean
-    );
-    const requiredAbbreviations = isAirline
-      ? Array.from(new Set(abbreviations)).filter(Boolean)
-      : [];
-
+  // Lodging
+  if (mccCode >= 3501 && mccCode <= 3835) {
     return {
-      code: block.code,
-      description,
-      validBrands,
-      requiredAbbreviations,
+      vertical: MerchantVertical.LODGING,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.DISCRETIONARY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.TRAVEL,
     };
-  });
-
-  return rows;
-}
-
-async function parseSpreadsheet(filePath: string): Promise<ParsedMcc[]> {
-  const workbook = XLSX.readFile(filePath, { cellDates: false });
-  const candidateSheet = workbook.SheetNames.find((name) =>
-    name.toLowerCase().includes('mcc')
-  );
-  const sheet = workbook.Sheets[candidateSheet ?? workbook.SheetNames[0]];
-  if (!sheet) {
-    throw new Error(`No sheets found in ${filePath}`);
   }
 
-  const rows = XLSX.utils.sheet_to_json<(string | number)[]>(sheet, {
-    header: 1,
-    blankrows: false,
-    defval: '',
-    raw: false,
-  });
-
-  const parsed: ParsedMcc[] = [];
-  for (const row of rows) {
-    const rawCode = row?.[0];
-    let code = '';
-    if (typeof rawCode === 'number') {
-      code = rawCode.toString().padStart(4, '0');
-    } else {
-      const digits = String(rawCode ?? '').match(/\d{3,4}/)?.[0] ?? '';
-      code = digits.padStart(4, '0');
-    }
-    if (!/^\d{4}$/.test(code)) {
-      continue;
-    }
-
-    const rawDescription = row?.[1];
-    const description = String(rawDescription ?? '').trim();
-    const brandsRaw = String(row?.[2] ?? row?.[3] ?? '').trim();
-    parsed.push({
-      code,
-      description,
-      section: null,
-      notes: null,
-      validBrands: parseBrandTokens(brandsRaw),
-      requiredAbbreviations: [],
-    });
+  // Airlines
+  if (mccCode >= 3000 && mccCode <= 3299) {
+    return {
+      vertical: MerchantVertical.TRANSPORT,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.DISCRETIONARY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.TRAVEL,
+    };
   }
 
-  return parsed;
-}
-
-async function loadMccs(inputPath?: string): Promise<ParsedMcc[]> {
-  const defaultPdf = path.join(process.cwd(), 'data', 'mcc.pdf');
-  const defaultCsv = path.join(process.cwd(), 'data', 'mcc.csv');
-  const target = inputPath
-    ? path.resolve(inputPath)
-    : fs.existsSync(defaultCsv)
-    ? defaultCsv
-    : defaultPdf;
-
-  if (!fs.existsSync(target)) {
-    throw new Error(`MCC source file not found at ${target}. Provide a PDF/CSV path.`);
+  // Car rental
+  if (mccCode >= 3351 && mccCode <= 3399) {
+    return {
+      vertical: MerchantVertical.TRANSPORT,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.DISCRETIONARY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.TRAVEL,
+    };
   }
 
-  const ext = path.extname(target).toLowerCase();
-  if (ext === '.csv') {
-    return parseCsv(target);
+  // Restaurants/bars
+  if ([5811, 5812, 5813, 5814].includes(mccCode)) {
+    return {
+      vertical: MerchantVertical.FOOD_DRINK,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.DISCRETIONARY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.PERSONAL_SERVICES,
+    };
   }
-  if (ext === '.xls' || ext === '.xlsx') {
-    return parseSpreadsheet(target);
+
+  // Groceries
+  if ([5411, 5499].includes(mccCode)) {
+    return {
+      vertical: MerchantVertical.RETAIL,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.NECESSITY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.HOME,
+    };
   }
-  return parsePdf(target);
+
+  // Gas
+  if (mccCode === 5541 || mccCode === 5542 || mccCode === 9752) {
+    return {
+      vertical: MerchantVertical.TRANSPORT,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.NECESSITY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.AUTO,
+    };
+  }
+
+  // Telecom / digital
+  if ([4812, 4816, 4899].includes(mccCode) || (mccCode >= 5815 && mccCode <= 5818)) {
+    return {
+      vertical: MerchantVertical.DIGITAL_SERVICES,
+      channel: MerchantChannel.ONLINE,
+      spendDomain: SpendDomain.NECESSITY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.HOME,
+    };
+  }
+
+  // Health / medical
+  if (
+    (mccCode >= 8011 && mccCode <= 8062) ||
+    mccCode === 5912 ||
+    mccCode === 5975 ||
+    mccCode === 5976
+  ) {
+    return {
+      vertical: MerchantVertical.HEALTHCARE,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.NECESSITY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.HEALTH,
+    };
+  }
+
+  // Financial / quasi cash
+  if ([6010, 6011, 6012, 6050, 6051, 6211, 6536, 6537, 6538, 6539].includes(mccCode)) {
+    return {
+      vertical: MerchantVertical.FINANCIAL,
+      channel: MerchantChannel.MIXED,
+      spendDomain: SpendDomain.TRANSFER,
+      riskProfile: MerchantRiskProfile.QUASI_CASH,
+      lifeCategory: MerchantLifeCategory.BUSINESS,
+    };
+  }
+
+  // Education
+  if (mccCode >= 8211 && mccCode <= 8299) {
+    return {
+      vertical: MerchantVertical.EDUCATION,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.INVESTMENT,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.EDUCATION,
+    };
+  }
+
+  // Government
+  if ([9211, 9222, 9223, 9311, 9399, 9402, 9405].includes(mccCode)) {
+    return {
+      vertical: MerchantVertical.GOVERNMENT,
+      channel: MerchantChannel.MIXED,
+      spendDomain: SpendDomain.NECESSITY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.GOVERNMENT,
+    };
+  }
+
+  // Entertainment / gambling
+  if (mccCode >= 7800 && mccCode <= 7999) {
+    const isGambling = mccCode === 7800 || mccCode === 7802 || mccCode === 7994 || mccCode === 9754;
+    return {
+      vertical: MerchantVertical.ENTERTAINMENT,
+      channel: MerchantChannel.OFFLINE,
+      spendDomain: SpendDomain.DISCRETIONARY,
+      riskProfile: isGambling ? MerchantRiskProfile.GAMBLING : MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.TRAVEL,
+    };
+  }
+
+  // Nonprofits / charities
+  if ([8398, 8661].includes(mccCode)) {
+    return {
+      vertical: MerchantVertical.NONPROFIT,
+      channel: MerchantChannel.MIXED,
+      spendDomain: SpendDomain.DISCRETIONARY,
+      riskProfile: MerchantRiskProfile.NORMAL,
+      lifeCategory: MerchantLifeCategory.CHARITY,
+    };
+  }
+
+  // Default
+  return {
+    vertical: MerchantVertical.MISC,
+    channel: MerchantChannel.OFFLINE,
+    spendDomain: SpendDomain.DISCRETIONARY,
+    riskProfile: MerchantRiskProfile.NORMAL,
+    lifeCategory: MerchantLifeCategory.OTHER,
+  };
 }
 
 async function main() {
-  const sourcePath = process.argv[2];
-  const mccs = await loadMccs(sourcePath);
-
-  for (const mcc of mccs) {
-    await prisma.merchantCategory.upsert({
-      where: { code: mcc.code },
-      update: {
-        description: mcc.description,
-        section: mcc.section ?? null,
-        notes: mcc.notes ?? null,
-      },
-      create: {
-        code: mcc.code,
-        description: mcc.description,
-        section: mcc.section ?? null,
-        notes: mcc.notes ?? null,
-      },
-    });
-
-    // Replace brand rows for this MCC
-    await prisma.merchantBrand.deleteMany({
-      where: { mccCode: mcc.code },
-    });
-    if (mcc.validBrands?.length) {
-      await prisma.merchantBrand.createMany({
-        data: mcc.validBrands.map((value) => ({
-          mccCode: mcc.code,
-          kind: 'VALID_PAYMENT_BRAND',
-          value,
-        })),
-      });
-    }
-    if (mcc.requiredAbbreviations?.length) {
-      await prisma.merchantBrand.createMany({
-        data: mcc.requiredAbbreviations.map((value) => ({
-          mccCode: mcc.code,
-          kind: 'REQUIRED_ABBREVIATION',
-          value,
-        })),
-      });
-    }
-
-    const rewardCategory = mapMccToRewardCategory(mcc.code);
-    await prisma.mccToRewardCategory.upsert({
-      where: { mccCode: mcc.code },
-      update: {
-        rewardCategory,
-      },
-      create: {
-        id: mcc.code, // stable so upsert works on unique mccCode
-        mccCode: mcc.code,
-        rewardCategory,
-      },
-    });
+  const source = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_PATH;
+  if (!fs.existsSync(source)) {
+    throw new Error(`MCC TSV not found at ${source}`);
   }
 
-  console.log(`Ingested ${mccs.length} MCC rows`);
+  const rows = parseTsv(source);
+
+  for (const row of rows) {
+    const tags = inferTagsFromMcc(row.mccCode, row.description);
+
+    await prisma.merchantCategory.upsert({
+      where: { mccCode: row.mccCode },
+      update: {
+        description: row.description,
+        networkVisa: row.networkVisa,
+        networkMastercard: row.networkMastercard,
+        networkTsys: row.networkTsys,
+        notes: row.notes,
+        vertical: tags.vertical,
+        channel: tags.channel,
+        spendDomain: tags.spendDomain,
+        riskProfile: tags.riskProfile,
+        lifeCategory: tags.lifeCategory,
+      },
+      create: {
+        mccCode: row.mccCode,
+        description: row.description,
+        networkVisa: row.networkVisa,
+        networkMastercard: row.networkMastercard,
+        networkTsys: row.networkTsys,
+        notes: row.notes,
+        vertical: tags.vertical,
+        channel: tags.channel,
+        spendDomain: tags.spendDomain,
+        riskProfile: tags.riskProfile,
+        lifeCategory: tags.lifeCategory,
+      },
+    });
+
+    const category = mapTagsToRewardCategory({
+      mccCode: row.mccCode,
+      vertical: tags.vertical,
+      riskProfile: tags.riskProfile,
+      lifeCategory: tags.lifeCategory,
+      channel: tags.channel,
+    });
+    if (!category) {
+      logUnmapped(row.mccCode);
+      continue;
+    }
+
+    // Upsert mapping (default row per MCC)
+    const existing = await prisma.mccToRewardCategory.findFirst({
+      where: { mccCode: row.mccCode, isDefault: true },
+    });
+    if (existing) {
+      await prisma.mccToRewardCategory.update({
+        where: { id: existing.id },
+        data: { category },
+      });
+    } else {
+      await prisma.mccToRewardCategory.create({
+        data: {
+          mccCode: row.mccCode,
+          category,
+          isDefault: true,
+        },
+      });
+    }
+  }
+
+  console.log(`Ingested ${rows.length} MCC rows from ${source}`);
 }
 
 main()

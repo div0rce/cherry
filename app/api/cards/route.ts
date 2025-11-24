@@ -1,21 +1,12 @@
 // app/api/cards/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { RewardCategory } from '@prisma/client';
 
 // TODO: replace with real auth; for now, hardcode a user or mock
 const DEMO_USER_ID = 'demo-user-id';
 
-// Temporary category validation until a TransactionCategory enum exists in Prisma.
-const ALLOWED_CATEGORIES = [
-  'DINING',
-  'GROCERIES',
-  'GAS',
-  'TRAVEL',
-  'ONLINE',
-  'ENTERTAINMENT',
-  'GENERAL',
-  'OTHER',
-];
+const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
 type IncomingRewardRule = {
   category?: string;
@@ -48,7 +39,7 @@ function parseRewardRules(rawRules: unknown): {
       return { ok: false, message: 'Each reward rule needs a category string' };
     }
     const normalizedCategory = category.toUpperCase();
-    if (!ALLOWED_CATEGORIES.includes(normalizedCategory)) {
+    if (!ALLOWED_CATEGORIES.includes(normalizedCategory as RewardCategory)) {
       return {
         ok: false,
         message: `Invalid category "${category}". Allowed: ${ALLOWED_CATEGORIES.join(', ')}`,
@@ -84,7 +75,7 @@ function parseRewardRules(rawRules: unknown): {
     }
 
     parsed.push({
-      category: normalizedCategory,
+      category: normalizedCategory as RewardCategory,
       multiplier: numericMultiplier,
       capAmount: capAmountCents ?? null,
     });

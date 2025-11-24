@@ -1,11 +1,15 @@
-// app/api/buckets/route.ts
-
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { BucketPeriod } from '@prisma/client';
 
 // For now we hardcode a demo user. Later this becomes session.user.id from auth.
-const DEMO_USER_ID = 'demo-user-id';
+export const DEMO_USER_ID = 'demo-user-id';
+
+export async function findBucketForUser(bucketId: string) {
+  return prisma.bucket.findFirst({
+    where: { id: bucketId, userId: DEMO_USER_ID },
+  });
+}
 
 /**
  * GET /api/buckets
@@ -47,6 +51,7 @@ export async function POST(request: Request) {
       name,
       period,
       budgetAmountCents,
+      currentAmountCents,
       strictMode = true,
       category,
     } = body ?? {};
@@ -61,6 +66,15 @@ export async function POST(request: Request) {
 
     if (typeof budgetAmountCents !== 'number' || budgetAmountCents <= 0) {
       return new NextResponse('budgetAmountCents must be a positive number', {
+        status: 400,
+      });
+    }
+
+    if (
+      currentAmountCents != null &&
+      (typeof currentAmountCents !== 'number' || currentAmountCents < 0)
+    ) {
+      return new NextResponse('currentAmountCents must be a non-negative number when provided', {
         status: 400,
       });
     }
@@ -93,7 +107,8 @@ export async function POST(request: Request) {
         name,
         period: period as BucketPeriod,
         budgetAmount: budgetAmountCents,
-        currentAmount: budgetAmountCents, // start full
+        currentAmount:
+          currentAmountCents == null ? budgetAmountCents : Math.min(currentAmountCents, budgetAmountCents),
         strictMode: Boolean(strictMode),
         category: normalizedCategory,
       },
@@ -103,5 +118,35 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error creating bucket:', error);
     return new NextResponse('Failed to create bucket', { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/buckets
+ *
+ * Legacy delete endpoint using body { bucketId }. Prefer /api/buckets/[bucketId].
+ */
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { bucketId } = body ?? {};
+
+    if (!bucketId || typeof bucketId !== 'string') {
+      return new NextResponse('bucketId is required', { status: 400 });
+    }
+
+    const bucket = await findBucketForUser(bucketId);
+    if (!bucket) {
+      return new NextResponse('Bucket not found for user', { status: 404 });
+    }
+
+    await prisma.bucket.delete({
+      where: { id: bucket.id },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error('Error deleting bucket:', error);
+    return new NextResponse('Failed to delete bucket', { status: 500 });
   }
 }

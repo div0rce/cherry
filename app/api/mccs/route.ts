@@ -1,0 +1,28 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function GET() {
+  try {
+    const rows = await prisma.mccToRewardCategory.findMany({
+      include: {
+        mcc: true,
+      },
+      orderBy: {
+        mccCode: 'asc',
+      },
+    });
+
+    const result = rows.map((row) => ({
+      mccCode: row.mccCode,
+      rewardCategory: row.rewardCategory,
+      description: row.mcc.description,
+      section: row.mcc.section,
+      notes: row.mcc.notes,
+    }));
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Error fetching MCCs:', error);
+    return new NextResponse('Failed to fetch MCCs', { status: 500 });
+  }
+}
