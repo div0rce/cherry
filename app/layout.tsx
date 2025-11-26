@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./providers";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { UserMenu } from "@/components/user-menu";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -53,9 +54,7 @@ export default async function RootLayout({
                   >
                     New Simulation
                   </Link>
-                  <div className="rounded-md border border-white/5 bg-white/5 px-3 py-1.5">
-                    {userEmail}
-                  </div>
+                  <UserMenu email={userEmail} />
                 </div>
               </header>
               <main className="flex-1 overflow-y-auto px-6 py-8">{children}</main>

@@ -20,7 +20,7 @@ export default async function CardDetailPage({ params }: { params: Promise<{ car
   const { cardId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(`/cards/${cardId}`)}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(`/cards/${cardId}`)}`);
   }
 
   const card = await prisma.card.findFirst({

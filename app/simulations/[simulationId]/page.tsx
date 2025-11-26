@@ -16,7 +16,7 @@ export default async function SimulationDetailPage({
   const { simulationId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(`/simulations/${simulationId}`)}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(`/simulations/${simulationId}`)}`);
   }
 
   const sim = await prisma.simulation.findFirst({

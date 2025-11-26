@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 export default async function SimulationsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/simulations')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/simulations')}`);
   }
 
   const simulations = await prisma.simulation.findMany({

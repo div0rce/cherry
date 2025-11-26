@@ -11,7 +11,7 @@ function formatCents(cents: number) {
 export default async function HistoryPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/history')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/history')}`);
   }
 
   const transactions = await prisma.simulatedTransaction.findMany({

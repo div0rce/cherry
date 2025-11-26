@@ -6,7 +6,7 @@ import { AddBucketForm } from '../client';
 export default async function NewBucketPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/buckets/new')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/buckets/new')}`);
   }
 
   return (

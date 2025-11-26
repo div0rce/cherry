@@ -6,7 +6,7 @@ import { AddCardForm } from '../client';
 export default async function NewCardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/cards/new')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/cards/new')}`);
   }
 
   return (

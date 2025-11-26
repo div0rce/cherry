@@ -82,7 +82,7 @@ async function fetchCards(): Promise<Card[]> {
 export default async function CardsPage() {
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/cards')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/cards')}`);
   }
 
   let cards: Card[] = [];

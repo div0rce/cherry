@@ -11,7 +11,7 @@ export default async function StatementDetailPage({
   const { statementId } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(`/statements/${statementId}`)}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(`/statements/${statementId}`)}`);
   }
 
   return (

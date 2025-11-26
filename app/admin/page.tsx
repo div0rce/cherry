@@ -19,7 +19,7 @@ async function getHealth() {
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/admin')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/admin')}`);
   }
 
   const health = await getHealth();

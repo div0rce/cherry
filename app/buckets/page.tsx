@@ -42,7 +42,7 @@ async function fetchBuckets(): Promise<Bucket[]> {
 export default async function BucketsPage() {
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/buckets')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/buckets')}`);
   }
 
   let buckets: Bucket[] = [];

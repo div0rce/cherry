@@ -121,7 +121,7 @@ export default async function SimulatePage({
 
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
   let response: SimulationResponse | null = null;

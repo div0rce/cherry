@@ -56,6 +56,9 @@ if (process.env.NODE_ENV !== 'production') {
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers,
+  pages: {
+    signIn: '/signin',
+  },
   session: {
     strategy: 'jwt',
   },

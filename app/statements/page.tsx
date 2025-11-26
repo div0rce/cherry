@@ -6,7 +6,7 @@ import Link from 'next/link';
 export default async function StatementsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/statements')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/statements')}`);
   }
 
   return (
