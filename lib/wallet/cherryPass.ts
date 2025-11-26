@@ -129,5 +129,6 @@ export async function generateCherryPass(payload: CherryPassPayload): Promise<Bu
   pass.addBuffer('logo.png', iconBuffer);
   pass.addBuffer('logo@2x.png', iconBuffer);
 
-  return pass.asBuffer();
+  // passkit-generator types do not expose asBuffer; cast to an extended type to access runtime method.
+  return (pass as PKPass & { asBuffer: () => Promise<Buffer> }).asBuffer();
 }

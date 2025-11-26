@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { AdminActionButton } from './action-button';
 
 async function getHealth() {
   try {
@@ -93,14 +94,16 @@ function AdminActionCard({
         <p className="text-sm font-semibold text-white">{title}</p>
         <p className="text-xs text-slate-400">{description}</p>
       </div>
-      <form action={href} method={method}>
-        <button
-          type="submit"
-          className="rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition"
+      {method === 'POST' ? (
+        <AdminActionButton href={href} method="POST" cta={cta} />
+      ) : (
+        <Link
+          href={href}
+          className="inline-flex rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition"
         >
           {cta}
-        </button>
-      </form>
+        </Link>
+      )}
     </div>
   );
 }

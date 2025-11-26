@@ -239,24 +239,24 @@ export default async function SimulatePage({
                           </div>
 
                         <div className="grid gap-3 md:grid-cols-2">
-                          <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                            <p className="text-xs uppercase text-slate-500 tracking-[0.1em]">Card</p>
+                          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
+                            <p className="text-xs uppercase text-slate-400 tracking-[0.15em]">Card</p>
                             {cardDisplayName ? (
-                              <p className="text-sm font-semibold">{cardDisplayName}</p>
+                              <p className="text-sm font-semibold text-white">{cardDisplayName}</p>
                             ) : (
                               <p className="text-sm text-slate-500">None (declined/no card)</p>
                             )}
                           </div>
 
-                          <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-                            <p className="text-xs uppercase text-slate-500 tracking-[0.1em]">Bucket</p>
+                          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
+                            <p className="text-xs uppercase text-slate-400 tracking-[0.15em]">Bucket</p>
                             {bucketLabel ? (
-                              <div className="text-sm">
-                                <p className="font-semibold">
+                              <div className="text-sm text-slate-200">
+                                <p className="font-semibold text-white">
                                   {bucketLabel}
                                   {bucketCategory ? ` · ${bucketCategory}` : ''}
                                 </p>
-                                <p className="text-slate-500">
+                                <p className="text-slate-400">
                                   {bucketDetails.length > 0
                                     ? bucketDetails.join(' · ')
                                     : 'No tracked balances'}
@@ -292,9 +292,9 @@ export default async function SimulatePage({
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white/60 shadow-sm backdrop-blur p-4">
-            <h3 className="text-base font-semibold mb-2">Run a simulation</h3>
-            <p className="text-sm text-slate-500 mb-3">
+          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur p-4 text-slate-100">
+            <h3 className="text-base font-semibold mb-2 text-white">Run a simulation</h3>
+            <p className="text-sm text-slate-400 mb-3">
               Enter dollars; we convert to cents before calling the API. Categories must match your buckets/rules.
             </p>
             <RunSimulationForm />

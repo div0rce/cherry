@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { BucketPeriod } from '@prisma/client';
+import { BucketPeriod, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 
@@ -83,7 +83,14 @@ export async function POST(request: Request) {
         );
       }
 
+      const validCategories = Object.values(RewardCategory) as string[];
       const normalizedCategory = String(category).toUpperCase();
+      if (!validCategories.includes(normalizedCategory)) {
+        return new NextResponse(
+          `Invalid category. Expected one of: ${validCategories.join(', ')}`,
+          { status: 400 }
+        );
+      }
 
       const bucket = await prisma.bucket.create({
         data: {
@@ -96,7 +103,7 @@ export async function POST(request: Request) {
               ? budgetAmountCents
               : Math.min(currentAmountCents, budgetAmountCents),
           strictMode: Boolean(strictMode),
-          category: normalizedCategory,
+          category: normalizedCategory as RewardCategory,
         },
       });
 

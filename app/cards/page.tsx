@@ -15,7 +15,8 @@ import { getBaseUrl } from '@/lib/base-url';
 type RewardRule = {
   id: string;
   category: string;
-  multiplier: number;
+  multiplier: number | null;
+  cashbackPercent: number | null;
   capAmount: number | null;
   createdAt: string;
   updatedAt: string;
@@ -38,18 +39,27 @@ function formatCents(cents: number | null | undefined) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function formatRuleDisplay(multiplier: number) {
+function formatRuleDisplay(rule: RewardRule) {
+  if (rule.cashbackPercent != null) {
+    return `${rule.cashbackPercent}% cash back`;
+  }
+
+  if (rule.multiplier == null) {
+    return 'Custom reward';
+  }
+
+  const multiplier = rule.multiplier;
   // Inference rules:
   // - multiplier < 1: treat as cash-back decimal (0.025 -> 2.5% cash back)
-  // - multiplier === 1: base earn; show as 1× points
-  // - multiplier > 1: points earn rate (e.g., 3× points)
+  // - multiplier === 1: base earn; show as 1x points
+  // - multiplier > 1: points earn rate (e.g., 3x points)
   if (multiplier < 1) {
     return `${(multiplier * 100).toFixed(2)}% cash back`;
   }
   if (multiplier === 1) {
-    return '1× points';
+    return '1x points';
   }
-  return `${multiplier}× points`;
+  return `${multiplier}x points`;
 }
 
 async function fetchCards(): Promise<Card[]> {
@@ -173,10 +183,11 @@ function CardList({ cards }: { cards: Card[] }) {
                   >
                     <div>
                       <p className="text-sm font-semibold text-white">
-                        {rule.category} · {formatRuleDisplay(rule.multiplier)}
+                        {rule.category} · {formatRuleDisplay(rule)}
                       </p>
                       <p className="text-xs text-slate-400">
-                        Cap: {rule.capAmount != null ? formatCents(rule.capAmount) : 'No cap'}
+                        Credit limit:{' '}
+                        {rule.capAmount != null ? formatCents(rule.capAmount) : 'No limit'}
                       </p>
                     </div>
                     <DeleteRewardRuleButton cardId={card.id} rewardRuleId={rule.id} />

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         cherryPoints,
       });
 
-      return new NextResponse(pkpassBuffer, {
+      return new NextResponse(pkpassBuffer as unknown as BodyInit, {
         status: 200,
         headers: {
           'Content-Type': 'application/vnd.apple.pkpass',

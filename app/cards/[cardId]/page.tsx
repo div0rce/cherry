@@ -12,8 +12,8 @@ function formatCents(cents: number | null) {
 
 function formatRuleDisplay(multiplier: number) {
   if (multiplier < 1) return `${(multiplier * 100).toFixed(2)}% cash back`;
-  if (multiplier === 1) return '1× points';
-  return `${multiplier}× points`;
+  if (multiplier === 1) return '1x points';
+  return `${multiplier}x points`;
 }
 
 export default async function CardDetailPage({ params }: { params: Promise<{ cardId: string }> }) {
@@ -59,7 +59,8 @@ export default async function CardDetailPage({ params }: { params: Promise<{ car
                     {rule.category} · {formatRuleDisplay(rule.multiplier ?? 1)}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Cap: {rule.capAmount != null ? formatCents(rule.capAmount) : 'No cap'}
+                    Credit limit:{' '}
+                    {rule.capAmount != null ? formatCents(rule.capAmount) : 'No limit'}
                   </p>
                 </div>
                 <DeleteRewardRuleButton cardId={card.id} rewardRuleId={rule.id} />

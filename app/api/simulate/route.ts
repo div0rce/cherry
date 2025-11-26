@@ -80,41 +80,52 @@ export async function POST(request: Request) {
 
       const strictDecline = engineResult.bucket.strictDecline;
       const bucketBeforeCents = engineResult.bucket.remainingBeforeCents ?? null;
-      const bucketAfterCents = engineResult.bucket.remainingAfterCents ?? null;
-      const bucketLimitCents = engineResult.bucket.limitCents ?? null;
-      const rewardMultiplier = engineResult.routing.rewardMultiplier ?? null;
-      const rewardsEarnedPoints = engineResult.routing.rewardsEarned ?? null;
-      const tx = await prisma.simulatedTransaction.create({
-        data: {
-          simulationId,
-          userId,
-          amount: body.amountCents as number,
-          merchantName,
-          resolvedCategory: normalizedCategory as RewardCategory,
-          mccCode,
+      const bucketAfterCents = strictDecline
+        ? bucketBeforeCents
+        : engineResult.bucket.remainingAfterCents ?? null;
+        const bucketLimitCents = engineResult.bucket.limitCents ?? null;
+        const rewardMultiplier = engineResult.routing.rewardMultiplier ?? null;
+        const rewardsEarnedPoints = engineResult.routing.rewardsEarned ?? null;
+        const tx = await prisma.$transaction(async (txPrisma) => {
+          if (engineResult.bucket.id && !strictDecline && bucketAfterCents != null) {
+            await txPrisma.bucket.update({
+              where: { id: engineResult.bucket.id },
+              data: { currentAmount: bucketAfterCents },
+            });
+          }
 
-          bucketId: engineResult.bucket.id,
-          bucketName: engineResult.bucket.name,
-          bucketPeriod: engineResult.bucket.period,
-          bucketBeforeCents,
-          bucketAfterCents,
-          bucketLimitCents,
+          return txPrisma.simulatedTransaction.create({
+            data: {
+              simulationId,
+              userId,
+              amount: body.amountCents as number,
+              merchantName,
+              resolvedCategory: normalizedCategory as RewardCategory,
+              mccCode,
 
-          chosenCardId: engineResult.routing.chosenCardId,
-          chosenCardName: engineResult.routing.chosenCardName,
+              bucketId: engineResult.bucket.id,
+              bucketName: engineResult.bucket.name,
+              bucketPeriod: engineResult.bucket.period,
+              bucketBeforeCents,
+              bucketAfterCents,
+              bucketLimitCents,
 
-          rewardMultiplier,
-          rewardsEarned: rewardsEarnedPoints,
-          multiplier: rewardMultiplier,
-          cashbackPercent: null,
-          rewardsEarnedPoints: rewardsEarnedPoints,
-          rewardsEarnedCents: null,
+              chosenCardId: engineResult.routing.chosenCardId,
+              chosenCardName: engineResult.routing.chosenCardName,
 
-          strictDecline,
-          status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
-          reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
-        },
-      });
+              rewardMultiplier,
+              rewardsEarned: rewardsEarnedPoints,
+              multiplier: rewardMultiplier,
+              cashbackPercent: null,
+              rewardsEarnedPoints: rewardsEarnedPoints,
+              rewardsEarnedCents: null,
+
+              strictDecline,
+              status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
+              reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
+            },
+          });
+        });
 
       return NextResponse.json({
         simulationId,

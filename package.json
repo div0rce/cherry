@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "ingest:mcc": "ts-node --project tsconfig.scripts.json scripts/ingest-mcc.ts",
     "seed:demo": "ts-node --project tsconfig.scripts.json scripts/seed-demo.ts"
   },

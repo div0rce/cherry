@@ -56,7 +56,7 @@ export function AddCardForm() {
       if (ruleCapDollars.trim() !== '') {
         const parsedCap = Number.parseFloat(ruleCapDollars);
         if (!Number.isFinite(parsedCap) || parsedCap < 0) {
-          setStatus('Reward cap must be a non-negative number.');
+          setStatus('Credit limit must be a non-negative number.');
           return;
         }
       }
@@ -186,17 +186,28 @@ export function AddCardForm() {
             placeholder="250.00"
           />
       </div>
-      <div className="flex items-center gap-2">
-        <input
-          id="isCredit"
-          type="checkbox"
-          checked={isCredit}
-          onChange={(e) => setIsCredit(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-        />
-        <label htmlFor="isCredit" className="text-sm text-slate-700">
-          Credit card (uncheck for debit)
-        </label>
+      <div className="space-y-2">
+        <span className="block text-sm font-medium text-slate-700">Card type</span>
+        <div className="flex rounded-md border border-white/10 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsCredit(true)}
+            className={`flex-1 px-2 py-1 text-sm ${
+              isCredit ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
+            }`}
+          >
+            Credit
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCredit(false)}
+            className={`flex-1 px-2 py-1 text-sm ${
+              !isCredit ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
+            }`}
+          >
+            Debit
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -211,79 +222,79 @@ export function AddCardForm() {
         </label>
       </div>
       {knowsRewards && (
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-3 space-y-2">
-          <p className="text-sm font-semibold">Initial reward rule</p>
+        <div className="rounded-md border border-white/10 bg-slate-900/70 p-3 space-y-3 text-slate-100">
+          <p className="text-sm font-semibold text-white">Initial reward rule</p>
           <div className="grid grid-cols-4 gap-2">
             <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-[0.15em] text-slate-500">
+              <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
                 Category
               </label>
               <input
                 value={ruleCategory}
                 onChange={(e) => setRuleCategory(e.target.value.toUpperCase())}
-                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
                 placeholder="DINING"
                 required
               />
             </div>
             <div className="space-y-1">
-      <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
-        Reward type
-      </label>
-      <div className="flex rounded-md border border-white/10 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setRuleType('CASH')}
-          className={`flex-1 px-2 py-1 text-sm ${
-            ruleType === 'CASH' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
-          }`}
-        >
-          Cash back (%)
+              <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
+                Reward type
+              </label>
+              <div className="flex rounded-md border border-white/10 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setRuleType('CASH')}
+                  className={`flex-1 px-2 py-1 text-sm ${
+                    ruleType === 'CASH' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
+                  }`}
+                >
+                  Cash back (%)
                 </button>
-        <button
-          type="button"
-          onClick={() => setRuleType('POINTS')}
-          className={`flex-1 px-2 py-1 text-sm ${
-            ruleType === 'POINTS' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
-          }`}
-        >
-          Points (×)
-        </button>
-      </div>
-    </div>
-    <div className="space-y-1">
-      <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
-        {ruleType === 'CASH' ? 'Cash back %' : 'Points multiplier'}
-      </label>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={ruleMultiplier}
-        onChange={(e) => setRuleMultiplier(e.target.value)}
-        className={smallInputClass}
-        placeholder={ruleType === 'CASH' ? '2.5' : '4'}
-        required
-      />
-    </div>
-    <div className="space-y-1">
-      <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
-        Cap (USD, optional)
-      </label>
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={ruleCapDollars}
-        onChange={(e) => setRuleCapDollars(e.target.value)}
-        className={smallInputClass}
-        placeholder="500.00"
-      />
+                <button
+                  type="button"
+                  onClick={() => setRuleType('POINTS')}
+                  className={`flex-1 px-2 py-1 text-sm ${
+                    ruleType === 'POINTS' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
+                  }`}
+                >
+                  Points (x)
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
+                {ruleType === 'CASH' ? 'Cash back %' : 'Points multiplier'}
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={ruleMultiplier}
+                onChange={(e) => setRuleMultiplier(e.target.value)}
+                className={smallInputClass}
+                placeholder={ruleType === 'CASH' ? '2.5' : '4'}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
+                Credit limit (USD, optional)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={ruleCapDollars}
+                onChange={(e) => setRuleCapDollars(e.target.value)}
+                className={smallInputClass}
+                placeholder="500.00"
+              />
             </div>
           </div>
-          <p className="text-xs text-slate-500">
-            Leave cap empty for uncapped; category must match your bucket/reward categories (e.g.,
-            DINING, GROCERIES).
+          <p className="text-xs text-slate-400">
+            Leave the credit limit empty for uncapped; category must match your bucket/reward categories
+            (e.g., DINING, GROCERIES).
           </p>
         </div>
       )}
@@ -327,7 +338,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
     if (capAmountDollars.trim() !== '') {
       const parsedCap = Number.parseFloat(capAmountDollars);
       if (!Number.isFinite(parsedCap) || parsedCap < 0) {
-        setStatus('Cap must be a non-negative number.');
+        setStatus('Credit limit must be a non-negative number.');
         return;
       }
     }
@@ -399,7 +410,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
             rewardType === 'POINTS' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
           }`}
         >
-          Points ×
+          Points x
         </button>
       </div>
 
@@ -420,7 +431,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
         value={capAmountDollars}
         onChange={(e) => setCapAmountDollars(e.target.value)}
         className="w-28 rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
-        placeholder="Cap (USD)"
+        placeholder="Credit limit (USD)"
       />
       <button
         type="submit"

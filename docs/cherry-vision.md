@@ -38,7 +38,7 @@ To an end user, Cherry feels like:
   - your actual budget
   - your upcoming obligations  
 - …and stands next to you at the register and quietly says:
-  - “Use Amex Gold here — 4× dining, you’re still $37 under budget.”  
+  - “Use Amex Gold here — 4x dining, you’re still $37 under budget.”  
   - Or: “If you swipe this, you’re blowing your Dining bucket. Are you sure?”  
   - Or: “Use your 2% card. This merchant doesn’t trigger any promos.”  
 
@@ -160,7 +160,7 @@ For a hypothetical transaction:
 
 3. **Card optimization**:
    - Among all user cards, which:
-     - matches the category exactly (e.g., DINING 4×)?
+    - matches the category exactly (e.g., DINING 4x)?
      - or falls back to general rewards (1–2% everywhere)?
    - What is the implied reward multiplier?
    - Are there any special rules (rotating categories, caps) in the future?

@@ -5,7 +5,9 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import { prisma } from '@/lib/prisma';
 
-const providers = [
+type AuthProvider = NextAuthOptions['providers'][number];
+
+const providers: AuthProvider[] = [
   EmailProvider({
     server: process.env.EMAIL_SERVER ?? '',
     from: process.env.EMAIL_FROM ?? 'no-reply@localhost',
@@ -47,7 +49,7 @@ if (process.env.NODE_ENV !== 'production') {
 
         return { id: newUser.id, email: newUser.email };
       },
-    })
+    }) as AuthProvider
   );
 }
 
