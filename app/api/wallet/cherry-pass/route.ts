@@ -31,7 +31,13 @@ export async function GET(request: Request) {
       });
     } catch (error) {
       logError('Error generating Cherry Pass', error);
-      return NextResponse.json({ error: 'Failed to generate Cherry Pass' }, { status: 500 });
+      return NextResponse.json(
+        {
+          error:
+            'Cherry Wallet pass generation is not available in this environment. Apple Developer configuration is incomplete.',
+        },
+        { status: 501 }
+      );
     }
   });
 }

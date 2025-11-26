@@ -45,6 +45,20 @@ const TINY_RED_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YxKqW0AAAAASUVORK5CYII=';
 
 export async function generateCherryPass(payload: CherryPassPayload): Promise<Buffer> {
+  if (
+    !APPLE_WALLET_TEAM_ID ||
+    !APPLE_WALLET_PASS_TYPE_ID ||
+    !APPLE_WALLET_ORG_NAME ||
+    !APPLE_WALLET_PASS_DESCRIPTION ||
+    !APPLE_WALLET_CERT_PASSWORD ||
+    !APPLE_WALLET_CERT_PATH ||
+    !APPLE_WALLET_WWDR_CERT_PATH
+  ) {
+    throw new Error(
+      '[Cherry Wallet] Apple Wallet is not configured. Missing certs/ENV. This feature is disabled until Apple Developer setup is complete.'
+    );
+  }
+
   assertWalletEnv();
 
   const cert = fs.readFileSync(path.resolve(APPLE_WALLET_CERT_PATH!));

@@ -1,5 +1,29 @@
 # Cherry Wallet Pass (Apple Wallet)
 
+# Cherry Wallet Pass — Status: SCAFFOLDED ONLY
+
+**This feature is partially implemented but currently inactive.**
+
+Cherry’s Apple Wallet pass system has been scaffolded in the codebase, but it requires:
+- An Apple Developer account
+- A Pass Type ID (e.g. `pass.com.cherry.pass`)
+- A Pass Type ID Certificate (.p12)
+- The Apple WWDR Certificate
+
+Because these items have not been purchased or configured yet, the endpoint:
+
+```
+GET /api/wallet/cherry-pass
+```
+
+will return a `501 Not Implemented` response.
+
+This is expected behavior.
+
+The server will not attempt to load missing certs or generate a pass until the full Apple Wallet provisioning pipeline is funded and set up.
+
+# Cherry Wallet Pass (Apple Wallet)
+
 Cherry provides a non-payment Apple Wallet pass (Cherry Pass) that behaves like a loyalty/rewards card and can be used to trigger the “scan before you pay” flow.
 
 ## How it works

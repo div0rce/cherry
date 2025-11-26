@@ -45,4 +45,5 @@ next-env.d.ts
 # Apple Wallet certs and passes (local only)
 certs/
 *.p12
+*.pem
 *.pkpass
