@@ -21,7 +21,6 @@
 import fs from 'fs';
 import path from 'path';
 import {
-  RewardCategory,
   MerchantVertical,
   MerchantChannel,
   SpendDomain,
@@ -30,6 +29,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper';
+import { logError, logInfo } from '../lib/logger';
 
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');
@@ -90,40 +90,13 @@ function parseTsv(filePath: string): ParsedRow[] {
   return rows;
 }
 
-function mapMccToCategory(mcc: number, description: string): RewardCategory {
-  // Kept for backward compatibility in case tags fail.
-  if (mcc === 5411) return RewardCategory.GROCERIES;
-  if (mcc === 5812 || mcc === 5814) return RewardCategory.DINING;
-  if (mcc >= 3000 && mcc <= 3299) return RewardCategory.AIR_TRAVEL;
-  if (mcc >= 3351 && mcc <= 3499 && /rent|car/i.test(description)) return RewardCategory.CAR_RENTAL;
-  if (mcc >= 3500 && mcc <= 3831 && /(hotel|inn|motel|resort|lodge)/i.test(description))
-    return RewardCategory.HOTEL;
-  if ([4111, 4112, 4411, 4511, 4582, 4722].includes(mcc)) return RewardCategory.TRAVEL;
-  if (mcc === 4900) return RewardCategory.UTILITIES;
-  if ([5300, 5310, 5311, 5331, 5399, 5999].includes(mcc)) return RewardCategory.GENERAL_MERCHANDISE;
-  if (/grocery|market|supermarket/i.test(description)) return RewardCategory.GROCERIES;
-  if (/restaurant|dining|food/i.test(description)) return RewardCategory.DINING;
-  if (/gas|fuel/i.test(description)) return RewardCategory.GAS;
-  if (/air|flight/i.test(description)) return RewardCategory.AIR_TRAVEL;
-  if (/hotel|motel|resort|inn/i.test(description)) return RewardCategory.HOTEL;
-  if (/online|e-?commerce|direct marketing/i.test(description))
-    return RewardCategory.ONLINE_SHOPPING;
-  if (/utility|water|electric|power/i.test(description)) return RewardCategory.UTILITIES;
-  if (/health|medical|pharmacy|drug/i.test(description)) return RewardCategory.HEALTH;
-  if (/entertainment|amusement|movie|theatre|concert/i.test(description))
-    return RewardCategory.ENTERTAINMENT;
-  return RewardCategory.OTHER;
-}
-
-function inferTagsFromMcc(mccCode: number, description: string): {
+function inferTagsFromMcc(mccCode: number, _description: string): {
   vertical: MerchantVertical;
   channel: MerchantChannel;
   spendDomain: SpendDomain;
   riskProfile: MerchantRiskProfile;
   lifeCategory: MerchantLifeCategory;
 } {
-  const desc = description.toLowerCase();
-
   // Lodging
   if (mccCode >= 3501 && mccCode <= 3835) {
     return {
@@ -355,12 +328,12 @@ async function main() {
     }
   }
 
-  console.log(`Ingested ${rows.length} MCC rows from ${source}`);
+  logInfo(`Ingested ${rows.length} MCC rows from ${source}`);
 }
 
 main()
   .catch((err) => {
-    console.error('Ingest failed:', err);
+    logError('Ingest failed', err);
     process.exit(1);
   })
   .finally(async () => {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logError } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -22,7 +23,7 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching MCCs:', error);
+    logError('Error fetching MCCs', error);
     return new NextResponse('Failed to fetch MCCs', { status: 500 });
   }
 }

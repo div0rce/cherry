@@ -1,5 +1,10 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { RunSimulationForm, DeleteSimulationButton } from './client';
+import { getBaseUrl } from '@/lib/base-url';
 
 type Simulation = {
   id: string;
@@ -15,8 +20,15 @@ type Simulation = {
   cashbackPercent: number | null;
   rewardsEarnedCents: number | null;
   rewardsEarnedPoints: number | null;
+  rewardMultiplier: number | null;
+  rewardsEarned: number | null;
   bucketBeforeCents: number | null;
   bucketAfterCents: number | null;
+  bucketLimitCents: number | null;
+  bucketName: string | null;
+  bucketPeriod: string | null;
+  chosenCardName: string | null;
+  strictDecline: boolean;
   createdAt: string;
   chosenCard?: {
     id: string;
@@ -42,6 +54,8 @@ function formatCents(cents: number | null | undefined) {
 function formatRewards(sim: Simulation) {
   if (sim.rewardsEarnedCents != null) return `${formatCents(sim.rewardsEarnedCents)} cashback`;
   if (sim.rewardsEarnedPoints != null) return `${sim.rewardsEarnedPoints} pts`;
+  if (sim.rewardsEarned != null) return `${sim.rewardsEarned} pts`;
+  if (sim.rewardMultiplier != null) return `${sim.rewardMultiplier}x multiplier`;
   return '—';
 }
 
@@ -58,12 +72,6 @@ async function fetchSimulations(query: {
   page?: number;
   pageSize?: number;
 }): Promise<SimulationResponse> {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : 'http://localhost:3000');
-
   const params = new URLSearchParams();
   if (query.status) params.set('status', query.status);
   if (query.category) params.set('category', query.category);
@@ -71,10 +79,14 @@ async function fetchSimulations(query: {
   if (query.pageSize) params.set('pageSize', String(query.pageSize));
 
   const queryString = params.toString();
-  const url = queryString ? `${base}/api/simulations?${queryString}` : `${base}/api/simulations`;
+  const url = queryString ? `/api/simulations?${queryString}` : '/api/simulations';
 
-  const res = await fetch(url, {
+  const baseUrl = getBaseUrl();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+  const res = await fetch(`${baseUrl}${url}`, {
     cache: 'no-store',
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   });
 
   if (!res.ok) {
@@ -100,6 +112,17 @@ export default async function SimulatePage({
     10
   );
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+
+  const search = new URLSearchParams();
+  if (statusParam) search.set('status', statusParam);
+  if (categoryParam) search.set('category', categoryParam);
+  if (page > 1) search.set('page', String(page));
+  const callbackUrl = search.toString() ? `/simulate?${search.toString()}` : '/simulate';
+
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  }
 
   let response: SimulationResponse | null = null;
   let error: string | null = null;
@@ -154,8 +177,40 @@ export default async function SimulatePage({
                   </div>
                 ) : (
                   <ul className="divide-y divide-slate-200">
-                    {simulations.map((sim) => (
-                      <li key={sim.id} className="p-4 space-y-2">
+                    {simulations.map((sim) => {
+                      const cardDisplayName = sim.chosenCard
+                        ? `${sim.chosenCard.nickname} (${sim.chosenCard.issuer} · ${sim.chosenCard.network})`
+                        : sim.chosenCardName ?? null;
+                      const bucketLabel = sim.bucketName ?? sim.bucket?.name ?? null;
+                      const bucketCategory = sim.bucket?.category ?? sim.resolvedCategory;
+                      const bucketLimit = sim.bucketLimitCents ?? sim.bucket?.budgetAmount ?? null;
+                      const bucketRemainingBefore = sim.bucketBeforeCents;
+                      const bucketRemainingAfter =
+                        sim.bucketAfterCents ?? sim.bucket?.currentAmount ?? null;
+                      const bucketStrictFlag =
+                        typeof sim.bucket?.strictMode === 'boolean'
+                          ? sim.bucket.strictMode
+                          : sim.strictDecline
+                            ? true
+                            : undefined;
+                      const bucketDetails = [
+                        bucketLimit != null ? `Limit ${formatCents(bucketLimit)}` : null,
+                        bucketRemainingBefore != null
+                          ? `Before ${formatCents(bucketRemainingBefore)}`
+                          : null,
+                        bucketRemainingAfter != null
+                          ? `After ${formatCents(bucketRemainingAfter)}`
+                          : null,
+                      ].filter(Boolean);
+                      const bucketDisciplineLabel =
+                        bucketStrictFlag == null
+                          ? null
+                          : bucketStrictFlag
+                            ? '(strict)'
+                            : '(soft)';
+
+                      return (
+                        <li key={sim.id} className="p-4 space-y-2">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm text-slate-500">
@@ -186,10 +241,8 @@ export default async function SimulatePage({
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                             <p className="text-xs uppercase text-slate-500 tracking-[0.1em]">Card</p>
-                            {sim.chosenCard ? (
-                              <p className="text-sm font-semibold">
-                                {sim.chosenCard.nickname} ({sim.chosenCard.issuer} · {sim.chosenCard.network})
-                              </p>
+                            {cardDisplayName ? (
+                              <p className="text-sm font-semibold">{cardDisplayName}</p>
                             ) : (
                               <p className="text-sm text-slate-500">None (declined/no card)</p>
                             )}
@@ -197,15 +250,17 @@ export default async function SimulatePage({
 
                           <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
                             <p className="text-xs uppercase text-slate-500 tracking-[0.1em]">Bucket</p>
-                            {sim.bucket ? (
+                            {bucketLabel ? (
                               <div className="text-sm">
                                 <p className="font-semibold">
-                                  {sim.bucket.name} · {sim.bucket.category}
+                                  {bucketLabel}
+                                  {bucketCategory ? ` · ${bucketCategory}` : ''}
                                 </p>
                                 <p className="text-slate-500">
-                                  Remaining: {formatCents(sim.bucket.currentAmount)} /{' '}
-                                  {formatCents(sim.bucket.budgetAmount)}{' '}
-                                  {sim.bucket.strictMode ? '(strict)' : '(soft)'}
+                                  {bucketDetails.length > 0
+                                    ? bucketDetails.join(' · ')
+                                    : 'No tracked balances'}
+                                  {bucketDisciplineLabel ? ` ${bucketDisciplineLabel}` : ''}
                                 </p>
                               </div>
                             ) : (
@@ -218,8 +273,9 @@ export default async function SimulatePage({
                           <p>Reason: {sim.reason || '—'}</p>
                           <p>Rewards: {formatRewards(sim)}</p>
                         </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
                 <SimulationPagination

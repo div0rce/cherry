@@ -2,6 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
+import { signIn } from 'next-auth/react';
+
+function promptSignIn(setStatus: (message: string) => void) {
+  setStatus('Sign in to continue.');
+  void signIn(undefined, { callbackUrl: window.location.href });
+}
 
 export function AddCardForm() {
   const router = useRouter();
@@ -71,6 +77,11 @@ export function AddCardForm() {
       }),
     });
 
+    if (res.status === 401) {
+      promptSignIn(setStatus);
+      return;
+    }
+
     if (!res.ok) {
       const message = await res.text();
       setStatus(message || 'Failed to create card');
@@ -97,6 +108,11 @@ export function AddCardForm() {
           capAmountCents: ruleCapCents,
         }),
       });
+
+      if (ruleRes.status === 401) {
+        promptSignIn(setStatus);
+        return;
+      }
 
       if (!ruleRes.ok) {
         const message = await ruleRes.text();
@@ -334,6 +350,11 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
       }),
     });
 
+    if (res.status === 401) {
+      promptSignIn(setStatus);
+      return;
+    }
+
     if (!res.ok) {
       const message = await res.text();
       setStatus(message || 'Failed to create reward rule');
@@ -423,6 +444,11 @@ export function DeleteCardButton({ cardId }: { cardId: string }) {
       body: JSON.stringify({ cardId }),
     });
 
+    if (res.status === 401) {
+      promptSignIn(setStatus);
+      return;
+    }
+
     if (!res.ok) {
       const message = await res.text();
       setStatus(message || 'Failed to delete card');
@@ -465,6 +491,11 @@ export function DeleteRewardRuleButton({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rewardRuleId }),
     });
+
+    if (res.status === 401) {
+      promptSignIn(setStatus);
+      return;
+    }
 
     if (!res.ok) {
       const message = await res.text();

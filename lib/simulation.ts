@@ -170,7 +170,8 @@ export async function runSimulation(
   }
 
   const bucket = await pickBucketForCategory(prisma, userId, resolvedCategory);
-  const bucketBefore = bucket?.currentAmount ?? null;
+  const bucketStartingAmount = bucket?.currentAmount ?? bucket?.budgetAmount ?? null;
+  const bucketBefore = bucketStartingAmount;
 
   // strict bucket decline
   if (bucket && bucket.strictMode && bucket.currentAmount < amountCents) {
@@ -200,11 +201,10 @@ export async function runSimulation(
 
   // Approved path
   const rewards = computeRewards(amountCents, rule);
-  const bucketAfter =
-    bucket != null ? bucket.currentAmount - amountCents : null;
+  const bucketAfter = bucketStartingAmount != null ? bucketStartingAmount - amountCents : null;
 
   const tx = await prisma.$transaction(async (txPrisma) => {
-    if (bucket) {
+    if (bucket && bucketAfter != null) {
       await txPrisma.bucket.update({
         where: { id: bucket.id },
         data: { currentAmount: bucketAfter },

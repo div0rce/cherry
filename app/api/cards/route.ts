@@ -2,9 +2,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RewardCategory } from '@prisma/client';
-
-// TODO: replace with real auth; for now, hardcode a user or mock
-const DEMO_USER_ID = 'demo-user-id';
+import { withUser } from '@/lib/with-user';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -33,7 +31,11 @@ function parseRewardRules(rawRules: unknown): {
     const { category, multiplier, cashbackPercent, capAmountCents } =
       (rule as IncomingRewardRule) ?? {};
     // Accept both camel variants for percent.
-    const percent = cashbackPercent ?? (rule as any)?.cashBackPercent;
+    const percent =
+      cashbackPercent ??
+      (typeof rule === 'object' && rule !== null
+        ? (rule as { cashBackPercent?: number }).cashBackPercent
+        : undefined);
 
     if (!category || typeof category !== 'string') {
       return { ok: false, message: 'Each reward rule needs a category string' };
@@ -84,60 +86,49 @@ function parseRewardRules(rawRules: unknown): {
   return { ok: true, rules: parsed };
 }
 
-export async function GET() {
-  // list cards for demo user
-  const cards = await prisma.card.findMany({
-    where: { userId: DEMO_USER_ID },
-    include: {
-      rewardRules: true,
-    },
+export async function GET(request: Request) {
+  return withUser(request, async (userId) => {
+    const cards = await prisma.card.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: { rewardRules: true },
+    });
+    return NextResponse.json(cards);
   });
-
-  return NextResponse.json(cards);
 }
 
 export async function POST(request: Request) {
-  const body = await request.json();
+  return withUser(request, async (userId) => {
+    const body = await request.json();
+    const { nickname, issuer, network, isCredit, annualFee, rewardRules } = body;
 
-  const { nickname, issuer, network, isCredit, annualFee, rewardRules } = body;
+    if (!nickname || !issuer || !network) {
+      return new NextResponse('Missing fields', { status: 400 });
+    }
 
-  if (!nickname || !issuer || !network) {
-    return new NextResponse('Missing fields', { status: 400 });
-  }
+    const parsedRules = parseRewardRules(rewardRules);
+    if (!parsedRules.ok) {
+      return new NextResponse(parsedRules.message, { status: 400 });
+    }
 
-  const parsedRules = parseRewardRules(rewardRules);
-  if (!parsedRules.ok) {
-    return new NextResponse(parsedRules.message, { status: 400 });
-  }
+    const card = await prisma.card.create({
+      data: {
+        userId,
+        nickname,
+        issuer,
+        network,
+        isCredit: Boolean(isCredit),
+        annualFee: annualFee ?? null,
+        rewardRules:
+          parsedRules.rules.length > 0 ? { create: parsedRules.rules } : undefined,
+      },
+      include: {
+        rewardRules: true,
+      },
+    });
 
-  // Upsert a demo user for now
-  const user = await prisma.user.upsert({
-    where: { id: DEMO_USER_ID },
-    update: {},
-    create: {
-      id: DEMO_USER_ID,
-      email: 'demo@example.com',
-      name: 'Demo User',
-    },
+    return NextResponse.json(card, { status: 201 });
   });
-
-  const card = await prisma.card.create({
-    data: {
-      userId: user.id,
-      nickname,
-      issuer,
-      network,
-      isCredit: Boolean(isCredit),
-      annualFee: annualFee ?? null,
-      rewardRules:
-        parsedRules.rules.length > 0 ? { create: parsedRules.rules } : undefined,
-    },
-    include: {
-      rewardRules: true,
-    },
-  });
-
-  return NextResponse.json(card, { status: 201 });
 }
 
 /**
@@ -150,30 +141,31 @@ export async function POST(request: Request) {
  * delete the card. Reward rules cascade via the Prisma relation.
  */
 export async function DELETE(request: Request) {
-  const body = await request.json();
-  const { cardId } = body ?? {};
+  return withUser(request, async (userId) => {
+    const body = await request.json();
+    const { cardId } = body ?? {};
 
-  if (!cardId || typeof cardId !== 'string') {
-    return new NextResponse('cardId is required', { status: 400 });
-  }
+    if (!cardId || typeof cardId !== 'string') {
+      return new NextResponse('cardId is required', { status: 400 });
+    }
 
-  const card = await prisma.card.findFirst({
-    where: { id: cardId, userId: DEMO_USER_ID },
+    const card = await prisma.card.findFirst({
+      where: { id: cardId, userId },
+    });
+
+    if (!card) {
+      return new NextResponse('Card not found for user', { status: 404 });
+    }
+
+    await prisma.simulatedTransaction.updateMany({
+      where: { chosenCardId: card.id, userId },
+      data: { chosenCardId: null },
+    });
+
+    await prisma.card.delete({
+      where: { id: card.id },
+    });
+
+    return new NextResponse(null, { status: 204 });
   });
-
-  if (!card) {
-    return new NextResponse('Card not found for user', { status: 404 });
-  }
-
-  // Disconnect any historical simulations from this card to satisfy FK constraints.
-  await prisma.simulatedTransaction.updateMany({
-    where: { chosenCardId: card.id },
-    data: { chosenCardId: null },
-  });
-
-  await prisma.card.delete({
-    where: { id: card.id },
-  });
-
-  return new NextResponse(null, { status: 204 });
 }

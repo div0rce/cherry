@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { DEMO_USER_ID, findBucketForUser } from '../route';
+import { withUser } from '@/lib/with-user';
+import { logError } from '@/lib/logger';
 
 /**
  * DELETE /api/buckets/[bucketId]
@@ -8,27 +9,31 @@ import { DEMO_USER_ID, findBucketForUser } from '../route';
  * Validates ownership (demo user) and deletes the bucket.
  */
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ bucketId: string }> }
 ) {
-  const { bucketId } = await params;
+  return withUser(request, async (userId) => {
+    const { bucketId } = await params;
 
-  if (!bucketId || typeof bucketId !== 'string') {
-    return new NextResponse('bucketId is required', { status: 400 });
-  }
+    if (!bucketId || typeof bucketId !== 'string') {
+      return new NextResponse('bucketId is required', { status: 400 });
+    }
 
-  const bucket = await findBucketForUser(bucketId);
-  if (!bucket) {
-    return new NextResponse('Bucket not found for user', { status: 404 });
-  }
-
-  try {
-    await prisma.bucket.delete({
-      where: { id: bucket.id },
+    const bucket = await prisma.bucket.findFirst({
+      where: { id: bucketId, userId },
     });
-    return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    console.error('Error deleting bucket:', error);
-    return new NextResponse('Failed to delete bucket', { status: 500 });
-  }
+    if (!bucket) {
+      return new NextResponse('Bucket not found for user', { status: 404 });
+    }
+
+    try {
+      await prisma.bucket.delete({
+        where: { id: bucket.id },
+      });
+      return new NextResponse(null, { status: 204 });
+    } catch (error) {
+      logError('Error deleting bucket', error);
+      return new NextResponse('Failed to delete bucket', { status: 500 });
+    }
+  });
 }

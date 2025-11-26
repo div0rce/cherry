@@ -1,76 +1,129 @@
-// app/api/simulate/route.ts
-
 import { NextResponse } from 'next/server';
+import { RewardCategory, TransactionStatus } from '@prisma/client';
+import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
-import { runSimulation, SimulationInput } from '@/lib/simulation';
+import { evaluateTransaction } from '@/lib/engine';
+import { logError, logWarn } from '@/lib/logger';
 
-// For now we hardcode a demo user. Later this becomes session.user.id from auth.
-const DEMO_USER_ID = 'demo-user-id';
+type Body = Partial<{
+  amountCents: number;
+  category: string;
+  merchantName: string | null;
+  simulationId: string;
+  mccCode: number;
+}>;
 
-/**
- * POST /api/simulate
- *
- * Simulates a transaction through the Cherry engine.
- *
- * Expected JSON body:
- * {
- *   amountCents: number,
- *   category?: string,
- *   merchantName?: string,
- *   mccCode?: number
- * }
- */
+const validCategories = Object.values(RewardCategory) as string[];
+
 export async function POST(request: Request) {
-  try {
-    const body = (await request.json()) as Partial<SimulationInput>;
+  return withUser(request, async (userId) => {
+    try {
+      const body = (await request.json()) as Body;
 
-    const { amountCents, category, merchantName, mccCode } = body;
+      const errors: string[] = [];
+      const normalizedCategory =
+        typeof body?.category === 'string' ? body.category.trim().toUpperCase() : '';
 
-    if (amountCents == null || typeof amountCents !== 'number') {
-      return new NextResponse('amountCents is required and must be a number', {
-        status: 400,
+      if (typeof body?.amountCents !== 'number' || Number.isNaN(body.amountCents)) {
+        errors.push('amountCents must be a number');
+      } else if (body.amountCents <= 0) {
+        errors.push('amountCents must be greater than 0');
+      }
+
+      if (!normalizedCategory || !validCategories.includes(normalizedCategory)) {
+        errors.push('category must be a valid RewardCategory');
+      }
+
+      if (body?.merchantName != null && typeof body.merchantName !== 'string') {
+        errors.push('merchantName must be a string');
+      }
+
+      if (body?.mccCode != null) {
+        const asInt = Number.parseInt(String(body.mccCode), 10);
+        if (!Number.isInteger(asInt) || String(asInt).length !== 4) {
+          errors.push('mccCode must be a 4-digit integer if provided');
+        }
+      }
+
+      if (errors.length > 0) {
+        logWarn('Validation failed in /api/simulate', { userId, errors, body });
+        return NextResponse.json(
+          { error: 'Validation failed', details: errors },
+          { status: 400 }
+        );
+      }
+
+      const merchantName =
+        typeof body?.merchantName === 'string' && body.merchantName.trim().length > 0
+          ? body.merchantName.trim()
+          : '';
+      const mccCode =
+        body?.mccCode != null && !Number.isNaN(Number(body.mccCode))
+          ? Number.parseInt(String(body.mccCode), 10)
+          : null;
+
+      const simulationId =
+        body.simulationId ??
+        (
+          await prisma.simulation.create({
+            data: { userId },
+            select: { id: true },
+          })
+        ).id;
+
+      const engineResult = await evaluateTransaction({
+        userId,
+        amountCents: body.amountCents as number,
+        category: normalizedCategory as RewardCategory,
+        merchantName,
       });
-    }
 
-    if (amountCents <= 0) {
-      return new NextResponse('amountCents must be greater than 0', {
-        status: 400,
+      const strictDecline = engineResult.bucket.strictDecline;
+      const bucketBeforeCents = engineResult.bucket.remainingBeforeCents ?? null;
+      const bucketAfterCents = engineResult.bucket.remainingAfterCents ?? null;
+      const bucketLimitCents = engineResult.bucket.limitCents ?? null;
+      const rewardMultiplier = engineResult.routing.rewardMultiplier ?? null;
+      const rewardsEarnedPoints = engineResult.routing.rewardsEarned ?? null;
+      const tx = await prisma.simulatedTransaction.create({
+        data: {
+          simulationId,
+          userId,
+          amount: body.amountCents as number,
+          merchantName,
+          resolvedCategory: normalizedCategory as RewardCategory,
+          mccCode,
+
+          bucketId: engineResult.bucket.id,
+          bucketName: engineResult.bucket.name,
+          bucketPeriod: engineResult.bucket.period,
+          bucketBeforeCents,
+          bucketAfterCents,
+          bucketLimitCents,
+
+          chosenCardId: engineResult.routing.chosenCardId,
+          chosenCardName: engineResult.routing.chosenCardName,
+
+          rewardMultiplier,
+          rewardsEarned: rewardsEarnedPoints,
+          multiplier: rewardMultiplier,
+          cashbackPercent: null,
+          rewardsEarnedPoints: rewardsEarnedPoints,
+          rewardsEarnedCents: null,
+
+          strictDecline,
+          status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
+          reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
+        },
       });
+
+      return NextResponse.json({
+        simulationId,
+        transaction: tx,
+        decision: engineResult,
+      });
+    } catch (error) {
+      logError('Error in /api/simulate', error);
+      return NextResponse.json({ error: 'Failed to run simulation' }, { status: 500 });
     }
-
-    if (mccCode != null && (!Number.isInteger(mccCode) || String(mccCode).length !== 4)) {
-      return new NextResponse('mccCode must be a 4-digit integer if provided', { status: 400 });
-    }
-
-    // Ensure demo user exists (consistent with /api/cards and /api/buckets).
-    const user = await prisma.user.upsert({
-      where: { id: DEMO_USER_ID },
-      update: {},
-      create: {
-        id: DEMO_USER_ID,
-        email: 'demo@example.com',
-        name: 'Demo User',
-      },
-    });
-
-    const result = await runSimulation(prisma, user.id, {
-      amountCents,
-      category: category ?? undefined,
-      merchantName,
-      mccCode: mccCode ?? undefined,
-    });
-
-    // The engine returns a transaction with nested chosenCard + bucket.
-    // We can return it as-is or wrap it in a higher-level object.
-    return NextResponse.json(result, { status: 200 });
-  } catch (error) {
-    console.error('Error in /api/simulate:', error);
-
-    // If the error is from our own validation throw in runSimulation, surface it.
-    if (error instanceof Error) {
-      return new NextResponse(error.message, { status: 400 });
-    }
-
-    return new NextResponse('Failed to run simulation', { status: 500 });
-  }
+  });
 }

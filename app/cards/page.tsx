@@ -1,11 +1,16 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import {
   AddCardForm,
   AddRewardRuleForm,
   DeleteCardButton,
   DeleteRewardRuleButton,
 } from './client';
+import { getBaseUrl } from '@/lib/base-url';
 
 type RewardRule = {
   id: string;
@@ -48,14 +53,12 @@ function formatRuleDisplay(multiplier: number) {
 }
 
 async function fetchCards(): Promise<Card[]> {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : 'http://localhost:3000');
-
-  const res = await fetch(`${base}/api/cards`, {
+  const baseUrl = getBaseUrl();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+  const res = await fetch(`${baseUrl}/api/cards`, {
     cache: 'no-store',
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
   });
 
   if (!res.ok) {
@@ -67,6 +70,11 @@ async function fetchCards(): Promise<Card[]> {
 }
 
 export default async function CardsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/cards')}`);
+  }
+
   let cards: Card[] = [];
   let error: string | null = null;
 

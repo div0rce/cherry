@@ -2,6 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
+import { signIn } from 'next-auth/react';
+
+function promptSignIn(setStatus: (message: string) => void) {
+  setStatus('Sign in to continue.');
+  void signIn(undefined, { callbackUrl: window.location.href });
+}
 
 export function DeleteBucketButton({ bucketId }: { bucketId: string }) {
   const router = useRouter();
@@ -15,6 +21,11 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }) {
     const res = await fetch(`/api/buckets/${bucketId}`, {
       method: 'DELETE',
     });
+
+    if (res.status === 401) {
+      promptSignIn(setStatus);
+      return;
+    }
 
     if (!res.ok) {
       const message = await res.text();
@@ -90,6 +101,11 @@ export function AddBucketForm() {
         category: category.toUpperCase(),
       }),
     });
+
+    if (res.status === 401) {
+      promptSignIn(setStatus);
+      return;
+    }
 
     if (!res.ok) {
       const message = await res.text();

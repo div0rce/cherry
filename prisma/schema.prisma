@@ -86,15 +86,20 @@ enum MerchantLifeCategory {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  cards       Card[]
-  buckets     Bucket[]
-  simulations SimulatedTransaction[]
+  cards               Card[]
+  buckets             Bucket[]
+  simulationSessions  Simulation[]
+  simulations         SimulatedTransaction[]
+  accounts            Account[]
+  sessions            Session[]
 }
 
 model Card {
@@ -180,31 +185,93 @@ model MccToRewardCategory {
   @@index([mccCode])
 }
 
+model Simulation {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  name      String?
+  createdAt DateTime @default(now())
+
+  transactions SimulatedTransaction[]
+}
+
 model SimulatedTransaction {
   id     String @id @default(cuid())
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
+  simulation   Simulation? @relation(fields: [simulationId], references: [id], onDelete: Cascade)
+  simulationId String?
 
-  amount            Int // cents
-  currency          String  @default("USD")
-  merchantName      String?
-  mccCode           Int?
-  resolvedCategory  RewardCategory
-  rewardRuleCategory RewardCategory?
-  multiplier        Float?
-  cashbackPercent   Float?
+  amount              Int // cents
+  currency            String  @default("USD")
+  merchantName        String?
+  mccCode             Int?
+  resolvedCategory    RewardCategory
+  rewardRuleCategory  RewardCategory?
+  multiplier          Float?
+  cashbackPercent     Float?
   rewardsEarnedPoints Int?
   rewardsEarnedCents  Int?
-  bucketBeforeCents Int?
-  bucketAfterCents  Int?
+  rewardMultiplier    Int?
+  rewardsEarned       Int?
+  bucketBeforeCents   Int?
+  bucketAfterCents    Int?
+  bucketLimitCents    Int?
+  bucketName          String?
+  bucketPeriod        BucketPeriod?
 
   chosenCard   Card?   @relation(fields: [chosenCardId], references: [id])
   chosenCardId String?
+  chosenCardName String?
   bucket       Bucket? @relation(fields: [bucketId], references: [id])
   bucketId     String?
 
   status        TransactionStatus
   reason        String?
+  strictDecline Boolean @default(false)
 
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([simulationId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  expires      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

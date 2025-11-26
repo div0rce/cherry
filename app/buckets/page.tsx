@@ -1,5 +1,11 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { DeleteBucketButton, AddBucketForm } from './client';
+import { getBaseUrl } from '@/lib/base-url';
+
 
 type Bucket = {
   id: string;
@@ -19,13 +25,13 @@ function formatCents(cents: number | null | undefined) {
 }
 
 async function fetchBuckets(): Promise<Bucket[]> {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL
-      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-      : 'http://localhost:3000');
-
-  const res = await fetch(`${base}/api/buckets`, { cache: 'no-store' });
+  const baseUrl = getBaseUrl();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.toString();
+  const res = await fetch(`${baseUrl}/api/buckets`, {
+    cache: 'no-store',
+    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+  });
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || 'Failed to load buckets');
@@ -34,6 +40,11 @@ async function fetchBuckets(): Promise<Bucket[]> {
 }
 
 export default async function BucketsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    redirect(`/api/auth/signin?callbackUrl=${encodeURIComponent('/buckets')}`);
+  }
+
   let buckets: Bucket[] = [];
   let error: string | null = null;
 

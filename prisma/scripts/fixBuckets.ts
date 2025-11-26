@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import type { Bucket } from '@prisma/client';
+import { logError, logInfo } from '@/lib/logger';
 
 /**
  * One-off reconciliation script to normalize buckets:
@@ -11,9 +13,9 @@ import { prisma } from '@/lib/prisma';
 async function main() {
   const buckets = await prisma.bucket.findMany();
   for (const bucket of buckets) {
-    const updates: Record<string, any> = {};
+    const updates: Partial<Pick<Bucket, 'category' | 'currentAmount'>> = {};
 
-    const normalizedCategory = bucket.category.toUpperCase();
+    const normalizedCategory = bucket.category.toUpperCase() as Bucket['category'];
     if (normalizedCategory !== bucket.category) {
       updates.category = normalizedCategory;
     }
@@ -33,10 +35,10 @@ async function main() {
 
 main()
   .then(() => {
-    console.log('Bucket reconciliation complete');
+    logInfo('Bucket reconciliation complete');
   })
   .catch((err) => {
-    console.error(err);
+    logError('Bucket reconciliation failed', err);
     process.exit(1);
   })
   .finally(async () => {
