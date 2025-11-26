@@ -22,6 +22,10 @@ export function AddCardForm() {
   const [ruleType, setRuleType] = useState<'POINTS' | 'CASH'>('POINTS');
   const [ruleCapDollars, setRuleCapDollars] = useState('');
   const [status, setStatus] = useState<string | null>(null);
+  const inputClass =
+    'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
+  const smallInputClass =
+    'w-full rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -143,7 +147,7 @@ export function AddCardForm() {
         <input
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className={inputClass}
           placeholder="Amex Gold"
           required
         />
@@ -154,7 +158,7 @@ export function AddCardForm() {
           <input
             value={issuer}
             onChange={(e) => setIssuer(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className={inputClass}
             placeholder="AMEX"
             required
           />
@@ -164,7 +168,7 @@ export function AddCardForm() {
           <input
             value={network}
             onChange={(e) => setNetwork(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className={inputClass}
             placeholder="AMEX"
             required
           />
@@ -172,15 +176,15 @@ export function AddCardForm() {
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-slate-700">Annual fee (USD)</label>
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          value={annualFeeDollars}
-          onChange={(e) => setAnnualFeeDollars(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-          placeholder="250.00"
-        />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={annualFeeDollars}
+            onChange={(e) => setAnnualFeeDollars(e.target.value)}
+            className={inputClass}
+            placeholder="250.00"
+          />
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -223,58 +227,58 @@ export function AddCardForm() {
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-[0.15em] text-slate-500">
-                Reward type
-              </label>
-              <div className="flex rounded-md border border-slate-300 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setRuleType('CASH')}
-                  className={`flex-1 px-2 py-1 text-sm ${
-                    ruleType === 'CASH' ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
-                  }`}
-                >
-                  Cash back (%)
+      <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
+        Reward type
+      </label>
+      <div className="flex rounded-md border border-white/10 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setRuleType('CASH')}
+          className={`flex-1 px-2 py-1 text-sm ${
+            ruleType === 'CASH' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
+          }`}
+        >
+          Cash back (%)
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setRuleType('POINTS')}
-                  className={`flex-1 px-2 py-1 text-sm ${
-                    ruleType === 'POINTS' ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
-                  }`}
-                >
-                  Points (×)
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-[0.15em] text-slate-500">
-                {ruleType === 'CASH' ? 'Cash back %' : 'Points multiplier'}
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={ruleMultiplier}
-                onChange={(e) => setRuleMultiplier(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder={ruleType === 'CASH' ? '2.5' : '4'}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-[0.15em] text-slate-500">
-                Cap (USD, optional)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={ruleCapDollars}
-                onChange={(e) => setRuleCapDollars(e.target.value)}
-                className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
-                placeholder="500.00"
-              />
+        <button
+          type="button"
+          onClick={() => setRuleType('POINTS')}
+          className={`flex-1 px-2 py-1 text-sm ${
+            ruleType === 'POINTS' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
+          }`}
+        >
+          Points (×)
+        </button>
+      </div>
+    </div>
+    <div className="space-y-1">
+      <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
+        {ruleType === 'CASH' ? 'Cash back %' : 'Points multiplier'}
+      </label>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={ruleMultiplier}
+        onChange={(e) => setRuleMultiplier(e.target.value)}
+        className={smallInputClass}
+        placeholder={ruleType === 'CASH' ? '2.5' : '4'}
+        required
+      />
+    </div>
+    <div className="space-y-1">
+      <label className="block text-xs uppercase tracking-[0.15em] text-slate-300">
+        Cap (USD, optional)
+      </label>
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={ruleCapDollars}
+        onChange={(e) => setRuleCapDollars(e.target.value)}
+        className={smallInputClass}
+        placeholder="500.00"
+      />
             </div>
           </div>
           <p className="text-xs text-slate-500">
@@ -369,21 +373,21 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2 text-sm">
+    <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2 text-sm text-slate-100">
       <input
         value={category}
         onChange={(e) => setCategory(e.target.value.toUpperCase())}
-        className="w-24 rounded-md border border-slate-300 px-2 py-1"
+        className="w-24 rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
         placeholder="DINING"
         required
       />
 
-      <div className="flex rounded-md border border-slate-300 overflow-hidden">
+      <div className="flex rounded-md border border-white/10 overflow-hidden">
         <button
           type="button"
           onClick={() => setRewardType('CASH')}
           className={`flex-1 px-2 py-1 ${
-            rewardType === 'CASH' ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+            rewardType === 'CASH' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
           }`}
         >
           Cash %
@@ -392,7 +396,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
           type="button"
           onClick={() => setRewardType('POINTS')}
           className={`flex-1 px-2 py-1 ${
-            rewardType === 'POINTS' ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+            rewardType === 'POINTS' ? 'bg-pink-600/20 text-pink-100' : 'text-slate-200'
           }`}
         >
           Points ×
@@ -405,7 +409,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
         step="0.01"
         value={multiplier}
         onChange={(e) => setMultiplier(e.target.value)}
-        className="w-20 rounded-md border border-slate-300 px-2 py-1"
+        className="w-20 rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
         placeholder={rewardType === 'CASH' ? '2.5' : '4'}
         required
       />
@@ -415,12 +419,12 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
         step="0.01"
         value={capAmountDollars}
         onChange={(e) => setCapAmountDollars(e.target.value)}
-        className="w-28 rounded-md border border-slate-300 px-2 py-1"
+        className="w-28 rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
         placeholder="Cap (USD)"
       />
       <button
         type="submit"
-        className="rounded-md bg-blue-600 px-3 py-1 text-white hover:bg-blue-700 transition"
+        className="rounded-md bg-pink-600 px-3 py-1 text-white hover:bg-pink-700 transition"
       >
         Add rule
       </button>

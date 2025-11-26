@@ -40,11 +40,11 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }) {
   return (
     <button
       onClick={handleDelete}
-      className="text-sm text-red-600 hover:text-red-700"
+      className="text-sm text-red-300 hover:text-red-200"
       type="button"
     >
       Delete
-      {status && <span className="ml-2 text-xs text-slate-500">{status}</span>}
+      {status && <span className="ml-2 text-xs text-slate-400">{status}</span>}
     </button>
   );
 }
@@ -58,6 +58,10 @@ export function AddBucketForm() {
   const [currentDollars, setCurrentDollars] = useState('');
   const [strictMode, setStrictMode] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
+  const inputClass =
+    'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
+  const selectClass =
+    'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-pink-500 focus:outline-none';
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -124,34 +128,34 @@ export function AddBucketForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3 text-slate-100">
       <div className="space-y-1">
-        <label className="block text-sm font-medium text-slate-700">Name</label>
+        <label className="block text-sm font-medium text-slate-300">Name</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className={inputClass}
           placeholder="Food"
           required
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">Category</label>
+          <label className="block text-sm font-medium text-slate-300">Category</label>
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value.toUpperCase())}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className={inputClass}
             placeholder="DINING"
             required
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">Period</label>
+          <label className="block text-sm font-medium text-slate-300">Period</label>
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as 'WEEKLY' | 'MONTHLY')}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className={selectClass}
             required
           >
             <option value="WEEKLY">WEEKLY</option>
@@ -161,20 +165,20 @@ export function AddBucketForm() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">Budget (USD)</label>
+          <label className="block text-sm font-medium text-slate-300">Budget (USD)</label>
           <input
             type="number"
             min="0"
             step="0.01"
             value={budgetDollars}
             onChange={(e) => setBudgetDollars(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className={inputClass}
             placeholder="200.00"
             required
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-slate-700">
+          <label className="block text-sm font-medium text-slate-300">
             Current amount (USD, optional)
           </label>
           <input
@@ -183,7 +187,7 @@ export function AddBucketForm() {
             step="0.01"
             value={currentDollars}
             onChange={(e) => setCurrentDollars(e.target.value)}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className={inputClass}
             placeholder="200.00"
           />
         </div>
@@ -194,19 +198,19 @@ export function AddBucketForm() {
           type="checkbox"
           checked={strictMode}
           onChange={(e) => setStrictMode(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          className="h-4 w-4 rounded border-white/20 bg-slate-900 text-pink-500 focus:ring-pink-500"
         />
-        <label htmlFor="strictMode" className="text-sm text-slate-700">
+        <label htmlFor="strictMode" className="text-sm text-slate-200">
           Strict mode (decline when bucket is empty)
         </label>
       </div>
       <button
         type="submit"
-        className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+        className="w-full rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition"
       >
         Create bucket
       </button>
-      {status && <p className="text-xs text-slate-600">{status}</p>}
+      {status && <p className="text-xs text-slate-400">{status}</p>}
     </form>
   );
 }

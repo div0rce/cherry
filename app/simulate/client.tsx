@@ -40,6 +40,8 @@ export function RunSimulationForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const categoriesLabel = useMemo(() => VALID_CATEGORIES.join(', '), []);
+  const inputClass =
+    'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -131,68 +133,62 @@ export function RunSimulationForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} className="space-y-3 text-slate-100">
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">Amount (USD)</label>
+        <label className="block text-sm font-medium text-slate-300">Amount (USD)</label>
         <input
           type="number"
           min="0"
           step="0.01"
           value={amountDollars}
           onChange={(e) => setAmountDollars(e.target.value)}
-          className={`w-full rounded-md border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${
-            errors.amount ? 'border-red-500' : 'border-slate-300'
-          }`}
+          className={`${inputClass} ${errors.amount ? 'border-red-500' : ''}`}
           placeholder="30.00"
           required
         />
-        {errors.amount && <p className="text-xs text-red-600">{errors.amount}</p>}
+        {errors.amount && <p className="text-xs text-red-400">{errors.amount}</p>}
       </div>
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">Category</label>
+        <label className="block text-sm font-medium text-slate-300">Category</label>
         <input
           value={category}
           onChange={(e) => setCategory(e.target.value.toUpperCase())}
-          className={`w-full rounded-md border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${
-            errors.category ? 'border-red-500' : 'border-slate-300'
-          }`}
+          className={`${inputClass} ${errors.category ? 'border-red-500' : ''}`}
           placeholder="DINING"
           required
         />
         <p className="text-xs text-slate-500">Valid: {categoriesLabel}</p>
-        {errors.category && <p className="text-xs text-red-600">{errors.category}</p>}
+        {errors.category && <p className="text-xs text-red-400">{errors.category}</p>}
       </div>
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">Merchant (optional)</label>
+        <label className="block text-sm font-medium text-slate-300">Merchant (optional)</label>
         <input
           value={merchantName}
           onChange={(e) => setMerchantName(e.target.value)}
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className={inputClass}
           placeholder="Chipotle"
         />
       </div>
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-700">MCC (optional)</label>
+        <label className="block text-sm font-medium text-slate-300">MCC (optional)</label>
         <input
           value={mccCode}
           onChange={(e) => setMccCode(e.target.value)}
-          className={`w-full rounded-md border px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${
-            errors.mcc ? 'border-red-500' : 'border-slate-300'
-          }`}
+          className={`${inputClass} ${errors.mcc ? 'border-red-500' : ''}`}
           placeholder="5812"
           inputMode="numeric"
           pattern="\\d*"
         />
-        {errors.mcc && <p className="text-xs text-red-600">{errors.mcc}</p>}
+        {errors.mcc && <p className="text-xs text-red-400">{errors.mcc}</p>}
       </div>
       <button
         type="submit"
-        className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        className="w-full rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
         disabled={submitting}
       >
         {submitting ? 'Simulating…' : 'Simulate'}
       </button>
-      {status && <p className="text-xs text-slate-600">{status}</p>}
+      {status && <p className="text-xs text-slate-400">{status}</p>}
     </form>
   );
 }

@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { TransactionStatus, Prisma } from '@prisma/client';
+import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 
@@ -39,7 +39,10 @@ export async function GET(request: Request) {
         where.status = status;
       }
       if (category) {
-        where.resolvedCategory = category;
+        const normalizedCategory = category.toUpperCase();
+        if ((Object.values(RewardCategory) as string[]).includes(normalizedCategory)) {
+          where.resolvedCategory = normalizedCategory as RewardCategory;
+        }
       }
 
       const [total, data] = await prisma.$transaction([

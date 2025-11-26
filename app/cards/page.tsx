@@ -85,34 +85,34 @@ export default async function CardsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Cherry Lab</p>
-        <h1 className="text-3xl font-semibold">Cards & Rewards</h1>
-        <p className="text-slate-500">
+        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry Lab</p>
+        <h1 className="text-3xl font-semibold text-white">Cards & Rewards</h1>
+        <p className="text-slate-300">
           Manage demo cards and reward rules. Data comes from the Prisma-backed APIs.
         </p>
       </header>
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
         <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white/60 shadow-sm backdrop-blur">
-            <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Your cards</h2>
-              <div className="flex items-center gap-4 text-sm">
-                <Link href="/buckets" className="text-blue-600 hover:text-blue-700">
+          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur">
+            <div className="border-b border-white/5 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Your cards</h2>
+              <div className="flex items-center gap-4 text-sm text-pink-200">
+                <Link href="/buckets" className="hover:text-white">
                   Buckets →
                 </Link>
-                <Link href="/simulate" className="text-blue-600 hover:text-blue-700">
+                <Link href="/simulate" className="hover:text-white">
                   Simulations →
                 </Link>
               </div>
             </div>
 
             {error ? (
-              <div className="p-4 text-sm text-red-600">{error}</div>
+              <div className="p-4 text-sm text-red-300">{error}</div>
             ) : (
-              <Suspense fallback={<div className="p-4 text-sm text-slate-500">Loading…</div>}>
+              <Suspense fallback={<div className="p-4 text-sm text-slate-300">Loading…</div>}>
                 <CardList cards={cards} />
               </Suspense>
             )}
@@ -120,9 +120,9 @@ export default async function CardsPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white/60 shadow-sm backdrop-blur p-4">
-            <h3 className="text-base font-semibold mb-2">Add a card</h3>
-            <p className="text-sm text-slate-500 mb-3">
+          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur p-4">
+            <h3 className="text-base font-semibold mb-2 text-white">Add a card</h3>
+            <p className="text-sm text-slate-300 mb-3">
               Annual fee is optional; enter it in dollars (we convert to cents).
             </p>
             <AddCardForm />
@@ -135,47 +135,47 @@ export default async function CardsPage() {
 
 function CardList({ cards }: { cards: Card[] }) {
   if (!cards.length) {
-    return <div className="p-4 text-sm text-slate-500">No cards yet. Add one to get started.</div>;
+    return (
+      <div className="p-4 text-sm text-slate-300">No cards yet. Add one to get started.</div>
+    );
   }
 
   return (
-    <ul className="divide-y divide-slate-200">
+    <ul className="divide-y divide-white/5">
       {cards.map((card) => (
         <li key={card.id} className="p-4 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-lg font-semibold">{card.nickname}</p>
-              <p className="text-sm text-slate-500">
+              <p className="text-lg font-semibold text-white">{card.nickname}</p>
+              <p className="text-sm text-slate-300">
                 {card.issuer} · {card.network} · {card.isCredit ? 'Credit' : 'Debit'}
               </p>
-              <p className="text-sm text-slate-500">
-                Annual fee: {formatCents(card.annualFee)}
-              </p>
+              <p className="text-sm text-slate-400">Annual fee: {formatCents(card.annualFee)}</p>
             </div>
             <div className="flex items-center gap-2">
               <DeleteCardButton cardId={card.id} />
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-900 bg-slate-50/80 p-3 space-y-2">
+          <div className="rounded-lg border border-white/5 bg-slate-900/50 p-3 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-700">Reward rules</p>
+              <p className="text-sm font-semibold text-white">Reward rules</p>
               <AddRewardRuleForm cardId={card.id} />
             </div>
             {card.rewardRules.length === 0 ? (
-              <p className="text-sm text-slate-900">No rules yet. Add a category multiplier.</p>
+              <p className="text-sm text-slate-300">No rules yet. Add a category multiplier.</p>
             ) : (
               <ul className="space-y-2">
                 {card.rewardRules.map((rule) => (
                   <li
                     key={rule.id}
-                    className="flex items-center justify-between rounded-md bg-white px-3 py-2 shadow-sm"
+                    className="flex items-center justify-between rounded-md bg-slate-800/80 px-3 py-2 shadow-sm"
                   >
                     <div>
-                      <p className="text-sm font-semibold">
+                      <p className="text-sm font-semibold text-white">
                         {rule.category} · {formatRuleDisplay(rule.multiplier)}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-slate-400">
                         Cap: {rule.capAmount != null ? formatCents(rule.capAmount) : 'No cap'}
                       </p>
                     </div>

@@ -144,26 +144,26 @@ export default async function SimulatePage({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Cherry Lab</p>
-        <h1 className="text-3xl font-semibold">Simulate spend</h1>
-        <p className="text-slate-500">
+        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry Lab</p>
+        <h1 className="text-3xl font-semibold text-white">Simulate spend</h1>
+        <p className="text-slate-300">
           Post simulated transactions and see the engine decision history (card, bucket, rewards).
         </p>
       </header>
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
         <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white/60 shadow-sm backdrop-blur">
-            <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Simulation history</h2>
-              <Link href="/cards" className="text-sm text-blue-600 hover:text-blue-700">
+          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur">
+            <div className="border-b border-white/5 px-4 py-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Simulation history</h2>
+              <Link href="/cards" className="text-sm text-pink-200 hover:text-pink-100">
                 Manage cards →
               </Link>
             </div>
             {error ? (
-              <div className="p-4 text-sm text-red-600">{error}</div>
+              <div className="p-4 text-sm text-red-300">{error}</div>
             ) : (
               <>
                 <SimulationFilters
@@ -172,11 +172,11 @@ export default async function SimulatePage({
                   page={page}
                 />
                 {simulations.length === 0 ? (
-                  <div className="p-4 text-sm text-slate-500">
+                  <div className="p-4 text-sm text-slate-300">
                     No simulations yet. Run one on the right.
                   </div>
                 ) : (
-                  <ul className="divide-y divide-slate-200">
+                  <ul className="divide-y divide-white/5">
                     {simulations.map((sim) => {
                       const cardDisplayName = sim.chosenCard
                         ? `${sim.chosenCard.nickname} (${sim.chosenCard.issuer} · ${sim.chosenCard.network})`
@@ -211,32 +211,32 @@ export default async function SimulatePage({
 
                       return (
                         <li key={sim.id} className="p-4 space-y-2">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm text-slate-500">
-                              {new Date(sim.createdAt).toLocaleString()}
-                            </p>
-                            <p className="text-lg font-semibold">
-                              {formatCents(sim.amount)} · {sim.resolvedCategory}
-                              {sim.mccCode ? ` · MCC ${sim.mccCode}` : ''}
-                            </p>
-                            <p className="text-sm text-slate-500">
-                              {sim.merchantName || 'Merchant N/A'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                sim.status === 'APPROVED'
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}
-                            >
-                              {sim.status}
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-sm text-slate-400">
+                                {new Date(sim.createdAt).toLocaleString()}
+                              </p>
+                              <p className="text-lg font-semibold text-white">
+                                {formatCents(sim.amount)} · {sim.resolvedCategory}
+                                {sim.mccCode ? ` · MCC ${sim.mccCode}` : ''}
+                              </p>
+                              <p className="text-sm text-slate-300">
+                                {sim.merchantName || 'Merchant N/A'}
+                              </p>
                             </div>
-                            <DeleteSimulationButton simulationId={sim.id} />
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  sim.status === 'APPROVED'
+                                    ? 'bg-green-600/30 text-green-100'
+                                    : 'bg-red-600/30 text-red-100'
+                                }`}
+                              >
+                                {sim.status}
+                              </div>
+                              <DeleteSimulationButton simulationId={sim.id} />
+                            </div>
                           </div>
-                        </div>
 
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="rounded-md border border-slate-200 bg-slate-50 p-3">

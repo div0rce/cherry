@@ -13,9 +13,11 @@ type IncomingRewardRule = {
   capAmountCents?: number | null;
 };
 
+type ParsedRule = { category: RewardCategory; multiplier: number; capAmount: number | null };
+
 function parseRewardRules(rawRules: unknown): {
   ok: true;
-  rules: Array<{ category: string; multiplier: number; capAmount: number | null }>;
+  rules: ParsedRule[];
 } | { ok: false; message: string } {
   if (!rawRules) {
     return { ok: true, rules: [] };
@@ -25,7 +27,7 @@ function parseRewardRules(rawRules: unknown): {
     return { ok: false, message: 'rewardRules must be an array' };
   }
 
-  const parsed: Array<{ category: string; multiplier: number; capAmount: number | null }> = [];
+  const parsed: ParsedRule[] = [];
 
   for (const rule of rawRules) {
     const { category, multiplier, cashbackPercent, capAmountCents } =

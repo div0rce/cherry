@@ -15,9 +15,8 @@ export async function GET() {
 
     const result = rows.map((row) => ({
       mccCode: row.mccCode,
-      rewardCategory: row.rewardCategory,
+      rewardCategory: row.category,
       description: row.mcc.description,
-      section: row.mcc.section,
       notes: row.mcc.notes,
     }));
 

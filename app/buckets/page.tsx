@@ -55,44 +55,44 @@ export default async function BucketsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
+    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Cherry Lab</p>
-        <h1 className="text-3xl font-semibold">Buckets</h1>
-        <p className="text-slate-500">
+        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry Lab</p>
+        <h1 className="text-3xl font-semibold text-white">Buckets</h1>
+        <p className="text-slate-300">
           Manage budget envelopes. Values are stored in cents; shown here in dollars.
         </p>
-        <div className="flex items-center gap-4 text-sm">
-          <Link href="/cards" className="text-blue-600 hover:text-blue-700">
+        <div className="flex items-center gap-4 text-sm text-pink-200">
+          <Link href="/cards" className="hover:text-white">
             Manage cards →
           </Link>
-          <Link href="/simulate" className="text-blue-600 hover:text-blue-700">
+          <Link href="/simulate" className="hover:text-white">
             Run simulations →
           </Link>
         </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
-        <section className="rounded-2xl border border-slate-200 bg-white/60 shadow-sm backdrop-blur">
-          <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Your buckets</h2>
+        <section className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur">
+          <div className="border-b border-white/5 px-4 py-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Your buckets</h2>
           </div>
 
           {error ? (
-            <div className="p-4 text-sm text-red-600">{error}</div>
+            <div className="p-4 text-sm text-red-300">{error}</div>
           ) : buckets.length === 0 ? (
-            <div className="p-4 text-sm text-slate-500">No buckets yet. Add one on the right.</div>
+            <div className="p-4 text-sm text-slate-300">No buckets yet. Add one on the right.</div>
           ) : (
-            <ul className="divide-y divide-slate-200">
+            <ul className="divide-y divide-white/5">
               {buckets.map((bucket) => (
                 <li key={bucket.id} className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-lg font-semibold">{bucket.name}</p>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-lg font-semibold text-white">{bucket.name}</p>
+                      <p className="text-sm text-slate-300">
                         {bucket.period} · {bucket.category} · {bucket.strictMode ? 'Strict' : 'Soft'}
                       </p>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-slate-400">
                         Remaining: {formatCents(bucket.currentAmount)} / {formatCents(bucket.budgetAmount)}
                       </p>
                     </div>
@@ -104,9 +104,9 @@ export default async function BucketsPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white/60 shadow-sm backdrop-blur p-4 space-y-3">
-          <h3 className="text-base font-semibold">Create bucket</h3>
-          <p className="text-sm text-slate-500">
+        <section className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur p-4 space-y-3">
+          <h3 className="text-base font-semibold text-white">Create bucket</h3>
+          <p className="text-sm text-slate-300">
             Amounts are dollars in the UI and sent as cents to the API.
           </p>
           <AddBucketForm />
