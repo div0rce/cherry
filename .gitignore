@@ -23,6 +23,10 @@
 # misc
 .DS_Store
 *.pem
+cookies.txt
+
+# editor settings
+.vscode/
 
 # debug
 npm-debug.log*

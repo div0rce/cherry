@@ -42,6 +42,10 @@ export function RunSimulationForm() {
   const categoriesLabel = useMemo(() => VALID_CATEGORIES.join(', '), []);
   const inputClass =
     'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
+  const handleMccInput = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
+    setMccCode(digitsOnly);
+  };
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -172,13 +176,16 @@ export function RunSimulationForm() {
       <div className="space-y-2">
         <label className="block text-sm font-medium text-slate-300">MCC (optional)</label>
         <input
+          type="text"
           value={mccCode}
-          onChange={(e) => setMccCode(e.target.value)}
+          onChange={(e) => handleMccInput(e.target.value)}
           className={`${inputClass} ${errors.mcc ? 'border-red-500' : ''}`}
           placeholder="5812"
           inputMode="numeric"
-          pattern="\\d*"
+          maxLength={4}
+          autoComplete="off"
         />
+        <p className="text-xs text-slate-500">Enter a 4-digit code (leading zeros allowed).</p>
         {errors.mcc && <p className="text-xs text-red-400">{errors.mcc}</p>}
       </div>
       <button

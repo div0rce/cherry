@@ -59,7 +59,17 @@ export type SeedDemoSummary = {
   buckets: number;
 };
 
+async function assertUserExists(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new Error(
+      `Cannot seed demo data: user ${userId} does not exist. Sign in or create the user first (e.g., via dev-login).`
+    );
+  }
+}
+
 export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> {
+  await assertUserExists(userId);
   async function upsertCard(def: (typeof cardDefinitions)[number]) {
     const existing = await prisma.card.findFirst({
       where: { userId, nickname: def.nickname },
