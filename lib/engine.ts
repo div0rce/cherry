@@ -1,22 +1,31 @@
 // lib/engine.ts
-// Deterministic transaction decision engine: bucket impact + card routing + rewards.
+// Deterministic transaction decision engine: bucket impact + card routing + rewards + incentive.
 
 import { prisma } from '@/lib/prisma';
-import { RewardCategory, BucketPeriod } from '@prisma/client';
+import {
+  BucketPeriod,
+  RecommendationVerdict,
+  RewardCategory,
+} from '@prisma/client';
 
-export type EvaluateTransactionInput = {
+export type EngineInput = {
   userId: string;
   amountCents: number;
-  category: RewardCategory;
+  category?: RewardCategory | string | null;
   merchantName?: string | null;
+  mccCode?: number | null;
   now?: Date;
 };
 
-export type EvaluateTransactionResult = {
+export type EngineDecision = {
+  category: RewardCategory;
+  amountCents: number;
   bucket: {
     id: string | null;
     name: string | null;
     period: BucketPeriod | null;
+    periodStart: Date | null;
+    periodEnd: Date | null;
     limitCents: number | null;
     spentThisPeriodCents: number | null;
     willBeSpentCents: number | null;
@@ -31,11 +40,50 @@ export type EvaluateTransactionResult = {
     rewardMultiplier: number | null;
     rewardsEarned: number | null;
   };
+  verdict: RecommendationVerdict;
+  cherryIncentive: {
+    pointsIfFollowed: number;
+    expiryMinutes: number;
+  };
 };
 
-function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
-  const start = new Date(now);
-  const end = new Date(now);
+export async function resolveCategory(input: {
+  mccCode?: number | null;
+  category?: string | RewardCategory | null;
+  merchantName?: string | null;
+}): Promise<RewardCategory> {
+  const { mccCode, category, merchantName } = input;
+
+  if (mccCode && Number.isInteger(mccCode)) {
+    const mapping = await prisma.mccToRewardCategory.findFirst({
+      where: { mccCode, isDefault: true },
+    });
+    if (mapping) return mapping.category;
+  }
+
+  if (category) {
+    const upper = String(category).trim().toUpperCase();
+    if ((Object.values(RewardCategory) as string[]).includes(upper)) {
+      return upper as RewardCategory;
+    }
+  }
+
+  const merchant = merchantName?.toLowerCase() ?? '';
+  if (/air|flight|airline|airport/.test(merchant)) return RewardCategory.AIR_TRAVEL;
+  if (/hotel|inn|motel|resort|lodge/.test(merchant)) return RewardCategory.HOTEL;
+  if (/uber|lyft|taxi|ride/.test(merchant)) return RewardCategory.TRAVEL;
+  if (/grocery|market|supermarket/.test(merchant)) return RewardCategory.GROCERIES;
+  if (/restaurant|diner|cafe|food|grill|bbq|pizza|burger/.test(merchant))
+    return RewardCategory.DINING;
+  if (/gas|fuel|petro|shell|exxon|chevron|bp/.test(merchant)) return RewardCategory.GAS;
+  if (/stream|subscription|netflix|spotify|hulu|disney|apple tv/.test(merchant))
+    return RewardCategory.ENTERTAINMENT;
+  return RewardCategory.OTHER;
+}
+
+function getPeriodWindow(period: BucketPeriod, anchor: Date): { start: Date; end: Date } {
+  const start = new Date(anchor);
+  const end = new Date(anchor);
 
   if (period === 'WEEKLY') {
     const day = start.getDay();
@@ -63,9 +111,12 @@ function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: D
   return { start, end };
 }
 
-async function resolveBucketForTransaction(input: EvaluateTransactionInput) {
-  const now = input.now ?? new Date();
-
+async function resolveBucketForTransaction(input: {
+  userId: string;
+  category: RewardCategory;
+  amountCents: number;
+  now: Date;
+}) {
   const bucket = await prisma.bucket.findFirst({
     where: {
       userId: input.userId,
@@ -77,49 +128,45 @@ async function resolveBucketForTransaction(input: EvaluateTransactionInput) {
     return {
       bucket: null,
       spentThisPeriodCents: null,
+      willBeSpentCents: null,
       wouldExceed: false,
       strictDecline: false,
       remainingBeforeCents: null,
       remainingAfterCents: null,
+      periodStart: null,
+      periodEnd: null,
     };
   }
 
-  const { start, end } = getPeriodWindow(bucket.period, now);
+  // Use stored period bounds but fall back to computed window for sanity.
+  const periodStart = bucket.periodStart ?? getPeriodWindow(bucket.period, input.now).start;
+  const periodEnd = bucket.periodEnd ?? getPeriodWindow(bucket.period, input.now).end;
 
-  const aggregate = await prisma.simulatedTransaction.aggregate({
-    _sum: {
-      amount: true,
-    },
-    where: {
-      userId: input.userId,
-      bucketId: bucket.id,
-      createdAt: {
-        gte: start,
-        lt: end,
-      },
-    },
-  });
-
-  const spentThisPeriodCents = aggregate._sum.amount ?? 0;
+  const spentThisPeriodCents = bucket.spentCents ?? 0;
   const willBeSpentCents = spentThisPeriodCents + input.amountCents;
-
   const wouldExceed = willBeSpentCents > bucket.budgetAmount;
   const strictDecline = bucket.strictMode && wouldExceed;
-
   const remainingBeforeCents = bucket.budgetAmount - spentThisPeriodCents;
   const remainingAfterCents = bucket.budgetAmount - willBeSpentCents;
 
   return {
     bucket,
     spentThisPeriodCents,
+    willBeSpentCents,
     wouldExceed,
     strictDecline,
     remainingBeforeCents,
     remainingAfterCents,
+    periodStart,
+    periodEnd,
   };
 }
 
-async function resolveBestCardForTransaction(input: EvaluateTransactionInput) {
+async function resolveBestCardForTransaction(input: {
+  userId: string;
+  category: RewardCategory;
+  amountCents: number;
+}) {
   const cards = await prisma.card.findMany({
     where: { userId: input.userId },
     include: {
@@ -175,29 +222,89 @@ async function resolveBestCardForTransaction(input: EvaluateTransactionInput) {
   };
 }
 
-export async function evaluateTransaction(
-  input: EvaluateTransactionInput
-): Promise<EvaluateTransactionResult> {
+export function classifySpendingVerdict(decision: EngineDecision): RecommendationVerdict {
+  const b = decision.bucket;
+
+  if (!b.id || b.limitCents == null || b.willBeSpentCents == null) {
+    return RecommendationVerdict.HEALTHY;
+  }
+
+  const overBy = b.willBeSpentCents - b.limitCents;
+
+  if (b.strictDecline || overBy > 0) {
+    return RecommendationVerdict.BREAKS_BUDGET;
+  }
+
+  if (b.remainingAfterCents != null && b.limitCents > 0) {
+    const ratio = b.remainingAfterCents / b.limitCents;
+    if (ratio < 0.1) return RecommendationVerdict.BORDERLINE;
+  }
+
+  return RecommendationVerdict.HEALTHY;
+}
+
+export function computeCherryIncentive(
+  decision: EngineDecision
+): { pointsIfFollowed: number; expiryMinutes: number } {
+  const amount = decision.bucket.willBeSpentCents ?? decision.amountCents ?? 0;
+  const base = Math.min(Math.floor(amount / 1000), 20); // 0-20 base points
+
+  let multiplier = 1;
+  if (decision.verdict === RecommendationVerdict.HEALTHY) multiplier = 2;
+  else if (decision.verdict === RecommendationVerdict.BREAKS_BUDGET) multiplier = 0;
+
+  const points = base * multiplier;
+
+  return {
+    pointsIfFollowed: points,
+    expiryMinutes: 15,
+  };
+}
+
+export async function runEngine(input: EngineInput): Promise<EngineDecision> {
+  if (!input.amountCents || input.amountCents <= 0) {
+    throw new Error('amountCents must be a positive integer');
+  }
+
+  const now = input.now ?? new Date();
+  const category = await resolveCategory({
+    mccCode: input.mccCode,
+    category: input.category,
+    merchantName: input.merchantName,
+  });
+
   const {
     bucket,
     spentThisPeriodCents,
+    willBeSpentCents,
     wouldExceed,
     strictDecline,
     remainingBeforeCents,
     remainingAfterCents,
-  } = await resolveBucketForTransaction(input);
+    periodStart,
+    periodEnd,
+  } = await resolveBucketForTransaction({
+    userId: input.userId,
+    category,
+    amountCents: input.amountCents,
+    now,
+  });
 
-  const { chosenCard, rewardMultiplier, rewardsEarned } =
-    await resolveBestCardForTransaction(input);
+  const { chosenCard, rewardMultiplier, rewardsEarned } = await resolveBestCardForTransaction({
+    userId: input.userId,
+    category,
+    amountCents: input.amountCents,
+  });
 
-  const willBeSpentCents =
-    spentThisPeriodCents !== null ? spentThisPeriodCents + input.amountCents : null;
-
-  return {
+  const decision: EngineDecision = {
+    category,
+    amountCents: input.amountCents,
     bucket: {
       id: bucket?.id ?? null,
       name: bucket?.name ?? null,
       period: bucket?.period ?? null,
+      periodStart,
+      periodEnd,
       limitCents: bucket?.budgetAmount ?? null,
       spentThisPeriodCents,
       willBeSpentCents,
@@ -212,5 +319,19 @@ export async function evaluateTransaction(
       rewardMultiplier,
       rewardsEarned,
     },
+    verdict: RecommendationVerdict.HEALTHY, // overwritten below
+    cherryIncentive: {
+      pointsIfFollowed: 0,
+      expiryMinutes: 15,
+    },
   };
+
+  decision.verdict = classifySpendingVerdict(decision);
+  decision.cherryIncentive = computeCherryIncentive(decision);
+
+  return decision;
 }
+
+// Legacy compatibility exports
+export type EvaluateTransactionResult = EngineDecision;
+export const evaluateTransaction = runEngine;
