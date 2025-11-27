@@ -7,7 +7,7 @@ import { getCherryPointsBalance } from '@/lib/points';
 import { getSessionStats } from '@/lib/admin/getSessionStats';
 import { getLedgerStats } from '@/lib/admin/getLedgerStats';
 import { prisma } from '@/lib/prisma';
-import { AdminActionButton } from './action-button';
+import AdminClient from './AdminClient';
 
 async function getHealth() {
   const base =
@@ -97,46 +97,36 @@ export default async function AdminPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
-        <h2 className="text-lg font-semibold text-white">Data Management</h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          <AdminActionCard
-            title="Seed demo data"
-            description="Populate cards, buckets, and sample simulations for this user."
-            href="/api/seed-demo"
-            method="POST"
-            cta="Seed demo data"
-          />
-          <AdminActionCard
-            title="Clear user data"
-            description="Delete cards, buckets, and simulations for the current user."
-            href="/api/admin/clear-user"
-            method="POST"
-            cta="Clear user data"
-          />
-          {lastSession && (
-            <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
-              <p className="text-sm font-semibold text-white">Last Session</p>
-              <p className="text-xs text-slate-400">
-                {lastSession.merchantName ?? 'Unknown'} • $
-                {(lastSession.amountCents / 100).toFixed(2)}
-              </p>
-              <p className="text-xs text-slate-400">Verdict: {lastSession.verdict}</p>
-              <p className="text-xs text-slate-400">Status: {lastSession.status}</p>
-            </div>
-          )}
-          {lastLedger && (
-            <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
-              <p className="text-sm font-semibold text-white">Last Ledger Entry</p>
-              <p className="text-xs text-slate-400">Points: {lastLedger.points}</p>
-              <p className="text-xs text-slate-400">Reason: {lastLedger.reason}</p>
-              <p className="text-xs text-slate-400">
-                Status: {lastLedger.status} · {new Date(lastLedger.awardedAt).toLocaleString()}
-              </p>
-            </div>
-          )}
+      <AdminClient />
+
+      {(lastSession || lastLedger) && (
+        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
+          <h2 className="text-lg font-semibold text-white">Recent Diagnostics</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {lastSession && (
+              <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+                <p className="text-sm font-semibold text-white">Last Session</p>
+                <p className="text-xs text-slate-400">
+                  {lastSession.merchantName ?? 'Unknown'} • $
+                  {(lastSession.amountCents / 100).toFixed(2)}
+                </p>
+                <p className="text-xs text-slate-400">Verdict: {lastSession.verdict}</p>
+                <p className="text-xs text-slate-400">Status: {lastSession.status}</p>
+              </div>
+            )}
+            {lastLedger && (
+              <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+                <p className="text-sm font-semibold text-white">Last Ledger Entry</p>
+                <p className="text-xs text-slate-400">Points: {lastLedger.points}</p>
+                <p className="text-xs text-slate-400">Reason: {lastLedger.reason}</p>
+                <p className="text-xs text-slate-400">
+                  Status: {lastLedger.status} · {new Date(lastLedger.awardedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
         <h2 className="text-lg font-semibold text-white">Health</h2>
@@ -177,30 +167,6 @@ export default async function AdminPage() {
           Manage buckets →
         </Link>
       </div>
-    </div>
-  );
-}
-
-function AdminActionCard({
-  title,
-  description,
-  href,
-  cta,
-  method,
-}: {
-  title: string;
-  description: string;
-  href: string;
-  cta: string;
-  method: 'GET' | 'POST';
-}) {
-  return (
-    <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-2">
-      <div>
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="text-xs text-slate-400">{description}</p>
-      </div>
-      <AdminActionButton href={href} method={method} cta={cta} />
     </div>
   );
 }

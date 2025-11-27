@@ -53,7 +53,7 @@ export function SidebarNav() {
   ];
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-white/5 bg-slate-950/60 px-4 py-6 text-slate-100 md:block">
+    <aside className="hidden md:sticky md:top-0 md:h-screen md:overflow-y-auto w-64 shrink-0 border-r border-white/5 bg-slate-950/60 px-4 py-6 text-slate-100 md:block">
       <div className="mb-8 px-2">
         <div className="text-xs uppercase tracking-[0.2em] text-pink-200">Cherry</div>
         <div className="text-lg font-semibold text-white">Dev Console</div>

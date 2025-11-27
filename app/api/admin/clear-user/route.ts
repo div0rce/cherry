@@ -6,18 +6,23 @@ import { logError, logInfo } from '@/lib/logger';
 export async function POST(request: Request) {
   return withUser(request, async (userId) => {
     try {
-      const [transactions, simulations, buckets, cards] = await prisma.$transaction([
-        prisma.simulatedTransaction.deleteMany({ where: { userId } }),
-        prisma.simulation.deleteMany({ where: { userId } }),
-        prisma.bucket.deleteMany({ where: { userId } }),
-        prisma.card.deleteMany({ where: { userId } }),
-      ]);
+      const results = await prisma.$transaction(async (tx) => {
+        const ledger = await tx.cherryPointLedger.deleteMany({ where: { userId } });
+        const sessions = await tx.recommendationSession.deleteMany({ where: { userId } });
+        const transactions = await tx.simulatedTransaction.deleteMany({ where: { userId } });
+        const simulations = await tx.simulation.deleteMany({ where: { userId } });
+        const buckets = await tx.bucket.deleteMany({ where: { userId } });
+        const cards = await tx.card.deleteMany({ where: { userId } });
+        return { ledger, sessions, transactions, simulations, buckets, cards };
+      });
 
       const summary = {
-        simulatedTransactions: transactions.count,
-        simulations: simulations.count,
-        buckets: buckets.count,
-        cards: cards.count,
+        cherryPointLedger: results.ledger.count,
+        recommendationSessions: results.sessions.count,
+        simulatedTransactions: results.transactions.count,
+        simulations: results.simulations.count,
+        buckets: results.buckets.count,
+        cards: results.cards.count,
       };
 
       logInfo('Cleared user data via admin endpoint', { userId, summary });
