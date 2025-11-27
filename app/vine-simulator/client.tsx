@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 import type { EngineDecision } from '@/lib/engine';
@@ -225,6 +226,9 @@ export function VineSimulatorClient() {
             >
               Confirm and award points
             </button>
+            <Link href="/sessions" className="text-sm text-pink-200 hover:text-pink-100">
+              View sessions →
+            </Link>
             {confirmResult && (
               <p className="text-sm text-slate-200">
                 Awarded {confirmResult.pointsAwarded} pts
