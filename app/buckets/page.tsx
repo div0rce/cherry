@@ -57,7 +57,7 @@ export default async function BucketsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry Lab</p>
+        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Lab</p>
         <h1 className="text-3xl font-semibold text-white">Buckets</h1>
         <p className="text-slate-300">
           Manage budget envelopes. Values are stored in cents; shown here in dollars.
@@ -81,7 +81,7 @@ export default async function BucketsPage() {
           {error ? (
             <div className="p-4 text-sm text-red-300">{error}</div>
           ) : buckets.length === 0 ? (
-            <div className="p-4 text-sm text-slate-300">No buckets yet. Add one on the right.</div>
+            <div className="p-4 text-sm text-slate-300">No buckets yet. Add one below.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {buckets.map((bucket) => (

@@ -30,9 +30,9 @@ export default async function SignInPage({ searchParams }: { searchParams?: Sear
 
 function LeftPanel() {
   return (
-    <div className="w-full rounded-3xl bg-gradient-to-br from-pink-600/20 via-slate-900 to-slate-950 p-6 shadow-2xl ring-1 ring-white/10 lg:max-w-xl">
+    <div className="w-full rounded-3xl bg-linear-to-br from-pink-600/20 via-slate-900 to-slate-950 p-6 shadow-2xl ring-1 ring-white/10 lg:max-w-xl">
       <div className="space-y-3">
-        <div className="text-xs uppercase tracking-[0.2em] text-pink-200">Cherry</div>
+        <div className="text-xs uppercase tracking-label text-pink-200">Cherry</div>
         <h1 className="text-3xl font-semibold text-white">Sign in to your spending copilot</h1>
         <p className="text-slate-300">
           Cherry routes your swipes to the best card, keeps buckets on track, and simulates rewards
@@ -67,7 +67,7 @@ function LeftPanel() {
 function PseudoDashboard() {
   return (
     <div className="mt-6 space-y-3 rounded-2xl bg-white/5 p-4 shadow-inner ring-1 ring-white/10">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 ring-1 ring-white/10">
+      <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-slate-800 to-slate-900 p-4 ring-1 ring-white/10">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-300">Cherry Points</p>

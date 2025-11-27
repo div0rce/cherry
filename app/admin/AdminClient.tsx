@@ -73,18 +73,18 @@ export default function AdminClient() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
+    <div className="space-y-3 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
       <h2 className="text-lg font-semibold text-white">Data Management</h2>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 flex h-full flex-col gap-2">
+        <div className="flex h-full flex-col gap-2 rounded-xl border border-white/5 bg-slate-900/40 p-3">
           <div>
             <p className="text-sm font-semibold text-white">Seed demo data</p>
             <p className="text-xs text-slate-400">
               Populate cards, buckets, and sample simulations for this user.
             </p>
           </div>
-          <div className="space-y-1 mt-auto">
+          <div className="mt-auto space-y-1">
             <button
               type="button"
               onClick={() =>
@@ -96,7 +96,7 @@ export default function AdminClient() {
               {isSeeding ? 'Seeding…' : 'Seed demo data'}
             </button>
             <p
-              className={`min-h-[1.25rem] text-xs ${
+              className={`min-h-5 text-xs ${
                 seedFeedback
                   ? seedFeedback.type === 'success'
                     ? 'text-green-300'
@@ -109,14 +109,14 @@ export default function AdminClient() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 flex h-full flex-col gap-2">
+        <div className="flex h-full flex-col gap-2 rounded-xl border border-white/5 bg-slate-900/40 p-3">
           <div>
             <p className="text-sm font-semibold text-white">Clear user data</p>
             <p className="text-xs text-slate-400">
               Delete cards, buckets, and simulations for the current user.
             </p>
           </div>
-          <div className="space-y-1 mt-auto">
+          <div className="mt-auto space-y-1">
             <button
               type="button"
               onClick={() =>
@@ -133,7 +133,7 @@ export default function AdminClient() {
               {isClearingUser ? 'Clearing…' : 'Clear user data'}
             </button>
             <p
-              className={`min-h-[1.25rem] text-xs ${
+              className={`min-h-5 text-xs ${
                 clearUserFeedback
                   ? clearUserFeedback.type === 'success'
                     ? 'text-green-300'
@@ -146,14 +146,14 @@ export default function AdminClient() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 flex h-full flex-col gap-2">
+        <div className="flex h-full flex-col gap-2 rounded-xl border border-white/5 bg-slate-900/40 p-3">
           <div>
             <p className="text-sm font-semibold text-white">Clear Cherry Session Diagnostics</p>
             <p className="text-xs text-slate-400">
               Delete all Cherry recommendation sessions and their points for this user. Sandbox only.
             </p>
           </div>
-          <div className="space-y-1 mt-auto">
+          <div className="mt-auto space-y-1">
             <button
               type="button"
               onClick={() =>
@@ -170,7 +170,7 @@ export default function AdminClient() {
               {isClearingSessions ? 'Clearing…' : 'Clear sessions + diagnostics'}
             </button>
             <p
-              className={`min-h-[1.25rem] text-xs ${
+              className={`min-h-5 text-xs ${
                 clearSessionsFeedback
                   ? clearSessionsFeedback.type === 'success'
                     ? 'text-green-300'
@@ -183,14 +183,14 @@ export default function AdminClient() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 flex h-full flex-col gap-2">
+        <div className="flex h-full flex-col gap-2 rounded-xl border border-white/5 bg-slate-900/40 p-3">
           <div>
             <p className="text-sm font-semibold text-white">Clear Cherry Points Ledger</p>
             <p className="text-xs text-slate-400">
               Delete all CherryPointLedger entries for this user. Does not remove sessions.
             </p>
           </div>
-          <div className="space-y-1 mt-auto">
+          <div className="mt-auto space-y-1">
             <button
               type="button"
               onClick={() =>
@@ -207,7 +207,7 @@ export default function AdminClient() {
               {isClearingLedger ? 'Clearing…' : 'Clear points ledger'}
             </button>
             <p
-              className={`min-h-[1.25rem] text-xs ${
+              className={`min-h-5 text-xs ${
                 clearLedgerFeedback
                   ? clearLedgerFeedback.type === 'success'
                     ? 'text-green-300'
