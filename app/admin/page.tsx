@@ -1,18 +1,26 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import Link from 'next/link';
+import { getCurrentUserId } from '@/lib/auth';
+import { getCherryPointsBalance } from '@/lib/points';
+import { getSessionStats } from '@/lib/admin/getSessionStats';
+import { getLedgerStats } from '@/lib/admin/getLedgerStats';
 import { prisma } from '@/lib/prisma';
-import { logError } from '@/lib/logger';
 import { AdminActionButton } from './action-button';
 
 async function getHealth() {
+  const base =
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    process.env.NEXTAUTH_URL ??
+    '';
+  const url = base ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    return { db: 'ok' };
-  } catch (err) {
-    logError('Health check failed', err);
-    return { db: 'error' };
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return { ok: false };
+    return (await res.json()) as { ok: boolean };
+  } catch {
+    return { ok: false };
   }
 }
 
@@ -22,7 +30,21 @@ export default async function AdminPage() {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/admin')}`);
   }
 
-  const health = await getHealth();
+  const userId = await getCurrentUserId();
+  const [points, sessionStats, ledgerStats, health, lastSession, lastLedger] = await Promise.all([
+    getCherryPointsBalance(userId),
+    getSessionStats(userId),
+    getLedgerStats(userId),
+    getHealth(),
+    prisma.recommendationSession.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.cherryPointLedger.findFirst({
+      where: { userId },
+      orderBy: { awardedAt: 'desc' },
+    }),
+  ]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -33,6 +55,47 @@ export default async function AdminPage() {
           Dev utilities live here. Seed/nuke demo data and check basic health.
         </p>
       </header>
+
+      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
+        <h2 className="text-lg font-semibold text-white">Cherry Session Diagnostics</h2>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+            <p className="text-sm font-semibold text-white">Total Sessions</p>
+            <p className="text-2xl font-bold text-pink-400">{sessionStats.total}</p>
+          </div>
+
+          <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+            <p className="text-sm font-semibold text-white">Confirmed</p>
+            <p className="text-2xl font-bold text-green-400">{sessionStats.confirmed}</p>
+          </div>
+
+          <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+            <p className="text-sm font-semibold text-white">Expired</p>
+            <p className="text-2xl font-bold text-yellow-400">{sessionStats.expired}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
+        <h2 className="text-lg font-semibold text-white">Cherry Points Ledger</h2>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+            <p className="text-sm font-semibold text-white">Ledger Entries</p>
+            <p className="text-2xl font-bold text-pink-300">{ledgerStats.entries}</p>
+          </div>
+
+          <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+            <p className="text-sm font-semibold text-white">Points (Posted)</p>
+            <p className="text-2xl font-bold text-green-300">{ledgerStats.points}</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-slate-400">
+          Current Balance: <span className="text-pink-300 font-semibold">{points}</span>
+        </p>
+      </div>
 
       <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
         <h2 className="text-lg font-semibold text-white">Data Management</h2>
@@ -51,25 +114,68 @@ export default async function AdminPage() {
             method="POST"
             cta="Clear user data"
           />
-          <AdminActionCard
-            title="Health check"
-            description={`Database: ${health.db === 'ok' ? 'OK' : 'Error'}`}
-            href="/api/health"
-            method="GET"
-            cta="View health"
-          />
+          {lastSession && (
+            <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+              <p className="text-sm font-semibold text-white">Last Session</p>
+              <p className="text-xs text-slate-400">
+                {lastSession.merchantName ?? 'Unknown'} • $
+                {(lastSession.amountCents / 100).toFixed(2)}
+              </p>
+              <p className="text-xs text-slate-400">Verdict: {lastSession.verdict}</p>
+              <p className="text-xs text-slate-400">Status: {lastSession.status}</p>
+            </div>
+          )}
+          {lastLedger && (
+            <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+              <p className="text-sm font-semibold text-white">Last Ledger Entry</p>
+              <p className="text-xs text-slate-400">Points: {lastLedger.points}</p>
+              <p className="text-xs text-slate-400">Reason: {lastLedger.reason}</p>
+              <p className="text-xs text-slate-400">
+                Status: {lastLedger.status} · {new Date(lastLedger.awardedAt).toLocaleString()}
+              </p>
+            </div>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-sm text-pink-200">
-          <Link href="/simulate" className="hover:text-white">
-            Run simulation →
-          </Link>
-          <Link href="/cards" className="hover:text-white">
-            Manage cards →
-          </Link>
-          <Link href="/buckets" className="hover:text-white">
-            Manage buckets →
-          </Link>
+      </div>
+
+      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
+        <h2 className="text-lg font-semibold text-white">Health</h2>
+        <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-2">
+          <div>
+            <p className="text-sm font-semibold text-white">Health check</p>
+            <p className="text-xs text-slate-400">API: {health.ok ? 'OK' : 'FAIL'}</p>
+          </div>
+
+          <div className="space-y-1">
+            <a
+              href="/api/health"
+              className="inline-block rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition"
+            >
+              View health
+            </a>
+          </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-sm text-pink-200">
+        <Link className="hover:text-white" href="/scan">
+          Scan before pay →
+        </Link>
+        <Link className="hover:text-white" href="/sessions">
+          Sessions →
+        </Link>
+        <Link className="hover:text-white" href="/vine-simulator">
+          Vine simulator (dev) →
+        </Link>
+        <Link className="hover:text-white" href="/simulate">
+          Run simulation →
+        </Link>
+        <Link className="hover:text-white" href="/cards">
+          Manage cards →
+        </Link>
+        <Link className="hover:text-white" href="/buckets">
+          Manage buckets →
+        </Link>
       </div>
     </div>
   );
@@ -94,16 +200,7 @@ function AdminActionCard({
         <p className="text-sm font-semibold text-white">{title}</p>
         <p className="text-xs text-slate-400">{description}</p>
       </div>
-      {method === 'POST' ? (
-        <AdminActionButton href={href} method="POST" cta={cta} />
-      ) : (
-        <Link
-          href={href}
-          className="inline-flex rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition"
-        >
-          {cta}
-        </Link>
-      )}
+      <AdminActionButton href={href} method={method} cta={cta} />
     </div>
   );
 }

@@ -15,11 +15,16 @@ export function SidebarNav() {
   const pathname = usePathname();
   const navSections: NavSection[] = [
     {
-      label: 'Core',
+      label: 'Spend',
       items: [
         { name: 'Dashboard', href: '/' },
         { name: 'Scan Before Pay', href: '/scan' },
         { name: 'Sessions', href: '/sessions' },
+      ],
+    },
+    {
+      label: 'Setup',
+      items: [
         { name: 'Cards', href: '/cards' },
         { name: 'Buckets', href: '/buckets' },
       ],
@@ -29,9 +34,6 @@ export function SidebarNav() {
       items: [
         { name: 'Simulate', href: '/simulate' },
         { name: 'Simulations', href: '/simulations' },
-        ...(process.env.NODE_ENV === 'development'
-          ? [{ name: 'Vine Simulator (dev)', href: '/vine-simulator' }]
-          : []),
       ],
     },
     {
@@ -45,6 +47,9 @@ export function SidebarNav() {
       label: 'Admin',
       items: [{ name: 'Admin & Tools', href: '/admin' }],
     },
+    ...(process.env.NODE_ENV === 'development'
+      ? [{ label: 'Dev', items: [{ name: 'Vine Simulator (dev)', href: '/vine-simulator' }] }]
+      : []),
   ];
 
   return (

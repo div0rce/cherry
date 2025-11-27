@@ -9,7 +9,7 @@ export function AdminActionButton({
   cta,
 }: {
   href: string;
-  method: 'POST';
+  method: 'POST' | 'GET';
   cta: string;
 }) {
   const router = useRouter();
