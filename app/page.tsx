@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getCherryPointsBalance } from '@/lib/points';
 
 function formatCents(amount: number) {
   return `$${(amount / 100).toFixed(2)}`;
@@ -32,6 +33,7 @@ export default async function DashboardPage() {
     prisma.simulation.count({ where: { userId } }),
     prisma.simulatedTransaction.count({ where: { userId } }),
   ]);
+  const cherryPoints = await getCherryPointsBalance(userId);
 
   const recentSimulations = await prisma.simulation.findMany({
     where: { userId },
@@ -75,6 +77,13 @@ export default async function DashboardPage() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-pink-500/40 bg-pink-600/10 p-4 shadow-lg">
+          <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Cherry Points</p>
+          <p className="mt-2 text-3xl font-semibold text-white">{cherryPoints}</p>
+          <p className="mt-1 text-sm text-pink-100">
+            Earn points when you follow Cherry&apos;s recommendations.
+          </p>
+        </div>
         <QuickLink
           title="1. Add a card"
           description="Issuer, network, type, annual fee, and reward rules."
