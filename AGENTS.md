@@ -1,4 +1,11 @@
 # Repository Guidelines
+# Repository Guidelines
+
+## Product Identity & Guardrails
+- Cherry is a real-time spending advisor, not a payment card or proxy. It does not front or route transactions, hold funds, or touch payment rails.
+- Core loop: **Observe → Evaluate → Recommend → Reward**. Cherry observes context (merchant/amount/user data), evaluates budgets + rewards, recommends a card/decision, and can reward users for following advice.
+- Cherry Pass and pre-swipe scans are advisory surfaces only; Wallet pass endpoint currently returns 501 until certs are configured.
+- Cherry Vine (hardware) is a context beacon: on-counter node that hears order metadata (merchant, amount, timestamp) and broadcasts to phones via BLE/NFC. It never reads card data, speaks EMV, or acts as a payment terminal.
 
 ## Project Structure & Module Organization
 - Next.js app router lives in `app/` with routes for buckets, cards, simulations, and matching API handlers in `app/api/*` (server-first; add `"use client"` only where browser state is needed).
@@ -9,9 +16,10 @@
 
 ## Build, Test, and Development Commands
 - `npm install` to sync dependencies.
-- `npm run dev` starts Next.js locally at :3000; `npm run build` for production bundles; `npm run start` serves the build.
-- `npm run lint` runs ESLint (Next config); fix issues before PRs.
-- `npm run ingest:mcc` normalizes MCC data from `data/mcc/`; `npm run seed:demo` seeds demo entities (requires DB env vars).
+- `npm run dev` starts Next.js locally (defaults to :3000, falls back if busy); `npm run build` for production bundles; `npm run start` serves the build.
+- Health gates: `npm run typecheck` (strict TS), `npm run lint`, `npm run build` before PRs.
+- Auth for curl/CLI: `./scripts/dev-login.sh [email]` writes `cookies.txt`; use `-b cookies.txt` with API calls. Custom sign-in UI lives at `/signin` (NextAuth `pages.signIn`).
+- `npm run ingest:mcc` normalizes MCC data from `data/mcc/`; `npm run seed:demo` seeds demo entities (auto-creates a user by email if needed).
 - Prisma: `npx prisma migrate dev --name <desc>` to evolve schema, `npx prisma generate` after changes, `npx prisma studio` to inspect data.
 
 ## Coding Style & Naming Conventions
@@ -33,3 +41,4 @@
 ## Security & Configuration Tips
 - Keep secrets in `.env.local` (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`/`VERCEL_URL`). Never commit env files.
 - Run `npm run seed:demo` only against disposable data. After pulling new migrations, rerun `prisma migrate dev` and regenerate the client before local development.
+- Apple Wallet pass is scaffolded but disabled until certs are configured; `/api/wallet/cherry-pass` returns 501 by design.
