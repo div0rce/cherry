@@ -32,7 +32,7 @@ export function UserMenu({ email }: { email?: string | null }) {
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span className="truncate max-w-[12rem]">{email ?? 'Account'}</span>
+        <span className="truncate max-w-48">{email ?? 'Account'}</span>
         <svg
           className={`h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`}
           viewBox="0 0 12 8"
