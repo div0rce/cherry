@@ -1,5 +1,5 @@
-import { RewardCategory } from '@prisma/client';
-import type { EvaluateTransactionResult } from '@/lib/engine';
+import { RecommendationVerdict, RewardCategory } from '@prisma/client';
+import type { EngineDecision } from '@/lib/engine';
 
 export type ScanRequestBody = {
   merchantName: string;
@@ -7,7 +7,7 @@ export type ScanRequestBody = {
   expectedAmountCents?: number;
 };
 
-export type SpendingVerdict = 'HEALTHY' | 'BORDERLINE' | 'BREAKS_BUDGET';
+export type SpendingVerdict = RecommendationVerdict;
 
 export type ScanResponseBody = {
   merchantName: string;
@@ -38,5 +38,5 @@ export type ScanResponseBody = {
     expiryMinutes: number;
   };
 
-  engineDecision: EvaluateTransactionResult;
+  engineDecision: EngineDecision;
 };
