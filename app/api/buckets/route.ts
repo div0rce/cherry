@@ -4,6 +4,30 @@ import { BucketPeriod, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 
+function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
+  const start = new Date(now);
+  const end = new Date(now);
+
+  if (period === 'WEEKLY') {
+    const day = start.getDay();
+    const diffToMonday = (day + 6) % 7;
+    start.setDate(start.getDate() - diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    end.setDate(start.getDate() + 7);
+    end.setHours(0, 0, 0, 0);
+  } else {
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+
+    end.setMonth(start.getMonth() + 1);
+    end.setDate(1);
+    end.setHours(0, 0, 0, 0);
+  }
+
+  return { start, end };
+}
+
 /**
  * GET /api/buckets
  *
@@ -92,16 +116,25 @@ export async function POST(request: Request) {
         );
       }
 
+      const now = new Date();
+      const { start: periodStart, end: periodEnd } = getPeriodWindow(period as BucketPeriod, now);
+
       const bucket = await prisma.bucket.create({
         data: {
           userId,
           name,
           period: period as BucketPeriod,
-          budgetAmount: budgetAmountCents,
+          budgetAmount: Math.floor(budgetAmountCents),
           currentAmount:
             currentAmountCents == null
-              ? budgetAmountCents
-              : Math.min(currentAmountCents, budgetAmountCents),
+              ? Math.floor(budgetAmountCents)
+              : Math.min(Math.floor(currentAmountCents), Math.floor(budgetAmountCents)),
+          spentCents:
+            currentAmountCents == null
+              ? 0
+              : Math.max(Math.floor(budgetAmountCents) - Math.floor(currentAmountCents), 0),
+          periodStart,
+          periodEnd,
           strictMode: Boolean(strictMode),
           category: normalizedCategory as RewardCategory,
         },

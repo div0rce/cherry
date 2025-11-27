@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
-import { evaluateTransaction } from '@/lib/engine';
+import { runEngine } from '@/lib/engine';
 import { logError, logWarn } from '@/lib/logger';
 
 type Body = Partial<{
@@ -71,11 +71,12 @@ export async function POST(request: Request) {
           })
         ).id;
 
-      const engineResult = await evaluateTransaction({
+      const engineResult = await runEngine({
         userId,
         amountCents: body.amountCents as number,
         category: normalizedCategory as RewardCategory,
         merchantName,
+        mccCode: mccCode ?? undefined,
       });
 
       const strictDecline = engineResult.bucket.strictDecline;
@@ -83,49 +84,40 @@ export async function POST(request: Request) {
       const bucketAfterCents = strictDecline
         ? bucketBeforeCents
         : engineResult.bucket.remainingAfterCents ?? null;
-        const bucketLimitCents = engineResult.bucket.limitCents ?? null;
-        const rewardMultiplier = engineResult.routing.rewardMultiplier ?? null;
-        const rewardsEarnedPoints = engineResult.routing.rewardsEarned ?? null;
-        const tx = await prisma.$transaction(async (txPrisma) => {
-          if (engineResult.bucket.id && !strictDecline && bucketAfterCents != null) {
-            await txPrisma.bucket.update({
-              where: { id: engineResult.bucket.id },
-              data: { currentAmount: bucketAfterCents },
-            });
-          }
+      const bucketLimitCents = engineResult.bucket.limitCents ?? null;
+      const rewardMultiplier = engineResult.routing.rewardMultiplier ?? null;
+      const rewardsEarnedPoints = engineResult.routing.rewardsEarned ?? null;
+      const tx = await prisma.simulatedTransaction.create({
+        data: {
+          simulationId,
+          userId,
+          amount: body.amountCents as number,
+          merchantName,
+          resolvedCategory: engineResult.category,
+          mccCode,
 
-          return txPrisma.simulatedTransaction.create({
-            data: {
-              simulationId,
-              userId,
-              amount: body.amountCents as number,
-              merchantName,
-              resolvedCategory: normalizedCategory as RewardCategory,
-              mccCode,
+          bucketId: engineResult.bucket.id,
+          bucketName: engineResult.bucket.name,
+          bucketPeriod: engineResult.bucket.period,
+          bucketBeforeCents,
+          bucketAfterCents,
+          bucketLimitCents,
 
-              bucketId: engineResult.bucket.id,
-              bucketName: engineResult.bucket.name,
-              bucketPeriod: engineResult.bucket.period,
-              bucketBeforeCents,
-              bucketAfterCents,
-              bucketLimitCents,
+          chosenCardId: engineResult.routing.chosenCardId,
+          chosenCardName: engineResult.routing.chosenCardName,
 
-              chosenCardId: engineResult.routing.chosenCardId,
-              chosenCardName: engineResult.routing.chosenCardName,
+          rewardMultiplier,
+          rewardsEarned: rewardsEarnedPoints,
+          multiplier: rewardMultiplier,
+          cashbackPercent: null,
+          rewardsEarnedPoints: rewardsEarnedPoints,
+          rewardsEarnedCents: null,
 
-              rewardMultiplier,
-              rewardsEarned: rewardsEarnedPoints,
-              multiplier: rewardMultiplier,
-              cashbackPercent: null,
-              rewardsEarnedPoints: rewardsEarnedPoints,
-              rewardsEarnedCents: null,
-
-              strictDecline,
-              status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
-              reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
-            },
-          });
-        });
+          strictDecline,
+          status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
+          reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
+        },
+      });
 
       return NextResponse.json({
         simulationId,

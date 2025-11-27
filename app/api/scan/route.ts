@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
-import { evaluateTransaction } from '@/lib/engine';
-import {
-  computeCherryIncentive,
-  inferCategoryForMerchant,
-  classifySpendingVerdict,
-} from '@/lib/scan-helpers';
+import { runEngine } from '@/lib/engine';
+import { inferCategoryForMerchant } from '@/lib/scan-helpers';
 import type { ScanRequestBody, ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
 
@@ -26,12 +22,9 @@ export function POST(request: NextRequest) {
       );
     }
 
-    let category: RewardCategory;
-    if (body.category) {
-      category = body.category;
-    } else {
-      category = (await inferCategoryForMerchant(userId, body.merchantName)) ?? RewardCategory.OTHER;
-    }
+    const categoryHint = body.category
+      ? body.category
+      : (await inferCategoryForMerchant(userId, body.merchantName)) ?? RewardCategory.OTHER;
 
     const amountCents =
       typeof body.expectedAmountCents === 'number' &&
@@ -40,23 +33,27 @@ export function POST(request: NextRequest) {
         ? Math.floor(body.expectedAmountCents)
         : 0;
 
+    if (amountCents <= 0) {
+      return NextResponse.json(
+        { error: 'expectedAmountCents must be greater than 0' },
+        { status: 400 }
+      );
+    }
+
     try {
-      const decision = await evaluateTransaction({
+      const decision = await runEngine({
         userId,
         amountCents,
-        category,
+        category: categoryHint,
         merchantName: body.merchantName,
       });
-
-      const verdict = classifySpendingVerdict(decision);
-      const incentive = computeCherryIncentive(decision, verdict);
 
       const bucket = decision.bucket;
       const routing = decision.routing;
 
       const response: ScanResponseBody = {
         merchantName: body.merchantName,
-        category,
+        category: decision.category,
         amountCents,
         bucket: {
           name: bucket.name,
@@ -73,8 +70,8 @@ export function POST(request: NextRequest) {
           rewardMultiplier: routing.rewardMultiplier,
           estimatedRewards: routing.rewardsEarned,
         },
-        spendingVerdict: verdict,
-        cherryIncentive: incentive,
+        spendingVerdict: decision.verdict,
+        cherryIncentive: decision.cherryIncentive,
         engineDecision: decision,
       };
 
