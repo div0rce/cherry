@@ -6,35 +6,6 @@ import { usePathname } from 'next/navigation';
 type NavItem = { name: string; href: string };
 type NavSection = { label: string; items: NavItem[] };
 
-const sections: NavSection[] = [
-  {
-    label: 'Core',
-    items: [
-      { name: 'Dashboard', href: '/' },
-      { name: 'Cards', href: '/cards' },
-      { name: 'Buckets', href: '/buckets' },
-    ],
-  },
-  {
-    label: 'Simulation',
-    items: [
-      { name: 'Simulate', href: '/simulate' },
-      { name: 'Simulations', href: '/simulations' },
-    ],
-  },
-  {
-    label: 'History',
-    items: [
-      { name: 'Purchase History', href: '/history' },
-      { name: 'Statements', href: '/statements' },
-    ],
-  },
-  {
-    label: 'Admin',
-    items: [{ name: 'Admin & Tools', href: '/admin' }],
-  },
-];
-
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -42,6 +13,39 @@ function isActive(pathname: string, href: string) {
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const navSections: NavSection[] = [
+    {
+      label: 'Core',
+      items: [
+        { name: 'Dashboard', href: '/' },
+        { name: 'Scan Before Pay', href: '/scan' },
+        { name: 'Sessions', href: '/sessions' },
+        { name: 'Cards', href: '/cards' },
+        { name: 'Buckets', href: '/buckets' },
+      ],
+    },
+    {
+      label: 'Simulation',
+      items: [
+        { name: 'Simulate', href: '/simulate' },
+        { name: 'Simulations', href: '/simulations' },
+        ...(process.env.NODE_ENV === 'development'
+          ? [{ name: 'Vine Simulator (dev)', href: '/vine-simulator' }]
+          : []),
+      ],
+    },
+    {
+      label: 'History',
+      items: [
+        { name: 'Purchase History', href: '/history' },
+        { name: 'Statements', href: '/statements' },
+      ],
+    },
+    {
+      label: 'Admin',
+      items: [{ name: 'Admin & Tools', href: '/admin' }],
+    },
+  ];
 
   return (
     <aside className="hidden w-64 shrink-0 border-r border-white/5 bg-slate-950/60 px-4 py-6 text-slate-100 md:block">
@@ -51,7 +55,7 @@ export function SidebarNav() {
       </div>
 
       <nav className="space-y-6">
-        {sections.map((section) => (
+        {navSections.map((section) => (
           <div key={section.label} className="space-y-2">
             <p className="px-2 text-xs uppercase tracking-[0.2em] text-slate-500">
               {section.label}
