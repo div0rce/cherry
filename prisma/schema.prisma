@@ -17,6 +17,26 @@ enum TransactionStatus {
   DECLINED
 }
 
+enum RecommendationVerdict {
+  HEALTHY
+  BORDERLINE
+  BREAKS_BUDGET
+  DECLINED
+}
+
+enum RecommendationStatus {
+  RECOMMENDED
+  CONFIRMED
+  DISMISSED
+  EXPIRED
+}
+
+enum CherryPointLedgerStatus {
+  PENDING
+  POSTED
+  REVOKED
+}
+
 /// Unified spend/reward category enum
 enum RewardCategory {
   DINING
@@ -100,6 +120,8 @@ model User {
   simulations         SimulatedTransaction[]
   accounts            Account[]
   sessions            Session[]
+  recommendationSessions RecommendationSession[]
+  cherryPointLedgerEntries CherryPointLedger[]
 }
 
 model Card {
@@ -115,6 +137,7 @@ model Card {
 
   rewardRules RewardRule[]
   simulations SimulatedTransaction[]
+  recommendationSessions RecommendationSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,10 +168,14 @@ model Bucket {
   period        BucketPeriod
   budgetAmount  Int // total budget for the period (cents)
   currentAmount Int // remaining amount in this period (cents)
+  spentCents    Int      @default(0) // total spent in this period (cents)
   strictMode    Boolean      @default(true) // decline if over
   category      RewardCategory
+  periodStart   DateTime @default(now())
+  periodEnd     DateTime @default(now())
 
   simulations SimulatedTransaction[]
+  recommendationSessions RecommendationSession[]
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
 }
@@ -234,6 +261,63 @@ model SimulatedTransaction {
 
   @@index([userId])
   @@index([simulationId])
+}
+
+model RecommendationSession {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  merchantName  String?
+  mccCode       Int?
+  category      RewardCategory
+  amountCents   Int
+  currency      String @default("USD")
+  deviceId      String?
+  storeId       String?
+  terminalId    String?
+  orderId       String?
+  orderToken    String? @unique
+
+  recommendedCard   Card?   @relation(fields: [recommendedCardId], references: [id], onDelete: SetNull)
+  recommendedCardId String?
+  recommendedBucket Bucket? @relation(fields: [recommendedBucketId], references: [id], onDelete: SetNull)
+  recommendedBucketId String?
+
+  verdict              RecommendationVerdict
+  cherryPointsOffered  Int     @default(0)
+  status               RecommendationStatus
+  expiresAt            DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([recommendedCardId])
+  @@index([recommendedBucketId])
+
+  ledgerEntries CherryPointLedger[]
+}
+
+model CherryPointLedger {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  session   RecommendationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sessionId String?
+
+  points    Int
+  reason    String
+  awardedAt DateTime               @default(now())
+  expiresAt DateTime?
+  status    CherryPointLedgerStatus @default(POSTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([sessionId])
 }
 
 model Account {
