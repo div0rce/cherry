@@ -111,7 +111,7 @@ export function VineSimulatorClient() {
         <p className="text-sm uppercase tracking-label text-pink-200">Cherry Vine</p>
         <h1 className="text-3xl font-semibold text-white">Vine simulator</h1>
         <p className="text-slate-300">
-          Post a mock POS order, see the recommendation session, then confirm it to award points.
+          Developer-only tool to post fake order context into /api/vine/order. No BLE/NFC/payment is simulated.
         </p>
       </header>
 
