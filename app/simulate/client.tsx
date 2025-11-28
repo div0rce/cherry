@@ -74,7 +74,7 @@ export function RunSimulationForm(): JSX.Element {
     if (mccCode.trim()) {
       const parsedMcc = Number.parseInt(mccCode, 10);
       if (!Number.isInteger(parsedMcc) || String(parsedMcc).length !== 4) {
-        fieldErrors.mcc = 'MCC must be a 4-digit number.';
+        fieldErrors.mcc = 'MCC must be a 4-digit code present in the MCC mapping.';
       }
       mcc = parsedMcc;
     }
@@ -193,7 +193,9 @@ export function RunSimulationForm(): JSX.Element {
           maxLength={4}
           autoComplete="off"
         />
-        <p className="text-xs text-slate-500">Enter a 4-digit code (leading zeros allowed).</p>
+        <p className="text-xs text-slate-500">
+          Enter a 4-digit MCC from the mapping (leading zeros allowed).
+        </p>
         {errors.mcc && <p className="text-xs text-red-400">{errors.mcc}</p>}
       </div>
       <button

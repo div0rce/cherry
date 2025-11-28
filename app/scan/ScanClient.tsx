@@ -75,7 +75,7 @@ export default function ScanClient(): JSX.Element {
 
     if (res.status === 401) {
       setState({ status: 'idle' });
-      setError('Please sign in to scan.');
+      setError('Please sign in to run a manual lookup.');
       void signIn(undefined, { callbackUrl: window.location.href });
       return;
     }
@@ -182,7 +182,7 @@ export default function ScanClient(): JSX.Element {
                 disabled={state.status === 'submitting'}
                 className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
               >
-                {state.status === 'submitting' ? 'Scanning…' : 'Scan before you pay'}
+                {state.status === 'submitting' ? 'Looking up…' : 'Manual Lookup & Rewards'}
               </button>
               {error && <span className="text-sm text-red-300">{error}</span>}
             </div>
@@ -324,7 +324,7 @@ export default function ScanClient(): JSX.Element {
               onClick={reset}
               className="inline-flex rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
             >
-              New scan
+              New lookup
             </button>
           </div>
         );
@@ -335,9 +335,10 @@ export default function ScanClient(): JSX.Element {
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-6 text-slate-100">
       <header className="space-y-2">
         <p className="text-sm uppercase tracking-label text-pink-200">Cherry</p>
-        <h1 className="text-3xl font-semibold text-white">Scan before you pay</h1>
+        <h1 className="text-3xl font-semibold text-white">Manual Lookup &amp; Rewards</h1>
         <p className="text-slate-300">
-          Start a recommendation session, see the best card, and confirm to earn Cherry Points.
+          Enter where you are paying and the amount—Cherry will look up the best card and estimated
+          points, even without Cherry Vine.
         </p>
       </header>
 

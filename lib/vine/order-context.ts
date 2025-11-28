@@ -1,4 +1,4 @@
-export type OrderContextSource = 'VINE_SIM' | 'VINE_DEVICE' | 'APP_SCAN';
+import type { VineOrderSource } from '@/lib/enums';
 
 export type OrderContext = {
   deviceId: string;
@@ -11,5 +11,5 @@ export type OrderContext = {
   mccCode?: number;
   timestamp: number; // epoch ms
   nonce?: string;
-  source: OrderContextSource;
+  source: VineOrderSource;
 };

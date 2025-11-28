@@ -19,7 +19,7 @@ export function SidebarNav(): JSX.Element {
       label: 'Spend',
       items: [
         { name: 'Dashboard', href: '/' },
-        { name: 'Scan Before Pay', href: '/scan' },
+        { name: 'Manual Lookup & Rewards', href: '/scan' },
         { name: 'Sessions', href: '/sessions' },
       ],
     },
