@@ -1,5 +1,4 @@
 # Repository Guidelines
-# Repository Guidelines
 
 ## Product Identity & Guardrails
 - Cherry is a real-time spending advisor, not a payment card or proxy. It does not front or route transactions, hold funds, or touch payment rails.

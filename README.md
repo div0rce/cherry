@@ -45,3 +45,8 @@ Cherry uses cookie-based auth (NextAuth). For local dev, use the Credentials pro
 4. Or use the helper harness: `./scripts/simulate.sh` (requires `cookies.txt`; run the login script first).
 
 Optional legacy: you can still export `SESSION_COOKIE` manually if you prefer. See `docs/terminal-api.md`.
+
+### Editor setup (keep IDE in sync with CLI)
+- In VS Code: Command Palette → “TypeScript: Select TypeScript Version” → “Use Workspace Version,” then “TypeScript: Restart TS server.”
+- Ensure the ESLint extension honors the flat config: enable “ESLint: Use Flat Config” and restart the ESLint server.
+- After editing `prisma/schema.prisma`, run `npx prisma generate` so the editor picks up the updated client and enums; restart the TS server if diagnostics seem stale.
