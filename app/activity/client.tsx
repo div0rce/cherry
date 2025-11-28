@@ -4,18 +4,12 @@ import type { JSX, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import type { ActivitySource, UnifiedActivityRow } from '@/lib/unified-activity';
 
-type TypeFilter = 'ALL' | 'REAL' | 'SIMULATED' | 'POINTS';
+type TypeFilter = 'REAL' | 'SIMULATED';
 
 type CardOption = { id: string; nickname: string; network: string };
 
 function coerceDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
-}
-
-function formatAmount(amount: number, currency: string, direction: 'DEBIT' | 'CREDIT'): string {
-  const value = amount.toFixed(2);
-  const sign = direction === 'CREDIT' ? '+' : '-';
-  return `${sign}${value} ${currency}`;
 }
 
 export default function ActivityPageClient({
@@ -25,7 +19,7 @@ export default function ActivityPageClient({
   initialRows: UnifiedActivityRow[];
   cards: CardOption[];
 }): JSX.Element {
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('REAL');
   const [cardId, setCardId] = useState<string>('');
   const [merchantQuery, setMerchantQuery] = useState('');
   const [mccFilter, setMccFilter] = useState('');
@@ -33,24 +27,9 @@ export default function ActivityPageClient({
   const [endDate, setEndDate] = useState('');
 
   const rows = useMemo(() => initialRows, [initialRows]);
-  const filteredRows = useMemo(
+  const baseFiltered = useMemo(
     () =>
-      rows.filter((row) => {
-        if (typeFilter === 'SIMULATED') {
-          return (
-            row.source === 'VINE_SIM' ||
-            row.source === 'MANUAL_LOOKUP' ||
-            row.source === 'OTHER_SIM'
-          );
-        }
-        if (typeFilter === 'REAL') {
-          return row.source === 'BANK_FEED' || row.source === 'STATEMENT_VIEW';
-        }
-        if (typeFilter === 'POINTS') {
-          return row.pointsEarned != null && row.pointsEarned !== 0;
-        }
-        return true;
-      })
+      rows
         .filter((row) => {
           if (!cardId) return true;
           return row.cardId === cardId;
@@ -80,24 +59,40 @@ export default function ActivityPageClient({
           }
           return true;
         }),
-    [cardId, endDate, mccFilter, merchantQuery, rows, startDate, typeFilter],
+    [cardId, endDate, mccFilter, merchantQuery, rows, startDate],
+  );
+
+  const counts = useMemo(
+    () => ({
+      real: baseFiltered.filter((row) => row.origin === 'REAL').length,
+      simulated: baseFiltered.filter((row) => row.origin === 'SIMULATED').length,
+    }),
+    [baseFiltered],
+  );
+
+  const filteredRows = useMemo(
+    () =>
+      baseFiltered.filter((row) => {
+        switch (typeFilter) {
+          case 'REAL':
+            return row.origin === 'REAL';
+          case 'SIMULATED':
+          default:
+            return row.origin === 'SIMULATED';
+        }
+      }),
+    [baseFiltered, typeFilter],
   );
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
-        <div className="flex flex-wrap items-center gap-3">
-          <ModeButton mode="ALL" current={typeFilter} onChange={setTypeFilter}>
-            All
-          </ModeButton>
+      <div className="flex flex-wrap items-center gap-3">
           <ModeButton mode="REAL" current={typeFilter} onChange={setTypeFilter}>
-            Real
+            Real ({counts.real})
           </ModeButton>
           <ModeButton mode="SIMULATED" current={typeFilter} onChange={setTypeFilter}>
-            Simulated
-          </ModeButton>
-          <ModeButton mode="POINTS" current={typeFilter} onChange={setTypeFilter}>
-            Points
+            Simulated ({counts.simulated})
           </ModeButton>
         </div>
 
@@ -164,7 +159,7 @@ export default function ActivityPageClient({
         </div>
       </div>
 
-      <ActivityTable rows={filteredRows} />
+      <ActivityTable rows={filteredRows} currentMode={typeFilter} />
     </div>
   );
 }
@@ -195,8 +190,33 @@ function ModeButton({
   );
 }
 
-function ActivityTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
+function ActivityTable({
+  rows,
+  currentMode,
+}: {
+  rows: UnifiedActivityRow[];
+  currentMode: TypeFilter;
+}): JSX.Element {
   if (rows.length === 0) {
+    if (currentMode === 'SIMULATED') {
+      return (
+        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
+          <p className="text-sm text-slate-300">
+            No simulated activity yet. Run a Vine simulation or Manual Lookup to see simulated
+            payments here.
+          </p>
+        </div>
+      );
+    }
+    if (currentMode === 'REAL') {
+      return (
+        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
+          <p className="text-sm text-slate-300">
+            No real transactions yet. Connect a bank feed to populate this view.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
         <p className="text-sm text-slate-300">
@@ -222,8 +242,14 @@ function ActivityTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
         <tbody className="divide-y divide-white/5">
           {rows.map((row) => {
             const occurredAt = coerceDate(row.occurredAt);
+            const kindClass =
+              row.kind === 'REAL_TRANSACTION'
+                ? 'border-l-2 border-l-blue-500/60'
+                : row.kind === 'SIMULATED_TRANSACTION'
+                  ? 'border-l-2 border-l-pink-500/60'
+                  : 'border-l-2 border-l-emerald-500/60';
             return (
-              <tr key={row.id}>
+              <tr key={row.id} className={kindClass}>
                 <td className="py-2 pr-4 text-xs text-slate-400">{occurredAt.toLocaleString()}</td>
                 <td className="py-2 pr-4">
                   <div className="flex flex-col">
@@ -235,6 +261,13 @@ function ActivityTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
                       {row.merchantLocation?.city ? ` · ${row.merchantLocation.city}` : ''}
                       {row.merchantLocation?.region ? `, ${row.merchantLocation.region}` : ''}
                     </span>
+                    <span className="text-[10px] uppercase tracking-wide text-slate-500">
+                      {row.kind === 'REAL_TRANSACTION'
+                        ? 'Real transaction'
+                        : row.kind === 'SIMULATED_TRANSACTION'
+                          ? 'Simulated payment'
+                          : 'Points event'}
+                    </span>
                   </div>
                 </td>
                 <td className="py-2 pr-4 text-xs text-slate-400">
@@ -244,18 +277,10 @@ function ActivityTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
                       : '—')}
                 </td>
                 <td className="py-2 pr-4 text-right">
-                  <span
-                    className={
-                      row.direction === 'DEBIT'
-                        ? 'font-semibold text-slate-100'
-                        : 'font-semibold text-emerald-300'
-                    }
-                  >
-                    {formatAmount(row.amount, row.currency, row.direction)}
-                  </span>
+                  <AmountCell row={row} />
                 </td>
-                <td className="py-2 pr-4 text-right text-xs text-emerald-300">
-                  {row.pointsEarned != null ? `+${row.pointsEarned}` : '—'}
+                <td className="py-2 pr-4 text-right">
+                  <PointsCell row={row} />
                 </td>
                 <td className="py-2 text-right">
                   <SourceBadge source={row.source} />
@@ -298,5 +323,39 @@ function ActivityDisclaimer(): JSX.Element {
       This is an analytic consolidated view generated by Cherry from your connected accounts and
       simulations. For official statements or disputes, refer to your bank or card issuer.
     </p>
+  );
+}
+
+function AmountCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
+  const cashDelta = row.cashDeltaCents ?? 0;
+  if (!cashDelta) {
+    return <span className="text-xs text-slate-500">—</span>;
+  }
+
+  const sign = cashDelta < 0 ? '-' : '+';
+  const cls = cashDelta < 0 ? 'text-rose-300' : 'text-emerald-300';
+  const abs = Math.abs(cashDelta) / 100;
+
+  return (
+    <span className={`font-semibold ${cls}`}>
+      {sign}
+      {abs.toFixed(2)} {row.currency}
+    </span>
+  );
+}
+
+function PointsCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
+  const pts = row.pointsDelta ?? row.pointsEarned ?? 0;
+  if (!pts) {
+    return <span className="text-xs text-slate-500">—</span>;
+  }
+  const sign = pts < 0 ? '-' : '+';
+  const cls = pts < 0 ? 'text-rose-300' : 'text-emerald-300';
+
+  return (
+    <span className={`text-xs ${cls}`}>
+      {sign}
+      {Math.abs(pts)}
+    </span>
   );
 }

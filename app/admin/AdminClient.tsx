@@ -13,6 +13,10 @@ export default function AdminClient(): JSX.Element {
   const [seedFeedback, setSeedFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
+  const [seedCardsBucketsFeedback, setSeedCardsBucketsFeedback] = useState<
+    { type: 'success' | 'error'; text: string } | null
+  >(null);
+  const [isSeedingCardsBuckets, setIsSeedingCardsBuckets] = useState(false);
   const [clearUserFeedback, setClearUserFeedback] = useState<
     { type: 'success' | 'error'; text: string } | null
   >(null);
@@ -28,6 +32,12 @@ export default function AdminClient(): JSX.Element {
     const id = setTimeout(() => setSeedFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [seedFeedback]);
+
+  useEffect(() => {
+    if (!seedCardsBucketsFeedback) return;
+    const id = setTimeout(() => setSeedCardsBucketsFeedback(null), 3000);
+    return () => clearTimeout(id);
+  }, [seedCardsBucketsFeedback]);
 
   useEffect(() => {
     if (!clearUserFeedback) return;
@@ -106,6 +116,43 @@ export default function AdminClient(): JSX.Element {
               }`}
             >
               {seedFeedback?.text ?? ' '}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex h-full flex-col gap-2 rounded-xl border border-white/5 bg-slate-900/40 p-3">
+          <div>
+            <p className="text-sm font-semibold text-white">Seed cards &amp; buckets</p>
+            <p className="text-xs text-slate-400">
+              Populate only cards and buckets for this user. Sessions and points remain untouched.
+            </p>
+          </div>
+          <div className="mt-auto space-y-1">
+            <button
+              type="button"
+              onClick={() =>
+                callEndpoint(
+                  '/api/seed-demo/cards-buckets',
+                  setIsSeedingCardsBuckets,
+                  'Seeded cards & buckets',
+                  setSeedCardsBucketsFeedback
+                )
+              }
+              disabled={isSeedingCardsBuckets}
+              className="rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition disabled:opacity-70"
+            >
+              {isSeedingCardsBuckets ? 'Seeding…' : 'Seed cards & buckets'}
+            </button>
+            <p
+              className={`min-h-5 text-xs ${
+                seedCardsBucketsFeedback
+                  ? seedCardsBucketsFeedback.type === 'success'
+                    ? 'text-green-300'
+                    : 'text-red-300'
+                  : 'text-slate-500'
+              }`}
+            >
+              {seedCardsBucketsFeedback?.text ?? ' '}
             </p>
           </div>
         </div>

@@ -1,53 +1,57 @@
 import type { JSX } from 'react';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { getUnifiedActivityForUser, type UnifiedActivityRow } from '@/lib/unified-activity';
+import { getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
 import MonthPicker from './client';
 
 type SearchParams = Promise<{ month?: string }>;
+
+type StatementRollup = {
+  totalDebitsCents: number;
+  totalCreditsCents: number;
+  netCents: number;
+  pointsEarned: number;
+  categoryBreakdown: { category: string; totalCents: number }[];
+};
 
 function formatCurrency(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-function summarize(rows: UnifiedActivityRow[]) {
-  let totalDebit = 0;
-  let totalCredit = 0;
-  let points = 0;
-  let realTotal = 0;
-  let simulatedTotal = 0;
-  const categoryTotals: Record<string, number> = {};
+function summarize(rows: UnifiedActivityRow[]): StatementRollup {
+  const cashEvents = rows.filter((row) => (row.cashDeltaCents ?? 0) !== 0);
+  const pointsEvents = rows.filter((row) => (row.pointsDelta ?? row.pointsEarned ?? 0) !== 0);
 
-  rows.forEach((row) => {
-    const amount = row.amount;
-    if (row.direction === 'DEBIT') {
-      totalDebit += amount;
-    } else {
-      totalCredit += amount;
-    }
-    if (row.pointsEarned) points += row.pointsEarned;
+  const totalDebitsCents = cashEvents
+    .filter((row) => (row.cashDeltaCents ?? 0) < 0)
+    .reduce((sum, row) => sum + Math.abs(row.cashDeltaCents ?? 0), 0);
 
-    const isReal = row.source === 'BANK_FEED' || row.source === 'STATEMENT_VIEW';
-    if (isReal) {
-      realTotal += amount;
-    } else {
-      simulatedTotal += amount;
-    }
+  const totalCreditsCents = cashEvents
+    .filter((row) => (row.cashDeltaCents ?? 0) > 0)
+    .reduce((sum, row) => sum + (row.cashDeltaCents ?? 0), 0);
 
-    const category = row.rewardCategory ?? 'Uncategorized';
-    categoryTotals[category] = (categoryTotals[category] ?? 0) + amount;
-  });
+  const netCents = cashEvents.reduce((sum, row) => sum + (row.cashDeltaCents ?? 0), 0);
 
-  const net = totalCredit - totalDebit;
-  const totalActivity = realTotal + simulatedTotal || 1;
+  const pointsEarned = pointsEvents
+    .filter((row) => (row.pointsDelta ?? row.pointsEarned ?? 0) > 0)
+    .reduce((sum, row) => sum + (row.pointsDelta ?? row.pointsEarned ?? 0), 0);
+
+  const categoryTotals = new Map<string, number>();
+  for (const row of cashEvents) {
+    const delta = row.cashDeltaCents ?? 0;
+    if (delta >= 0) continue;
+    const key = row.rewardCategory ?? 'Uncategorized';
+    categoryTotals.set(key, (categoryTotals.get(key) ?? 0) + Math.abs(delta));
+  }
 
   return {
-    totalDebit,
-    totalCredit,
-    net,
-    points,
-    realShare: (realTotal / totalActivity) * 100,
-    simulatedShare: (simulatedTotal / totalActivity) * 100,
-    categoryTotals,
+    totalDebitsCents: totalDebitsCents,
+    totalCreditsCents,
+    netCents,
+    pointsEarned,
+    categoryBreakdown: Array.from(categoryTotals.entries()).map(([category, totalCents]) => ({
+      category,
+      totalCents,
+    })),
   };
 }
 
@@ -102,24 +106,13 @@ function StatementTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
                       : '—')}
                 </td>
                 <td className="py-2 pr-4 text-right">
-                  <span
-                    className={
-                      row.direction === 'DEBIT'
-                        ? 'font-semibold text-slate-100'
-                        : 'font-semibold text-emerald-300'
-                    }
-                  >
-                    {row.direction === 'DEBIT' ? '-' : '+'}
-                    {row.amount.toFixed(2)} {row.currency}
-                  </span>
+                  <AmountCell row={row} />
                 </td>
-                <td className="py-2 pr-4 text-right text-xs text-emerald-300">
-                  {row.pointsEarned != null ? `+${row.pointsEarned}` : '—'}
+                <td className="py-2 pr-4 text-right">
+                  <PointsCell row={row} />
                 </td>
                 <td className="py-2 text-right">
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
-                    {row.source}
-                  </span>
+                  <UserSourceBadge source={row.source} />
                 </td>
               </tr>
             );
@@ -150,10 +143,7 @@ export default async function StatementsPage({
   const month = Number(monthPart);
 
   const userId = await getCurrentUserIdOrRedirect('/statements');
-  const rows = await getUnifiedActivityForUser(userId, {
-    limit: 1000,
-    periodFilter: { year, month },
-  });
+  const rows = await getUserRealActivityForPeriod(userId, { year, month });
   const stats = summarize(rows);
 
   return (
@@ -163,41 +153,46 @@ export default async function StatementsPage({
           <p className="text-xs uppercase tracking-label text-pink-200">Statements</p>
           <h1 className="text-3xl font-semibold text-white">Periodic statement</h1>
           <p className="text-slate-300">
-            Monthly rollup across real and simulated activity. Switch months to review spend, credits,
-            and points.
+            Monthly rollup of your real card activity. Switch months to review spend, credits, and
+            points.
           </p>
         </header>
 
         <MonthPicker initialMonth={selectedMonth} />
 
         <section className="grid gap-4 md:grid-cols-4">
-          <SummaryCard label="Total debits" value={formatCurrency(stats.totalDebit)} />
-          <SummaryCard label="Total credits" value={formatCurrency(stats.totalCredit)} />
+          <SummaryCard
+            label="Total debits"
+            value={formatCurrency(stats.totalDebitsCents / 100)}
+          />
+          <SummaryCard
+            label="Total credits"
+            value={formatCurrency(stats.totalCreditsCents / 100)}
+          />
           <SummaryCard
             label="Net"
-            value={formatCurrency(stats.net)}
-            tone={stats.net >= 0 ? 'positive' : 'negative'}
+            value={formatCurrency(stats.netCents / 100)}
+            tone={stats.netCents >= 0 ? 'positive' : 'negative'}
           />
-          <SummaryCard label="Points earned" value={`${stats.points}`} tone="positive" />
+          <SummaryCard label="Points earned" value={`${stats.pointsEarned}`} tone="positive" />
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-            <p className="text-xs uppercase tracking-label text-slate-400">Mix</p>
-            <p className="text-sm text-slate-200">
-              Real: {stats.realShare.toFixed(1)}% · Simulated: {stats.simulatedShare.toFixed(1)}%
-            </p>
-          </div>
-
+        <section className="grid gap-4 md:grid-cols-1">
           <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
             <p className="text-xs uppercase tracking-label text-slate-400">Category breakdown</p>
             <ul className="mt-2 space-y-1 text-sm text-slate-100">
-              {Object.entries(stats.categoryTotals).map(([category, amount]) => (
-                <li key={category} className="flex items-center justify-between">
-                  <span>{category}</span>
-                  <span className="text-slate-300">{formatCurrency(amount)}</span>
+              {stats.categoryBreakdown.length === 0 ? (
+                <li className="text-xs text-slate-500 italic">
+                  No categorized spending this month.
                 </li>
-              ))}
+              ) : (
+                stats.categoryBreakdown.map((cat) => (
+                  <li key={cat.category} className="flex items-center justify-between">
+                    <span>{cat.category}</span>
+                    <span className="text-slate-300">{formatCurrency(cat.totalCents / 100)}</span>
+                  </li>
+                ))
+              )}
             </ul>
           </div>
         </section>
@@ -228,5 +223,57 @@ function SummaryCard({
       <p className="text-xs uppercase tracking-label text-slate-400">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
     </div>
+  );
+}
+
+function AmountCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
+  const cashDelta = row.cashDeltaCents ?? 0;
+  if (!cashDelta) {
+    return <span className="text-xs text-slate-500">—</span>;
+  }
+
+  const sign = cashDelta < 0 ? '-' : '+';
+  const cls = cashDelta < 0 ? 'font-semibold text-rose-300' : 'font-semibold text-emerald-300';
+  const abs = Math.abs(cashDelta) / 100;
+
+  return (
+    <span className={cls}>
+      {sign}
+      {abs.toFixed(2)} {row.currency}
+    </span>
+  );
+}
+
+function PointsCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
+  const pts = row.pointsDelta ?? row.pointsEarned ?? 0;
+  if (!pts) {
+    return <span className="text-xs text-slate-500">—</span>;
+  }
+
+  const sign = pts < 0 ? '-' : '+';
+  const cls = pts < 0 ? 'text-xs text-rose-300' : 'text-xs text-emerald-300';
+
+  return (
+    <span className={cls}>
+      {sign}
+      {Math.abs(pts)}
+    </span>
+  );
+}
+
+function UserSourceBadge({ source }: { source: string }): JSX.Element {
+  let label = 'Activity';
+  switch (source) {
+    case 'BANK_FEED':
+    case 'STATEMENT_VIEW':
+      label = 'Bank';
+      break;
+    default:
+      label = 'Activity';
+  }
+  return (
+    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
+      {label}
+    </span>
   );
 }

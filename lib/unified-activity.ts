@@ -6,12 +6,17 @@ export type ActivitySource =
   | 'VINE_SIM'
   | 'MANUAL_LOOKUP'
   | 'OTHER_SIM';
+export type ActivityKind = 'REAL_TRANSACTION' | 'SIMULATED_TRANSACTION' | 'POINTS_EVENT' | 'OTHER';
 export type UnifiedDirection = 'DEBIT' | 'CREDIT';
+export type ActivityOrigin = 'REAL' | 'SIMULATED';
 
 export interface UnifiedActivityRow {
   id: string;
   source: ActivitySource;
+  kind: ActivityKind;
+  origin: ActivityOrigin;
   occurredAt: Date;
+  cashDeltaCents?: number | null;
   amount: number;
   currency: string;
   direction: UnifiedDirection;
@@ -27,6 +32,7 @@ export interface UnifiedActivityRow {
   cardName?: string | null;
   cardId?: string | null;
   pointsEarned?: number;
+  pointsDelta?: number | null;
   bucketId?: string | null;
   rewardCategory?: string | null;
   statementPeriod?:
@@ -35,6 +41,13 @@ export interface UnifiedActivityRow {
         month: number;
       }
     | null;
+}
+
+function deriveStatementPeriod(date: Date) {
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+  };
 }
 
 export async function getUnifiedActivityForUser(
@@ -74,7 +87,7 @@ export async function getUnifiedActivityForUser(
         }
       : { userId };
 
-  const [bankTx, ledger] = await Promise.all([
+  const [bankTx, ledger, simulated, sessions] = await Promise.all([
     includeBankSources
       ? prisma.bankTransaction.findMany({
           where: bankWhere,
@@ -108,6 +121,44 @@ export async function getUnifiedActivityForUser(
           },
         })
       : Promise.resolve([]),
+    includeSimSources
+      ? prisma.simulatedTransaction.findMany({
+          where: {
+            userId,
+            ...(periodRange
+              ? {
+                  createdAt: {
+                    gte: periodRange.start,
+                    lt: periodRange.end,
+                  },
+                }
+              : {}),
+          },
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+          include: {
+            chosenCard: { select: { id: true, nickname: true, network: true } },
+          },
+        })
+      : Promise.resolve([]),
+    prisma.recommendationSession.findMany({
+      where: {
+        userId,
+        ...(periodRange
+          ? {
+              createdAt: {
+                gte: periodRange.start,
+                lt: periodRange.end,
+              },
+            }
+          : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        recommendedCard: { select: { id: true, nickname: true, network: true } },
+      },
+      take: limit,
+    }),
   ]);
 
   const sourceFilter = options?.sourceFilter ?? null;
@@ -117,6 +168,11 @@ export async function getUnifiedActivityForUser(
     !sourceFilter.includes('BANK_FEED');
 
   const bankRows: UnifiedActivityRow[] = bankTx.map((tx) => {
+    const rawAmount = Number(tx.amount);
+    const amountCents = Math.round(rawAmount * 100);
+    const cashDeltaCents =
+      tx.direction === 'CREDIT' ? amountCents : amountCents * -1;
+
     let merchantLocation: UnifiedActivityRow['merchantLocation'];
     if (tx.merchantCity || tx.merchantRegion || tx.merchantCountry || tx.merchantObservation) {
       const location: NonNullable<UnifiedActivityRow['merchantLocation']> = {};
@@ -130,15 +186,15 @@ export async function getUnifiedActivityForUser(
     }
 
     const occurredAt = tx.occurredAt;
-    const statementPeriod = {
-      year: occurredAt.getUTCFullYear(),
-      month: occurredAt.getUTCMonth() + 1,
-    };
+    const statementPeriod = deriveStatementPeriod(occurredAt);
 
     const base: UnifiedActivityRow = {
       id: `bank-${tx.id}`,
       source: shouldTagAsStatement ? 'STATEMENT_VIEW' : 'BANK_FEED',
+      kind: 'REAL_TRANSACTION',
+      origin: 'REAL',
       occurredAt,
+      cashDeltaCents,
       amount: Number(tx.amount),
       currency: tx.currency,
       direction: tx.direction === 'CREDIT' ? 'CREDIT' : 'DEBIT',
@@ -149,6 +205,7 @@ export async function getUnifiedActivityForUser(
       cardName: null,
       cardId: null,
       rewardCategory: null,
+      pointsDelta: null,
       statementPeriod,
     };
 
@@ -173,29 +230,99 @@ export async function getUnifiedActivityForUser(
       merchantLocation = location;
     }
 
+    const occurredAt = row.awardedAt ?? row.createdAt;
+    const statementPeriod = deriveStatementPeriod(occurredAt);
+    const sessionAmountCents = session?.amountCents ?? 0;
+
     const base: UnifiedActivityRow = {
       id: `ledger-${row.id}`,
       source,
-      occurredAt: row.awardedAt ?? row.createdAt,
-      amount: session?.amountCents ? session.amountCents / 100 : 0,
+      kind: 'POINTS_EVENT',
+      origin: 'SIMULATED',
+      occurredAt,
+      cashDeltaCents: sessionAmountCents ? sessionAmountCents * -1 : 0,
+      amount: sessionAmountCents ? sessionAmountCents / 100 : 0,
       currency: session?.currency ?? 'USD',
-      direction: 'DEBIT',
-      merchantName: session?.merchantName ?? row.merchantObservation?.merchantName ?? null,
+      direction: row.points >= 0 ? 'CREDIT' : 'DEBIT',
+      merchantName: session?.merchantName ?? row.merchantObservation?.merchantName ?? 'Points event',
       mcc: session?.mccCode ?? row.merchantObservation?.mcc ?? null,
       cardBrand: session?.recommendedCard?.network ?? null,
       cardLast4: null,
       cardName: session?.recommendedCard?.nickname ?? null,
       cardId: session?.recommendedCard?.id ?? null,
       pointsEarned: row.points,
+      pointsDelta: row.points,
       bucketId: session?.recommendedBucketId ?? null,
       rewardCategory: session?.category ?? null,
-      statementPeriod: null,
+      statementPeriod,
     };
 
     return merchantLocation ? { ...base, merchantLocation } : base;
   });
 
-  const combined = [...bankRows, ...ledgerRows];
+  const simulatedRows: UnifiedActivityRow[] = simulated.map((sim) => {
+    const occurredAt = sim.createdAt;
+    const statementPeriod = deriveStatementPeriod(occurredAt);
+
+    const base: UnifiedActivityRow = {
+      id: `sim-${sim.id}`,
+      source: 'OTHER_SIM',
+      kind: 'SIMULATED_TRANSACTION',
+      origin: 'SIMULATED',
+      occurredAt,
+      cashDeltaCents: -sim.amount,
+      amount: sim.amount / 100,
+      currency: sim.currency,
+      direction: 'DEBIT',
+      merchantName: sim.merchantName ?? null,
+      mcc: sim.mccCode ?? null,
+      cardBrand: sim.chosenCard?.network ?? null,
+      cardLast4: null,
+      cardName: sim.chosenCard?.nickname ?? sim.chosenCardName ?? null,
+      cardId: sim.chosenCard?.id ?? sim.chosenCardId ?? null,
+      pointsDelta: sim.rewardsEarnedPoints ?? null,
+      bucketId: sim.bucketId ?? null,
+      rewardCategory: sim.resolvedCategory,
+      statementPeriod,
+    };
+
+    return sim.rewardsEarnedPoints != null
+      ? { ...base, pointsEarned: sim.rewardsEarnedPoints }
+      : base;
+  });
+
+  const recommendationRows: UnifiedActivityRow[] = sessions.map((session) => {
+    const source: ActivitySource =
+      session.deviceId && session.deviceId.length > 0 ? 'VINE_SIM' : 'MANUAL_LOOKUP';
+    const kind: ActivityKind = 'SIMULATED_TRANSACTION';
+    const occurredAt = session.createdAt;
+    const statementPeriod = deriveStatementPeriod(occurredAt);
+    const cashDeltaCents = session.amountCents ? session.amountCents * -1 : null;
+
+    return {
+      id: `session-${session.id}`,
+      source,
+      kind,
+      origin: 'SIMULATED',
+      occurredAt,
+      cashDeltaCents,
+      amount: session.amountCents / 100,
+      currency: session.currency,
+      direction: 'DEBIT',
+      merchantName: session.merchantName ?? null,
+      mcc: session.mccCode ?? null,
+      cardBrand: session.recommendedCard?.network ?? null,
+      cardLast4: null,
+      cardName: session.recommendedCard?.nickname ?? null,
+      cardId: session.recommendedCard?.id ?? null,
+      pointsDelta: null,
+      bucketId: session.recommendedBucketId ?? null,
+      rewardCategory: session.category ?? null,
+      statementPeriod,
+    };
+  });
+
+  const combined = [...bankRows, ...simulatedRows, ...ledgerRows, ...recommendationRows];
   const filtered = combined.filter((row) => {
     if (options?.sourceFilter?.length && !options.sourceFilter.includes(row.source)) {
       return false;
@@ -209,5 +336,37 @@ export async function getUnifiedActivityForUser(
 
   filtered.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
 
+  if (process.env.NODE_ENV === 'development') {
+    const kindCounts = filtered.reduce<Record<ActivityKind, number>>(
+      (acc, row) => {
+        acc[row.kind] = (acc[row.kind] ?? 0) + 1;
+        return acc;
+      },
+      { REAL_TRANSACTION: 0, SIMULATED_TRANSACTION: 0, POINTS_EVENT: 0, OTHER: 0 },
+    );
+    // eslint-disable-next-line no-console
+    console.log('[activity:kindCounts]', kindCounts);
+  }
+
   return filtered.slice(0, limit);
+}
+
+export async function getDevActivityEvents(userId: string): Promise<UnifiedActivityRow[]> {
+  return getUnifiedActivityForUser(userId);
+}
+
+export async function getUserActivityLedger(userId: string): Promise<UnifiedActivityRow[]> {
+  const rows = await getUnifiedActivityForUser(userId);
+  return rows.filter((row) => row.origin === 'REAL');
+}
+
+export async function getUserRealActivityForPeriod(
+  userId: string,
+  period: { year: number; month: number },
+): Promise<UnifiedActivityRow[]> {
+  const rows = await getUnifiedActivityForUser(userId, {
+    periodFilter: period,
+    sourceFilter: ['BANK_FEED', 'STATEMENT_VIEW'],
+  });
+  return rows.filter((row) => row.origin === 'REAL');
 }

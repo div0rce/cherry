@@ -51,11 +51,37 @@ const cardDefinitions = [
     | { category: RewardCategory; multiplier?: null; cashbackPercent: number };
 }>;
 
+const bucketDefinitions = [
+  {
+    name: 'Dining Monthly',
+    period: BucketPeriod.MONTHLY,
+    budgetAmount: 40_000,
+    currentAmount: 25_000,
+    spentCents: 15_000,
+    strictMode: true,
+    category: RewardCategory.DINING,
+  },
+  {
+    name: 'Groceries Monthly',
+    period: BucketPeriod.MONTHLY,
+    budgetAmount: 30_000,
+    currentAmount: 25_000,
+    spentCents: 5_000,
+    strictMode: false,
+    category: RewardCategory.GROCERIES,
+  },
+] as const;
+
 export type SeedDemoSummary = {
   cards: number;
   buckets: number;
   sessions: number;
   ledgerEntries: number;
+};
+
+type SeedCardsBucketsSummary = {
+  cards: number;
+  buckets: number;
 };
 
 async function assertUserExists(userId: string) {
@@ -65,6 +91,136 @@ async function assertUserExists(userId: string) {
 function getCategoryPreferenceModel() {
   return (prisma as unknown as { categoryPreference?: typeof prisma.categoryPreference })
     .categoryPreference;
+}
+
+async function upsertDemoCardForUser(userId: string, def: (typeof cardDefinitions)[number]) {
+  const existing = await prisma.card.findFirst({
+    where: { userId, nickname: def.nickname },
+  });
+
+  const card = existing
+    ? await prisma.card.update({
+        where: { id: existing.id },
+        data: {
+          issuer: def.issuer,
+          network: def.network,
+          isCredit: def.isCredit,
+          annualFee: def.annualFee ?? null,
+        },
+      })
+    : await prisma.card.create({
+        data: {
+          userId,
+          nickname: def.nickname,
+          issuer: def.issuer,
+          network: def.network,
+          isCredit: def.isCredit,
+          annualFee: def.annualFee ?? null,
+        },
+      });
+
+  await prisma.rewardRule.deleteMany({ where: { cardId: card.id } });
+  await prisma.rewardRule.create({
+    data: {
+      cardId: card.id,
+      category: def.rule.category,
+      multiplier:
+        'multiplier' in def.rule && typeof def.rule.multiplier === 'number'
+          ? def.rule.multiplier
+          : null,
+      cashbackPercent:
+        'cashbackPercent' in def.rule && typeof def.rule.cashbackPercent === 'number'
+          ? def.rule.cashbackPercent
+          : null,
+    },
+  });
+}
+
+async function seedDemoCardsForUser(userId: string): Promise<number> {
+  await Promise.all(cardDefinitions.map((card) => upsertDemoCardForUser(userId, card)));
+  return cardDefinitions.length;
+}
+
+async function seedDemoBucketsForUser(
+  userId: string,
+  periodStart: Date,
+  periodEnd: Date,
+): Promise<number> {
+  for (const bucket of bucketDefinitions) {
+    const existing = await prisma.bucket.findFirst({ where: { userId, name: bucket.name } });
+    if (existing) {
+      await prisma.bucket.update({
+        where: { id: existing.id },
+        data: {
+          period: bucket.period,
+          budgetAmount: bucket.budgetAmount,
+          currentAmount: bucket.currentAmount,
+          spentCents: bucket.spentCents,
+          strictMode: bucket.strictMode,
+          category: bucket.category,
+          periodStart,
+          periodEnd,
+        },
+      });
+    } else {
+      await prisma.bucket.create({
+        data: {
+          userId,
+          name: bucket.name,
+          period: bucket.period,
+          budgetAmount: bucket.budgetAmount,
+          currentAmount: bucket.currentAmount,
+          spentCents: bucket.spentCents,
+          strictMode: bucket.strictMode,
+          category: bucket.category,
+          periodStart,
+          periodEnd,
+        },
+      });
+    }
+  }
+  return bucketDefinitions.length;
+}
+
+async function seedCategoryPreferenceIfMissing(userId: string) {
+  const categoryPreferenceModel = getCategoryPreferenceModel();
+  if (!categoryPreferenceModel?.findFirst || !categoryPreferenceModel.create) return;
+  const existing = await categoryPreferenceModel.findFirst({
+    where: { userId, category: RewardCategory.ENTERTAINMENT },
+  });
+  if (!existing) {
+    await categoryPreferenceModel.create({
+      data: {
+        userId,
+        category: RewardCategory.ENTERTAINMENT,
+        mode: CategoryBudgetMode.UNBUDGETED,
+      },
+    });
+  }
+}
+
+export async function seedCardsAndBucketsForUser(
+  userId: string,
+  options?: {
+    periodStart?: Date;
+    periodEnd?: Date;
+    includeCategoryPreference?: boolean;
+  },
+): Promise<SeedCardsBucketsSummary> {
+  await assertUserExists(userId);
+
+  const now = new Date();
+  const periodStart = options?.periodStart ?? new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = options?.periodEnd ?? new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const cardsSeeded = await seedDemoCardsForUser(userId);
+  const bucketsSeeded = await seedDemoBucketsForUser(userId, periodStart, periodEnd);
+
+  if (options?.includeCategoryPreference) {
+    await seedCategoryPreferenceIfMissing(userId);
+  }
+
+  return { cards: cardsSeeded, buckets: bucketsSeeded };
 }
 
 export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> {
@@ -86,89 +242,11 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  async function upsertCard(def: (typeof cardDefinitions)[number]) {
-    const existing = await prisma.card.findFirst({
-      where: { userId, nickname: def.nickname },
-    });
-
-    const card = existing
-      ? await prisma.card.update({
-          where: { id: existing.id },
-          data: {
-            issuer: def.issuer,
-            network: def.network,
-            isCredit: def.isCredit,
-            annualFee: def.annualFee ?? null,
-          },
-        })
-      : await prisma.card.create({
-          data: {
-            userId,
-            nickname: def.nickname,
-            issuer: def.issuer,
-            network: def.network,
-            isCredit: def.isCredit,
-            annualFee: def.annualFee ?? null,
-          },
-        });
-
-    await prisma.rewardRule.deleteMany({ where: { cardId: card.id } });
-    await prisma.rewardRule.create({
-      data: {
-        cardId: card.id,
-        category: def.rule.category,
-        multiplier:
-          'multiplier' in def.rule && typeof def.rule.multiplier === 'number'
-            ? def.rule.multiplier
-            : null,
-        cashbackPercent:
-          'cashbackPercent' in def.rule && typeof def.rule.cashbackPercent === 'number'
-            ? def.rule.cashbackPercent
-            : null,
-      },
-    });
-  }
-
-  await Promise.all(cardDefinitions.map((card) => upsertCard(card)));
-  await prisma.bucket.create({
-    data: {
-      userId,
-      name: 'Dining Monthly',
-      period: BucketPeriod.MONTHLY,
-      budgetAmount: 40_000,
-      currentAmount: 25_000,
-      spentCents: 15_000,
-      strictMode: true,
-      category: RewardCategory.DINING,
-      periodStart,
-      periodEnd,
-    },
+  const { cards: cardCount, buckets } = await seedCardsAndBucketsForUser(userId, {
+    periodStart,
+    periodEnd,
+    includeCategoryPreference: true,
   });
-
-  await prisma.bucket.create({
-    data: {
-      userId,
-      name: 'Groceries Monthly',
-      period: BucketPeriod.MONTHLY,
-      budgetAmount: 30_000,
-      currentAmount: 25_000,
-      spentCents: 5_000,
-      strictMode: false,
-      category: RewardCategory.GROCERIES,
-      periodStart,
-      periodEnd,
-    },
-  });
-
-  if (categoryPreferenceModel?.create) {
-    await categoryPreferenceModel.create({
-      data: {
-        userId,
-        category: RewardCategory.ENTERTAINMENT,
-        mode: CategoryBudgetMode.UNBUDGETED,
-      },
-    });
-  }
 
   const cards = await prisma.card.findMany({ where: { userId } });
   const cardMap = cards.reduce<Record<string, string>>((acc, card) => {
@@ -244,8 +322,8 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
   }
 
   return {
-    cards: cardDefinitions.length,
-    buckets: 2,
+    cards: cardCount,
+    buckets,
     sessions: sessionsCreated,
     ledgerEntries: ledgerCreated,
   };

@@ -51,10 +51,11 @@ export function SidebarNav(): JSX.Element {
     ...(process.env.NODE_ENV === 'development'
       ? [
           {
-            label: 'Dev',
+            label: 'Dev Tools',
             items: [
-              { name: 'Vine Simulator (dev)', href: '/vine-simulator' },
-              { name: 'Bank / Plaid Simulator (dev)', href: '/bank-simulator' },
+              { name: 'Vine Terminal Simulator', href: '/vine-simulator' },
+              { name: 'Bank / Plaid Simulator', href: '/bank-simulator' },
+              { name: 'Activity Inspector', href: '/dev/activity' },
             ],
           },
         ]
