@@ -1,3 +1,4 @@
+import { RecommendationStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 export async function getSessionStats(userId: string) {
@@ -6,15 +7,15 @@ export async function getSessionStats(userId: string) {
   });
 
   const claimed = await prisma.recommendationSession.count({
-    where: { userId, status: 'CLAIMED' },
+    where: { userId, status: RecommendationStatus.CLAIMED },
   });
 
   const verified = await prisma.recommendationSession.count({
-    where: { userId, status: 'VERIFIED' },
+    where: { userId, status: RecommendationStatus.VERIFIED },
   });
 
   const expired = await prisma.recommendationSession.count({
-    where: { userId, status: 'EXPIRED' },
+    where: { userId, status: RecommendationStatus.EXPIRED },
   });
 
   return { total, claimed, verified, expired };
