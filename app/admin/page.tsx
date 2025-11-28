@@ -49,7 +49,7 @@ export default async function AdminPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <header className="space-y-1">
-        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Admin</p>
+        <p className="text-xs uppercase tracking-label text-pink-200">Admin</p>
         <h1 className="text-3xl font-semibold text-white">Admin & Tools</h1>
         <p className="text-slate-300">
           Dev utilities live here. Seed/nuke demo data and check basic health.

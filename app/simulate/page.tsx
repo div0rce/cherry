@@ -146,7 +146,7 @@ export default async function SimulatePage({
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry Lab</p>
+        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Lab</p>
         <h1 className="text-3xl font-semibold text-white">Simulate spend</h1>
         <p className="text-slate-300">
           Post simulated transactions and see the engine decision history (card, bucket, rewards).
@@ -240,7 +240,7 @@ export default async function SimulatePage({
 
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
-                            <p className="text-xs uppercase text-slate-400 tracking-[0.15em]">Card</p>
+                            <p className="text-xs uppercase text-slate-400 tracking-label-tight">Card</p>
                             {cardDisplayName ? (
                               <p className="text-sm font-semibold text-white">{cardDisplayName}</p>
                             ) : (
@@ -249,7 +249,7 @@ export default async function SimulatePage({
                           </div>
 
                           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
-                            <p className="text-xs uppercase text-slate-400 tracking-[0.15em]">Bucket</p>
+                            <p className="text-xs uppercase text-slate-400 tracking-label-tight">Bucket</p>
                             {bucketLabel ? (
                               <div className="text-sm text-slate-200">
                                 <p className="font-semibold text-white">
@@ -317,7 +317,7 @@ function SimulationFilters({
   return (
     <form method="get" className="flex flex-wrap items-end gap-3 px-4 py-3 border-b border-slate-200">
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-[0.15em] text-slate-500">Status</label>
+        <label className="block text-xs uppercase tracking-label-tight text-slate-500">Status</label>
         <select
           name="status"
           defaultValue={status || 'ALL'}
@@ -329,7 +329,7 @@ function SimulationFilters({
         </select>
       </div>
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-[0.15em] text-slate-500">Category</label>
+        <label className="block text-xs uppercase tracking-label-tight text-slate-500">Category</label>
         <input
           name="category"
           defaultValue={category}

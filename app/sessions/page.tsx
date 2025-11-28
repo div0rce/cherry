@@ -48,7 +48,7 @@ export default async function SessionsPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-6 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Sessions</p>
+        <p className="text-sm uppercase tracking-label text-pink-200">Sessions</p>
         <h1 className="text-3xl font-semibold text-white">Recommendation sessions</h1>
         <p className="text-slate-300">
           Latest sessions across scans and Vine. Confirmed sessions earn Cherry Points.

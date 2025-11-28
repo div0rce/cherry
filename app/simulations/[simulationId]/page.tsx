@@ -37,7 +37,7 @@ export default async function SimulationDetailPage({
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="space-y-1">
-        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Simulation</p>
+        <p className="text-xs uppercase tracking-label text-pink-200">Simulation</p>
         <h1 className="text-3xl font-semibold text-white">
           {sim.name || 'Simulation'} · {sim.id.slice(0, 6)}
         </h1>

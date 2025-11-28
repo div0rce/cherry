@@ -27,7 +27,7 @@ export default async function HistoryPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="space-y-1">
-        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">History</p>
+        <p className="text-xs uppercase tracking-label text-pink-200">History</p>
         <h1 className="text-3xl font-semibold text-white">Purchase History</h1>
         <p className="text-slate-300">Recent simulated transactions across all simulations.</p>
       </header>

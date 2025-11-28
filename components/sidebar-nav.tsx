@@ -55,14 +55,14 @@ export function SidebarNav() {
   return (
     <aside className="hidden md:sticky md:top-0 md:h-screen md:overflow-y-auto w-64 shrink-0 border-r border-white/5 bg-slate-950/60 px-4 py-6 text-slate-100 md:block">
       <div className="mb-8 px-2">
-        <div className="text-xs uppercase tracking-[0.2em] text-pink-200">Cherry</div>
+        <div className="text-xs uppercase tracking-label text-pink-200">Cherry</div>
         <div className="text-lg font-semibold text-white">Dev Console</div>
       </div>
 
       <nav className="space-y-6">
         {navSections.map((section) => (
           <div key={section.label} className="space-y-2">
-            <p className="px-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+            <p className="px-2 text-xs uppercase tracking-label text-slate-500">
               {section.label}
             </p>
             <ul className="space-y-1">

@@ -189,7 +189,7 @@ export default function ScanClient() {
           <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recommendation</p>
+                <p className="text-xs uppercase tracking-label text-slate-400">Recommendation</p>
                 <h2 className="text-xl font-semibold text-white">
                   {d.category} · ${(d.amountCents / 100).toFixed(2)} ·{' '}
                   {d.budget.name || 'No bucket'}
@@ -282,7 +282,7 @@ export default function ScanClient() {
       case 'claimed':
         return (
           <div className="space-y-3 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg text-slate-100">
-            <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Claim submitted</p>
+            <p className="text-xs uppercase tracking-label text-pink-200">Claim submitted</p>
             <p className="text-lg font-semibold text-white">
               {state.pointsPending} Cherry Points pending verification.
             </p>
@@ -307,7 +307,7 @@ export default function ScanClient() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-6 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry</p>
+        <p className="text-sm uppercase tracking-label text-pink-200">Cherry</p>
         <h1 className="text-3xl font-semibold text-white">Scan before you pay</h1>
         <p className="text-slate-300">
           Start a recommendation session, see the best card, and confirm to earn Cherry Points.

@@ -41,7 +41,7 @@ export default async function RootLayout({
             <SidebarNav />
             <div className="flex-1 flex flex-col bg-slate-900">
               <header className="flex items-center justify-between border-b border-white/5 bg-slate-900/70 px-6 py-4 backdrop-blur">
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-pink-200">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-label text-pink-200">
                   <span className="rounded-full bg-pink-600/20 px-2 py-1 text-pink-100">
                     Local
                   </span>

@@ -68,7 +68,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.25em] text-pink-200">Cherry Lab</p>
+        <p className="text-xs uppercase tracking-label-wide text-pink-200">Cherry Lab</p>
         <h1 className="text-3xl font-semibold text-white">Cherry Dev Console</h1>
         <p className="text-slate-300">
           Simulate card routing, rewards, and bucket budgets. Flow: Cards → Buckets → Simulate →
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-pink-500/40 bg-pink-600/10 p-4 shadow-lg">
-          <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Cherry Points</p>
+          <p className="text-xs uppercase tracking-label text-pink-200">Cherry Points</p>
           <p className="mt-2 text-3xl font-semibold text-white">{cherryPoints}</p>
           <p className="mt-1 text-sm text-pink-100">
             Earn points when you follow Cherry&apos;s recommendations.
@@ -112,7 +112,7 @@ export default async function DashboardPage() {
         <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recent</p>
+              <p className="text-xs uppercase tracking-label text-slate-400">Recent</p>
               <h2 className="text-lg font-semibold text-white">Simulations</h2>
             </div>
             <Link href="/simulations" className="text-sm text-pink-200 hover:text-pink-100">
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
         <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recent</p>
+              <p className="text-xs uppercase tracking-label text-slate-400">Recent</p>
               <h2 className="text-lg font-semibold text-white">Transactions</h2>
             </div>
             <Link href="/history" className="text-sm text-pink-200 hover:text-pink-100">
@@ -206,7 +206,7 @@ function QuickLink({
       href={href}
       className="group rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10"
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-pink-200">{title}</p>
+      <p className="text-xs uppercase tracking-label text-pink-200">{title}</p>
       <p className="text-sm text-slate-200 mt-1">{description}</p>
       <span className="mt-3 inline-flex items-center text-xs font-semibold text-pink-100 group-hover:text-white">
         Go →
@@ -221,7 +221,7 @@ function StatCard({ label, value, href }: { label: string; value: number; href: 
       href={href}
       className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10"
     >
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <p className="text-xs uppercase tracking-label text-slate-400">{label}</p>
       <p className="mt-2 text-3xl font-semibold text-white">{value}</p>
     </Link>
   );
