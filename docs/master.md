@@ -119,7 +119,7 @@ Inputs: new Prisma models (RecommendationSession, optional CherryPointLedger), e
     1. Add migrations;
     2. implement /api/sessions POST to create a session from merchant/amount with engine decision;
     3. add /api/sessions/[id]/confirm to record chosen card/outcome amount and award Cherry Points;
-    4. build a minimal UI page “Scan before you pay” that calls these endpoints and shows recommended card + bucket impact + points offer.
+    4. build a minimal UI page “Manual Lookup & Rewards” that calls these endpoints and shows recommended card + bucket impact + points offer.
 
 * Outputs: session records persisted; ability to confirm and see points awarded.
 

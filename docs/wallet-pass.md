@@ -24,7 +24,7 @@ The server will not attempt to load missing certs or generate a pass until the f
 
 # Cherry Wallet Pass (Apple Wallet)
 
-Cherry provides a non-payment Apple Wallet pass (Cherry Pass) that behaves like a loyalty/rewards card and can be used to trigger the “scan before you pay” flow.
+Cherry provides a non-payment Apple Wallet pass (Cherry Pass) that behaves like a loyalty/rewards card and can be used to trigger the “Manual Lookup & Rewards” flow.
 
 ## How it works
 - Endpoint: `GET /api/wallet/cherry-pass`

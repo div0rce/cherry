@@ -377,7 +377,7 @@ Instead of a “Cherry Card” that pretends to be a payment card, Cherry has a 
   * Cherry logo
   * Your name
   * Your current Cherry Points
-  * A “Scan before you pay” subtitle.
+  * A “Manual Lookup & Rewards” subtitle.
 * When you tap it:
 
   * It opens the Cherry app / App Clip.
