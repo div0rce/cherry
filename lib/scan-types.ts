@@ -6,6 +6,7 @@ export type ScanRequestBody = {
   merchantName: string;
   category?: RewardCategory;
   expectedAmountCents?: number;
+  mccCode?: number | null;
 };
 
 export type ScanResponseBody = {

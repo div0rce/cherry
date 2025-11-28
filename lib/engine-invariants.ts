@@ -10,8 +10,8 @@ export function validateEngineDecision(decision: EngineDecision): void {
     cherryIncentive,
   } = decision;
 
-  if (amountCents <= 0) {
-    throw new Error('Engine invariant violated: amountCents must be positive');
+  if (amountCents < 0) {
+    throw new Error('Engine invariant violated: amountCents must be non-negative');
   }
 
   if (budget.hasBucket) {

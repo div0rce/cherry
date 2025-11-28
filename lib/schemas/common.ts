@@ -12,4 +12,4 @@ export const OverallVerdictSchema = z.nativeEnum($Enums.OverallVerdict);
 export const RecommendationStatusSchema = z.nativeEnum($Enums.RecommendationStatus);
 
 // Simple integer cents type
-export const CentsSchema = z.number().int();
+export const CentsSchema = z.number().int().nonnegative();

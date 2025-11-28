@@ -98,6 +98,7 @@ function computeCherryIncentive(amountCents: number, budgetVerdict: BudgetVerdic
   pointsIfFollowed: number;
   expiryMinutes: number;
 } {
+  if (amountCents <= 0) return { pointsIfFollowed: 0, expiryMinutes: 0 };
   const base = Math.min(Math.floor(amountCents / 1000), 20); // 0-20 base points
   let multiplier = 1;
   if (budgetVerdict === 'HEALTHY') multiplier = 2;
@@ -191,8 +192,8 @@ async function resolveBestCardForTransaction(input: {
 }
 
 export async function runEngine(input: EngineInput): Promise<EngineDecision> {
-  if (!input.amountCents || input.amountCents <= 0) {
-    throw new Error('amountCents must be a positive integer');
+  if (input.amountCents == null || Number.isNaN(input.amountCents) || input.amountCents < 0) {
+    throw new Error('amountCents must be a non-negative integer');
   }
 
   const category = await resolveCategory({

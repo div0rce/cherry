@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withUser } from '@/lib/with-user';
 import { runEngine } from '@/lib/engine';
-import { inferCategoryForMerchant } from '@/lib/scan-helpers';
+import { resolveScanCategory } from '@/lib/scan-helpers';
 import type { ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
 import { ScanRequestSchema } from '@/lib/schemas/scan';
 import { parseJsonBody } from '@/lib/validation';
-import { RewardCategory } from '@prisma/client';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -22,9 +21,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const categoryHint = body.category
-      ? body.category
-      : (await inferCategoryForMerchant(userId, body.merchantName)) ?? RewardCategory.OTHER;
+    const category = await resolveScanCategory({
+      userId,
+      merchantName: body.merchantName,
+      mccCode: typeof body.mccCode === 'number' ? body.mccCode : null,
+      explicitCategory: body.category ?? null,
+    });
 
     const amountCents =
       typeof body.expectedAmountCents === 'number' &&
@@ -33,19 +35,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? Math.floor(body.expectedAmountCents)
         : 0;
 
-    if (amountCents <= 0) {
-      return NextResponse.json(
-        { error: 'expectedAmountCents must be greater than 0' },
-        { status: 400 }
-      );
-    }
-
     try {
       const decision = await runEngine({
         userId,
         amountCents,
-        category: categoryHint,
+        category,
         merchantName: body.merchantName,
+        mccCode: typeof body.mccCode === 'number' ? body.mccCode : null,
       });
       validateEngineDecision(decision);
 
