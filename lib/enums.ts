@@ -10,3 +10,11 @@ export type CategoryCoverageModeDb = $Enums.CategoryCoverageModeDb;
 export type SessionAnomalyCode = $Enums.SessionAnomalyCode;
 export type LedgerAnomalyCode = $Enums.LedgerAnomalyCode;
 export type VerificationStatus = $Enums.VerificationStatus;
+
+export const VineOrderSource = {
+  VINE_SIM: 'VINE_SIM',
+  VINE_DEVICE: 'VINE_DEVICE',
+  APP_SCAN: 'APP_SCAN',
+} as const;
+
+export type VineOrderSource = (typeof VineOrderSource)[keyof typeof VineOrderSource];

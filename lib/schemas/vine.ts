@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CentsSchema } from './common';
-import { VineOrderSource } from '@/lib/enums';
+import { mccSchema } from '@/lib/schemas/mcc';
+const vineOrderSourceValues = ['VINE_SIM', 'VINE_DEVICE', 'APP_SCAN'] as const;
 
 export const OrderContextSchema = z.object({
   deviceId: z.string().min(1),
@@ -10,12 +11,8 @@ export const OrderContextSchema = z.object({
   merchantName: z.string().optional(),
   amountCents: CentsSchema,
   currency: z.literal('USD').optional(),
-  mccCode: z.number().int().optional().nullable(),
+  mccCode: mccSchema.optional().nullable(),
   timestamp: z.number().int(),
   nonce: z.string().optional(),
-  source: z.enum([
-    VineOrderSource.VINE_SIM,
-    VineOrderSource.VINE_DEVICE,
-    VineOrderSource.APP_SCAN,
-  ]),
+  source: z.enum(vineOrderSourceValues),
 });

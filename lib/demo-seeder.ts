@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from './prisma';
 import {
   BucketPeriod,
   CategoryBudgetMode,
@@ -11,8 +11,9 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import type { OverallVerdict } from '@/lib/enums';
-import { runEngine } from '@/lib/engine';
+import type { OverallVerdict } from './enums';
+import { runEngine } from './engine';
+import { ensureUser } from './ensure-user';
 
 const cardDefinitions = [
   {
@@ -58,12 +59,7 @@ export type SeedDemoSummary = {
 };
 
 async function assertUserExists(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    throw new Error(
-      `Cannot seed demo data: user ${userId} does not exist. Sign in or create the user first (e.g., via dev-login).`
-    );
-  }
+  await ensureUser(userId);
 }
 
 function getCategoryPreferenceModel() {
