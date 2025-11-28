@@ -2,9 +2,11 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, RewardCategory } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { withUser } from '@/lib/with-user';
 import { CardCreateSchema, CardDeleteSchema } from '@/lib/schemas/cards';
 import { parseJsonBody } from '@/lib/validation';
+import { ensureUser } from '@/lib/ensure-user';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -135,14 +137,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       };
     }
 
-    const card = await prisma.card.create({
-      data,
-      include: {
-        rewardRules: true,
-      },
-    });
+    await ensureUser(userId);
 
-    return NextResponse.json(card, { status: 201 });
+    try {
+      const card = await prisma.card.create({
+        data,
+        include: {
+          rewardRules: true,
+        },
+      });
+
+      return NextResponse.json(card, { status: 201 });
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'User not found for card creation' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ error: 'Failed to create card' }, { status: 500 });
+    }
   });
 }
 

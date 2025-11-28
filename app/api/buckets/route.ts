@@ -1,10 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 import { BucketCreateSchema, BucketDeleteSchema } from '@/lib/schemas/buckets';
 import { parseJsonBody } from '@/lib/validation';
+import { ensureUser } from '@/lib/ensure-user';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -122,6 +124,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const now = new Date();
       const { start: periodStart, end: periodEnd } = getPeriodWindow(period as BucketPeriod, now);
 
+      await ensureUser(userId);
+
       const bucket = await prisma.bucket.create({
         data: {
           userId,
@@ -145,6 +149,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       return NextResponse.json(bucket, { status: 201 });
     } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2003') {
+        logError('Bucket FK violation', error);
+        return new NextResponse('User foreign key violation while creating bucket', {
+          status: 500,
+        });
+      }
       logError('Error creating bucket', error);
       return new NextResponse('Failed to create bucket', { status: 500 });
     }
