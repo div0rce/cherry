@@ -110,6 +110,7 @@ Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in
 - `docs/wallet-pass.md` — Wallet pass scaffold and 501 gating.
 - `docs/api.md` — endpoint reference, including `/api/scan` (advisory only).
 - `AGENTS.md` — operating rules for contributors/agents.
+- `docs/repo-structure.md` — canonical layout of this repo and conventions for new code.
 
 ---
 
