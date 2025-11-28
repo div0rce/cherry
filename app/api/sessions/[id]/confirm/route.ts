@@ -4,12 +4,8 @@ import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
-
-type ConfirmRequestBody = Partial<{
-  actualAmountCents: number;
-  usedCardId: string;
-  followedRecommendation: boolean;
-}>;
+import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
+import { parseJsonBody } from '@/lib/validation';
 
 export async function POST(
   request: NextRequest,
@@ -22,12 +18,9 @@ export async function POST(
         return NextResponse.json({ error: 'session id is required' }, { status: 400 });
       }
 
-      let body: ConfirmRequestBody;
-      try {
-        body = (await request.json()) as ConfirmRequestBody;
-      } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-      }
+      const parsed = await parseJsonBody(request, ConfirmSessionSchema);
+      if (!parsed.ok) return parsed.response;
+      const body = parsed.data;
 
       const session = await prisma.recommendationSession.findUnique({
         where: { id },

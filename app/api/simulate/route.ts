@@ -5,21 +5,17 @@ import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
 import { runEngine } from '@/lib/engine';
 import { logError, logWarn } from '@/lib/logger';
-
-type Body = Partial<{
-  amountCents: number;
-  category: string;
-  merchantName: string | null;
-  simulationId: string;
-  mccCode: number;
-}>;
+import { parseJsonBody } from '@/lib/validation';
+import { SimulateRequestSchema } from '@/lib/schemas/simulate';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
-      const body = (await request.json()) as Body;
+      const parsed = await parseJsonBody(request, SimulateRequestSchema);
+      if (!parsed.ok) return parsed.response;
+      const body = parsed.data;
 
       const errors: string[] = [];
       const normalizedCategory =

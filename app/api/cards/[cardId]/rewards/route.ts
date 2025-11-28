@@ -6,6 +6,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
+import { RewardRuleCreateSchema, RewardRuleDeleteSchema } from '@/lib/schemas/cards';
+import { parseJsonBody } from '@/lib/validation';
 
 /**
  * Fetch the card for the current user to prevent cross-user access and give a
@@ -60,11 +62,6 @@ export async function GET(
  *   capAmountCents?: number // optional cap; null means no cap
  * }
  */
-type RewardRuleBody = {
-  category?: unknown;
-  multiplier?: unknown;
-  capAmountCents?: unknown;
-};
 
 export async function POST(
   request: NextRequest,
@@ -72,8 +69,9 @@ export async function POST(
 ): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { cardId } = await params;
-    const body = (await request.json()) as RewardRuleBody;
-    const { category, multiplier, capAmountCents } = body ?? {};
+    const parsed = await parseJsonBody(request, RewardRuleCreateSchema);
+    if (!parsed.ok) return parsed.response;
+    const { category, multiplier, capAmountCents } = parsed.data;
 
     if (!category || typeof category !== 'string') {
       return new NextResponse('category is required and must be a string', {
@@ -132,18 +130,15 @@ export async function POST(
  *   rewardRuleId: string
  * }
  */
-type DeleteRewardRuleBody = {
-  rewardRuleId?: unknown;
-};
-
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { cardId } = await params;
-    const body = (await request.json()) as DeleteRewardRuleBody;
-    const { rewardRuleId } = body ?? {};
+    const parsed = await parseJsonBody(request, RewardRuleDeleteSchema);
+    if (!parsed.ok) return parsed.response;
+    const { rewardRuleId } = parsed.data;
 
     if (!rewardRuleId || typeof rewardRuleId !== 'string') {
       return new NextResponse('rewardRuleId is required', { status: 400 });

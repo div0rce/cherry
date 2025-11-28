@@ -4,8 +4,8 @@ import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
-
-type VerifyBody = Partial<{ verified: boolean }>;
+import { VerifySessionSchema } from '@/lib/schemas/sessions';
+import { parseJsonBody } from '@/lib/validation';
 
 export async function POST(
   request: NextRequest,
@@ -18,16 +18,9 @@ export async function POST(
         return NextResponse.json({ error: 'session id is required' }, { status: 400 });
       }
 
-      let body: VerifyBody;
-      try {
-        body = (await request.json()) as VerifyBody;
-      } catch {
-        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-      }
-
-      if (typeof body.verified !== 'boolean') {
-        return NextResponse.json({ error: 'verified must be a boolean' }, { status: 400 });
-      }
+      const parsed = await parseJsonBody(request, VerifySessionSchema);
+      if (!parsed.ok) return parsed.response;
+      const body = parsed.data;
 
       const session = await prisma.recommendationSession.findUnique({
         where: { id },

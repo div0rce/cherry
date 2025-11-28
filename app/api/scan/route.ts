@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { runEngine } from '@/lib/engine';
 import { inferCategoryForMerchant } from '@/lib/scan-helpers';
-import type { ScanRequestBody, ScanResponseBody } from '@/lib/scan-types';
+import type { ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
+import { ScanRequestSchema } from '@/lib/schemas/scan';
+import { parseJsonBody } from '@/lib/validation';
+import { RewardCategory } from '@prisma/client';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
-    let body: ScanRequestBody;
-    try {
-      const raw = (await request.json()) as unknown;
-      if (raw === null || typeof raw !== 'object') {
-        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-      }
-      body = raw as ScanRequestBody;
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, ScanRequestSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     if (!body.merchantName || typeof body.merchantName !== 'string') {
       return NextResponse.json(

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
+import { BucketCreateSchema, BucketDeleteSchema } from '@/lib/schemas/buckets';
+import { parseJsonBody } from '@/lib/validation';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -49,33 +51,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   });
 }
 
-/**
- * POST /api/buckets
- *
- * Creates a new bucket for the current user.
- * Expects JSON body:
- * {
- *   name: string,
- *   period: "WEEKLY" | "MONTHLY",
- *   budgetAmountCents: number,
- *   strictMode?: boolean,
- *   category: string
- * }
- */
-type CreateBucketBody = {
-  name?: unknown;
-  period?: unknown;
-  budgetAmountCents?: unknown;
-  currentAmountCents?: unknown;
-  strictMode?: unknown;
-  category?: unknown;
-};
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
-      const body = (await request.json()) as CreateBucketBody;
-
+      const parsed = await parseJsonBody(request, BucketCreateSchema);
+      if (!parsed.ok) return parsed.response;
       const {
         name,
         period,
@@ -83,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         currentAmountCents,
         strictMode = true,
         category,
-      } = body ?? {};
+      } = parsed.data;
 
       if (
         typeof name !== 'string' ||
@@ -171,22 +151,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   });
 }
 
-/**
- * DELETE /api/buckets
- *
- * Legacy delete endpoint using body { bucketId }. Prefer /api/buckets/[bucketId].
- */
-type DeleteBucketBody = { bucketId?: unknown };
-
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
-      const body = (await request.json()) as DeleteBucketBody;
-      const { bucketId } = body ?? {};
-
-      if (!bucketId || typeof bucketId !== 'string') {
-        return new NextResponse('bucketId is required', { status: 400 });
-      }
+      const parsed = await parseJsonBody(request, BucketDeleteSchema);
+      if (!parsed.ok) return parsed.response;
+      const { bucketId } = parsed.data;
 
       const bucket = await prisma.bucket.findFirst({
         where: { id: bucketId, userId },

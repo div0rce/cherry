@@ -8,66 +8,32 @@ import {
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { runEngine } from '@/lib/engine';
-import { logError, logWarn } from '@/lib/logger';
-
-type SessionRequestBody = Partial<{
-  merchantName: string;
-  amountCents: number;
-  category: string | RewardCategory;
-  mccCode: number;
-  currency: string;
-  deviceId: string;
-  storeId: string;
-  terminalId: string;
-  orderId: string;
-}>;
+import { logError } from '@/lib/logger';
+import { CreateSessionSchema } from '@/lib/schemas/sessions';
+import { parseJsonBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
-      const body = (await request.json()) as SessionRequestBody;
-
-      const errors: string[] = [];
-
-      if (typeof body.amountCents !== 'number' || Number.isNaN(body.amountCents)) {
-        errors.push('amountCents must be a number');
-      } else if (body.amountCents <= 0) {
-        errors.push('amountCents must be greater than 0');
-      }
-
-      if (body.merchantName != null && typeof body.merchantName !== 'string') {
-        errors.push('merchantName must be a string when provided');
-      }
+      const parsed = await parseJsonBody(request, CreateSessionSchema);
+      if (!parsed.ok) return parsed.response;
+      const body = parsed.data;
 
       const categoryHint =
         typeof body.category === 'string' && body.category.trim().length > 0
           ? body.category.trim().toUpperCase()
           : null;
 
-      let mccCode: number | null = null;
-      if (body.mccCode != null) {
-        const parsed = Number.parseInt(String(body.mccCode), 10);
-        if (!Number.isInteger(parsed) || String(parsed).length !== 4) {
-          errors.push('mccCode must be a 4-digit integer when provided');
-        } else {
-          mccCode = parsed;
-        }
-      }
-
-      if (errors.length > 0) {
-        logWarn('Validation failed in /api/sessions', { userId, errors, body });
-        return NextResponse.json(
-          { error: 'Validation failed', details: errors },
-          { status: 400 }
-        );
-      }
-
       const merchantName =
         typeof body.merchantName === 'string' && body.merchantName.trim().length > 0
           ? body.merchantName.trim()
           : null;
 
-      const amountCents = Math.floor(body.amountCents as number);
+      const amountCents = Math.floor(body.amountCents);
+      const mccCode =
+        typeof body.mccCode === 'number' && Number.isInteger(body.mccCode)
+          ? body.mccCode
+          : null;
 
       const decision = await runEngine({
         userId,

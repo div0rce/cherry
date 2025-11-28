@@ -3,6 +3,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
+import { CardCreateSchema, CardDeleteSchema } from '@/lib/schemas/cards';
+import { parseJsonBody } from '@/lib/validation';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -99,42 +101,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   });
 }
 
-type CardBody = {
-  nickname?: unknown;
-  issuer?: unknown;
-  network?: unknown;
-  isCredit?: unknown;
-  annualFee?: unknown;
-  rewardRules?: unknown;
-};
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
-    const body = (await request.json()) as CardBody;
-    const { nickname, issuer, network, isCredit, annualFee, rewardRules } = body;
-
-    if (
-      typeof nickname !== 'string' ||
-      typeof issuer !== 'string' ||
-      typeof network !== 'string'
-    ) {
-      return new NextResponse('Missing fields', { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, CardCreateSchema);
+    if (!parsed.ok) return parsed.response;
+    const { nickname, issuer, network, isCredit, annualFee, rewardRules } = parsed.data;
 
     const nicknameStr = nickname.trim();
     const issuerStr = issuer.trim();
     const networkStr = network.trim();
-    if (!nicknameStr || !issuerStr || !networkStr) {
-      return new NextResponse('Missing fields', { status: 400 });
-    }
-
-    let annualFeeValue: number | null = null;
-    if (annualFee != null) {
-      if (typeof annualFee !== 'number' || Number.isNaN(annualFee)) {
-        return new NextResponse('annualFee must be a number when provided', { status: 400 });
-      }
-      annualFeeValue = annualFee;
-    }
 
     const parsedRules = parseRewardRules(rewardRules);
     if (!parsedRules.ok) {
@@ -147,7 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       issuer: issuerStr,
       network: networkStr,
       isCredit: Boolean(isCredit),
-      annualFee: annualFeeValue,
+      annualFee: annualFee ?? null,
     };
 
     if (parsedRules.rules.length > 0) {
@@ -171,12 +146,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   });
 }
 
-type DeleteCardBody = { cardId?: unknown };
-
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
-    const body = (await request.json()) as DeleteCardBody;
-    const { cardId } = body ?? {};
+    const parsed = await parseJsonBody(request, CardDeleteSchema);
+    if (!parsed.ok) return parsed.response;
+    const { cardId } = parsed.data;
 
     if (!cardId || typeof cardId !== 'string') {
       return new NextResponse('cardId is required', { status: 400 });

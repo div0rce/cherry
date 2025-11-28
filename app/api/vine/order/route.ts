@@ -4,31 +4,18 @@ import { withUser } from '@/lib/with-user';
 import { logError, logWarn } from '@/lib/logger';
 import { runRecommendationFromOrderContext } from '@/lib/vine/run-recommendation';
 import type { OrderContext } from '@/lib/vine/order-context';
-
-type VineOrderRequest = Partial<{
-  merchantName: string;
-  amountCents: number;
-  mccCode: number;
-  deviceId: string;
-  storeId: string;
-  terminalId: string;
-  orderId: string;
-  nonce: string;
-  currency: string;
-}>;
+import { OrderContextSchema } from '@/lib/schemas/vine';
+import { parseJsonBody } from '@/lib/validation';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
-    let body: VineOrderRequest;
-    try {
-      body = (await request.json()) as VineOrderRequest;
-    } catch {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
+    const parsed = await parseJsonBody(request, OrderContextSchema);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.data;
 
     const errors: string[] = [];
 
-    if (!body.deviceId || typeof body.deviceId !== 'string' || body.deviceId.trim().length === 0) {
+    if (!body.deviceId || body.deviceId.trim().length === 0) {
       errors.push('deviceId is required');
     }
 
@@ -36,20 +23,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       errors.push('amountCents must be a number');
     } else if (body.amountCents <= 0) {
       errors.push('amountCents must be greater than 0');
-    }
-
-    if (body.merchantName != null && typeof body.merchantName !== 'string') {
-      errors.push('merchantName must be a string when provided');
-    }
-
-    let mccCode: number | null = null;
-    if (body.mccCode != null) {
-      const parsed = Number.parseInt(String(body.mccCode), 10);
-      if (!Number.isInteger(parsed) || String(parsed).length !== 4) {
-        errors.push('mccCode must be a 4-digit integer when provided');
-      } else {
-        mccCode = parsed;
-      }
     }
 
     if (errors.length > 0) {
@@ -61,16 +34,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     try {
-      const orderContextBase: OrderContext = {
-        deviceId: body.deviceId!.trim(),
+      const mccCode =
+        typeof body.mccCode === 'number' && Number.isInteger(body.mccCode) ? body.mccCode : null;
+
+      const orderContext: OrderContext = {
+        deviceId: body.deviceId.trim(),
         amountCents: Math.floor(body.amountCents as number),
         currency: 'USD',
         timestamp: Date.now(),
         source: 'VINE_SIM',
-      };
-
-      const orderContext: OrderContext = {
-        ...orderContextBase,
         ...(typeof body.storeId === 'string' && body.storeId.trim().length > 0
           ? { storeId: body.storeId.trim() }
           : {}),
