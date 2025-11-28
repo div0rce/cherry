@@ -112,6 +112,11 @@ Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in
 - `AGENTS.md` — operating rules for contributors/agents.
 - `docs/repo-structure.md` — canonical layout of this repo and conventions for new code.
 
+### Cherry Wallet Pass (storeCard, not payment)
+- Endpoint: `GET /api/wallet/cherry-pass`
+- Default behavior: returns **501 Not Implemented** unless `CHERRY_WALLET_PASS_ENABLED=true` **and** all Apple Wallet env vars are set; no cert/file access occurs otherwise.
+- Purpose: loyalty-style trigger into the advisory flow; never a payment instrument. See `docs/wallet-pass.md` for full details.
+
 ---
 
 ## Editor/Tooling Notes

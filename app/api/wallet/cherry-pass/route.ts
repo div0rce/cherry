@@ -4,9 +4,23 @@ import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
 import { generateCherryPass } from '@/lib/wallet/cherryPass';
 import { logError } from '@/lib/logger';
+import { getWalletPassConfigStatus } from '@/lib/wallet/config';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
+    const configStatus = getWalletPassConfigStatus();
+    if (!configStatus.ok) {
+      return NextResponse.json(
+        {
+          error: 'wallet_pass_not_configured',
+          reason: configStatus.reason,
+          message:
+            'Cherry Wallet Pass is scaffolded only; enable CHERRY_WALLET_PASS_ENABLED and provide Apple Wallet env vars to generate a pass.',
+        },
+        { status: 501 }
+      );
+    }
+
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
