@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function getUserIdFromSession(): Promise<string | null> {
@@ -14,4 +15,12 @@ export async function getCurrentUserId(): Promise<string> {
     throw new Error('User not authenticated');
   }
   return userId;
+}
+
+export async function getCurrentUserIdOrRedirect(callbackUrl = '/'): Promise<string> {
+  try {
+    return await getCurrentUserId();
+  } catch {
+    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  }
 }

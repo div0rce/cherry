@@ -38,11 +38,8 @@ export function SidebarNav(): JSX.Element {
       ],
     },
     {
-      label: 'History',
-      items: [
-        { name: 'Purchase History', href: '/history' },
-        { name: 'Statements', href: '/statements' },
-      ],
+      label: 'Activity',
+      items: [{ name: 'Activity', href: '/activity' }],
     },
     {
       label: 'Admin',

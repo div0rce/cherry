@@ -182,6 +182,8 @@ model User {
   recommendationSessions RecommendationSession[]
   cherryPointLedgerEntries CherryPointLedger[]
   categoryPreferences CategoryPreference[]
+  bankTransactions        BankTransaction[]
+  merchantObservations    MerchantObservation[]
 }
 
 model Card {
@@ -198,6 +200,7 @@ model Card {
   rewardRules RewardRule[]
   simulations SimulatedTransaction[]
   recommendationSessions RecommendationSession[]
+  ledgerEntries          CherryPointLedger[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -386,12 +389,18 @@ model CherryPointLedger {
   revokedAt DateTime?
   isAnomalous Boolean          @default(false)
   anomalyCode LedgerAnomalyCode @default(NONE)
+  merchantObservation   MerchantObservation? @relation(fields: [merchantObservationId], references: [id], onDelete: SetNull)
+  merchantObservationId String?
+  card                  Card? @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  cardId                String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([sessionId])
+  @@index([merchantObservationId])
+  @@index([cardId])
 }
 
 model CategoryPreference {
@@ -406,6 +415,55 @@ model CategoryPreference {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, category])
+}
+
+model MerchantObservation {
+  id               String   @id @default(cuid())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  merchantName     String?
+  mcc              Int?
+  city             String?
+  region           String?
+  country          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  bankTx     BankTransaction[]
+  ledgerRows CherryPointLedger[]
+
+  @@index([userId, merchantName])
+  @@index([userId, merchantName, city, region])
+  @@unique([userId, merchantName, mcc], map: "user_merchant_mcc_unique")
+}
+
+model BankTransaction {
+  id               String   @id @default(cuid())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  accountId        String
+  cardBrand        String?
+  cardLast4        String?
+  merchantName     String?
+  merchantCity     String?
+  merchantRegion   String?
+  merchantCountry  String?
+  mcc              Int?
+  amount           Decimal
+  currency         String
+  direction        String
+  transactionType  String?
+  isRecurring      Boolean? @default(false)
+  occurredAt       DateTime
+  raw              Json?
+  merchantObservation   MerchantObservation? @relation(fields: [merchantObservationId], references: [id], onDelete: SetNull)
+  merchantObservationId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, merchantName])
 }
 
 model Account {

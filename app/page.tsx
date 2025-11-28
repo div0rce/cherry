@@ -106,7 +106,7 @@ export default async function DashboardPage(): Promise<JSX.Element | null> {
         <StatCard label="Total Cards" value={cardsCount} href="/cards" />
         <StatCard label="Total Buckets" value={bucketsCount} href="/buckets" />
         <StatCard label="Simulations" value={simulationsCount} href="/simulations" />
-        <StatCard label="Transactions" value={transactionsCount} href="/history" />
+        <StatCard label="Activity" value={transactionsCount} href="/activity" />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
@@ -152,15 +152,15 @@ export default async function DashboardPage(): Promise<JSX.Element | null> {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-label text-slate-400">Recent</p>
-              <h2 className="text-lg font-semibold text-white">Transactions</h2>
+              <h2 className="text-lg font-semibold text-white">Activity</h2>
             </div>
-            <Link href="/history" className="text-sm text-pink-200 hover:text-pink-100">
+            <Link href="/activity" className="text-sm text-pink-200 hover:text-pink-100">
               View all →
             </Link>
           </div>
           {recentTransactions.length === 0 ? (
             <p className="text-sm text-slate-400">
-              No transactions yet. Simulate a swipe to populate history.
+              No transactions yet. Simulate a swipe to populate activity.
             </p>
           ) : (
             <ul className="divide-y divide-white/5">
