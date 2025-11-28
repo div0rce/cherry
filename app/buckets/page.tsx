@@ -26,8 +26,11 @@ function formatCents(cents: number | null | undefined) {
 
 async function fetchBuckets(): Promise<Bucket[]> {
   const baseUrl = getBaseUrl();
-  const cookieStore = cookies();
-  const cookieHeader = cookieStore.toString();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map(({ name, value }) => `${name}=${value}`)
+    .join('; ');
   const init: RequestInit = {
     cache: 'no-store',
   };

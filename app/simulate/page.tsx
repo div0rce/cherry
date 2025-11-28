@@ -82,8 +82,11 @@ async function fetchSimulations(query: {
   const url = queryString ? `/api/simulations?${queryString}` : '/api/simulations';
 
   const baseUrl = getBaseUrl();
-  const cookieStore = cookies();
-  const cookieHeader = cookieStore.toString();
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map(({ name, value }) => `${name}=${value}`)
+    .join('; ');
   const init: RequestInit = { cache: 'no-store' };
   if (cookieHeader) {
     init.headers = { cookie: cookieHeader };
