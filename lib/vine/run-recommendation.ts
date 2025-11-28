@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import {
   CategoryCoverageModeDb,
   RecommendationStatus,
+  RecommendationSource,
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
@@ -48,6 +49,7 @@ export async function runRecommendationFromOrderContext(
       terminalId: ctx.terminalId ?? null,
       orderId: ctx.orderId ?? null,
       orderToken,
+      source: (ctx.source ?? 'VINE_SIM') as RecommendationSource,
       recommendedCardId: decision.card.cardId ?? null,
       recommendedBucketId: decision.budget.bucketId ?? null,
       verdict:

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import {
   CategoryCoverageModeDb,
   RecommendationStatus,
+  RecommendationSource,
   RewardCategory,
   SessionAnomalyCode,
   VerificationStatus,
@@ -14,6 +15,7 @@ import { logError } from '@/lib/logger';
 import { CreateSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -64,6 +66,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           storeId: body.storeId ?? null,
           terminalId: body.terminalId ?? null,
           orderId: body.orderId ?? null,
+          orderToken: randomUUID(),
+          source: RecommendationSource.APP_SCAN,
           recommendedCardId: decision.card.cardId ?? null,
           recommendedBucketId: decision.budget.bucketId ?? null,
           verdict:
@@ -83,11 +87,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           anomalyDetails: null,
           expiresAt,
         },
-        select: { id: true },
+        select: { id: true, orderToken: true, expiresAt: true, source: true },
       });
 
       return NextResponse.json({
         sessionId: session.id,
+        orderToken: session.orderToken,
+        expiresAt: session.expiresAt,
+        source: session.source,
         decision,
       });
     } catch (error) {

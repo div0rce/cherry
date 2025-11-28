@@ -12,6 +12,7 @@ import { withUser } from '@/lib/with-user';
 import { logError, logWarn } from '@/lib/logger';
 import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
+import { autoVerifySession } from '@/lib/verification/verify-session';
 
 const MIN_AMOUNT_RATIO = 0.85;
 const MAX_AMOUNT_RATIO = 1.15;
@@ -149,6 +150,8 @@ export async function POST(
           },
         });
       });
+
+      await autoVerifySession(session.id);
 
       if (anomalyCode !== SessionAnomalyCode.NONE) {
         logWarn('Session claim flagged anomaly', {

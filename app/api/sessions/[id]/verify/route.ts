@@ -36,7 +36,10 @@ export async function POST(
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
 
-      if (session.status === RecommendationStatus.VERIFIED || session.status === RecommendationStatus.REJECTED) {
+      if (
+        session.status === RecommendationStatus.VERIFIED ||
+        session.status === RecommendationStatus.REJECTED
+      ) {
         return NextResponse.json(
           { error: 'Session already finalized', sessionStatus: session.status },
           { status: 400 }
@@ -79,7 +82,7 @@ export async function POST(
         });
 
         await tx.cherryPointLedger.updateMany({
-          where: { sessionId: session.id },
+          where: { sessionId: session.id, status: CherryPointLedgerStatus.PENDING },
           data: {
             status: ledgerStatus,
             postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? now : null,

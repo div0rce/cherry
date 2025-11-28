@@ -7,6 +7,7 @@ import {
   LedgerAnomalyCode,
   RecommendationStatus,
   RecommendationVerdict,
+  RecommendationSource,
   RewardCategory,
   SessionAnomalyCode,
   VerificationStatus,
@@ -14,6 +15,7 @@ import {
 import type { OverallVerdict } from './enums';
 import { runEngine } from './engine';
 import { ensureUser } from './ensure-user';
+import { randomUUID } from 'crypto';
 
 const cardDefinitions = [
   {
@@ -281,6 +283,8 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
         currency: 'USD',
         recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
         recommendedBucketId: decision.budget.bucketId ?? null,
+        orderToken: randomUUID(),
+        source: RecommendationSource.APP_SCAN,
         verdict:
           decision.budget.verdict === 'BREAKS_BUDGET'
             ? RecommendationVerdict.BREAKS_BUDGET
