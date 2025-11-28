@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserId } from '@/lib/auth';
+import { EmptyStateCard } from '@/components/empty-state-card';
 
 export default async function SimulationsPage(): Promise<JSX.Element | null> {
   let userId: string;
@@ -41,7 +42,10 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
 
       <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
         {simulations.length === 0 ? (
-          <p className="text-sm text-slate-300">No simulations yet. Run one to see results.</p>
+          <EmptyStateCard
+            title="No simulations yet"
+            description="Run your first simulation to see how your buckets behave and which card Cherry would choose."
+          />
         ) : (
           <ul className="divide-y divide-white/5">
             {simulations.map((sim) => (

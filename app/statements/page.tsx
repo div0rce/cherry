@@ -1,6 +1,8 @@
 import type { JSX } from 'react';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
+import { EmptyList } from '@/components/empty-list';
+import { EmptyStateCard } from '@/components/empty-state-card';
 import MonthPicker from './client';
 
 type SearchParams = Promise<{ month?: string }>;
@@ -62,11 +64,10 @@ function coerceDate(value: Date | string): Date {
 function StatementTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-        <p className="text-sm text-slate-300">
-          No activity in this period. Connect accounts or run a simulation to populate this view.
-        </p>
-      </div>
+      <EmptyStateCard
+        title="No activity this period"
+        description="Connect accounts or run a simulation to populate this view."
+      />
     );
   }
 
@@ -178,13 +179,21 @@ export default async function StatementsPage({
         </section>
 
         <section className="grid gap-4 md:grid-cols-1">
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-            <p className="text-xs uppercase tracking-label text-slate-400">Category breakdown</p>
+          <div className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-label text-slate-400">Category breakdown</p>
+                <p className="text-xs text-slate-500">
+                  Real debits only · excludes simulations and pending items.
+                </p>
+              </div>
+            </div>
             <ul className="mt-2 space-y-1 text-sm text-slate-100">
               {stats.categoryBreakdown.length === 0 ? (
-                <li className="text-xs text-slate-500 italic">
-                  No categorized spending this month.
-                </li>
+                <EmptyList
+                  title="No real spend this month"
+                  description="When real transaction debits land, Cherry will break them down by category here."
+                />
               ) : (
                 stats.categoryBreakdown.map((cat) => (
                   <li key={cat.category} className="flex items-center justify-between">
