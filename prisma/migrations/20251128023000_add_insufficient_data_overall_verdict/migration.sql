@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "OverallVerdict" ADD VALUE 'INSUFFICIENT_DATA';
+

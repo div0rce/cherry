@@ -236,13 +236,20 @@ export function VineSimulatorClient() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleConfirm}
-              className="rounded-md border border-pink-400 px-4 py-2 text-sm font-semibold text-pink-100 hover:bg-pink-500/10 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-            >
-              Confirm and award points
-            </button>
+            {orderResult.decision.overallVerdict !== 'INSUFFICIENT_DATA' &&
+            (orderResult.decision.cherryIncentive.pointsIfFollowed ?? 0) > 0 ? (
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="rounded-md border border-pink-400 px-4 py-2 text-sm font-semibold text-pink-100 hover:bg-pink-500/10 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+              >
+                Confirm and award points
+              </button>
+            ) : (
+              <span className="text-sm text-amber-200">
+                No points available — add a card and bucket to enable rewards.
+              </span>
+            )}
             <Link href="/sessions" className="text-sm text-pink-200 hover:text-pink-100">
               View sessions →
             </Link>

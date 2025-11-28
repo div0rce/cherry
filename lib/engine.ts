@@ -13,7 +13,7 @@ export type BudgetVerdict =
 
 export type CardVerdict = 'OPTIMAL' | 'SUBOPTIMAL' | 'NO_CARD_DATA';
 
-export type OverallVerdict = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
+export type OverallVerdict = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN' | 'INSUFFICIENT_DATA';
 
 export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 
@@ -48,6 +48,7 @@ export type EngineDecision = {
     cardNickname?: string;
     multiplier?: number;
     estimatedRewards?: number;
+    hasCardData?: boolean;
   };
   overallVerdict: OverallVerdict;
   cherryIncentive: {
@@ -157,6 +158,7 @@ async function resolveBestCardForTransaction(input: {
       cardNickname: undefined,
       multiplier: undefined,
       estimatedRewards: undefined,
+      hasCardData: false,
     };
   }
 
@@ -190,6 +192,7 @@ async function resolveBestCardForTransaction(input: {
       cardNickname: undefined,
       multiplier: undefined,
       estimatedRewards: undefined,
+      hasCardData: false,
     };
   }
 
@@ -201,6 +204,7 @@ async function resolveBestCardForTransaction(input: {
     cardNickname: bestCard.nickname,
     multiplier: bestMultiplier,
     estimatedRewards,
+    hasCardData: true,
   };
 }
 
@@ -270,6 +274,30 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
     category,
     amountCents: input.amountCents,
   });
+
+  const hasAnyBucket = coverageMode === 'BUDGETED';
+  const hasAnyCard = cardInfo.hasCardData === true;
+
+  if (!hasAnyBucket && !hasAnyCard) {
+    return {
+      category,
+      amountCents: input.amountCents,
+      budget: {
+        verdict: 'UNCONFIGURED',
+        coverageMode,
+        hasBucket: false,
+      },
+      card: {
+        verdict: 'NO_CARD_DATA',
+        hasCardData: false,
+      },
+      overallVerdict: 'INSUFFICIENT_DATA',
+      cherryIncentive: {
+        pointsIfFollowed: 0,
+        expiryMinutes: 0,
+      },
+    };
+  }
 
   const overallVerdict = deriveOverallVerdict(budgetInfo.verdict, cardInfo.verdict);
   const incentive = computeCherryIncentive(input.amountCents, budgetInfo.verdict);

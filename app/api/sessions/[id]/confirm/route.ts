@@ -36,6 +36,14 @@ export async function POST(
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
 
+      if (session.overallVerdict === 'INSUFFICIENT_DATA' || (session.cherryPointsOffered ?? 0) <= 0) {
+        return NextResponse.json({
+          ok: true,
+          message: 'No points awarded: insufficient data (no card and no bucket).',
+          sessionStatus: session.status,
+        });
+      }
+
       if (session.status === RecommendationStatus.CLAIMED) {
         return NextResponse.json({ error: 'Session already claimed' }, { status: 400 });
       }

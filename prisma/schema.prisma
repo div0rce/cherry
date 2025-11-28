@@ -62,6 +62,7 @@ enum OverallVerdict {
   YELLOW
   RED
   UNKNOWN
+  INSUFFICIENT_DATA
 }
 
 enum CategoryCoverageModeDb {

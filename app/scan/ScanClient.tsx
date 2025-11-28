@@ -185,6 +185,7 @@ export default function ScanClient() {
         );
       case 'recommended': {
         const d = state.decision;
+        const canClaim = d.overallVerdict !== 'INSUFFICIENT_DATA' && d.cherryIncentive.pointsIfFollowed > 0;
         return (
           <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between">
@@ -263,16 +264,22 @@ export default function ScanClient() {
                 </p>
                 <p className="text-xs text-slate-400">Expires in {d.cherryIncentive.expiryMinutes} min</p>
               </div>
-            </div>
+              </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => confirmSession(state)}
-                className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-              >
-                I used this card
-              </button>
+              {canClaim ? (
+                <button
+                  type="button"
+                  onClick={() => confirmSession(state)}
+                  className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+                >
+                  I used this card
+                </button>
+              ) : (
+                <span className="text-sm text-amber-200">
+                  No points available — add a card and bucket to enable rewards.
+                </span>
+              )}
               <button
                 type="button"
                 onClick={reset}

@@ -5,6 +5,7 @@ import {
   CategoryCoverageModeDb,
   RecommendationStatus,
   RecommendationVerdict,
+  OverallVerdict,
   RewardCategory,
 } from '@prisma/client';
 import { runEngine } from '@/lib/engine';
@@ -210,7 +211,7 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
               : RecommendationVerdict.HEALTHY,
         budgetVerdict: decision.budget.verdict,
         cardVerdict: decision.card.verdict,
-        overallVerdict: decision.overallVerdict,
+        overallVerdict: decision.overallVerdict as OverallVerdict,
         coverageMode:
           (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
           CategoryCoverageModeDb.UNCONFIGURED,
