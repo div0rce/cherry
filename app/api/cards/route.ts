@@ -1,7 +1,7 @@
 // app/api/cards/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { RewardCategory } from '@prisma/client';
+import { Prisma, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
@@ -113,17 +113,27 @@ export async function POST(request: Request) {
       return new NextResponse(parsedRules.message, { status: 400 });
     }
 
+    const data: Prisma.CardCreateInput = {
+      user: { connect: { id: userId } },
+      nickname,
+      issuer,
+      network,
+      isCredit: Boolean(isCredit),
+      annualFee: annualFee ?? null,
+    };
+
+    if (parsedRules.rules.length > 0) {
+      data.rewardRules = {
+        create: parsedRules.rules.map((rule) => ({
+          category: rule.category,
+          multiplier: rule.multiplier,
+          capAmount: rule.capAmount,
+        })),
+      };
+    }
+
     const card = await prisma.card.create({
-      data: {
-        userId,
-        nickname,
-        issuer,
-        network,
-        isCredit: Boolean(isCredit),
-        annualFee: annualFee ?? null,
-        rewardRules:
-          parsedRules.rules.length > 0 ? { create: parsedRules.rules } : undefined,
-      },
+      data,
       include: {
         rewardRules: true,
       },

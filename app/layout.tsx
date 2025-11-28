@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -27,7 +28,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
+}>): Promise<JSX.Element> {
   const session = await getServerSession(authOptions);
   const userEmail = session?.user?.email ?? "Not signed in";
 

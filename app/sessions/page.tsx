@@ -1,20 +1,21 @@
+import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/auth';
 
 function formatCents(amount: number | null | undefined) {
   if (amount == null) return '—';
   return `$${(amount / 100).toFixed(2)}`;
 }
 
-export default async function SessionsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+export default async function SessionsPage(): Promise<JSX.Element | null> {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/sessions')}`);
+    return null;
   }
-
-  const userId = session.user.id;
 
   const sessions = await prisma.recommendationSession.findMany({
     where: { userId },

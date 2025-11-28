@@ -1,7 +1,6 @@
+import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getCurrentUserId } from '@/lib/auth';
 import { getCherryPointsBalance } from '@/lib/points';
 import { getSessionStats } from '@/lib/admin/getSessionStats';
@@ -11,7 +10,7 @@ import AdminClient from './AdminClient';
 
 async function getHealth() {
   const base =
-    process.env.NEXT_PUBLIC_BASE_URL ??
+    process.env['NEXT_PUBLIC_BASE_URL'] ??
     process.env.NEXTAUTH_URL ??
     '';
   const url = base ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
@@ -24,13 +23,13 @@ async function getHealth() {
   }
 }
 
-export default async function AdminPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+export default async function AdminPage(): Promise<JSX.Element> {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/admin')}`);
   }
-
-  const userId = await getCurrentUserId();
   const [points, sessionStats, ledgerStats, health, lastSession, lastLedger] = await Promise.all([
     getCherryPointsBalance(userId),
     getSessionStats(userId),

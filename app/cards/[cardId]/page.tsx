@@ -1,6 +1,6 @@
+import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getCurrentUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client';
@@ -16,15 +16,22 @@ function formatRuleDisplay(multiplier: number) {
   return `${multiplier}x points`;
 }
 
-export default async function CardDetailPage({ params }: { params: Promise<{ cardId: string }> }) {
+export default async function CardDetailPage({
+  params,
+}: {
+  params: Promise<{ cardId: string }>;
+}): Promise<JSX.Element | null> {
   const { cardId } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent(`/cards/${cardId}`)}`);
+    return null;
   }
 
   const card = await prisma.card.findFirst({
-    where: { id: cardId, userId: session.user.id },
+    where: { id: cardId, userId },
     include: { rewardRules: true },
   });
   if (!card) return notFound();

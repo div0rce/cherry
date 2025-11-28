@@ -9,12 +9,12 @@ type AuthProvider = NextAuthOptions['providers'][number];
 
 const providers: AuthProvider[] = [
   EmailProvider({
-    server: process.env.EMAIL_SERVER ?? '',
-    from: process.env.EMAIL_FROM ?? 'no-reply@localhost',
+    server: process.env['EMAIL_SERVER'] ?? '',
+    from: process.env['EMAIL_FROM'] ?? 'no-reply@localhost',
   }),
   GoogleProvider({
-    clientId: process.env.GOOGLE_CLIENT_ID!,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    clientId: process.env['GOOGLE_CLIENT_ID'] ?? '',
+    clientSecret: process.env['GOOGLE_CLIENT_SECRET'] ?? '',
   }),
 ];
 
@@ -73,5 +73,5 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-const handler = NextAuth(authOptions);
+const handler = NextAuth(authOptions) as unknown as (req: Request) => Promise<Response>;
 export { handler as GET, handler as POST };

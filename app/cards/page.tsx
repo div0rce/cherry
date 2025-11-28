@@ -1,9 +1,8 @@
 import { Suspense } from 'react';
+import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import {
   AddCardForm,
   AddRewardRuleForm,
@@ -11,6 +10,7 @@ import {
   DeleteRewardRuleButton,
 } from './client';
 import { getBaseUrl } from '@/lib/base-url';
+import { getCurrentUserId } from '@/lib/auth';
 
 type RewardRule = {
   id: string;
@@ -64,24 +64,27 @@ function formatRuleDisplay(rule: RewardRule) {
 
 async function fetchCards(): Promise<Card[]> {
   const baseUrl = getBaseUrl();
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const cookieHeader = cookieStore.toString();
-  const res = await fetch(`${baseUrl}/api/cards`, {
-    cache: 'no-store',
-    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-  });
+  const init: RequestInit = { cache: 'no-store' };
+  if (cookieHeader) {
+    init.headers = { cookie: cookieHeader };
+  }
+  const res = await fetch(`${baseUrl}/api/cards`, init);
 
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || 'Failed to load cards');
   }
 
-  return res.json();
+  const data = (await res.json()) as Card[];
+  return data;
 }
 
-export default async function CardsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+export default async function CardsPage(): Promise<JSX.Element | null> {
+  try {
+    await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/cards')}`);
   }
 

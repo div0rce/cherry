@@ -1,8 +1,8 @@
+import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { getCurrentUserId } from '@/lib/auth';
 
 function formatCents(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -12,15 +12,18 @@ export default async function SimulationDetailPage({
   params,
 }: {
   params: Promise<{ simulationId: string }>;
-}) {
+}): Promise<JSX.Element | null> {
   const { simulationId } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent(`/simulations/${simulationId}`)}`);
+    return null;
   }
 
   const sim = await prisma.simulation.findFirst({
-    where: { id: simulationId, userId: session.user.id },
+    where: { id: simulationId, userId },
     include: {
       transactions: {
         orderBy: { createdAt: 'asc' },

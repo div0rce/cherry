@@ -23,7 +23,7 @@ export async function runRecommendationFromOrderContext(
     userId,
     amountCents,
     merchantName: ctx.merchantName ?? null,
-    mccCode: ctx.mccCode ?? undefined,
+    mccCode: ctx.mccCode ?? null,
     category: null,
     now: new Date(timestamp),
   });

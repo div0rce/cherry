@@ -14,8 +14,8 @@ import { seedDemoForUser } from '../lib/demo-seeder';
 
 async function resolveTargetUser() {
   const cliArg = process.argv[2];
-  const envEmail = process.env.SEED_USER_EMAIL;
-  const envUserId = process.env.SEED_USER_ID;
+  const envEmail = process.env['SEED_USER_EMAIL'];
+  const envUserId = process.env['SEED_USER_ID'];
 
   const findByEmail = (email: string) =>
     prisma.user.findUnique({ where: { email } });

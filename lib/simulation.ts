@@ -139,7 +139,11 @@ export async function runSimulation(
     throw new Error('amountCents must be > 0');
   }
 
-  const resolvedCategory = await resolveCategory(prisma, { mccCode, category, merchantName });
+  const resolvedCategory = await resolveCategory(prisma, {
+    mccCode: mccCode ?? null,
+    ...(category ? { category } : {}),
+    ...(merchantName ? { merchantName } : {}),
+  });
 
   const { card, rule } = await pickBestCardForCategory(prisma, userId, resolvedCategory);
 

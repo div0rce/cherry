@@ -9,11 +9,11 @@ function normalize(url: string): string {
 }
 
 export function getBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return normalize(process.env.NEXT_PUBLIC_SITE_URL);
+  if (process.env['NEXT_PUBLIC_SITE_URL']) {
+    return normalize(process.env['NEXT_PUBLIC_SITE_URL']);
   }
-  if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-    const value = process.env.NEXT_PUBLIC_VERCEL_URL;
+  if (process.env['NEXT_PUBLIC_VERCEL_URL']) {
+    const value = process.env['NEXT_PUBLIC_VERCEL_URL'];
     const withProtocol = value.startsWith('http') ? value : `https://${value}`;
     return normalize(withProtocol);
   }

@@ -1,5 +1,6 @@
 import { RewardCategory } from '@prisma/client';
-import type { EngineDecision, BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/engine';
+import type { EngineDecision } from '@/lib/engine';
+import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
 
 export type ScanRequestBody = {
   merchantName: string;

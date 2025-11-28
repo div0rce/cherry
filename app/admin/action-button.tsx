@@ -32,9 +32,18 @@ export function AdminActionButton({
         throw new Error(errorText || 'Request failed');
       }
 
-      const data = await res.json().catch(() => ({}));
       setStatus('success');
-      setMessage(data?.message ?? 'Completed');
+      const parsed = (await res.json().catch(() => null)) as unknown;
+      let nextMessage = 'Completed';
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        'message' in parsed &&
+        typeof (parsed as { message: unknown }).message === 'string'
+      ) {
+        nextMessage = (parsed as { message: string }).message;
+      }
+      setMessage(nextMessage);
       router.refresh();
     } catch (err) {
       setStatus('error');

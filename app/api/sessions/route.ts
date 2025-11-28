@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         amountCents,
         category: categoryHint as RewardCategory | null,
         merchantName,
-        mccCode: mccCode ?? undefined,
+        mccCode: mccCode ?? null,
       });
 
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);

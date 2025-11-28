@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
@@ -9,7 +10,7 @@ function promptSignIn(setStatus: (message: string) => void) {
   void signIn(undefined, { callbackUrl: window.location.href });
 }
 
-export function AddCardForm() {
+export function AddCardForm(): JSX.Element {
   const router = useRouter();
   const [nickname, setNickname] = useState('');
   const [issuer, setIssuer] = useState('');
@@ -27,7 +28,7 @@ export function AddCardForm() {
   const smallInputClass =
     'w-full rounded-md border border-white/10 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
 
     if (!nickname.trim() || !issuer.trim() || !network.trim()) {
@@ -92,7 +93,7 @@ export function AddCardForm() {
       return;
     }
 
-    const createdCard = await res.json();
+    const createdCard = (await res.json()) as { id: string };
 
     if (knowsRewards) {
       const ruleCapCents =
@@ -309,7 +310,7 @@ export function AddCardForm() {
   );
 }
 
-export function AddRewardRuleForm({ cardId }: { cardId: string }) {
+export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
   const router = useRouter();
   const [category, setCategory] = useState('DINING');
   const [multiplier, setMultiplier] = useState('1');
@@ -444,7 +445,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }) {
   );
 }
 
-export function DeleteCardButton({ cardId }: { cardId: string }) {
+export function DeleteCardButton({ cardId }: { cardId: string }): JSX.Element {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
 
@@ -492,7 +493,7 @@ export function DeleteRewardRuleButton({
 }: {
   cardId: string;
   rewardRuleId: string;
-}) {
+}): JSX.Element {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
 

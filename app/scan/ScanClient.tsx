@@ -1,5 +1,7 @@
 'use client';
 
+import type { JSX } from 'react';
+import type { OverallVerdict } from '@/lib/enums';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 import type { EngineDecision } from '@/lib/engine';
@@ -33,7 +35,7 @@ type ConfirmResponse = {
 const inputClass =
   'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
 
-export default function ScanClient() {
+export default function ScanClient(): JSX.Element {
   const [merchantName, setMerchantName] = useState('');
   const [amountDollars, setAmountDollars] = useState('');
   const [category, setCategory] = useState('');
@@ -118,14 +120,17 @@ export default function ScanClient() {
     }
 
     const data = (await res.json()) as ConfirmResponse;
-    setState({
+    const nextState: Extract<ScanState, { status: 'claimed' }> = {
       status: 'claimed',
       pointsPending: data.pointsPending,
       decision: current.decision,
       sessionStatus: data.sessionStatus,
       ledgerStatus: data.ledgerStatus,
-      message: data.message,
-    });
+    };
+    if (data.message) {
+      nextState.message = data.message;
+    }
+    setState(nextState);
   }
 
   function renderContent() {
@@ -185,7 +190,10 @@ export default function ScanClient() {
         );
       case 'recommended': {
         const d = state.decision;
-        const canClaim = d.overallVerdict !== 'INSUFFICIENT_DATA' && d.cherryIncentive.pointsIfFollowed > 0;
+        const insufficient = 'INSUFFICIENT_DATA' as OverallVerdict;
+        const canClaim =
+          d.overallVerdict !== insufficient &&
+          d.cherryIncentive.pointsIfFollowed > 0;
         return (
           <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur">
             <div className="flex items-center justify-between">

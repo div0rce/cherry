@@ -3,7 +3,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function getUserIdFromSession(): Promise<string | null> {
   const session = await getServerSession(authOptions);
-  return session?.user?.id ?? null;
+  const user = session?.user as { id?: string } | undefined;
+  return user?.id ?? null;
 }
 
 // Convenience alias used by server components.

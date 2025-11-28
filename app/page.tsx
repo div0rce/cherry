@@ -1,9 +1,9 @@
+import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { getCherryPointsBalance } from '@/lib/points';
+import { getCurrentUserId } from '@/lib/auth';
 
 function formatCents(amount: number) {
   return `$${(amount / 100).toFixed(2)}`;
@@ -19,13 +19,14 @@ function formatRelative(date: Date) {
   return `${days}d ago`;
 }
 
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+export default async function DashboardPage(): Promise<JSX.Element | null> {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/')}`);
+    return null;
   }
-
-  const userId = session.user.id;
 
   const [cardsCount, bucketsCount, simulationsCount, transactionsCount] = await Promise.all([
     prisma.card.count({ where: { userId } }),

@@ -60,33 +60,32 @@ export function POST(request: Request) {
     }
 
     try {
-      const orderContext: OrderContext = {
+      const orderContextBase: OrderContext = {
         deviceId: body.deviceId!.trim(),
-        storeId:
-          typeof body.storeId === 'string' && body.storeId.trim().length > 0
-            ? body.storeId.trim()
-            : undefined,
-        terminalId:
-          typeof body.terminalId === 'string' && body.terminalId.trim().length > 0
-            ? body.terminalId.trim()
-            : undefined,
-        orderId:
-          typeof body.orderId === 'string' && body.orderId.trim().length > 0
-            ? body.orderId.trim()
-            : undefined,
-        merchantName:
-          typeof body.merchantName === 'string' && body.merchantName.trim().length > 0
-            ? body.merchantName.trim()
-            : undefined,
         amountCents: Math.floor(body.amountCents as number),
         currency: 'USD',
-        mccCode: mccCode ?? undefined,
         timestamp: Date.now(),
-        nonce:
-          typeof body.nonce === 'string' && body.nonce.trim().length > 0
-            ? body.nonce.trim()
-            : undefined,
         source: 'VINE_SIM',
+      };
+
+      const orderContext: OrderContext = {
+        ...orderContextBase,
+        ...(typeof body.storeId === 'string' && body.storeId.trim().length > 0
+          ? { storeId: body.storeId.trim() }
+          : {}),
+        ...(typeof body.terminalId === 'string' && body.terminalId.trim().length > 0
+          ? { terminalId: body.terminalId.trim() }
+          : {}),
+        ...(typeof body.orderId === 'string' && body.orderId.trim().length > 0
+          ? { orderId: body.orderId.trim() }
+          : {}),
+        ...(typeof body.merchantName === 'string' && body.merchantName.trim().length > 0
+          ? { merchantName: body.merchantName.trim() }
+          : {}),
+        ...(mccCode != null ? { mccCode } : {}),
+        ...(typeof body.nonce === 'string' && body.nonce.trim().length > 0
+          ? { nonce: body.nonce.trim() }
+          : {}),
       };
 
       const result = await runRecommendationFromOrderContext(orderContext, userId);

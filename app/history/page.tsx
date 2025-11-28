@@ -1,21 +1,24 @@
+import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/auth';
 
 function formatCents(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export default async function HistoryPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
+export default async function HistoryPage(): Promise<JSX.Element | null> {
+  let userId: string;
+  try {
+    userId = await getCurrentUserId();
+  } catch {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/history')}`);
+    return null;
   }
 
   const transactions = await prisma.simulatedTransaction.findMany({
-    where: { userId: session.user.id },
+    where: { userId },
     orderBy: { createdAt: 'desc' },
     take: 30,
     include: {

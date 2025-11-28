@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         amountCents: body.amountCents as number,
         category: normalizedCategory as RewardCategory,
         merchantName,
-        mccCode: mccCode ?? undefined,
+        mccCode: mccCode ?? null,
       });
 
       const strictDecline =

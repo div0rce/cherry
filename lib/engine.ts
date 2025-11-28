@@ -3,17 +3,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { Bucket, RewardCategory } from '@prisma/client';
-
-export type BudgetVerdict =
-  | 'HEALTHY'
-  | 'BORDERLINE'
-  | 'BREAKS_BUDGET'
-  | 'UNCONFIGURED'
-  | 'UNBOUNDED';
-
-export type CardVerdict = 'OPTIMAL' | 'SUBOPTIMAL' | 'NO_CARD_DATA';
-
-export type OverallVerdict = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN' | 'INSUFFICIENT_DATA';
+import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
 
 export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 
@@ -48,7 +38,7 @@ export type EngineDecision = {
     cardNickname?: string;
     multiplier?: number;
     estimatedRewards?: number;
-    hasCardData?: boolean;
+    hasCardData: boolean;
   };
   overallVerdict: OverallVerdict;
   cherryIncentive: {
@@ -154,10 +144,6 @@ async function resolveBestCardForTransaction(input: {
   if (!cards.length) {
     return {
       verdict: 'NO_CARD_DATA' as CardVerdict,
-      cardId: undefined,
-      cardNickname: undefined,
-      multiplier: undefined,
-      estimatedRewards: undefined,
       hasCardData: false,
     };
   }
@@ -188,10 +174,6 @@ async function resolveBestCardForTransaction(input: {
   if (!bestCard) {
     return {
       verdict: 'NO_CARD_DATA' as CardVerdict,
-      cardId: undefined,
-      cardNickname: undefined,
-      multiplier: undefined,
-      estimatedRewards: undefined,
       hasCardData: false,
     };
   }
@@ -214,9 +196,9 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
   }
 
   const category = await resolveCategory({
-    mccCode: input.mccCode,
-    category: input.category,
-    merchantName: input.merchantName,
+    mccCode: input.mccCode ?? null,
+    category: input.category ?? null,
+    merchantName: input.merchantName ?? null,
   });
 
   const { coverageMode, buckets } = await getCategoryCoverage(input.userId, category);

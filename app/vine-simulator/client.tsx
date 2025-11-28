@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import type { JSX } from 'react';
+import type { OverallVerdict } from '@/lib/enums';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 import type { EngineDecision } from '@/lib/engine';
@@ -19,7 +21,7 @@ type ConfirmResponse = {
 const inputClass =
   'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
 
-export function VineSimulatorClient() {
+export function VineSimulatorClient(): JSX.Element {
   const [merchantName, setMerchantName] = useState('');
   const [amountDollars, setAmountDollars] = useState('');
   const [mccCode, setMccCode] = useState('');
@@ -236,7 +238,7 @@ export function VineSimulatorClient() {
           </div>
 
           <div className="flex items-center gap-3">
-            {orderResult.decision.overallVerdict !== 'INSUFFICIENT_DATA' &&
+            {orderResult.decision.overallVerdict !== ('INSUFFICIENT_DATA' as OverallVerdict) &&
             (orderResult.decision.cherryIncentive.pointsIfFollowed ?? 0) > 0 ? (
               <button
                 type="button"

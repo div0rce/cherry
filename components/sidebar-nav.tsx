@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -11,7 +12,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SidebarNav() {
+export function SidebarNav(): JSX.Element {
   const pathname = usePathname();
   const navSections: NavSection[] = [
     {

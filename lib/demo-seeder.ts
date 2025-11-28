@@ -5,9 +5,9 @@ import {
   CategoryCoverageModeDb,
   RecommendationStatus,
   RecommendationVerdict,
-  OverallVerdict,
   RewardCategory,
 } from '@prisma/client';
+import type { OverallVerdict } from '@/lib/enums';
 import { runEngine } from '@/lib/engine';
 
 const cardDefinitions = [

@@ -1,10 +1,10 @@
+import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { RunSimulationForm, DeleteSimulationButton } from './client';
 import { getBaseUrl } from '@/lib/base-url';
+import { getCurrentUserId } from '@/lib/auth';
 
 type Simulation = {
   id: string;
@@ -82,33 +82,41 @@ async function fetchSimulations(query: {
   const url = queryString ? `/api/simulations?${queryString}` : '/api/simulations';
 
   const baseUrl = getBaseUrl();
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const cookieHeader = cookieStore.toString();
-  const res = await fetch(`${baseUrl}${url}`, {
-    cache: 'no-store',
-    headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-  });
+  const init: RequestInit = { cache: 'no-store' };
+  if (cookieHeader) {
+    init.headers = { cookie: cookieHeader };
+  }
+  const res = await fetch(`${baseUrl}${url}`, init);
 
   if (!res.ok) {
     const message = await res.text();
     throw new Error(message || 'Failed to load simulations');
   }
 
-  return res.json();
+  const data = (await res.json()) as SimulationResponse;
+  return data;
 }
 
 export default async function SimulatePage({
   searchParams,
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+}): Promise<JSX.Element> {
   const resolvedParams = (await searchParams) || {};
+  try {
+    await getCurrentUserId();
+  } catch {
+    redirect(`/signin?callbackUrl=${encodeURIComponent('/simulate')}`);
+  }
 
-  const statusParam = typeof resolvedParams.status === 'string' ? resolvedParams.status : '';
+  const statusParam =
+    typeof resolvedParams['status'] === 'string' ? resolvedParams['status'] : '';
   const categoryParam =
-    typeof resolvedParams.category === 'string' ? resolvedParams.category : '';
+    typeof resolvedParams['category'] === 'string' ? resolvedParams['category'] : '';
   const pageParam = Number.parseInt(
-    typeof resolvedParams.page === 'string' ? resolvedParams.page : '1',
+    typeof resolvedParams['page'] === 'string' ? resolvedParams['page'] : '1',
     10
   );
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
@@ -117,23 +125,18 @@ export default async function SimulatePage({
   if (statusParam) search.set('status', statusParam);
   if (categoryParam) search.set('category', categoryParam);
   if (page > 1) search.set('page', String(page));
-  const callbackUrl = search.toString() ? `/simulate?${search.toString()}` : '/simulate';
-
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-  }
 
   let response: SimulationResponse | null = null;
   let error: string | null = null;
 
   try {
-    response = await fetchSimulations({
-      status: statusParam || undefined,
-      category: categoryParam || undefined,
+    const query = {
       page,
       pageSize: 10,
-    });
+      ...(statusParam ? { status: statusParam } : {}),
+      ...(categoryParam ? { category: categoryParam } : {}),
+    };
+    response = await fetchSimulations(query);
   } catch (err) {
     error = err instanceof Error ? err.message : 'Failed to load simulations';
   }

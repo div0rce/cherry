@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
@@ -14,7 +15,10 @@ const errorMessages: Record<string, string> = {
   OAuthAccountNotLinked: 'This email is already linked with another sign-in method.',
 };
 
-export function SignInCard({ errorCode, callbackUrl = '/cards' }: SignInCardProps) {
+export function SignInCard({
+  errorCode,
+  callbackUrl = '/cards',
+}: SignInCardProps): JSX.Element {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

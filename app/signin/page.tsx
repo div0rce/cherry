@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
@@ -6,22 +7,30 @@ import { SignInCard } from './signin-card';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
-export default async function SignInPage({ searchParams }: { searchParams?: SearchParams }) {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}): Promise<JSX.Element> {
   const session = await getServerSession(authOptions);
   if (session) {
     redirect('/cards');
   }
 
   const params = (await searchParams) || {};
-  const error = typeof params.error === 'string' ? params.error : undefined;
-  const callbackUrl = typeof params.callbackUrl === 'string' ? params.callbackUrl : '/cards';
+  const error = typeof params['error'] === 'string' ? params['error'] : undefined;
+  const callbackUrl =
+    typeof params['callbackUrl'] === 'string' ? params['callbackUrl'] : '/cards';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-10 lg:flex-row lg:items-center lg:gap-12">
         <LeftPanel />
         <div className="mt-10 w-full lg:mt-0 lg:max-w-md">
-          <SignInCard errorCode={error} callbackUrl={callbackUrl} />
+          <SignInCard
+            {...(error ? { errorCode: error } : {})}
+            callbackUrl={callbackUrl}
+          />
         </div>
       </div>
     </div>
