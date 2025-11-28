@@ -200,6 +200,11 @@ export function VineSimulatorClient() {
               <p className="text-sm text-white">
                 {orderResult.decision.card.cardNickname ?? 'No card on file'}
               </p>
+              {orderResult.decision.card.verdict === 'NO_CARD_DATA' && (
+                <p className="text-xs text-amber-200">
+                  Cherry cannot optimize rewards — no card data on file.
+                </p>
+              )}
             </div>
             <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-400">Bucket</p>
@@ -209,6 +214,16 @@ export function VineSimulatorClient() {
               {orderResult.decision.budget.limitCents != null && (
                 <p className="text-xs text-slate-300">
                   Limit ${(orderResult.decision.budget.limitCents / 100).toFixed(2)}
+                </p>
+              )}
+              {orderResult.decision.budget.verdict === 'UNCONFIGURED' && (
+                <p className="text-xs text-amber-200">
+                  No bucket configured; Cherry cannot assess budget health.
+                </p>
+              )}
+              {orderResult.decision.budget.verdict === 'UNBOUNDED' && (
+                <p className="text-xs text-slate-300">
+                  Intentionally unbudgeted; rewards optimization only.
                 </p>
               )}
             </div>
