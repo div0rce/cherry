@@ -162,6 +162,9 @@ export default async function AdminPage() {
         <Link className="hover:text-white" href="/vine-simulator">
           Vine simulator (dev) →
         </Link>
+        <Link className="hover:text-white" href="/bank-simulator">
+          Bank / Plaid simulator →
+        </Link>
         <Link className="hover:text-white" href="/simulate">
           Run simulation →
         </Link>
