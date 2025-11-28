@@ -81,7 +81,7 @@ export default function AdminClient() {
           <div>
             <p className="text-sm font-semibold text-white">Seed demo data</p>
             <p className="text-xs text-slate-400">
-              Populate cards, buckets, and sample simulations for this user.
+              Populate cards, buckets, sessions, and sample Cherry Points for this user.
             </p>
           </div>
           <div className="mt-auto space-y-1">

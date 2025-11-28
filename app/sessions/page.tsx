@@ -64,7 +64,7 @@ export default async function SessionsPage() {
               <th className="px-4 py-3 font-semibold">Category</th>
               <th className="px-4 py-3 font-semibold">Verdict</th>
               <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold">Ledger</th>
+              <th className="px-4 py-3 font-semibold whitespace-nowrap">Ledger</th>
               <th className="px-4 py-3 font-semibold">Points Offered</th>
             </tr>
           </thead>
@@ -87,7 +87,7 @@ export default async function SessionsPage() {
                 <td className="px-4 py-3">
                   <span className={badgeForStatus(s.status)}>{s.status}</span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 whitespace-nowrap">
                   {s.ledgerEntries && s.ledgerEntries.length > 0 ? (
                     <span className={badgeForLedger(s.ledgerEntries[0]?.status ?? '')}>
                       {s.ledgerEntries[0]?.status} {s.ledgerEntries[0]?.points ?? 0} pts

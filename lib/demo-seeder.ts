@@ -1,5 +1,13 @@
 import { prisma } from '@/lib/prisma';
-import { BucketPeriod, RewardCategory } from '@prisma/client';
+import {
+  BucketPeriod,
+  CategoryBudgetMode,
+  CategoryCoverageModeDb,
+  RecommendationStatus,
+  RecommendationVerdict,
+  RewardCategory,
+} from '@prisma/client';
+import { runEngine } from '@/lib/engine';
 
 const cardDefinitions = [
   {
@@ -37,26 +45,11 @@ const cardDefinitions = [
     | { category: RewardCategory; multiplier?: null; cashbackPercent: number };
 }>;
 
-const bucketDefinitions = [
-  {
-    name: 'Dining Weekly',
-    period: BucketPeriod.WEEKLY,
-    budget: 10_000,
-    strictMode: true,
-    category: RewardCategory.DINING,
-  },
-  {
-    name: 'Groceries Monthly',
-    period: BucketPeriod.MONTHLY,
-    budget: 30_000,
-    strictMode: false,
-    category: RewardCategory.GROCERIES,
-  },
-] as const;
-
 export type SeedDemoSummary = {
   cards: number;
   buckets: number;
+  sessions: number;
+  ledgerEntries: number;
 };
 
 async function assertUserExists(userId: string) {
@@ -68,8 +61,30 @@ async function assertUserExists(userId: string) {
   }
 }
 
+function getCategoryPreferenceModel() {
+  return (prisma as unknown as { categoryPreference?: typeof prisma.categoryPreference })
+    .categoryPreference;
+}
+
 export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> {
   await assertUserExists(userId);
+  // Clear user data for a clean seed slate
+  await prisma.cherryPointLedger.deleteMany({ where: { userId } });
+  await prisma.recommendationSession.deleteMany({ where: { userId } });
+  await prisma.simulatedTransaction.deleteMany({ where: { userId } });
+  await prisma.simulation.deleteMany({ where: { userId } });
+  await prisma.bucket.deleteMany({ where: { userId } });
+  await prisma.card.deleteMany({ where: { userId } });
+  // Guard in case Prisma client is out of date; optional chain to avoid runtime error.
+  const categoryPreferenceModel = getCategoryPreferenceModel();
+  if (categoryPreferenceModel?.deleteMany) {
+    await categoryPreferenceModel.deleteMany({ where: { userId } });
+  }
+
+  const now = new Date();
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
   async function upsertCard(def: (typeof cardDefinitions)[number]) {
     const existing = await prisma.card.findFirst({
       where: { userId, nickname: def.nickname },
@@ -113,43 +128,119 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
     });
   }
 
-  async function upsertBucket(def: (typeof bucketDefinitions)[number]) {
-    const existing = await prisma.bucket.findFirst({
-      where: { userId, name: def.name },
-    });
+  await Promise.all(cardDefinitions.map((card) => upsertCard(card)));
+  await prisma.bucket.create({
+    data: {
+      userId,
+      name: 'Dining Monthly',
+      period: BucketPeriod.MONTHLY,
+      budgetAmount: 40_000,
+      currentAmount: 25_000,
+      spentCents: 15_000,
+      strictMode: true,
+      category: RewardCategory.DINING,
+      periodStart,
+      periodEnd,
+    },
+  });
 
-    if (existing) {
-      await prisma.bucket.update({
-        where: { id: existing.id },
-        data: {
-          period: def.period,
-          budgetAmount: def.budget,
-          currentAmount: def.budget,
-          strictMode: def.strictMode,
-          category: def.category,
-        },
-      });
-      return;
-    }
+  await prisma.bucket.create({
+    data: {
+      userId,
+      name: 'Groceries Monthly',
+      period: BucketPeriod.MONTHLY,
+      budgetAmount: 30_000,
+      currentAmount: 25_000,
+      spentCents: 5_000,
+      strictMode: false,
+      category: RewardCategory.GROCERIES,
+      periodStart,
+      periodEnd,
+    },
+  });
 
-    await prisma.bucket.create({
+  if (categoryPreferenceModel?.create) {
+    await categoryPreferenceModel.create({
       data: {
         userId,
-        name: def.name,
-        period: def.period,
-        budgetAmount: def.budget,
-        currentAmount: def.budget,
-        strictMode: def.strictMode,
-        category: def.category,
+        category: RewardCategory.ENTERTAINMENT,
+        mode: CategoryBudgetMode.UNBUDGETED,
       },
     });
   }
 
-  await Promise.all(cardDefinitions.map((card) => upsertCard(card)));
-  await Promise.all(bucketDefinitions.map((bucket) => upsertBucket(bucket)));
+  const cards = await prisma.card.findMany({ where: { userId } });
+  const cardMap = cards.reduce<Record<string, string>>((acc, card) => {
+    acc[card.nickname] = card.id;
+    return acc;
+  }, {});
+
+  // Seed demo sessions via engine + posted ledger rows
+  const demoSessions = [
+    { merchantName: 'Demo Chipotle', category: RewardCategory.DINING, amountCents: 2_000 },
+    { merchantName: 'Demo Overbudget Steakhouse', category: RewardCategory.DINING, amountCents: 9_000 },
+    { merchantName: 'Demo Netflix', category: RewardCategory.ENTERTAINMENT, amountCents: 1_599 },
+    { merchantName: 'Demo Trader Joe’s', category: RewardCategory.GROCERIES, amountCents: 4_000 },
+  ];
+
+  let sessionsCreated = 0;
+  let ledgerCreated = 0;
+  for (const demo of demoSessions) {
+    const decision = await runEngine({
+      userId,
+      merchantName: demo.merchantName,
+      category: demo.category,
+      amountCents: demo.amountCents,
+    });
+
+    const session = await prisma.recommendationSession.create({
+      data: {
+        userId,
+        merchantName: demo.merchantName,
+        category: decision.category,
+        amountCents: decision.amountCents,
+        currency: 'USD',
+        recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
+        recommendedBucketId: decision.budget.bucketId ?? null,
+        verdict:
+          decision.budget.verdict === 'BREAKS_BUDGET'
+            ? RecommendationVerdict.BREAKS_BUDGET
+            : decision.budget.verdict === 'BORDERLINE'
+              ? RecommendationVerdict.BORDERLINE
+              : RecommendationVerdict.HEALTHY,
+        budgetVerdict: decision.budget.verdict,
+        cardVerdict: decision.card.verdict,
+        overallVerdict: decision.overallVerdict,
+        coverageMode:
+          (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
+          CategoryCoverageModeDb.UNCONFIGURED,
+        status: RecommendationStatus.VERIFIED,
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+        verifiedAt: new Date(),
+        cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
+      },
+    });
+    sessionsCreated += 1;
+
+    const points = decision.cherryIncentive.pointsIfFollowed;
+    await prisma.cherryPointLedger.create({
+      data: {
+        userId,
+        sessionId: session.id,
+        points,
+        reason: `Demo: ${demo.merchantName}`,
+        status: 'POSTED',
+        awardedAt: new Date(),
+        postedAt: new Date(),
+      },
+    });
+    ledgerCreated += 1;
+  }
 
   return {
     cards: cardDefinitions.length,
-    buckets: bucketDefinitions.length,
+    buckets: 2,
+    sessions: sessionsCreated,
+    ledgerEntries: ledgerCreated,
   };
 }
