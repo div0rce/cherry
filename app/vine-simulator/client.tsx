@@ -108,7 +108,7 @@ export function VineSimulatorClient() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <header className="space-y-2">
-        <p className="text-sm uppercase tracking-[0.2em] text-pink-200">Cherry Vine</p>
+        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Vine</p>
         <h1 className="text-3xl font-semibold text-white">Vine simulator</h1>
         <p className="text-slate-300">
           Post a mock POS order, see the recommendation session, then confirm it to award points.
