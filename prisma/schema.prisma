@@ -38,6 +38,38 @@ enum CherryPointLedgerStatus {
   REVOKED
 }
 
+enum CategoryBudgetMode {
+  BUDGETED
+  UNBUDGETED
+}
+
+enum BudgetVerdict {
+  HEALTHY
+  BORDERLINE
+  BREAKS_BUDGET
+  UNCONFIGURED
+  UNBOUNDED
+}
+
+enum CardVerdict {
+  OPTIMAL
+  SUBOPTIMAL
+  NO_CARD_DATA
+}
+
+enum OverallVerdict {
+  GREEN
+  YELLOW
+  RED
+  UNKNOWN
+}
+
+enum CategoryCoverageModeDb {
+  BUDGETED
+  UNBUDGETED_INTENTIONAL
+  UNCONFIGURED
+}
+
 /// Unified spend/reward category enum
 enum RewardCategory {
   DINING
@@ -123,6 +155,7 @@ model User {
   sessions            Session[]
   recommendationSessions RecommendationSession[]
   cherryPointLedgerEntries CherryPointLedger[]
+  categoryPreferences CategoryPreference[]
 }
 
 model Card {
@@ -291,6 +324,10 @@ model RecommendationSession {
   expiresAt            DateTime
   verifiedAt           DateTime?
   rejectedAt           DateTime?
+  budgetVerdict        BudgetVerdict
+  cardVerdict          CardVerdict
+  overallVerdict       OverallVerdict
+  coverageMode         CategoryCoverageModeDb
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -323,6 +360,20 @@ model CherryPointLedger {
 
   @@index([userId])
   @@index([sessionId])
+}
+
+model CategoryPreference {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+
+  category  String
+  mode      CategoryBudgetMode
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, category])
 }
 
 model Account {
