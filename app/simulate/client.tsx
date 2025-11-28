@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
@@ -25,7 +26,7 @@ const VALID_CATEGORIES = [
   'OTHER',
 ];
 
-export function RunSimulationForm() {
+export function RunSimulationForm(): JSX.Element {
   const router = useRouter();
   const [amountDollars, setAmountDollars] = useState('');
   const [category, setCategory] = useState('DINING');
@@ -42,12 +43,12 @@ export function RunSimulationForm() {
   const categoriesLabel = useMemo(() => VALID_CATEGORIES.join(', '), []);
   const inputClass =
     'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
-  const handleMccInput = (value: string) => {
+  const handleMccInput = (value: string): void => {
     const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
     setMccCode(digitsOnly);
   };
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
 
     const fieldErrors: typeof errors = {};
@@ -111,10 +112,17 @@ export function RunSimulationForm() {
         const contentType = res.headers.get('content-type') || '';
         let message = 'Simulation failed';
         if (contentType.includes('application/json')) {
-          const data = await res.json();
-          const details = Array.isArray(data?.details) ? data.details.join('; ') : null;
-          if (data?.error) {
-            message = details ? `${data.error}: ${details}` : data.error;
+          const data = (await res.json()) as unknown;
+          if (data && typeof data === 'object') {
+            const maybeDetails = (data as { details?: unknown }).details;
+            const details =
+              Array.isArray(maybeDetails) && maybeDetails.every((d) => typeof d === 'string')
+                ? (maybeDetails as string[]).join('; ')
+                : null;
+            const maybeError = (data as { error?: unknown }).error;
+            if (typeof maybeError === 'string') {
+              message = details ? `${maybeError}: ${details}` : maybeError;
+            }
           }
         } else {
           const text = await res.text();
@@ -200,11 +208,15 @@ export function RunSimulationForm() {
   );
 }
 
-export function DeleteSimulationButton({ simulationId }: { simulationId: string }) {
+export function DeleteSimulationButton({
+  simulationId,
+}: {
+  simulationId: string;
+}): JSX.Element {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
 
-  async function handleDelete() {
+  async function handleDelete(): Promise<void> {
     const confirmed = window.confirm('Delete this simulation entry?');
     if (!confirmed) return;
 

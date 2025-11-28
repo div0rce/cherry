@@ -1,9 +1,10 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async () => {
     try {
       await prisma.$queryRaw`SELECT 1`;

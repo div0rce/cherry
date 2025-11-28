@@ -1,9 +1,10 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-export default function AdminClient() {
+export default function AdminClient(): JSX.Element {
   const router = useRouter();
   const [isSeeding, setIsSeeding] = useState(false);
   const [isClearingUser, setIsClearingUser] = useState(false);

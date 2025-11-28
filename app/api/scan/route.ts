@@ -6,11 +6,15 @@ import { inferCategoryForMerchant } from '@/lib/scan-helpers';
 import type { ScanRequestBody, ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
 
-export function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     let body: ScanRequestBody;
     try {
-      body = await request.json();
+      const raw = (await request.json()) as unknown;
+      if (raw === null || typeof raw !== 'object') {
+        return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+      }
+      body = raw as ScanRequestBody;
     } catch {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }

@@ -49,7 +49,10 @@ function logUnmapped(mcc: number) {
   let list: number[] = [];
   if (fs.existsSync(unmappedPath)) {
     try {
-      list = JSON.parse(fs.readFileSync(unmappedPath, 'utf8'));
+      const parsed = JSON.parse(fs.readFileSync(unmappedPath, 'utf8')) as unknown;
+      if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) {
+        list = parsed;
+      }
     } catch {
       list = [];
     }

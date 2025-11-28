@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
   CategoryCoverageModeDb,
@@ -21,7 +22,7 @@ type SessionRequestBody = Partial<{
   orderId: string;
 }>;
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const body = (await request.json()) as SessionRequestBody;

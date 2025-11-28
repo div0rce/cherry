@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { withUser } from '@/lib/with-user';
 import { logError, logWarn } from '@/lib/logger';
@@ -16,7 +17,7 @@ type VineOrderRequest = Partial<{
   currency: string;
 }>;
 
-export function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     let body: VineOrderRequest;
     try {

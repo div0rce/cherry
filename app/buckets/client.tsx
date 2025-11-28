@@ -1,19 +1,20 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 
-function promptSignIn(setStatus: (message: string) => void) {
+function promptSignIn(setStatus: (message: string) => void): void {
   setStatus('Sign in to continue.');
   void signIn(undefined, { callbackUrl: window.location.href });
 }
 
-export function DeleteBucketButton({ bucketId }: { bucketId: string }) {
+export function DeleteBucketButton({ bucketId }: { bucketId: string }): JSX.Element {
   const router = useRouter();
   const [status, setStatus] = useState<string | null>(null);
 
-  async function handleDelete() {
+  async function handleDelete(): Promise<void> {
     const confirmed = window.confirm('Delete this bucket?');
     if (!confirmed) return;
 
@@ -49,7 +50,7 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }) {
   );
 }
 
-export function AddBucketForm() {
+export function AddBucketForm(): JSX.Element {
   const router = useRouter();
   const [name, setName] = useState('');
   const [category, setCategory] = useState('DINING');
@@ -63,7 +64,7 @@ export function AddBucketForm() {
   const selectClass =
     'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-pink-500 focus:outline-none';
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
 
     if (!name.trim()) {

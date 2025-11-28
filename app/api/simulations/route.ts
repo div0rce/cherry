@@ -2,6 +2,7 @@
 // List simulation history for the current user. Useful for dashboards and
 // debugging the engine outputs end-to-end.
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
@@ -19,7 +20,7 @@ import { logError } from '@/lib/logger';
  *
  * Returns shape: { data, total, page, pageSize }
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const { searchParams } = new URL(request.url);

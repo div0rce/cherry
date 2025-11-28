@@ -1,6 +1,11 @@
 import { prisma } from '@/lib/prisma';
 
-export async function getLedgerStats(userId: string) {
+type LedgerStats = {
+  entries: number;
+  points: number;
+};
+
+export async function getLedgerStats(userId: string): Promise<LedgerStats> {
   const entries = await prisma.cherryPointLedger.count({
     where: { userId },
   });

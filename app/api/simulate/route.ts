@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
@@ -15,7 +16,7 @@ type Body = Partial<{
 
 const validCategories = Object.values(RewardCategory) as string[];
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const body = (await request.json()) as Body;

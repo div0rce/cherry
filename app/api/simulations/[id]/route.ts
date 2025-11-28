@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
@@ -7,9 +8,9 @@ import { withUser } from '@/lib/with-user';
  * Removes a simulation record for the current user.
  */
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { id } = await params;
 

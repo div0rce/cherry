@@ -5,6 +5,6 @@
 // 3. Try Vine/device correlation
 // On success, call /api/sessions/[id]/verify with verified: true
 // Otherwise leave ledger in PENDING for manual review or later signals.
-export async function autoVerifySession(_sessionId: string) {
+export async function autoVerifySession(_sessionId: string): Promise<null> {
   return null;
 }

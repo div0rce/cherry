@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
@@ -33,7 +33,7 @@ function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: D
  *
  * Lists all buckets for the current user (demo user for now).
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const buckets = await prisma.bucket.findMany({
@@ -62,10 +62,19 @@ export async function GET(request: Request) {
  *   category: string
  * }
  */
-export async function POST(request: Request) {
+type CreateBucketBody = {
+  name?: unknown;
+  period?: unknown;
+  budgetAmountCents?: unknown;
+  currentAmountCents?: unknown;
+  strictMode?: unknown;
+  category?: unknown;
+};
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
-      const body = await request.json();
+      const body = (await request.json()) as CreateBucketBody;
 
       const {
         name,
@@ -76,27 +85,42 @@ export async function POST(request: Request) {
         category,
       } = body ?? {};
 
-      if (!name || !period || budgetAmountCents == null || !category) {
+      if (
+        typeof name !== 'string' ||
+        typeof period !== 'string' ||
+        budgetAmountCents == null ||
+        typeof category !== 'string'
+      ) {
         return new NextResponse(
           'Missing required fields: name, period, budgetAmountCents, category',
           { status: 400 }
         );
       }
 
-      if (typeof budgetAmountCents !== 'number' || budgetAmountCents <= 0) {
+      const normalizedName = name.trim();
+      const normalizedCategory = category.trim().toUpperCase();
+
+      if (!normalizedName) {
+        return new NextResponse('name is required', { status: 400 });
+      }
+
+      if (typeof budgetAmountCents !== 'number' || Number.isNaN(budgetAmountCents) || budgetAmountCents <= 0) {
         return new NextResponse('budgetAmountCents must be a positive number', {
           status: 400,
         });
       }
 
+      let currentCentsValue: number | null = null;
       if (
         currentAmountCents != null &&
-        (typeof currentAmountCents !== 'number' || currentAmountCents < 0)
+        (typeof currentAmountCents !== 'number' || Number.isNaN(currentAmountCents) || currentAmountCents < 0)
       ) {
         return new NextResponse(
           'currentAmountCents must be a non-negative number when provided',
           { status: 400 }
         );
+      } else if (typeof currentAmountCents === 'number') {
+        currentCentsValue = Math.floor(currentAmountCents);
       }
 
       const validPeriods: BucketPeriod[] = [BucketPeriod.WEEKLY, BucketPeriod.MONTHLY];
@@ -108,7 +132,6 @@ export async function POST(request: Request) {
       }
 
       const validCategories = Object.values(RewardCategory) as string[];
-      const normalizedCategory = String(category).toUpperCase();
       if (!validCategories.includes(normalizedCategory)) {
         return new NextResponse(
           `Invalid category. Expected one of: ${validCategories.join(', ')}`,
@@ -122,17 +145,17 @@ export async function POST(request: Request) {
       const bucket = await prisma.bucket.create({
         data: {
           userId,
-          name,
+          name: normalizedName,
           period: period as BucketPeriod,
           budgetAmount: Math.floor(budgetAmountCents),
           currentAmount:
-            currentAmountCents == null
+            currentCentsValue == null
               ? Math.floor(budgetAmountCents)
-              : Math.min(Math.floor(currentAmountCents), Math.floor(budgetAmountCents)),
+              : Math.min(currentCentsValue, Math.floor(budgetAmountCents)),
           spentCents:
-            currentAmountCents == null
+            currentCentsValue == null
               ? 0
-              : Math.max(Math.floor(budgetAmountCents) - Math.floor(currentAmountCents), 0),
+              : Math.max(Math.floor(budgetAmountCents) - currentCentsValue, 0),
           periodStart,
           periodEnd,
           strictMode: Boolean(strictMode),
@@ -153,10 +176,12 @@ export async function POST(request: Request) {
  *
  * Legacy delete endpoint using body { bucketId }. Prefer /api/buckets/[bucketId].
  */
-export async function DELETE(request: Request) {
+type DeleteBucketBody = { bucketId?: unknown };
+
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
-      const body = await request.json();
+      const body = (await request.json()) as DeleteBucketBody;
       const { bucketId } = body ?? {};
 
       if (!bucketId || typeof bucketId !== 'string') {

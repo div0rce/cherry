@@ -28,7 +28,7 @@ export default defineConfig([
         { checksVoidReturn: { attributes: false } },
       ],
       // Unsafe any/access
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unsafe-assignment': 'error',
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-call': 'error',
@@ -38,7 +38,7 @@ export default defineConfig([
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
       // Cleanliness
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      '@typescript-eslint/explicit-module-boundary-types': 'warn',
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       '@next/next/no-img-element': 'off',
     },

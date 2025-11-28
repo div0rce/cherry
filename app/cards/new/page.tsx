@@ -1,8 +1,9 @@
+import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { AddCardForm } from '../client';
 
-export default async function NewCardPage() {
+export default async function NewCardPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
   } catch {

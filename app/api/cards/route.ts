@@ -1,5 +1,5 @@
 // app/api/cards/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
@@ -88,7 +88,7 @@ function parseRewardRules(rawRules: unknown): {
   return { ok: true, rules: parsed };
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const cards = await prisma.card.findMany({
       where: { userId },
@@ -99,13 +99,41 @@ export async function GET(request: Request) {
   });
 }
 
-export async function POST(request: Request) {
+type CardBody = {
+  nickname?: unknown;
+  issuer?: unknown;
+  network?: unknown;
+  isCredit?: unknown;
+  annualFee?: unknown;
+  rewardRules?: unknown;
+};
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
-    const body = await request.json();
+    const body = (await request.json()) as CardBody;
     const { nickname, issuer, network, isCredit, annualFee, rewardRules } = body;
 
-    if (!nickname || !issuer || !network) {
+    if (
+      typeof nickname !== 'string' ||
+      typeof issuer !== 'string' ||
+      typeof network !== 'string'
+    ) {
       return new NextResponse('Missing fields', { status: 400 });
+    }
+
+    const nicknameStr = nickname.trim();
+    const issuerStr = issuer.trim();
+    const networkStr = network.trim();
+    if (!nicknameStr || !issuerStr || !networkStr) {
+      return new NextResponse('Missing fields', { status: 400 });
+    }
+
+    let annualFeeValue: number | null = null;
+    if (annualFee != null) {
+      if (typeof annualFee !== 'number' || Number.isNaN(annualFee)) {
+        return new NextResponse('annualFee must be a number when provided', { status: 400 });
+      }
+      annualFeeValue = annualFee;
     }
 
     const parsedRules = parseRewardRules(rewardRules);
@@ -115,11 +143,11 @@ export async function POST(request: Request) {
 
     const data: Prisma.CardCreateInput = {
       user: { connect: { id: userId } },
-      nickname,
-      issuer,
-      network,
+      nickname: nicknameStr,
+      issuer: issuerStr,
+      network: networkStr,
       isCredit: Boolean(isCredit),
-      annualFee: annualFee ?? null,
+      annualFee: annualFeeValue,
     };
 
     if (parsedRules.rules.length > 0) {
@@ -143,18 +171,11 @@ export async function POST(request: Request) {
   });
 }
 
-/**
- * DELETE /api/cards
- *
- * Deletes a card for the demo user. Expects JSON body:
- * { cardId: string }
- *
- * We null out chosenCardId on any existing simulations to avoid FK issues, then
- * delete the card. Reward rules cascade via the Prisma relation.
- */
-export async function DELETE(request: Request) {
+type DeleteCardBody = { cardId?: unknown };
+
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
-    const body = await request.json();
+    const body = (await request.json()) as DeleteCardBody;
     const { cardId } = body ?? {};
 
     if (!cardId || typeof cardId !== 'string') {

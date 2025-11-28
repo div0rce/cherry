@@ -1,9 +1,10 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { signOut } from 'next-auth/react';
 
-export function UserMenu({ email }: { email?: string | null }) {
+export function UserMenu({ email }: { email?: string | null }): JSX.Element {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 

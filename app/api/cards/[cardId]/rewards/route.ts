@@ -2,7 +2,7 @@
 // Manage reward rules for a specific card. This lets us express "4x on DINING"
 // style behavior the simulation engine can consume.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RewardCategory } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
@@ -29,9 +29,9 @@ async function assertCardForUser(cardId: string, userId: string) {
  * Lists reward rules for a given card (demo user scoped).
  */
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
-) {
+): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { cardId } = await params;
 
@@ -60,14 +60,19 @@ export async function GET(
  *   capAmountCents?: number // optional cap; null means no cap
  * }
  */
+type RewardRuleBody = {
+  category?: unknown;
+  multiplier?: unknown;
+  capAmountCents?: unknown;
+};
+
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
-) {
+): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { cardId } = await params;
-    const body = await request.json();
-
+    const body = (await request.json()) as RewardRuleBody;
     const { category, multiplier, capAmountCents } = body ?? {};
 
     if (!category || typeof category !== 'string') {
@@ -127,13 +132,17 @@ export async function POST(
  *   rewardRuleId: string
  * }
  */
+type DeleteRewardRuleBody = {
+  rewardRuleId?: unknown;
+};
+
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
-) {
+): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { cardId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as DeleteRewardRuleBody;
     const { rewardRuleId } = body ?? {};
 
     if (!rewardRuleId || typeof rewardRuleId !== 'string') {

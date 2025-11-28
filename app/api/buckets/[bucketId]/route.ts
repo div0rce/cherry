@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
@@ -9,9 +10,9 @@ import { logError } from '@/lib/logger';
  * Validates ownership (demo user) and deletes the bucket.
  */
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ bucketId: string }> }
-) {
+): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const { bucketId } = await params;
 

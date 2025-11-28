@@ -1,7 +1,14 @@
 import { RecommendationStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
-export async function getSessionStats(userId: string) {
+type SessionStats = {
+  total: number;
+  claimed: number;
+  verified: number;
+  expired: number;
+};
+
+export async function getSessionStats(userId: string): Promise<SessionStats> {
   const total = await prisma.recommendationSession.count({
     where: { userId },
   });

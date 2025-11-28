@@ -1,9 +1,10 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { logError, logInfo } from '@/lib/logger';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const results = await prisma.$transaction(async (tx) => {

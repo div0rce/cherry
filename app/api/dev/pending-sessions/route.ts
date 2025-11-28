@@ -1,9 +1,10 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RecommendationStatus, CherryPointLedgerStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const sessions = await prisma.recommendationSession.findMany({
       where: {

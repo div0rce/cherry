@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -11,7 +12,7 @@ export function AdminActionButton({
   href: string;
   method: 'POST' | 'GET';
   cta: string;
-}) {
+}): JSX.Element {
   const router = useRouter();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);

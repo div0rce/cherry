@@ -1,3 +1,4 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -6,7 +7,10 @@ import { logError } from '@/lib/logger';
 
 type VerifyBody = Partial<{ verified: boolean }>;
 
-export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const { id } = await params;
