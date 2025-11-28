@@ -48,7 +48,15 @@ export function SidebarNav() {
       items: [{ name: 'Admin & Tools', href: '/admin' }],
     },
     ...(process.env.NODE_ENV === 'development'
-      ? [{ label: 'Dev', items: [{ name: 'Vine Simulator (dev)', href: '/vine-simulator' }] }]
+      ? [
+          {
+            label: 'Dev',
+            items: [
+              { name: 'Vine Simulator (dev)', href: '/vine-simulator' },
+              { name: 'Bank / Plaid Simulator (dev)', href: '/bank-simulator' },
+            ],
+          },
+        ]
       : []),
   ];
 
