@@ -98,7 +98,7 @@ export default function ScanClient() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         actualAmountCents: current.decision.amountCents,
-        usedCardId: current.decision.routing.chosenCardId,
+        usedCardId: current.decision.card.cardId,
         followedRecommendation: true,
       }),
     });
@@ -192,34 +192,55 @@ export default function ScanClient() {
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Recommendation</p>
                 <h2 className="text-xl font-semibold text-white">
                   {d.category} · ${(d.amountCents / 100).toFixed(2)} ·{' '}
-                  {d.bucket.name || 'No bucket'}
+                  {d.budget.name || 'No bucket'}
                 </h2>
-                <p className="text-sm text-slate-300">{d.bucket.wouldExceed ? 'Over budget' : 'Within budget'}</p>
+                <p className="text-sm text-slate-300">
+                  {d.budget.verdict === 'BREAKS_BUDGET'
+                    ? 'Over budget'
+                    : d.budget.verdict === 'UNCONFIGURED'
+                      ? 'No bucket configured for this category.'
+                      : d.budget.verdict === 'UNBOUNDED'
+                        ? 'Unbudgeted by choice; optimizing rewards only.'
+                        : 'Within budget'}
+                </p>
               </div>
               <span className="rounded-full bg-pink-600/20 px-3 py-1 text-xs font-semibold text-pink-100">
-                {d.verdict}
+                {d.overallVerdict}
               </span>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-400">Card</p>
-                <p className="text-sm text-white">{d.routing.chosenCardName ?? 'No card on file'}</p>
-                {d.routing.rewardMultiplier != null && (
-                  <p className="text-xs text-slate-400">{d.routing.rewardMultiplier}x rewards</p>
+                <p className="text-sm text-white">{d.card.cardNickname ?? 'No card on file'}</p>
+                {d.card.multiplier != null && (
+                  <p className="text-xs text-slate-400">{d.card.multiplier}x rewards</p>
+                )}
+                {d.card.verdict === 'NO_CARD_DATA' && (
+                  <p className="text-xs text-amber-200">No card data to optimize rewards.</p>
                 )}
               </div>
               <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
                 <p className="text-xs uppercase tracking-wide text-slate-400">Bucket impact</p>
                 <p className="text-sm text-white">
-                  {d.bucket.remainingAfterCents != null
-                    ? `Remaining ${(d.bucket.remainingAfterCents / 100).toFixed(2)}`
+                  {d.budget.remainingAfterCents != null
+                    ? `Remaining ${(d.budget.remainingAfterCents / 100).toFixed(2)}`
                     : 'No bucket'}
                 </p>
-                {d.bucket.willBeSpentCents != null && d.bucket.limitCents != null && (
+                {d.budget.spentAfterCents != null && d.budget.limitCents != null && (
                   <p className="text-xs text-slate-400">
-                    {(d.bucket.willBeSpentCents / 100).toFixed(2)} /{' '}
-                    {(d.bucket.limitCents / 100).toFixed(2)}
+                    {(d.budget.spentAfterCents / 100).toFixed(2)} /{' '}
+                    {(d.budget.limitCents / 100).toFixed(2)}
+                  </p>
+                )}
+                {d.budget.verdict === 'UNCONFIGURED' && (
+                  <p className="text-xs text-amber-200">
+                    Create a bucket to track this category and get budget verdicts.
+                  </p>
+                )}
+                {d.budget.verdict === 'UNBOUNDED' && (
+                  <p className="text-xs text-slate-300">
+                    Unbudgeted by choice; Cherry will focus on card optimization only.
                   </p>
                 )}
               </div>

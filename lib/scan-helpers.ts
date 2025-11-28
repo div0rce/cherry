@@ -1,6 +1,5 @@
 import { RewardCategory } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-export { classifySpendingVerdict, computeCherryIncentive } from '@/lib/engine';
 
 export async function inferCategoryForMerchant(userId: string, merchantName: string) {
   const lastTx = await prisma.simulatedTransaction.findFirst({

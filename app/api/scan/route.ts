@@ -48,29 +48,34 @@ export function POST(request: NextRequest) {
         merchantName: body.merchantName,
       });
 
-      const bucket = decision.bucket;
-      const routing = decision.routing;
+      const bucket = decision.budget;
+      const routing = decision.card;
 
       const response: ScanResponseBody = {
         merchantName: body.merchantName,
         category: decision.category,
         amountCents,
         bucket: {
-          name: bucket.name,
-          limitCents: bucket.limitCents,
-          spentBeforeCents: bucket.spentThisPeriodCents,
-          spentAfterCents: bucket.willBeSpentCents,
-          remainingAfterCents: bucket.remainingAfterCents,
-          strictMode: bucket.strictDecline,
-          wouldExceed: bucket.wouldExceed,
+          name: bucket.name ?? null,
+          limitCents: bucket.limitCents ?? null,
+          spentBeforeCents: bucket.spentBeforeCents ?? null,
+          spentAfterCents: bucket.spentAfterCents ?? null,
+          remainingAfterCents: bucket.remainingAfterCents ?? null,
+          strictMode: bucket.strictMode ?? false,
+          wouldExceed: bucket.wouldExceed ?? false,
+          coverageMode: bucket.coverageMode,
+          verdict: bucket.verdict,
         },
         cardRecommendation: {
-          cardId: routing.chosenCardId,
-          cardNickname: routing.chosenCardName,
-          rewardMultiplier: routing.rewardMultiplier,
-          estimatedRewards: routing.rewardsEarned,
+          cardId: routing.cardId ?? null,
+          cardNickname: routing.cardNickname ?? null,
+          rewardMultiplier: routing.multiplier ?? null,
+          estimatedRewards: routing.estimatedRewards ?? null,
+          verdict: routing.verdict,
         },
-        spendingVerdict: decision.verdict,
+        budgetVerdict: decision.budget.verdict,
+        cardVerdict: decision.card.verdict,
+        overallVerdict: decision.overallVerdict,
         cherryIncentive: decision.cherryIncentive,
         engineDecision: decision,
       };

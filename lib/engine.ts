@@ -1,12 +1,21 @@
 // lib/engine.ts
-// Deterministic transaction decision engine: bucket impact + card routing + rewards + incentive.
+// Deterministic transaction decision engine with budget/card/overall verdicts and coverage modes.
 
 import { prisma } from '@/lib/prisma';
-import {
-  BucketPeriod,
-  RecommendationVerdict,
-  RewardCategory,
-} from '@prisma/client';
+import { Bucket, RewardCategory } from '@prisma/client';
+
+export type BudgetVerdict =
+  | 'HEALTHY'
+  | 'BORDERLINE'
+  | 'BREAKS_BUDGET'
+  | 'UNCONFIGURED'
+  | 'UNBOUNDED';
+
+export type CardVerdict = 'OPTIMAL' | 'SUBOPTIMAL' | 'NO_CARD_DATA';
+
+export type OverallVerdict = 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
+
+export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 
 export type EngineInput = {
   userId: string;
@@ -20,27 +29,27 @@ export type EngineInput = {
 export type EngineDecision = {
   category: RewardCategory;
   amountCents: number;
-  bucket: {
-    id: string | null;
-    name: string | null;
-    period: BucketPeriod | null;
-    periodStart: Date | null;
-    periodEnd: Date | null;
-    limitCents: number | null;
-    spentThisPeriodCents: number | null;
-    willBeSpentCents: number | null;
-    remainingBeforeCents: number | null;
-    remainingAfterCents: number | null;
-    wouldExceed: boolean;
-    strictDecline: boolean;
+  budget: {
+    verdict: BudgetVerdict;
+    coverageMode: CategoryCoverageMode;
+    hasBucket: boolean;
+    bucketId?: string;
+    name?: string;
+    limitCents?: number;
+    spentBeforeCents?: number;
+    spentAfterCents?: number;
+    remainingAfterCents?: number;
+    strictMode?: boolean;
+    wouldExceed?: boolean;
   };
-  routing: {
-    chosenCardId: string | null;
-    chosenCardName: string | null;
-    rewardMultiplier: number | null;
-    rewardsEarned: number | null;
+  card: {
+    verdict: CardVerdict;
+    cardId?: string;
+    cardNickname?: string;
+    multiplier?: number;
+    estimatedRewards?: number;
   };
-  verdict: RecommendationVerdict;
+  overallVerdict: OverallVerdict;
   cherryIncentive: {
     pointsIfFollowed: number;
     expiryMinutes: number;
@@ -81,85 +90,52 @@ export async function resolveCategory(input: {
   return RewardCategory.OTHER;
 }
 
-function getPeriodWindow(period: BucketPeriod, anchor: Date): { start: Date; end: Date } {
-  const start = new Date(anchor);
-  const end = new Date(anchor);
-
-  if (period === 'WEEKLY') {
-    const day = start.getDay();
-    const diffToMonday = (day + 6) % 7;
-    start.setDate(start.getDate() - diffToMonday);
-    start.setHours(0, 0, 0, 0);
-
-    end.setDate(start.getDate() + 7);
-    end.setHours(0, 0, 0, 0);
-  } else if (period === 'MONTHLY') {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-
-    end.setMonth(start.getMonth() + 1);
-    end.setDate(1);
-    end.setHours(0, 0, 0, 0);
-  } else {
-    start.setFullYear(1970, 0, 1);
-    start.setHours(0, 0, 0, 0);
-
-    end.setFullYear(3000, 0, 1);
-    end.setHours(0, 0, 0, 0);
+function deriveOverallVerdict(budget: BudgetVerdict, card: CardVerdict): OverallVerdict {
+  if (budget === 'UNCONFIGURED') return 'UNKNOWN';
+  if (budget === 'BREAKS_BUDGET') return 'RED';
+  if (budget === 'BORDERLINE') return 'YELLOW';
+  if (budget === 'UNBOUNDED') {
+    if (card === 'NO_CARD_DATA') return 'UNKNOWN';
+    return 'GREEN';
   }
-
-  return { start, end };
+  // budget HEALTHY
+  if (card === 'NO_CARD_DATA') return 'YELLOW';
+  return 'GREEN';
 }
 
-async function resolveBucketForTransaction(input: {
-  userId: string;
-  category: RewardCategory;
-  amountCents: number;
-  now: Date;
-}) {
-  const bucket = await prisma.bucket.findFirst({
+function computeCherryIncentive(amountCents: number, budgetVerdict: BudgetVerdict): {
+  pointsIfFollowed: number;
+  expiryMinutes: number;
+} {
+  const base = Math.min(Math.floor(amountCents / 1000), 20); // 0-20 base points
+  let multiplier = 1;
+  if (budgetVerdict === 'HEALTHY') multiplier = 2;
+  else if (budgetVerdict === 'BREAKS_BUDGET') multiplier = 0;
+  return { pointsIfFollowed: base * multiplier, expiryMinutes: 15 };
+}
+
+async function getCategoryCoverage(
+  userId: string,
+  category: RewardCategory
+): Promise<{ coverageMode: CategoryCoverageMode; buckets: Bucket[] }> {
+  const buckets = await prisma.bucket.findMany({
+    where: { userId, category },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  if (buckets.length > 0) return { coverageMode: 'BUDGETED', buckets };
+
+  const pref = await prisma.categoryPreference.findUnique({
     where: {
-      userId: input.userId,
-      category: input.category,
+      userId_category: { userId, category },
     },
   });
 
-  if (!bucket) {
-    return {
-      bucket: null,
-      spentThisPeriodCents: null,
-      willBeSpentCents: null,
-      wouldExceed: false,
-      strictDecline: false,
-      remainingBeforeCents: null,
-      remainingAfterCents: null,
-      periodStart: null,
-      periodEnd: null,
-    };
+  if (pref && pref.mode === 'UNBUDGETED') {
+    return { coverageMode: 'UNBUDGETED_INTENTIONAL', buckets: [] };
   }
 
-  // Use stored period bounds but fall back to computed window for sanity.
-  const periodStart = bucket.periodStart ?? getPeriodWindow(bucket.period, input.now).start;
-  const periodEnd = bucket.periodEnd ?? getPeriodWindow(bucket.period, input.now).end;
-
-  const spentThisPeriodCents = bucket.spentCents ?? 0;
-  const willBeSpentCents = spentThisPeriodCents + input.amountCents;
-  const wouldExceed = willBeSpentCents > bucket.budgetAmount;
-  const strictDecline = bucket.strictMode && wouldExceed;
-  const remainingBeforeCents = bucket.budgetAmount - spentThisPeriodCents;
-  const remainingAfterCents = bucket.budgetAmount - willBeSpentCents;
-
-  return {
-    bucket,
-    spentThisPeriodCents,
-    willBeSpentCents,
-    wouldExceed,
-    strictDecline,
-    remainingBeforeCents,
-    remainingAfterCents,
-    periodStart,
-    periodEnd,
-  };
+  return { coverageMode: 'UNCONFIGURED', buckets: [] };
 }
 
 async function resolveBestCardForTransaction(input: {
@@ -176,9 +152,11 @@ async function resolveBestCardForTransaction(input: {
 
   if (!cards.length) {
     return {
-      chosenCard: null,
-      rewardMultiplier: null,
-      rewardsEarned: null,
+      verdict: 'NO_CARD_DATA' as CardVerdict,
+      cardId: undefined,
+      cardNickname: undefined,
+      multiplier: undefined,
+      estimatedRewards: undefined,
     };
   }
 
@@ -207,57 +185,22 @@ async function resolveBestCardForTransaction(input: {
 
   if (!bestCard) {
     return {
-      chosenCard: null,
-      rewardMultiplier: null,
-      rewardsEarned: null,
+      verdict: 'NO_CARD_DATA' as CardVerdict,
+      cardId: undefined,
+      cardNickname: undefined,
+      multiplier: undefined,
+      estimatedRewards: undefined,
     };
   }
 
-  const rewardsEarned = Math.floor((input.amountCents * bestMultiplier) / 100);
+  const estimatedRewards = Math.floor((input.amountCents * bestMultiplier) / 100);
 
   return {
-    chosenCard: bestCard,
-    rewardMultiplier: bestMultiplier,
-    rewardsEarned,
-  };
-}
-
-export function classifySpendingVerdict(decision: EngineDecision): RecommendationVerdict {
-  const b = decision.bucket;
-
-  if (!b.id || b.limitCents == null || b.willBeSpentCents == null) {
-    return RecommendationVerdict.HEALTHY;
-  }
-
-  const overBy = b.willBeSpentCents - b.limitCents;
-
-  if (b.strictDecline || overBy > 0) {
-    return RecommendationVerdict.BREAKS_BUDGET;
-  }
-
-  if (b.remainingAfterCents != null && b.limitCents > 0) {
-    const ratio = b.remainingAfterCents / b.limitCents;
-    if (ratio < 0.1) return RecommendationVerdict.BORDERLINE;
-  }
-
-  return RecommendationVerdict.HEALTHY;
-}
-
-export function computeCherryIncentive(
-  decision: EngineDecision
-): { pointsIfFollowed: number; expiryMinutes: number } {
-  const amount = decision.bucket.willBeSpentCents ?? decision.amountCents ?? 0;
-  const base = Math.min(Math.floor(amount / 1000), 20); // 0-20 base points
-
-  let multiplier = 1;
-  if (decision.verdict === RecommendationVerdict.HEALTHY) multiplier = 2;
-  else if (decision.verdict === RecommendationVerdict.BREAKS_BUDGET) multiplier = 0;
-
-  const points = base * multiplier;
-
-  return {
-    pointsIfFollowed: points,
-    expiryMinutes: 15,
+    verdict: 'OPTIMAL' as CardVerdict,
+    cardId: bestCard.id,
+    cardNickname: bestCard.nickname,
+    multiplier: bestMultiplier,
+    estimatedRewards,
   };
 }
 
@@ -266,70 +209,79 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
     throw new Error('amountCents must be a positive integer');
   }
 
-  const now = input.now ?? new Date();
   const category = await resolveCategory({
     mccCode: input.mccCode,
     category: input.category,
     merchantName: input.merchantName,
   });
 
-  const {
-    bucket,
-    spentThisPeriodCents,
-    willBeSpentCents,
-    wouldExceed,
-    strictDecline,
-    remainingBeforeCents,
-    remainingAfterCents,
-    periodStart,
-    periodEnd,
-  } = await resolveBucketForTransaction({
-    userId: input.userId,
-    category,
-    amountCents: input.amountCents,
-    now,
-  });
+  const { coverageMode, buckets } = await getCategoryCoverage(input.userId, category);
 
-  const { chosenCard, rewardMultiplier, rewardsEarned } = await resolveBestCardForTransaction({
-    userId: input.userId,
-    category,
-    amountCents: input.amountCents,
-  });
-
-  const decision: EngineDecision = {
-    category,
-    amountCents: input.amountCents,
-    bucket: {
-      id: bucket?.id ?? null,
-      name: bucket?.name ?? null,
-      period: bucket?.period ?? null,
-      periodStart,
-      periodEnd,
-      limitCents: bucket?.budgetAmount ?? null,
-      spentThisPeriodCents,
-      willBeSpentCents,
-      remainingBeforeCents,
-      remainingAfterCents,
-      wouldExceed,
-      strictDecline,
-    },
-    routing: {
-      chosenCardId: chosenCard?.id ?? null,
-      chosenCardName: chosenCard?.nickname ?? null,
-      rewardMultiplier,
-      rewardsEarned,
-    },
-    verdict: RecommendationVerdict.HEALTHY, // overwritten below
-    cherryIncentive: {
-      pointsIfFollowed: 0,
-      expiryMinutes: 15,
-    },
+  let budgetInfo: EngineDecision['budget'] = {
+    verdict: 'UNCONFIGURED',
+    coverageMode,
+    hasBucket: false,
   };
 
-  decision.verdict = classifySpendingVerdict(decision);
-  decision.cherryIncentive = computeCherryIncentive(decision);
+  if (coverageMode === 'BUDGETED' && buckets.length > 0) {
+    // Simple selection: earliest created bucket for the category.
+    const bucket = buckets[0];
+    if (bucket) {
+      const limitCents = bucket.budgetAmount;
+      const spentBefore = bucket.spentCents ?? 0;
+      const spentAfter = spentBefore + input.amountCents;
+      const remainingAfter = limitCents - spentAfter;
+      const wouldExceed = spentAfter > limitCents;
 
-  return decision;
+      let verdict: BudgetVerdict = 'HEALTHY';
+      if (wouldExceed) verdict = 'BREAKS_BUDGET';
+      else if (limitCents > 0 && remainingAfter / limitCents < 0.1) verdict = 'BORDERLINE';
+
+      budgetInfo = {
+        verdict,
+        coverageMode,
+        hasBucket: true,
+        bucketId: bucket.id,
+        name: bucket.name,
+        limitCents,
+        spentBeforeCents: spentBefore,
+        spentAfterCents: spentAfter,
+        remainingAfterCents: remainingAfter,
+        strictMode: bucket.strictMode,
+        wouldExceed,
+      };
+    }
+  } else if (coverageMode === 'UNBUDGETED_INTENTIONAL') {
+    budgetInfo = {
+      verdict: 'UNBOUNDED',
+      coverageMode,
+      hasBucket: false,
+    };
+  } else {
+    budgetInfo = {
+      verdict: 'UNCONFIGURED',
+      coverageMode,
+      hasBucket: false,
+    };
+  }
+
+  const cardInfo = await resolveBestCardForTransaction({
+    userId: input.userId,
+    category,
+    amountCents: input.amountCents,
+  });
+
+  const overallVerdict = deriveOverallVerdict(budgetInfo.verdict, cardInfo.verdict);
+  const incentive = computeCherryIncentive(input.amountCents, budgetInfo.verdict);
+
+  return {
+    category,
+    amountCents: input.amountCents,
+    budget: budgetInfo,
+    card: cardInfo,
+    overallVerdict,
+    cherryIncentive: incentive,
+  };
 }
 
 // Legacy compatibility exports

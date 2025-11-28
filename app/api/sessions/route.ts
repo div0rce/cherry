@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { RecommendationStatus, RewardCategory } from '@prisma/client';
+import {
+  CategoryCoverageModeDb,
+  RecommendationStatus,
+  RewardCategory,
+} from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { runEngine } from '@/lib/engine';
@@ -89,9 +93,18 @@ export async function POST(request: Request) {
           storeId: body.storeId ?? null,
           terminalId: body.terminalId ?? null,
           orderId: body.orderId ?? null,
-          recommendedCardId: decision.routing.chosenCardId,
-          recommendedBucketId: decision.bucket.id,
-          verdict: decision.verdict,
+          recommendedCardId: decision.card.cardId ?? null,
+          recommendedBucketId: decision.budget.bucketId ?? null,
+          verdict:
+            decision.budget.verdict === 'BREAKS_BUDGET'
+              ? 'BREAKS_BUDGET'
+              : decision.budget.verdict === 'BORDERLINE'
+                ? 'BORDERLINE'
+                : 'HEALTHY',
+          budgetVerdict: decision.budget.verdict,
+          cardVerdict: decision.card.verdict,
+          overallVerdict: decision.overallVerdict,
+          coverageMode: (decision.budget.coverageMode ?? 'UNCONFIGURED') as CategoryCoverageModeDb,
           cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
           status: RecommendationStatus.RECOMMENDED,
           expiresAt,

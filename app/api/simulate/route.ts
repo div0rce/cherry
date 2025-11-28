@@ -79,14 +79,18 @@ export async function POST(request: Request) {
         mccCode: mccCode ?? undefined,
       });
 
-      const strictDecline = engineResult.bucket.strictDecline;
-      const bucketBeforeCents = engineResult.bucket.remainingBeforeCents ?? null;
+      const strictDecline =
+        (engineResult.budget.wouldExceed ?? false) && (engineResult.budget.strictMode ?? false);
+      const bucketBeforeCents =
+        engineResult.budget.limitCents != null && engineResult.budget.spentBeforeCents != null
+          ? engineResult.budget.limitCents - engineResult.budget.spentBeforeCents
+          : null;
       const bucketAfterCents = strictDecline
         ? bucketBeforeCents
-        : engineResult.bucket.remainingAfterCents ?? null;
-      const bucketLimitCents = engineResult.bucket.limitCents ?? null;
-      const rewardMultiplier = engineResult.routing.rewardMultiplier ?? null;
-      const rewardsEarnedPoints = engineResult.routing.rewardsEarned ?? null;
+        : engineResult.budget.remainingAfterCents ?? null;
+      const bucketLimitCents = engineResult.budget.limitCents ?? null;
+      const rewardMultiplier = engineResult.card.multiplier ?? null;
+      const rewardsEarnedPoints = engineResult.card.estimatedRewards ?? null;
       const tx = await prisma.simulatedTransaction.create({
         data: {
           simulationId,
@@ -96,15 +100,15 @@ export async function POST(request: Request) {
           resolvedCategory: engineResult.category,
           mccCode,
 
-          bucketId: engineResult.bucket.id,
-          bucketName: engineResult.bucket.name,
-          bucketPeriod: engineResult.bucket.period,
+          bucketId: engineResult.budget.bucketId ?? null,
+          bucketName: engineResult.budget.name ?? null,
+          bucketPeriod: null,
           bucketBeforeCents,
           bucketAfterCents,
           bucketLimitCents,
 
-          chosenCardId: engineResult.routing.chosenCardId,
-          chosenCardName: engineResult.routing.chosenCardName,
+          chosenCardId: engineResult.card.cardId ?? null,
+          chosenCardName: engineResult.card.cardNickname ?? null,
 
           rewardMultiplier,
           rewardsEarned: rewardsEarnedPoints,

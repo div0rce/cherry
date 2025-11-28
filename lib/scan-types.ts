@@ -1,13 +1,11 @@
-import { RecommendationVerdict, RewardCategory } from '@prisma/client';
-import type { EngineDecision } from '@/lib/engine';
+import { RewardCategory } from '@prisma/client';
+import type { EngineDecision, BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/engine';
 
 export type ScanRequestBody = {
   merchantName: string;
   category?: RewardCategory;
   expectedAmountCents?: number;
 };
-
-export type SpendingVerdict = RecommendationVerdict;
 
 export type ScanResponseBody = {
   merchantName: string;
@@ -22,6 +20,8 @@ export type ScanResponseBody = {
     remainingAfterCents: number | null;
     strictMode: boolean;
     wouldExceed: boolean;
+    coverageMode: string;
+    verdict: BudgetVerdict;
   };
 
   cardRecommendation: {
@@ -29,9 +29,12 @@ export type ScanResponseBody = {
     cardNickname: string | null;
     rewardMultiplier: number | null;
     estimatedRewards: number | null;
+    verdict: CardVerdict;
   };
 
-  spendingVerdict: SpendingVerdict;
+  budgetVerdict: BudgetVerdict;
+  cardVerdict: CardVerdict;
+  overallVerdict: OverallVerdict;
 
   cherryIncentive: {
     pointsIfFollowed: number;

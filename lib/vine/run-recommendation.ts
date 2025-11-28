@@ -1,5 +1,8 @@
 import { randomUUID } from 'crypto';
-import { RecommendationStatus } from '@prisma/client';
+import {
+  CategoryCoverageModeDb,
+  RecommendationStatus,
+} from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { runEngine } from '@/lib/engine';
 import type { EngineDecision } from '@/lib/engine';
@@ -41,9 +44,18 @@ export async function runRecommendationFromOrderContext(
       terminalId: ctx.terminalId ?? null,
       orderId: ctx.orderId ?? null,
       orderToken,
-      recommendedCardId: decision.routing.chosenCardId,
-      recommendedBucketId: decision.bucket.id,
-      verdict: decision.verdict,
+      recommendedCardId: decision.card.cardId ?? null,
+      recommendedBucketId: decision.budget.bucketId ?? null,
+      verdict:
+        decision.budget.verdict === 'BREAKS_BUDGET'
+          ? 'BREAKS_BUDGET'
+          : decision.budget.verdict === 'BORDERLINE'
+            ? 'BORDERLINE'
+            : 'HEALTHY',
+      budgetVerdict: decision.budget.verdict,
+      cardVerdict: decision.card.verdict,
+      overallVerdict: decision.overallVerdict,
+      coverageMode: (decision.budget.coverageMode ?? 'UNCONFIGURED') as CategoryCoverageModeDb,
       cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
       status: RecommendationStatus.RECOMMENDED,
       expiresAt,

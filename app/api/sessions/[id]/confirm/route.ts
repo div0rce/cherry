@@ -36,6 +36,10 @@ export async function POST(
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
 
+      if (session.status === RecommendationStatus.CLAIMED) {
+        return NextResponse.json({ error: 'Session already claimed' }, { status: 400 });
+      }
+
       if (session.status === RecommendationStatus.VERIFIED) {
         return NextResponse.json({ error: 'Session already verified' }, { status: 400 });
       }

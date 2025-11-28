@@ -84,7 +84,7 @@ export function VineSimulatorClient() {
       body: JSON.stringify({
         followedRecommendation: true,
         actualAmountCents: orderResult.decision.amountCents,
-        usedCardId: orderResult.decision.routing.chosenCardId,
+        usedCardId: orderResult.decision.card.cardId,
       }),
     });
 
@@ -186,27 +186,29 @@ export function VineSimulatorClient() {
                 <p className="text-xs text-slate-400">Token: {orderResult.orderToken}</p>
               )}
             </div>
-            <div className="text-right">
-              <p className="text-sm text-slate-300">Verdict</p>
-              <p className="text-lg font-semibold text-white">{orderResult.decision.verdict}</p>
+              <div className="text-right">
+                <p className="text-sm text-slate-300">Verdict</p>
+                <p className="text-lg font-semibold text-white">
+                  {orderResult.decision.overallVerdict}
+                </p>
+              </div>
             </div>
-          </div>
 
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-400">Recommended card</p>
               <p className="text-sm text-white">
-                {orderResult.decision.routing.chosenCardName ?? 'No card on file'}
+                {orderResult.decision.card.cardNickname ?? 'No card on file'}
               </p>
             </div>
             <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-400">Bucket</p>
               <p className="text-sm text-white">
-                {orderResult.decision.bucket.name ?? 'No bucket'}
+                {orderResult.decision.budget.name ?? 'No bucket'}
               </p>
-              {orderResult.decision.bucket.limitCents != null && (
+              {orderResult.decision.budget.limitCents != null && (
                 <p className="text-xs text-slate-300">
-                  Limit ${(orderResult.decision.bucket.limitCents / 100).toFixed(2)}
+                  Limit ${(orderResult.decision.budget.limitCents / 100).toFixed(2)}
                 </p>
               )}
             </div>
