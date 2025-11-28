@@ -2,6 +2,15 @@
 
 *Reference architecture for the Cherry in-store hardware node*
 
+Status: **Active blueprint + dev-only backend simulator.** Vine is **context-only hardware**, never a payment terminal. Current code hooks (dev-only) and caveats:
+- Backend ingest: `app/api/vine/order/route.ts` accepts Vine terminal events or `OrderContext` and creates a `RecommendationSession` via `lib/vine/run-recommendation.ts`.
+- Types: `lib/vine/order-context.ts`, `lib/schemas/vine.ts`, `lib/schemas/vine-terminal.ts`.
+- Dev UI: `/vine-simulator` (App Router page) posts to `/api/vine/order` and shows decision/orderToken.
+- Engine: `lib/engine.ts` computes verdicts; results persist to `RecommendationSession` and Cherry Points ledger when confirmed.
+- Current handler requires a valid MCC code and has no HMAC/nonce enforcement yet; freshness/HMAC are TODOs.
+
+All firmware and future device work must match this document and **never** touch card rails.
+
 ---
 
 ## 0. Purpose of this Document

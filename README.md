@@ -1,95 +1,119 @@
-## Cherry Lab (local dev)
+## What Cherry Is
+Cherry is a **real-time spending copilot**. It observes context (merchant, amount, user budgets/cards), runs an engine, recommends the right card and budget impact, and offers Cherry Points for following advice. Cherry:
+- Does **not** front, proxy, or route payments.
+- Does **not** act as a payment card or terminal.
+- Operates the loop **Observe → Evaluate → Recommend → Reward** only.
 
-Next.js 16 (App Router), React 19, Tailwind tokens in `app/globals.css`, Prisma 6 with Postgres, and a recommendation/session + Cherry Points ledger model.
+Cherry Vine (future hardware) is a **context beacon** (merchant + amount) and never touches payment rails. Cherry Pass is a **storeCard-style Apple Wallet pass** that triggers advisory flows; until Apple certs exist, `GET /api/wallet/cherry-pass` intentionally returns **501**.
 
-### Getting started
+Canonical docs: `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `AGENTS.md`.
+
+---
+
+## Stack and Layout
+- Next.js 16 (App Router), React 19, Tailwind tokens in `app/globals.css`.
+- Server-first pages under `app/`; client components marked with `"use client"`.
+- Auth: NextAuth (PrismaAdapter) with `with-user` guard on APIs.
+- Data: Postgres via Prisma (`prisma/schema.prisma`).
+- Core flows:
+  - `/scan` (UI) → `/api/sessions` to create a recommendation session.
+  - `/sessions` UI lists sessions and ledger statuses.
+  - `/vine-simulator` exercises `/api/vine/order` (dev-only Vine ingest).
+  - `/admin` exposes local-only maintenance actions.
+
+---
+
+## Getting Started (local)
 ```bash
 npm install
 npm run dev
 ```
 
-Before pushing changes, run:
-
+Health checks before pushing:
 ```bash
-npm run check
+npm run lint
+npm run typecheck
+npm run check    # composite (lint + typecheck)
 ```
 
-which executes lint + strict typechecking for the app (and scripts, if configured).
+---
 
-### Prisma + DB
-- `npx prisma migrate dev` — create/sync schema
-- `npx prisma studio` — browse/edit data
-- Recommendation sessions & Cherry Points:
-  - `RecommendationSession` stores “scan before pay” and Vine-driven decisions (what was recommended, offered points, verdicts, coverage mode).
-  - `CherryPointLedger` tracks points movements (PENDING/POSTED/REVOKED) and anomalies; use `npx prisma studio` to inspect when debugging reward logic.
-- Maintenance scripts:
-  - Bucket cleanup (uppercase categories, fix balances): `npx tsx prisma/scripts/fixBuckets.ts`
-  - Integrity audit (sessions ↔ ledger invariants): `npx ts-node --project tsconfig.scripts.json scripts/audit-integrity.ts`
-- MCC ingest (Merchant Category Codes → RewardCategory mapping):
-  - Place `data/mcc.pdf` (Citibank PDF) or `data/mcc.csv` in the repo root, or pass a path:  
-    `npm run ingest:mcc [path/to/mcc.pdf|mcc.csv]`
-  - MCC→RewardCategory mapping is defined in `scripts/ingest-mcc.ts` (`MCC_RANGE_MAPPING`) and used by the engine to resolve categories from merchant codes.
+## Key Commands and Scripts
+- Dev server: `npm run dev`
+- Build/serve: `npm run build && npm run start`
+- Prisma:
+  - `npx prisma migrate dev --name <desc>` — apply schema changes
+  - `npx prisma generate` — regenerate client after edits
+  - `npx prisma studio` — inspect data (users, cards, buckets, sessions, ledger)
+- Data:
+  - `npm run ingest:mcc [path]` — populate MCC → RewardCategory mapping
+  - `npm run seed:demo` — seed demo cards/buckets/sessions/ledger rows
+- Integrity: `npx ts-node --project tsconfig.scripts.json scripts/audit-integrity.ts`
+- Dev login (cookies): `./scripts/dev-login.sh [email]` → writes `cookies.txt`
 
-## Calling authenticated APIs from the terminal
+---
 
-Cherry uses cookie-based auth (NextAuth). For local dev, use the Credentials provider + cookie jar flow:
+## API Quickstart (authenticated; use cookies from `dev-login.sh`)
+```bash
+# Buckets
+curl http://localhost:3000/api/buckets -b cookies.txt
 
-1. Start the dev server: `npm run dev` (defaults to `http://localhost:3000`).
-2. Log in from the terminal (creates `cookies.txt`):
-   ```bash
-   ./scripts/dev-login.sh              # defaults to dev@example.com
-   # or
-   ./scripts/dev-login.sh you@example.com
-   ```
-   The script fetches a CSRF token, calls the Credentials provider, and writes cookies to `cookies.txt`.
-3. Call APIs with the cookie jar:
-   ```bash
-   curl http://localhost:3000/api/buckets -b cookies.txt
+# Simulate a hypothetical spend (records SimulatedTransaction)
+curl -X POST http://localhost:3000/api/simulate \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"amountCents":5000,"category":"DINING","merchantName":"Chipotle"}'
 
-   curl -X POST http://localhost:3000/api/simulate \
-     -H "Content-Type: application/json" \
-     -b cookies.txt \
-     -d '{
-       "amountCents": 5000,
-       "category": "DINING",
-       "merchantName": "Chipotle"
-     }'
-
-# Create a recommendation session (scan before pay)
+# Create a recommendation session (Manual Lookup & Rewards)
 curl -X POST http://localhost:3000/api/sessions \
   -H "Content-Type: application/json" \
   -b cookies.txt \
-  -d '{
-    "merchantName": "Chipotle",
-    "amountCents": 2200,
-    "currency": "USD"
-  }'
+  -d '{"merchantName":"Chipotle","amountCents":2200,"currency":"USD"}'
 
-# Exercise Vine order ingestion (simulated device)
+# Confirm a session (claim points; moves ledger to PENDING)
+curl -X POST http://localhost:3000/api/sessions/<sessionId>/confirm \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"followedRecommendation":true,"actualAmountCents":2200}'
+
+# Verify/revoke a session (simulated verification)
+curl -X POST http://localhost:3000/api/sessions/<sessionId>/verify \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"verified":true}'
+
+# Vine order ingestion (dev simulator)
 curl -X POST http://localhost:3000/api/vine/order \
   -H "Content-Type: application/json" \
   -b cookies.txt \
-  -d '{
-    "deviceId": "VINE-SIM-1",
-    "merchantName": "Chipotle",
-    "amountCents": 2200,
-    "currency": "USD",
-    "source": "VINE_SIM",
-    "timestamp": 1732765200000
-  }'
-   ```
-4. Or use the helper harness: `./scripts/simulate.sh` (requires `cookies.txt`; run the login script first).
+  -d '{"deviceId":"VINE-SIM-1","merchantName":"Chipotle","amountCents":2200,"currency":"USD","source":"VINE_SIM","timestamp":1732765200000,"mcc":"5812"}'
+```
+Also available via UI: `/scan`, `/sessions`, `/vine-simulator`, `/admin`.
 
-Optional legacy: you can still export `SESSION_COOKIE` manually if you prefer. See `docs/terminal-api.md`.
+---
 
-You can also exercise Vine order ingestion from the browser via `/vine-simulator`, which wraps `/api/vine/order` with a dev-friendly form and shows the resulting session/token.
+## Data Model (selected Prisma models)
+- `Card`, `RewardRule` — user cards and category multipliers.
+- `Bucket` — per-category budgets with `budgetAmount`, `spentCents`, `strictMode`, `periodStart/End`.
+- `SimulatedTransaction` — sandbox simulations (non-authoritative history).
+- `RecommendationSession` — advisory decision (manual scan or Vine), verdicts, coverage, offered points, expiry, anomaly flags.
+- `CherryPointLedger` — Cherry Points movements (PENDING/POSTED/REVOKED) tied to sessions; anomalies flagged.
+- MCC mapping tables: `MerchantCategory`, `MccToRewardCategory`.
 
-### Editor setup (keep IDE in sync with CLI)
-- In VS Code: Command Palette → “TypeScript: Select TypeScript Version” → “Use Workspace Version,” then “TypeScript: Restart TS server.”
-- Ensure the ESLint extension honors the flat config: enable “ESLint: Use Flat Config” and restart the ESLint server.
-- After editing `prisma/schema.prisma`, run `npx prisma generate` so the editor picks up the updated client and enums; restart the TS server if diagnostics seem stale.
-- Prisma client & enums:
-  - After editing `prisma/schema.prisma`, always run `npx prisma generate` so both `npm run typecheck` and VS Code see the latest enums and model fields.
-  - If VS Code shows enum/field errors that `npm run typecheck` does not, run “TypeScript: Restart TS server” and “ESLint: Restart ESLint Server” from the Command Palette.
-- Scripts:
-  - If you add new TS scripts under `scripts/`, ensure they are covered by `tsconfig.scripts.json` and (optionally) by `npm run typecheck:scripts`, so CLI and IDE stay aligned.
+Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in `lib/validation/*`.
+
+---
+
+## Docs to Read Next
+- `docs/cherry-vision.md` — product identity and legal guardrails (copilot, not a card).
+- `docs/cherry-vine.md` — hardware/context blueprint and `/api/vine/order` contract.
+- `docs/wallet-pass.md` — Wallet pass scaffold and 501 gating.
+- `docs/api.md` — endpoint reference, including `/api/scan` (advisory only).
+- `AGENTS.md` — operating rules for contributors/agents.
+
+---
+
+## Editor/Tooling Notes
+- Use workspace TypeScript in VS Code; restart TS/ESLint servers after Prisma changes.
+- Tailwind tokens live in `app/globals.css`; prefer semantic utilities.
+- Keep lint/typecheck green; add focused tests when touching engine/sessions/ledger logic.

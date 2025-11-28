@@ -1,5 +1,7 @@
 # Cherry • AI Agent Playbook
 
+Status: **Active**. Follow this alongside `AGENTS.md`, `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, and `docs/api.md`. Never frame Cherry as a payment card/terminal; `/api/scan` stays advisory; `/api/wallet/cherry-pass` returns 501 until certs exist.
+
 ## Runtime & Layout
 - Next.js 16 App Router + React 19 (React Compiler). Default to server components; place interactive hooks in `app/<route>/client.tsx` gated with `'use client'`.
 - Tailwind v4 tokens live in `app/globals.css`. Prefer semantic CSS vars (`--font-geist-*`, `--color-*`) and canonical utilities (e.g., `max-w-48` rather than arbitrary values) to keep lint happy.

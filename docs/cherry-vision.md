@@ -2,6 +2,15 @@
 
 *A living document for how Cherry should exist in the world*
 
+Status: **Active and canonical.** All other docs and code must conform to this file (and `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`). If reality drifts, fix the code—not this identity.
+
+Where this lives in the repo today:
+- Advisory entry: `/api/scan` (stateless) in `app/api/scan/route.ts`.
+- Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`.
+- Engine: `lib/engine.ts` + invariants in `lib/engine-invariants.ts`.
+- Vine context ingest (dev-only): `/api/vine/order` + simulator UI `/vine-simulator`.
+- Wallet pass scaffold: `/api/wallet/cherry-pass` (501 until Apple certs).
+
 ---
 
 ## 0. TL;DR — What Cherry Is (and Is Not)

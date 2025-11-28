@@ -1,1 +1,65 @@
-you are an engineering agent working on my Cherry codebase and at this stage your job is to take the NextAuth-based auth we already wired up and make it actually real and user-facing instead of a stub, which means two main responsibilities that are tightly connected: first you will hook up at least one real auth provider (Google, GitHub or any other OAuth provider we want) in the existing NextAuth config, and second you will update the UI layer so that when backend APIs respond with `401 Unauthorized` (because of our `withUser` guard) the user experience is clean and intentional, nudging or forcing the user to sign in instead of silently failing, and you will do this in a structured but opinionated way without bikeshedding the architecture, so starting with the provider you will open `app/api/auth/[...nextauth]/route.ts` where NextAuth is already configured with `PrismaAdapter(prisma)` and a placeholder email provider, and you will add a real provider import from `next-auth/providers`, for example `import GoogleProvider from "next-auth/providers/google";` or `import GitHubProvider from "next-auth/providers/github";` and you will plug it into the `providers` array inside the `authOptions` object, wiring each provider’s `clientId` and `clientSecret` from environment variables like `process.env.GOOGLE_CLIENT_ID` and `process.env.GOOGLE_CLIENT_SECRET` (or the GitHub equivalents), and you will ensure `.env` contains the correct values and that these env vars are referenced consistently, and you will respect the existing PrismaAdapter setup so that when a user signs in via that provider NextAuth will automatically create or reuse a row in the `User` table and hook up `Account`, `Session`, and `VerificationToken` relations in the new NextAuth-specific tables that Prisma created in the previous migration, and you will preserve the session callback behavior that exposes `session.user.id`, because the rest of the backend (`lib/auth.ts` and `lib/with-user.ts`) depend on that to resolve `userId` for scoping Prisma queries, so the overall architecture is still: OAuth provider → NextAuth core → PrismaAdapter → `User` and related tables → session callback stamps `user.id` → `getUserIdFromSession` pulls it with `getServerSession` → `withUser` uses it to guard API routes, with the only difference now being that real third-party accounts can be used instead of a fake email stub, and you will verify this by actually signing in through `/api/auth/signin` or whatever UI entry point we expose and making sure a `User` row is created or reused, then you will move to the UI responsibility which is to make 401s from our backend feel intentional and not like bugs, so you will assume we are using `next-auth/react` on the client side and possibly `SessionProvider` in `app/layout.tsx` (or an equivalent session context), and your goal is twofold: proactively encourage sign-in on pages that obviously require a user (like the “Your cards”, “Buckets”, or “Simulations” dashboards) and reactively handle 401s coming back from `fetch` calls, so for proactive behavior you will wrap the main app shell or specific protected pages with `SessionProvider` and, inside those pages or components, you will use `const { data: session, status } = useSession();` to determine whether the user is authenticated, and if `status === "loading"` you can show a simple loading state, but if `!session` (or `status === "unauthenticated"`) you will render a clear call-to-action that either uses `signIn()` from `next-auth/react` (optionally passing `{ callbackUrl: "/dashboard" }` or whatever makes sense) or links to a dedicated sign-in page that calls `signIn("google")` or `signIn("github")`, and you will make sure that any UI that assumes the presence of user data (cards list, bucket list, simulation history) is conditioned on `session` existing so components don’t spam the API with calls that will just return 401, and then for reactive behavior you will look at every place we call our APIs via `fetch("/api/cards")`, `fetch("/api/simulations")`, `fetch("/api/buckets")`, `fetch("/api/simulate")`, etc and you will add explicit handling for `res.status === 401` (or a generic `if (!res.ok && res.status === 401)`) in which case you do not just throw a generic error but instead trigger a sign-in flow or surface a specific message, for example you might do `if (res.status === 401) { signIn(); return; }` in client components that have access to `signIn` or you can set some state like `setAuthError(true)` and show a banner saying “You need to sign in to use Cherry” with a button that calls `signIn()`, and for server components or RSC loaders that call the APIs you can redirect to `/api/auth/signin` or a custom `/login` route when you detect an unauthenticated state, and the important invariant here is that our `withUser` guard in the backend is the single source of truth for what is protected and forces a 401 when unauthenticated, and the UI is responsible for catching that 401 and converting it into “please sign in” UX instead of letting it bubble up as a raw error, and you will keep the architecture of responsibilities clean: NextAuth route owns provider configuration and session serialization, `lib/auth.ts` owns “how do I get a userId from this session”, `lib/with-user.ts` owns “if there is no userId, this is a 401”, API route handlers own only business logic and Prisma queries with `userId` supplied, and React components own how the user is prompted or redirected when they’re not logged in or when an API call is rejected as unauthorized, and when you are done the system will feel like a coherent authenticated app where you can log in with Google/GitHub/whatever on the front, NextAuth persists your user through Prisma on the back, and all Cherry operations (cards, buckets, reward rules, simulations) are both technically scoped to your user id and ergonomically gated by sign-in prompts whenever you hit a protected route without being authenticated.
+# Auth Architecture (NextAuth + Prisma)
+
+Status: **Active**. This document explains how authentication works in Cherry and how to keep it aligned with the product guardrails (copilot, not a card). It must stay consistent with `AGENTS.md` and `docs/cherry-vision.md`.
+
+---
+
+## Overview
+- Identity/auth stack: **NextAuth** with **PrismaAdapter**.
+- Location: `app/api/auth/[...nextauth]/route.ts`.
+- Storage: `User`, `Account`, `Session`, `VerificationToken` tables in `prisma/schema.prisma`.
+- Session guard: `withUser` (`lib/with-user.ts`) extracts `userId` via `getServerSession` and returns `401` on failure.
+- Client handling: components use `useSession()` and call `signIn()` on `401` responses from APIs.
+
+---
+
+## Providers and Env
+- Supported providers today: Credentials + Google (extendable).
+- Add providers by importing from `next-auth/providers/*` inside `authOptions.providers`.
+- Required env vars (example for Google):
+  - `GOOGLE_CLIENT_ID`
+  - `GOOGLE_CLIENT_SECRET`
+- Keep secrets in `.env.local` (never committed).
+
+---
+
+## Session Lifecycle
+1) User signs in via `/signin` or `signIn()` (client).
+2) NextAuth issues a session token; PrismaAdapter persists `User` + `Account` + `Session`.
+3) `session` callback stamps `session.user.id`.
+4) API routes call `withUser(request, handler)` → loads session → supplies `userId` → 401 if absent.
+5) UI reacts to 401 by prompting sign-in (never silently fails).
+
+---
+
+## Protected Surfaces
+- All business APIs in `app/api/*` expect auth:
+  - `/api/scan` (advisory)
+  - `/api/sessions`, `/api/sessions/[id]/confirm|verify`
+  - `/api/vine/order`
+  - `/api/cards`, `/api/buckets`, `/api/simulate`
+  - Admin utilities under `/api/admin/*`, `/api/seed-demo`
+- UI pages that call these endpoints must wrap in `useSession()` and redirect/prompt on unauthenticated states (`/signin?callbackUrl=...`).
+
+---
+
+## Error Handling and UX Rules
+- Never let `401` bubble as a generic error. In client components, if `res.status === 401`, call `signIn()` or show a CTA.
+- In server components, redirect to `/signin` with `callbackUrl` for the requested page.
+- The `/signin` page should clearly state that Cherry is a spending copilot (not a card) and link to privacy/terms if exposed to users.
+
+---
+
+## Testing Auth
+- CLI: use `./scripts/dev-login.sh [email]` to create `cookies.txt`, then pass `-b cookies.txt` to curl.
+- Browser: hit `/signin`, complete provider flow, then exercise APIs via UI or Dev Console.
+- After schema changes, run `npx prisma migrate dev` and `npx prisma generate` so NextAuth tables stay in sync with the client.
+
+---
+
+## Do / Don’t
+- **Do** enforce auth via `withUser` for every stateful API.
+- **Do** keep session callbacks stamping `session.user.id`.
+- **Do** handle `401` intentionally in UI.
+- **Don’t** read cookies manually or create ad-hoc Prisma clients.
+- **Don’t** weaken auth on admin tools; they are local-only and should stay guarded.

@@ -1,46 +1,116 @@
-# Repository Guidelines
+# Cherry Agents — Canonical Operating Guide
 
-## Product Identity & Guardrails
-- Cherry is a real-time spending advisor, not a payment card or proxy. It does not front or route transactions, hold funds, or touch payment rails.
-- Core loop: **Observe → Evaluate → Recommend → Reward**. Cherry observes context (merchant/amount/user data), evaluates budgets + rewards, recommends a card/decision, and can reward users for following advice.
-- Cherry Pass and pre-swipe scans are advisory surfaces only; Wallet pass endpoint currently returns 501 until certs are configured.
-- Cherry Vine (hardware) is a context beacon: on-counter node that hears order metadata (merchant, amount, timestamp) and broadcasts to phones via BLE/NFC. It never reads card data, speaks EMV, or acts as a payment terminal.
-- Recommendation sessions and Cherry Points are advisory and sandbox-only. The `RecommendationSession` and `CherryPointLedger` models record what Cherry *suggested* and what the user *claims* to have done; Cherry never directly settles funds or controls a bank account.
-- Verification is layered: Vine-attached sessions (hardware context) are treated as stronger signals than manual “scan before pay” claims, and future Plaid/bank/receipt integrations will move points from `PENDING` to `VERIFIED`. Until then, “verification” is simulated and must not be represented as financial truth.
-- Anomaly flags (session- and ledger-level) are diagnostic only. They capture mismatches between advice and claims (card mismatch, amount mismatch, time-window violations) and are intended for internal integrity checks—not user-facing fraud labels.
+Status: **Active**. This file is the authoritative playbook for any AI/copilot working in this repo. It must stay aligned with:
+- `docs/cherry-vision.md` (product identity)
+- `docs/cherry-vine.md` (hardware/context)
+- `docs/wallet-pass.md` (Apple Wallet scaffold and 501 gate)
+- `docs/api.md` (API reference including `/api/scan`)
+- `README.md` (setup/commands)
 
-## Project Structure & Module Organization
-- Next.js app router lives in `app/` with routes for buckets, cards, simulations, and matching API handlers in `app/api/*` (server-first; add `"use client"` only where browser state is needed).
-- New flows:
-  - `/sessions` (if present) and `/api/sessions` for recommendation session creation and confirmation.
-  - `/vine-simulator` as a dev-only UI to exercise `/api/vine/order` without hardware.
-  - Admin tools under `/admin` wired to `/api/admin/clear-user`, `/api/admin/clear-sessions`, `/api/admin/clear-ledger`, and `/api/admin/health`.
-- Shared logic stays in `lib/`:
-  - `lib/engine.ts` — single canonical evaluation engine (Observe → Evaluate → Recommend) with verdicts and Cherry Points computation.
-  - `lib/enums.ts` — centralized enums for verdicts, coverage modes, anomaly codes, and verification status, mirroring Prisma `$Enums` where applicable.
-  - `lib/validation/*` — Zod schemas for API payloads (cards, buckets, simulate/scan, sessions, Vine orders); all API routes must parse and narrow input via these schemas.
-  - `lib/vine/*` — Vine order context types and helpers (`order-context.ts`, `run-recommendation.ts`).
-  - `lib/verification/*` — verification strategies (vine/bank/receipts) and the session verification orchestrator.
-  - `auth.ts`, `prisma.ts`, `with-user.ts`, `logger.ts` — auth/session, DB client, auth guard, and logging helpers.
-  - Database access must go through these helpers; do not instantiate Prisma clients ad hoc.
-- Database schema and migrations are under `prisma/` (use `schema.prisma`, track migrations, and keep helper scripts in `prisma/scripts/`). Scripts that operate on the DB live in `scripts/` (e.g., `scripts/ingest-mcc.ts`, `scripts/seed-demo.ts`, `scripts/audit-integrity.ts`).
-- Data imports (MCC PDFs/TSV) live in `data/mcc/`; ingestion and seeding utilities live in `scripts/`.
-- Public assets belong in `public/`; high-level auth notes are in `docs/architecture/auth.md`.
+If code or docs conflict with these, treat the canonical list above as truth and open follow-up debt in code.
 
-## Build, Test, and Development Commands
-- `npm install` to sync dependencies.
-- `npm run dev` starts Next.js locally (defaults to :3000, falls back if busy); `npm run build` for production bundles; `npm run start` serves the build.
+---
+
+## Product Identity Guardrails (never violate)
+- Cherry is a **real-time spending copilot**, not a card, proxy, processor, or payment terminal. It never fronts transactions, holds funds, or touches payment rails.
+- Cherry’s loop is **Observe → Evaluate → Recommend → Reward**. Nothing beyond that (no authorization).
+- Cherry Vine is a **context beacon** (merchant + amount + timestamp over BLE/NFC), not an EMV device or reader.
+- Cherry Pass is a **storeCard-style Wallet pass** that triggers advisory flows; it is not a payment instrument. `GET /api/wallet/cherry-pass` returns **501** until Apple Wallet certs exist.
+- Recommendation sessions and Cherry Points are **advisory/sandbox**. `RecommendationSession` + `CherryPointLedger` record what was suggested and what the user claims; they do not settle money.
+- Verification is layered and simulated today; anomalies are diagnostic only (not fraud labels).
+
+Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Cherry,” “Cherry terminal,” “payment card.”
+
+---
+
+## Repository Map (authoritative paths)
+- App Router UI: `app/` (server-first; add `"use client"` only where browser state is needed).
+- Core APIs: `app/api/*`
+  - `/api/scan` — stateless advisory (pre-swipe) using `lib/engine.ts`; no persistence.
+  - `/api/sessions` + `/api/sessions/[id]/confirm|verify` — persist recommendations and Cherry Points claims.
+  - `/api/vine/order` — Vine simulator/device order ingestion → session creation (dev-only today).
+  - `/api/wallet/cherry-pass` — Wallet pass scaffold; returns 501 until certs configured.
+- Shared logic:
+  - `lib/engine.ts` + `lib/engine-invariants.ts` — canonical engine, verdicts, incentives.
+  - `lib/enums.ts` — enum aliases mirroring Prisma `$Enums`.
+  - `lib/validation/*` — Zod schemas; all routes must parse inputs through these.
+  - `lib/vine/*` — `order-context`, `run-recommendation` (session from Vine order).
+  - `lib/verification/*` — stubs for bank/receipt/vine verification orchestrator.
+  - `auth.ts`, `prisma.ts`, `with-user.ts`, `logger.ts` — auth/session helpers, Prisma client, guard, logging.
+- Database schema: `prisma/schema.prisma`; migrations under `prisma/migrations`; helper scripts in `prisma/scripts/`.
+- Data imports: `data/mcc/`; ingestion scripts in `scripts/`.
+- Public assets: `public/`; extra docs under `docs/`.
+
+---
+
+## Architecture Snapshot (code-level reality)
+- Frontend: Next.js 16 App Router + React 19, Tailwind tokens in `app/globals.css`. Sidebar layout in `app/layout.tsx` loads Geist fonts and session provider.
+- Auth: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`. `withUser` enforces auth on API routes. Client code uses `useSession()`/`signIn()` and handles `401` by prompting sign-in.
+- Engine: `lib/engine.ts` is the single source of decision logic. Always call it; do not fork logic in routes.
+- Persistence:
+  - `Bucket`, `Card`, `RewardRule` describe user budgets and rewards.
+  - `RecommendationSession` stores advisory decisions (manual scan or Vine) plus offered points and verdicts.
+  - `CherryPointLedger` records points movements (PENDING/POSTED/REVOKED) and anomaly flags.
+- Dev utilities: `/admin` triggers clear/seed endpoints; `/vine-simulator` exercises `/api/vine/order`.
+
+---
+
+## Build, Test, and Run
+- Install: `npm install`
+- Dev server: `npm run dev` (Next.js, defaults to :3000).
+- Build/start: `npm run build` then `npm run start`.
 - Health gates:
-  - `npm run lint` — ESLint with type-aware rules (no-unsafe-*, no floating promises, exhaustive switches, explicit module boundaries).
-  - `npm run typecheck` — strict TypeScript against `tsconfig.json`.
-  - `npm run typecheck:scripts` (if defined) — strict TypeScript against `tsconfig.scripts.json` for `scripts/*`.
-  - `npm run check` — composite check (lint + both typechecks). This must be green before PRs.
-- Auth for curl/CLI: `./scripts/dev-login.sh [email]` writes `cookies.txt`; use `-b cookies.txt` with API calls. Custom sign-in UI lives at `/signin` (NextAuth `pages.signIn`).
-- `npm run ingest:mcc` normalizes MCC data from `data/mcc/`; `npm run seed:demo` seeds demo entities (auto-creates a user by email if needed) including sessions/ledger examples.
-- Prisma:
-  - `npx prisma migrate dev --name <desc>` to evolve schema (including `RecommendationSession`, `CherryPointLedger`, anomaly and verification fields).
-  - `npx prisma generate` after changes so both CLI and the editor see updated enums and types.
-  - `npx prisma studio` to inspect data (users, cards, buckets, sessions, ledger rows). Use this when debugging anomalies or verification status.
+  - `npm run lint` (type-aware ESLint)
+  - `npm run typecheck`
+  - `npm run typecheck:scripts` (if defined)
+  - `npm run check` (composite)
+- Prisma hygiene:
+  - `npx prisma migrate dev --name <desc>` for schema changes.
+  - `npx prisma generate` after schema edits.
+  - `npx prisma studio` to inspect data.
+- Auth for curl/CLI: `./scripts/dev-login.sh [email]` → `cookies.txt`; pass with `-b cookies.txt`.
+- Data: `npm run ingest:mcc` to populate MCC map; `npm run seed:demo` to seed demo cards/buckets/sessions/ledger rows.
+
+---
+
+## Operating Rules for Agents
+- **Always anchor to canonical docs** (Vision, Vine, Wallet, API/scan). If code diverges legally, treat as debt to fix in code, not docs.
+- **Validate inputs with Zod** schemas from `lib/validation/*`; never trust raw `request.json()`.
+- **No new Prisma clients**; import from `@/lib/prisma`.
+- **Keep server-first**; mark client components explicitly.
+- **Respect advisory boundaries**: `/api/scan` is stateless; sessions/ledger handle persistence and rewards; wallet pass stays 501 until certs exist; Vine is context-only.
+- **Handle 401s intentionally** in UI (prompt sign-in) and in API tests (provide cookies).
+- **Testing mindset**: prefer focused unit tests for engine invariants, session/ledger lifecycle, and MCC mapping. Keep lint/typecheck green.
+- **Banned changes**: do not turn Cherry into a payment card/terminal; do not bypass the Wallet 501 gate; do not store or process sensitive card data.
+
+---
+
+## Quick File Pointers (per surface)
+- Manual advisory: `app/scan/ScanClient.tsx` → `/api/sessions` (creates session) and `/api/sessions/[id]/confirm`.
+- Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.
+- Engine: `lib/engine.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
+- Wallet pass scaffold: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/cherryPass.ts` (returns 501 without certs).
+- API reference: `docs/api.md` (keep in sync when endpoints change).
+- Product identity: `docs/cherry-vision.md` (copilot, not a card).
+- Hardware blueprint: `docs/cherry-vine.md` (context beacon).
+- Wallet pass status: `docs/wallet-pass.md` (501 until certs).
+
+---
+
+## Change Management Expectations
+- Keep diffs small and scoped; prefer follow-ups over mega-PRs.
+- When editing schema, document migration name, any backfill, and validation method.
+- When touching engine/sessions/ledger, add or update tests and run integrity scripts (`scripts/audit-integrity.ts`) if applicable.
+- Cross-link docs when you add new flows; update `docs/api.md` for any API shape changes.
+
+---
+
+## Final Checklist Before You Ship
+- Lint/typecheck clean.
+- No forbidden framings added.
+- `/api/scan` stays advisory; wallet pass still gated by 501 unless certs are present.
+- Database access through `lib/prisma`.
+- Docs updated if API/schema behavior changed.
 
 ## Coding Style & Naming Conventions
 - TypeScript + React; prefer async/await and typed responses in API routes. Use named exports when possible.

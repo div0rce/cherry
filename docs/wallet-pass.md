@@ -1,6 +1,11 @@
 # Cherry Wallet Pass (Apple Wallet)
 
-# Cherry Wallet Pass — Status: SCAFFOLDED ONLY
+Status: **SCAFFOLDED ONLY** — `GET /api/wallet/cherry-pass` intentionally returns **501 Not Implemented** until Apple Wallet provisioning is complete. Pass is a **storeCard** loyalty-style trigger, never a payment card.
+Code hooks:
+- API route: `app/api/wallet/cherry-pass/route.ts`
+- Pass builder: `lib/wallet/cherryPass.ts`
+- Canonical docs: `docs/cherry-vision.md`, `docs/api.md`
+- Env placeholders in `.env.local` (never committed)
 
 **This feature is partially implemented but currently inactive.**
 
