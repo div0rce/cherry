@@ -39,7 +39,10 @@ export function SidebarNav(): JSX.Element {
     },
     {
       label: 'Activity',
-      items: [{ name: 'Activity', href: '/activity' }],
+      items: [
+        { name: 'Activity', href: '/activity' },
+        { name: 'Statements', href: '/statements' },
+      ],
     },
     {
       label: 'Admin',

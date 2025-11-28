@@ -25,6 +25,7 @@ export interface UnifiedActivityRow {
   cardBrand?: string | null;
   cardLast4?: string | null;
   cardName?: string | null;
+  cardId?: string | null;
   pointsEarned?: number;
   bucketId?: string | null;
   rewardCategory?: string | null;
@@ -46,6 +47,12 @@ export async function getUnifiedActivityForUser(
 ): Promise<UnifiedActivityRow[]> {
   const limit = options?.limit ?? 200;
   const periodFilter = options?.periodFilter ?? null;
+  const periodRange = periodFilter
+    ? {
+        start: new Date(Date.UTC(periodFilter.year, periodFilter.month - 1, 1)),
+        end: new Date(Date.UTC(periodFilter.year, periodFilter.month, 1)),
+      }
+    : null;
 
   const includeBankSources =
     !options?.sourceFilter ||
@@ -57,12 +64,12 @@ export async function getUnifiedActivityForUser(
     );
 
   const bankWhere =
-    includeBankSources && periodFilter
+    includeBankSources && periodRange
       ? {
           userId,
           occurredAt: {
-            gte: new Date(Date.UTC(periodFilter.year, periodFilter.month - 1, 1)),
-            lt: new Date(Date.UTC(periodFilter.year, periodFilter.month, 1)),
+            gte: periodRange.start,
+            lt: periodRange.end,
           },
         }
       : { userId };
@@ -78,13 +85,23 @@ export async function getUnifiedActivityForUser(
       : Promise.resolve([]),
     includeSimSources
       ? prisma.cherryPointLedger.findMany({
-          where: { userId },
+          where: {
+            userId,
+            ...(periodRange
+              ? {
+                  awardedAt: {
+                    gte: periodRange.start,
+                    lt: periodRange.end,
+                  },
+                }
+              : {}),
+          },
           orderBy: { awardedAt: 'desc' },
           take: limit,
           include: {
             session: {
               include: {
-                recommendedCard: { select: { nickname: true, network: true } },
+                recommendedCard: { select: { id: true, nickname: true, network: true } },
               },
             },
             merchantObservation: true,
@@ -130,6 +147,7 @@ export async function getUnifiedActivityForUser(
       cardBrand: tx.cardBrand ?? null,
       cardLast4: tx.cardLast4 ?? null,
       cardName: null,
+      cardId: null,
       rewardCategory: null,
       statementPeriod,
     };
@@ -167,6 +185,7 @@ export async function getUnifiedActivityForUser(
       cardBrand: session?.recommendedCard?.network ?? null,
       cardLast4: null,
       cardName: session?.recommendedCard?.nickname ?? null,
+      cardId: session?.recommendedCard?.id ?? null,
       pointsEarned: row.points,
       bucketId: session?.recommendedBucketId ?? null,
       rewardCategory: session?.category ?? null,
@@ -181,16 +200,9 @@ export async function getUnifiedActivityForUser(
     if (options?.sourceFilter?.length && !options.sourceFilter.includes(row.source)) {
       return false;
     }
-    if (
-      periodFilter &&
-      row.statementPeriod &&
-      (row.statementPeriod.year !== periodFilter.year ||
-        row.statementPeriod.month !== periodFilter.month)
-    ) {
-      return false;
-    }
-    if (periodFilter && !row.statementPeriod) {
-      return false;
+    if (periodRange) {
+      const occurred = row.occurredAt;
+      if (occurred < periodRange.start || occurred >= periodRange.end) return false;
     }
     return true;
   });

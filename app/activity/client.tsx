@@ -4,7 +4,9 @@ import type { JSX, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 import type { ActivitySource, UnifiedActivityRow } from '@/lib/unified-activity';
 
-type Mode = 'ALL' | 'SIMULATED' | 'BANK';
+type TypeFilter = 'ALL' | 'REAL' | 'SIMULATED' | 'POINTS';
+
+type CardOption = { id: string; nickname: string; network: string };
 
 function coerceDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
@@ -18,43 +20,148 @@ function formatAmount(amount: number, currency: string, direction: 'DEBIT' | 'CR
 
 export default function ActivityPageClient({
   initialRows,
+  cards,
 }: {
   initialRows: UnifiedActivityRow[];
+  cards: CardOption[];
 }): JSX.Element {
-  const [mode, setMode] = useState<Mode>('ALL');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
+  const [cardId, setCardId] = useState<string>('');
+  const [merchantQuery, setMerchantQuery] = useState('');
+  const [mccFilter, setMccFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const rows = useMemo(() => initialRows, [initialRows]);
   const filteredRows = useMemo(
     () =>
       rows.filter((row) => {
-        if (mode === 'ALL') return true;
-        if (mode === 'SIMULATED') {
+        if (typeFilter === 'SIMULATED') {
           return (
             row.source === 'VINE_SIM' ||
             row.source === 'MANUAL_LOOKUP' ||
             row.source === 'OTHER_SIM'
           );
         }
-        if (mode === 'BANK') {
+        if (typeFilter === 'REAL') {
           return row.source === 'BANK_FEED' || row.source === 'STATEMENT_VIEW';
         }
+        if (typeFilter === 'POINTS') {
+          return row.pointsEarned != null && row.pointsEarned !== 0;
+        }
         return true;
-      }),
-    [mode, rows],
+      })
+        .filter((row) => {
+          if (!cardId) return true;
+          return row.cardId === cardId;
+        })
+        .filter((row) => {
+          if (!merchantQuery.trim()) return true;
+          return (row.merchantName ?? '').toLowerCase().includes(merchantQuery.toLowerCase());
+        })
+        .filter((row) => {
+          if (!mccFilter.trim()) return true;
+          const parsed = Number(mccFilter);
+          if (Number.isNaN(parsed)) return true;
+          return row.mcc === parsed;
+        })
+        .filter((row) => {
+          if (!startDate && !endDate) return true;
+          const occurred = coerceDate(row.occurredAt);
+          if (startDate) {
+            const start = new Date(startDate);
+            if (occurred < start) return false;
+          }
+          if (endDate) {
+            const end = new Date(endDate);
+            // include end date full day
+            end.setDate(end.getDate() + 1);
+            if (occurred >= end) return false;
+          }
+          return true;
+        }),
+    [cardId, endDate, mccFilter, merchantQuery, rows, startDate, typeFilter],
   );
 
   return (
-    <div className="space-y-4">
-      <div className="inline-flex rounded-full border border-white/10 bg-slate-950/60 p-1 text-xs">
-        <ModeButton mode="ALL" current={mode} onChange={setMode}>
-          All activity
-        </ModeButton>
-        <ModeButton mode="SIMULATED" current={mode} onChange={setMode}>
-          Simulated &amp; rewards
-        </ModeButton>
-        <ModeButton mode="BANK" current={mode} onChange={setMode}>
-          Bank &amp; statements
-        </ModeButton>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
+        <div className="flex flex-wrap items-center gap-3">
+          <ModeButton mode="ALL" current={typeFilter} onChange={setTypeFilter}>
+            All
+          </ModeButton>
+          <ModeButton mode="REAL" current={typeFilter} onChange={setTypeFilter}>
+            Real
+          </ModeButton>
+          <ModeButton mode="SIMULATED" current={typeFilter} onChange={setTypeFilter}>
+            Simulated
+          </ModeButton>
+          <ModeButton mode="POINTS" current={typeFilter} onChange={setTypeFilter}>
+            Points
+          </ModeButton>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1 text-xs text-slate-300">
+            Card
+            <select
+              className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"
+              value={cardId}
+              onChange={(e) => setCardId(e.target.value)}
+            >
+              <option value="">All cards</option>
+              {cards.map((card) => (
+                <option key={card.id} value={card.id}>
+                  {card.nickname} · {card.network}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-slate-300">
+            Merchant
+            <input
+              value={merchantQuery}
+              onChange={(e) => setMerchantQuery(e.target.value)}
+              className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"
+              placeholder="Search merchant"
+              type="text"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-slate-300">
+            MCC
+            <input
+              value={mccFilter}
+              onChange={(e) => setMccFilter(e.target.value)}
+              className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"
+              placeholder="e.g. 5411"
+              inputMode="numeric"
+              type="number"
+            />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1 text-xs text-slate-300">
+              Start date
+              <input
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"
+                type="date"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-slate-300">
+              End date
+              <input
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white"
+                type="date"
+              />
+            </label>
+          </div>
+        </div>
       </div>
 
       <ActivityTable rows={filteredRows} />
@@ -68,9 +175,9 @@ function ModeButton({
   onChange,
   children,
 }: {
-  mode: Mode;
-  current: Mode;
-  onChange: (mode: Mode) => void;
+  mode: TypeFilter;
+  current: TypeFilter;
+  onChange: (mode: TypeFilter) => void;
   children: ReactNode;
 }): JSX.Element {
   const active = current === mode;
