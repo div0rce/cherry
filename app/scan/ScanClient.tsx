@@ -197,14 +197,26 @@ export default function ScanClient() {
                 <p className="text-sm text-slate-300">
                   {d.budget.verdict === 'BREAKS_BUDGET'
                     ? 'Over budget'
-                    : d.budget.verdict === 'UNCONFIGURED'
-                      ? 'No bucket configured for this category.'
-                      : d.budget.verdict === 'UNBOUNDED'
-                        ? 'Unbudgeted by choice; optimizing rewards only.'
-                        : 'Within budget'}
+                    : d.budget.verdict === 'BORDERLINE'
+                      ? 'Near your budget limit'
+                      : d.budget.verdict === 'UNCONFIGURED'
+                        ? 'No bucket configured; Cherry cannot assess budget.'
+                        : d.budget.verdict === 'UNBOUNDED'
+                          ? 'Unbudgeted by choice; optimizing rewards only.'
+                          : 'Within budget'}
                 </p>
               </div>
-              <span className="rounded-full bg-pink-600/20 px-3 py-1 text-xs font-semibold text-pink-100">
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  d.overallVerdict === 'GREEN'
+                    ? 'bg-emerald-500/20 text-emerald-100'
+                    : d.overallVerdict === 'YELLOW'
+                      ? 'bg-amber-500/20 text-amber-100'
+                      : d.overallVerdict === 'RED'
+                        ? 'bg-red-500/20 text-red-100'
+                        : 'bg-slate-500/20 text-slate-100'
+                }`}
+              >
                 {d.overallVerdict}
               </span>
             </div>
