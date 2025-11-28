@@ -1,0 +1,85 @@
+import { NextResponse } from 'next/server';
+import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { withUser } from '@/lib/with-user';
+import { logError } from '@/lib/logger';
+
+type VerifyBody = Partial<{ verified: boolean }>;
+
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  return withUser(request, async (userId) => {
+    try {
+      const { id } = await params;
+      if (!id || typeof id !== 'string') {
+        return NextResponse.json({ error: 'session id is required' }, { status: 400 });
+      }
+
+      let body: VerifyBody;
+      try {
+        body = (await request.json()) as VerifyBody;
+      } catch {
+        return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+      }
+
+      if (typeof body.verified !== 'boolean') {
+        return NextResponse.json({ error: 'verified must be a boolean' }, { status: 400 });
+      }
+
+      const session = await prisma.recommendationSession.findUnique({
+        where: { id },
+      });
+
+      if (!session || session.userId !== userId) {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      }
+
+      if (session.status === RecommendationStatus.VERIFIED || session.status === RecommendationStatus.REJECTED) {
+        return NextResponse.json(
+          { error: 'Session already finalized', sessionStatus: session.status },
+          { status: 400 }
+        );
+      }
+
+      const now = new Date();
+      let sessionStatus: RecommendationStatus;
+      let ledgerStatus: CherryPointLedgerStatus;
+
+      if (body.verified) {
+        sessionStatus = RecommendationStatus.VERIFIED;
+        ledgerStatus = CherryPointLedgerStatus.POSTED;
+      } else {
+        sessionStatus = RecommendationStatus.REJECTED;
+        ledgerStatus = CherryPointLedgerStatus.REVOKED;
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.recommendationSession.update({
+          where: { id: session.id },
+          data: {
+            status: sessionStatus,
+            verifiedAt: body.verified ? now : null,
+            rejectedAt: body.verified ? null : now,
+          },
+        });
+
+        await tx.cherryPointLedger.updateMany({
+          where: { sessionId: session.id },
+          data: {
+            status: ledgerStatus,
+            postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? now : null,
+            revokedAt: ledgerStatus === CherryPointLedgerStatus.REVOKED ? now : null,
+          },
+        });
+      });
+
+      return NextResponse.json({
+        ok: true,
+        sessionStatus,
+        ledgerStatus,
+      });
+    } catch (error) {
+      logError('Error in /api/sessions/[id]/verify', error);
+      return NextResponse.json({ error: 'Failed to verify session' }, { status: 500 });
+    }
+  });
+}

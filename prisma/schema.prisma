@@ -26,8 +26,9 @@ enum RecommendationVerdict {
 
 enum RecommendationStatus {
   RECOMMENDED
-  CONFIRMED
-  DISMISSED
+  CLAIMED
+  VERIFIED
+  REJECTED
   EXPIRED
 }
 
@@ -288,6 +289,8 @@ model RecommendationSession {
   cherryPointsOffered  Int     @default(0)
   status               RecommendationStatus
   expiresAt            DateTime
+  verifiedAt           DateTime?
+  rejectedAt           DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -312,6 +315,8 @@ model CherryPointLedger {
   awardedAt DateTime               @default(now())
   expiresAt DateTime?
   status    CherryPointLedgerStatus @default(POSTED)
+  postedAt  DateTime?
+  revokedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

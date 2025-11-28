@@ -59,15 +59,20 @@ export default async function AdminPage() {
       <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
         <h2 className="text-lg font-semibold text-white">Cherry Session Diagnostics</h2>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
             <p className="text-sm font-semibold text-white">Total Sessions</p>
             <p className="text-2xl font-bold text-pink-400">{sessionStats.total}</p>
           </div>
 
           <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
-            <p className="text-sm font-semibold text-white">Confirmed</p>
-            <p className="text-2xl font-bold text-green-400">{sessionStats.confirmed}</p>
+            <p className="text-sm font-semibold text-white">Claimed</p>
+            <p className="text-2xl font-bold text-amber-300">{sessionStats.claimed}</p>
+          </div>
+
+          <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">
+            <p className="text-sm font-semibold text-white">Verified</p>
+            <p className="text-2xl font-bold text-green-400">{sessionStats.verified}</p>
           </div>
 
           <div className="rounded-xl border border-white/5 bg-slate-900/40 p-3 space-y-1">

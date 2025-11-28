@@ -20,7 +20,30 @@ export default async function SessionsPage() {
     where: { userId },
     orderBy: { createdAt: 'desc' },
     take: 50,
+    include: {
+      ledgerEntries: {
+        orderBy: { awardedAt: 'desc' },
+        take: 1,
+        select: { status: true, points: true },
+      },
+    },
   });
+
+  const badgeForStatus = (status: string) => {
+    const base = 'rounded-full px-2 py-1 text-xs font-semibold';
+    if (status === 'VERIFIED' || status === 'RECOMMENDED') return `${base} bg-green-500/20 text-green-200`;
+    if (status === 'CLAIMED') return `${base} bg-amber-500/20 text-amber-100`;
+    if (status === 'REJECTED' || status === 'EXPIRED') return `${base} bg-red-500/20 text-red-100`;
+    return `${base} bg-slate-500/20 text-slate-100`;
+  };
+
+  const badgeForLedger = (status: string) => {
+    const base = 'rounded-full px-2 py-1 text-xs font-semibold';
+    if (status === 'POSTED') return `${base} bg-green-500/20 text-green-200`;
+    if (status === 'PENDING') return `${base} bg-slate-500/20 text-slate-100`;
+    if (status === 'REVOKED') return `${base} bg-red-500/20 text-red-100`;
+    return `${base} bg-slate-500/20 text-slate-100`;
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-6 text-slate-100">
@@ -41,6 +64,7 @@ export default async function SessionsPage() {
               <th className="px-4 py-3 font-semibold">Category</th>
               <th className="px-4 py-3 font-semibold">Verdict</th>
               <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 font-semibold">Ledger</th>
               <th className="px-4 py-3 font-semibold">Points Offered</th>
             </tr>
           </thead>
@@ -60,7 +84,18 @@ export default async function SessionsPage() {
                     {s.verdict}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-200">{s.status}</td>
+                <td className="px-4 py-3">
+                  <span className={badgeForStatus(s.status)}>{s.status}</span>
+                </td>
+                <td className="px-4 py-3">
+                  {s.ledgerEntries && s.ledgerEntries.length > 0 ? (
+                    <span className={badgeForLedger(s.ledgerEntries[0]?.status ?? '')}>
+                      {s.ledgerEntries[0]?.status} {s.ledgerEntries[0]?.points ?? 0} pts
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-slate-200">{s.cherryPointsOffered}</td>
               </tr>
             ))}

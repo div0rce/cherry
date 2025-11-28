@@ -5,13 +5,17 @@ export async function getSessionStats(userId: string) {
     where: { userId },
   });
 
-  const confirmed = await prisma.recommendationSession.count({
-    where: { userId, status: 'CONFIRMED' },
+  const claimed = await prisma.recommendationSession.count({
+    where: { userId, status: 'CLAIMED' },
+  });
+
+  const verified = await prisma.recommendationSession.count({
+    where: { userId, status: 'VERIFIED' },
   });
 
   const expired = await prisma.recommendationSession.count({
     where: { userId, status: 'EXPIRED' },
   });
 
-  return { total, confirmed, expired };
+  return { total, claimed, verified, expired };
 }

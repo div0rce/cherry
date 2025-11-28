@@ -9,7 +9,14 @@ type ScanState =
   | { status: 'submitting' }
   | { status: 'recommended'; sessionId: string; decision: EngineDecision }
   | { status: 'confirming'; sessionId: string; decision: EngineDecision }
-  | { status: 'confirmed'; pointsAwarded: number; decision: EngineDecision; totalPoints?: number };
+  | {
+      status: 'claimed';
+      pointsPending: number;
+      decision: EngineDecision;
+      sessionStatus: string;
+      ledgerStatus: string;
+      message?: string;
+    };
 
 type SessionResponse = {
   sessionId: string;
@@ -17,8 +24,10 @@ type SessionResponse = {
 };
 
 type ConfirmResponse = {
-  pointsAwarded: number;
-  totalPoints?: number;
+  sessionStatus: string;
+  ledgerStatus: string;
+  pointsPending: number;
+  message?: string;
 };
 
 const inputClass =
@@ -110,10 +119,12 @@ export default function ScanClient() {
 
     const data = (await res.json()) as ConfirmResponse;
     setState({
-      status: 'confirmed',
-      pointsAwarded: data.pointsAwarded,
-      totalPoints: data.totalPoints,
+      status: 'claimed',
+      pointsPending: data.pointsPending,
       decision: current.decision,
+      sessionStatus: data.sessionStatus,
+      ledgerStatus: data.ledgerStatus,
+      message: data.message,
     });
   }
 
@@ -247,16 +258,19 @@ export default function ScanClient() {
             <p className="text-sm">Confirming your session…</p>
           </div>
         );
-      case 'confirmed':
+      case 'claimed':
         return (
           <div className="space-y-3 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg text-slate-100">
-            <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Confirmed</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Claim submitted</p>
             <p className="text-lg font-semibold text-white">
-              You earned {state.pointsAwarded} Cherry Points.
+              {state.pointsPending} Cherry Points pending verification.
             </p>
-            {state.totalPoints != null && (
-              <p className="text-sm text-slate-300">Balance: {state.totalPoints} pts</p>
-            )}
+            <p className="text-sm text-slate-300">
+              Session: {state.sessionStatus} · Ledger: {state.ledgerStatus}
+            </p>
+            <p className="text-sm text-slate-400">
+              {state.message ?? 'Points will post after verification. Pending points are not yet in your balance.'}
+            </p>
             <button
               type="button"
               onClick={reset}
