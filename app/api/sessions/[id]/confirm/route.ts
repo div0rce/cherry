@@ -1,11 +1,21 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
+import {
+  CherryPointLedgerStatus,
+  LedgerAnomalyCode,
+  RecommendationStatus,
+  SessionAnomalyCode,
+  VerificationStatus,
+} from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
-import { logError } from '@/lib/logger';
+import { logError, logWarn } from '@/lib/logger';
 import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
+
+const MIN_AMOUNT_RATIO = 0.85;
+const MAX_AMOUNT_RATIO = 1.15;
+const MAX_CLAIM_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(
   request: NextRequest,
@@ -78,11 +88,45 @@ export async function POST(
         : 'CLAIM_IGNORED_RECOMMENDATION';
       const reason = usedCardId ? `${reasonBase}:${usedCardId}` : reasonBase;
 
+      const recommendedAmount = session.amountCents;
+      const claimedAmount = actualAmountCents ?? recommendedAmount;
+      const ratio = recommendedAmount > 0 ? claimedAmount / recommendedAmount : 1;
+      const deltaAmount = Math.abs(claimedAmount - recommendedAmount);
+      const deltaTimeMs = Date.now() - session.createdAt.getTime();
+
+      let anomalyCode: SessionAnomalyCode = SessionAnomalyCode.NONE;
+      if (ratio < MIN_AMOUNT_RATIO || ratio > MAX_AMOUNT_RATIO) {
+        anomalyCode = SessionAnomalyCode.AMOUNT_MISMATCH;
+      } else if (deltaTimeMs > MAX_CLAIM_WINDOW_MS) {
+        anomalyCode = SessionAnomalyCode.TIME_WINDOW_VIOLATION;
+      } else if (
+        session.recommendedCardId &&
+        usedCardId &&
+        session.recommendedCardId !== usedCardId
+      ) {
+        anomalyCode = SessionAnomalyCode.CARD_MISMATCH;
+      }
+
+      const anomalyDetails =
+        anomalyCode === SessionAnomalyCode.NONE
+          ? null
+          : JSON.stringify({
+              recommendedAmount,
+              claimedAmount,
+              deltaAmount,
+              ratio,
+              deltaTimeMs,
+              usedCardId,
+            });
+
       await prisma.$transaction(async (tx) => {
         await tx.recommendationSession.update({
           where: { id: session.id },
           data: {
             status: RecommendationStatus.CLAIMED,
+            verificationStatus: VerificationStatus.PENDING,
+            anomalyCode,
+            anomalyDetails,
             amountCents: actualAmountCents ?? session.amountCents,
             recommendedCardId: session.recommendedCardId ?? usedCardId ?? null,
           },
@@ -96,10 +140,24 @@ export async function POST(
             reason,
             awardedAt: new Date(),
             status: CherryPointLedgerStatus.PENDING,
+            isAnomalous: anomalyCode !== SessionAnomalyCode.NONE,
+            anomalyCode:
+              anomalyCode === SessionAnomalyCode.NONE
+                ? LedgerAnomalyCode.NONE
+                : LedgerAnomalyCode.SESSION_ANOMALOUS,
             expiresAt: null,
           },
         });
       });
+
+      if (anomalyCode !== SessionAnomalyCode.NONE) {
+        logWarn('Session claim flagged anomaly', {
+          sessionId: session.id,
+          userId,
+          anomalyCode,
+          anomalyDetails,
+        });
+      }
 
       return NextResponse.json({
         sessionStatus: RecommendationStatus.CLAIMED,

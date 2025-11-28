@@ -2,11 +2,14 @@ import { randomUUID } from 'crypto';
 import {
   CategoryCoverageModeDb,
   RecommendationStatus,
+  SessionAnomalyCode,
+  VerificationStatus,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { runEngine } from '@/lib/engine';
 import type { EngineDecision } from '@/lib/engine';
 import type { OrderContext } from './order-context';
+import { validateEngineDecision } from '@/lib/engine-invariants';
 
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
@@ -27,6 +30,7 @@ export async function runRecommendationFromOrderContext(
     category: null,
     now: new Date(timestamp),
   });
+  validateEngineDecision(decision);
 
   const expiresAt = new Date(Math.max(timestamp, Date.now()) + 15 * 60 * 1000);
   const orderToken = ctx.nonce ?? randomUUID();
@@ -58,6 +62,9 @@ export async function runRecommendationFromOrderContext(
       coverageMode: (decision.budget.coverageMode ?? 'UNCONFIGURED') as CategoryCoverageModeDb,
       cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
       status: RecommendationStatus.RECOMMENDED,
+      verificationStatus: VerificationStatus.UNVERIFIED,
+      anomalyCode: SessionAnomalyCode.NONE,
+      anomalyDetails: null,
       expiresAt,
     },
     select: { id: true },

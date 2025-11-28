@@ -71,6 +71,31 @@ enum CategoryCoverageModeDb {
   UNCONFIGURED
 }
 
+enum SessionAnomalyCode {
+  NONE
+  AMOUNT_MISMATCH
+  TIME_WINDOW_VIOLATION
+  CARD_MISMATCH
+  MULTIPLE_CLAIMS
+  VERIFICATION_CONFLICT
+  ENGINE_INCONSISTENCY
+}
+
+enum LedgerAnomalyCode {
+  NONE
+  SESSION_ANOMALOUS
+  BALANCE_MISMATCH
+  DUPLICATE_POSTING
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  FAILED
+  EXPIRED_UNVERIFIED
+}
+
 /// Unified spend/reward category enum
 enum RewardCategory {
   DINING
@@ -312,7 +337,7 @@ model RecommendationSession {
   storeId       String?
   terminalId    String?
   orderId       String?
-  orderToken    String? @unique
+  orderToken    String?
 
   recommendedCard   Card?   @relation(fields: [recommendedCardId], references: [id], onDelete: SetNull)
   recommendedCardId String?
@@ -329,6 +354,9 @@ model RecommendationSession {
   cardVerdict          CardVerdict
   overallVerdict       OverallVerdict
   coverageMode         CategoryCoverageModeDb
+  verificationStatus   VerificationStatus @default(UNVERIFIED)
+  anomalyCode          SessionAnomalyCode @default(NONE)
+  anomalyDetails       String?            @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -336,6 +364,7 @@ model RecommendationSession {
   @@index([userId])
   @@index([recommendedCardId])
   @@index([recommendedBucketId])
+  @@unique([userId, orderToken], map: "user_order_token_unique")
 
   ledgerEntries CherryPointLedger[]
 }
@@ -355,6 +384,8 @@ model CherryPointLedger {
   status    CherryPointLedgerStatus @default(POSTED)
   postedAt  DateTime?
   revokedAt DateTime?
+  isAnomalous Boolean          @default(false)
+  anomalyCode LedgerAnomalyCode @default(NONE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

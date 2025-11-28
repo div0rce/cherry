@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run lint && npm run typecheck",
     "ingest:mcc": "ts-node --project tsconfig.scripts.json scripts/ingest-mcc.ts",
-    "seed:demo": "ts-node --project tsconfig.scripts.json scripts/seed-demo.ts"
+    "seed:demo": "ts-node --project tsconfig.scripts.json scripts/seed-demo.ts",
+    "audit:integrity": "ts-node --project tsconfig.scripts.json scripts/audit-integrity.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

@@ -3,9 +3,13 @@ import {
   BucketPeriod,
   CategoryBudgetMode,
   CategoryCoverageModeDb,
+  CherryPointLedgerStatus,
+  LedgerAnomalyCode,
   RecommendationStatus,
   RecommendationVerdict,
   RewardCategory,
+  SessionAnomalyCode,
+  VerificationStatus,
 } from '@prisma/client';
 import type { OverallVerdict } from '@/lib/enums';
 import { runEngine } from '@/lib/engine';
@@ -216,6 +220,9 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
           (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
           CategoryCoverageModeDb.UNCONFIGURED,
         status: RecommendationStatus.VERIFIED,
+        verificationStatus: VerificationStatus.VERIFIED,
+        anomalyCode: SessionAnomalyCode.NONE,
+        anomalyDetails: null,
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
         verifiedAt: new Date(),
         cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
@@ -230,7 +237,9 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
         sessionId: session.id,
         points,
         reason: `Demo: ${demo.merchantName}`,
-        status: 'POSTED',
+        status: CherryPointLedgerStatus.POSTED,
+        isAnomalous: false,
+        anomalyCode: LedgerAnomalyCode.NONE,
         awardedAt: new Date(),
         postedAt: new Date(),
       },

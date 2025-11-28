@@ -1,6 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
+import {
+  CherryPointLedgerStatus,
+  LedgerAnomalyCode,
+  RecommendationStatus,
+  SessionAnomalyCode,
+  VerificationStatus,
+} from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
@@ -40,6 +46,7 @@ export async function POST(
       const now = new Date();
       let sessionStatus: RecommendationStatus;
       let ledgerStatus: CherryPointLedgerStatus;
+      let anomalyCode: SessionAnomalyCode = session.anomalyCode;
 
       if (body.verified) {
         sessionStatus = RecommendationStatus.VERIFIED;
@@ -47,13 +54,25 @@ export async function POST(
       } else {
         sessionStatus = RecommendationStatus.REJECTED;
         ledgerStatus = CherryPointLedgerStatus.REVOKED;
+        if (anomalyCode === SessionAnomalyCode.NONE) {
+          anomalyCode = SessionAnomalyCode.VERIFICATION_CONFLICT;
+        }
       }
+
+      const ledgerAnomaly =
+        anomalyCode === SessionAnomalyCode.NONE
+          ? LedgerAnomalyCode.NONE
+          : LedgerAnomalyCode.SESSION_ANOMALOUS;
 
       await prisma.$transaction(async (tx) => {
         await tx.recommendationSession.update({
           where: { id: session.id },
           data: {
             status: sessionStatus,
+            verificationStatus: body.verified
+              ? VerificationStatus.VERIFIED
+              : VerificationStatus.FAILED,
+            anomalyCode,
             verifiedAt: body.verified ? now : null,
             rejectedAt: body.verified ? null : now,
           },
@@ -65,6 +84,8 @@ export async function POST(
             status: ledgerStatus,
             postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? now : null,
             revokedAt: ledgerStatus === CherryPointLedgerStatus.REVOKED ? now : null,
+            isAnomalous: anomalyCode !== SessionAnomalyCode.NONE,
+            anomalyCode: ledgerAnomaly,
           },
         });
       });

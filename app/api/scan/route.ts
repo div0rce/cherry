@@ -7,6 +7,7 @@ import { logError } from '@/lib/logger';
 import { ScanRequestSchema } from '@/lib/schemas/scan';
 import { parseJsonBody } from '@/lib/validation';
 import { RewardCategory } from '@prisma/client';
+import { validateEngineDecision } from '@/lib/engine-invariants';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         category: categoryHint,
         merchantName: body.merchantName,
       });
+      validateEngineDecision(decision);
 
       const bucket = decision.budget;
       const routing = decision.card;

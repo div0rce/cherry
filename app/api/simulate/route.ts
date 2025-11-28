@@ -7,6 +7,7 @@ import { runEngine } from '@/lib/engine';
 import { logError, logWarn } from '@/lib/logger';
 import { parseJsonBody } from '@/lib/validation';
 import { SimulateRequestSchema } from '@/lib/schemas/simulate';
+import { validateEngineDecision } from '@/lib/engine-invariants';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         merchantName,
         mccCode: mccCode ?? null,
       });
+      validateEngineDecision(engineResult);
 
       const strictDecline =
         (engineResult.budget.wouldExceed ?? false) && (engineResult.budget.strictMode ?? false);

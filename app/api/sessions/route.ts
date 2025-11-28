@@ -4,6 +4,8 @@ import {
   CategoryCoverageModeDb,
   RecommendationStatus,
   RewardCategory,
+  SessionAnomalyCode,
+  VerificationStatus,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { withUser } from '@/lib/with-user';
@@ -11,6 +13,7 @@ import { runEngine } from '@/lib/engine';
 import { logError } from '@/lib/logger';
 import { CreateSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
+import { validateEngineDecision } from '@/lib/engine-invariants';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         merchantName,
         mccCode: mccCode ?? null,
       });
+      validateEngineDecision(decision);
 
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
       const currency = typeof body.currency === 'string' && body.currency.trim().length > 0
@@ -74,6 +78,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           coverageMode: (decision.budget.coverageMode ?? 'UNCONFIGURED') as CategoryCoverageModeDb,
           cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
           status: RecommendationStatus.RECOMMENDED,
+          verificationStatus: VerificationStatus.UNVERIFIED,
+          anomalyCode: SessionAnomalyCode.NONE,
+          anomalyDetails: null,
           expiresAt,
         },
         select: { id: true },
