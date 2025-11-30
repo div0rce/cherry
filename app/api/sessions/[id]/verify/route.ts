@@ -62,6 +62,12 @@ export async function POST(
         }
       }
 
+      // TODO(bucket-spend-reversal): When a session is REJECTED after being
+      // previously CONFIRMED, consider reversing the bucket.spentCents
+      // increment applied during confirm. Implement only after mapping session →
+      // bucket/amount is solid and tests cover confirm → verify(rejected) to
+      // avoid double-counting. See docs/cherry-core-loop-engine-vine-wallet-audit.md §4.
+
       const ledgerAnomaly =
         anomalyCode === SessionAnomalyCode.NONE
           ? LedgerAnomalyCode.NONE

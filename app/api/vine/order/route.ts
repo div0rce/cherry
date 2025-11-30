@@ -9,6 +9,7 @@ import { OrderContextSchema } from '@/lib/schemas/vine';
 import { VineOrderSource } from '@/lib/enums';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
+import { verifyVinePayloadSignature } from '@/lib/vine/security';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -66,6 +67,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (orderContext.mccCode != null && !isValidMcc(orderContext.mccCode)) {
         return NextResponse.json({ error: 'MCC must be a valid merchant category code' }, { status: 400 });
       }
+
+      // TODO(vine-signature): wire real signature fields from payload into this call.
+      // Currently ignored; verification is a stub and must not gate ingestion yet.
+      await verifyVinePayloadSignature();
 
       const nowMs = Date.now();
       const ageMs = nowMs - orderContext.timestamp;
