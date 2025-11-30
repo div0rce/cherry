@@ -240,3 +240,16 @@ export async function runSimulation(
 
   return { transaction: { ...tx, chosenCard: card, bucket } };
 }
+/**
+ * LEGACY SIMULATION ENGINE
+ *
+ * This module predates the canonical engine in lib/engine.ts and invariants in
+ * lib/engine-invariants.ts. New logic and consumers MUST use lib/engine.ts
+ * instead.
+ *
+ * TODO(simulation-migration):
+ * - Audit consumers of this module.
+ * - Migrate them to lib/engine.ts or move this file under a legacy/ archive.
+ *
+ * See docs/cherry-core-loop-engine-vine-wallet-audit.md §3.
+ */
