@@ -242,6 +242,7 @@ model Bucket {
   category      RewardCategory
   periodStart   DateTime @default(now())
   periodEnd     DateTime @default(now())
+  lastResetAt   DateTime?
 
   simulations SimulatedTransaction[]
   recommendationSessions RecommendationSession[]

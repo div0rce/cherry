@@ -4,6 +4,7 @@
 import { prisma } from '@/lib/prisma';
 import { Bucket, RewardCategory } from '@prisma/client';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
+import { applyInMemoryRollover } from '@/lib/buckets/periods';
 
 export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 
@@ -196,6 +197,8 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
     throw new Error('amountCents must be a non-negative integer');
   }
 
+  const now = input.now ?? new Date();
+
   const category = await resolveCategory({
     mccCode: input.mccCode ?? null,
     category: input.category ?? null,
@@ -203,6 +206,7 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
   });
 
   const { coverageMode, buckets } = await getCategoryCoverage(input.userId, category);
+  const freshBuckets = buckets.map((b) => applyInMemoryRollover(b, now));
 
   let budgetInfo: EngineDecision['budget'] = {
     verdict: 'UNCONFIGURED',
@@ -210,9 +214,9 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
     hasBucket: false,
   };
 
-  if (coverageMode === 'BUDGETED' && buckets.length > 0) {
+  if (coverageMode === 'BUDGETED' && freshBuckets.length > 0) {
     // Simple selection: earliest created bucket for the category.
-    const bucket = buckets[0];
+    const bucket = freshBuckets[0];
     if (bucket) {
       const limitCents = bucket.budgetAmount;
       const spentBefore = bucket.spentCents ?? 0;

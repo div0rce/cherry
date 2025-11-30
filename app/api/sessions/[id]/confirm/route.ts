@@ -13,6 +13,7 @@ import { logError, logWarn } from '@/lib/logger';
 import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
 import { autoVerifySession } from '@/lib/verification/verify-session';
+import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 
 const MIN_AMOUNT_RATIO = 0.85;
 const MAX_AMOUNT_RATIO = 1.15;
@@ -83,6 +84,7 @@ export async function POST(
           : null;
 
       const pointsClaimed = Math.max(session.cherryPointsOffered ?? 0, 0);
+      const spendAmount = actualAmountCents ?? session.amountCents;
 
       const reasonBase = followedRecommendation
         ? 'CLAIM_FOLLOWED_RECOMMENDATION'
@@ -120,6 +122,13 @@ export async function POST(
               usedCardId,
             });
 
+      // Freshen bucket before transactional updates to avoid stale periods.
+      let freshBucket = null;
+      if (session.recommendedBucketId) {
+        freshBucket = await ensureBucketFresh(session.recommendedBucketId, new Date());
+      }
+
+      // Update session + ledger + bucket spend (once, on first claim)
       await prisma.$transaction(async (tx) => {
         await tx.recommendationSession.update({
           where: { id: session.id },
@@ -132,6 +141,15 @@ export async function POST(
             recommendedCardId: session.recommendedCardId ?? usedCardId ?? null,
           },
         });
+
+        if (freshBucket && session.recommendedBucketId) {
+          await tx.bucket.update({
+            where: { id: freshBucket.id },
+            data: {
+              spentCents: (freshBucket.spentCents ?? 0) + spendAmount,
+            },
+          });
+        }
 
         await tx.cherryPointLedger.create({
           data: {
