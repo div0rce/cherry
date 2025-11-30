@@ -3,6 +3,8 @@ Last updated: 2025-11-30
 
 # Cherry Core Loop / Engine / Vine / Wallet Pass Audit (Verified)
 
+Cross-links: see `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, and `docs/buckets-rollover-plan.md` for identity, legal, Vine, wallet, API, and bucket details.
+
 This is the canonical, implementation-ready audit of Cherry’s Observe → Evaluate → Recommend → Reward loop, aligned with `docs/legal-constraints.md` and `docs/cherry-vision.md`.
 
 ## 0. Scope and Sources

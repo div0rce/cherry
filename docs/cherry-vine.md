@@ -12,7 +12,7 @@ Current code hooks (dev-only) and caveats:
 - Types: `lib/vine/order-context.ts`, `lib/schemas/vine.ts`, `lib/schemas/vine-terminal.ts`.
 - Dev UI: `/vine-simulator` (App Router page) posts to `/api/vine/order` and shows decision/orderToken.
 - Engine: `lib/engine.ts` computes verdicts; results persist to `RecommendationSession` and Cherry Points ledger when confirmed.
-- MCC is optional but validated when provided; freshness window (~3 minutes) is enforced. HMAC/nonce auth is **TODO**.
+- MCC is optional but validated when provided; freshness window (~3 minutes) is enforced. HMAC/nonce auth is **TODO** (see `lib/vine/security.ts`).
 
 All firmware and future device work must match this document and **never** touch card rails.
 

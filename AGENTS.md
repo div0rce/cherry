@@ -10,6 +10,7 @@ This file is the authoritative playbook for any AI/copilot working in this repo.
 - `docs/wallet-pass.md` (Apple Wallet scaffold and 501 gate)
 - `docs/api.md` (API reference including `/api/scan`)
 - `docs/repo-structure.md` (canonical layout)
+- `docs/cherry-core-loop-engine-vine-wallet-audit.md` (core loop/engine/Vine/wallet audit)
 - `README.md` (setup/commands)
 
 ---

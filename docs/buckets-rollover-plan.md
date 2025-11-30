@@ -49,6 +49,14 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - No background job to pre-roll buckets; freshness relies on engine reads and confirm-time `ensureBucketFresh`.
 - `lastResetAt` is only set when rollover occurs via `ensureBucketFresh`; initial creation leaves it null.
 
+### Verification rejection semantics
+- Current behavior: if a session is rejected during verification, `spentCents` is **not** rolled back. This can leave buckets inflated relative to confirmed-but-rejected claims.
+- TODO: Implement a safe rollback once session→bucket mapping and claimed amount handling are solid, and tests cover confirm → verify(rejected). See `app/api/sessions/[id]/verify/route.ts` TODO(bucket-spend-reversal) and `docs/cherry-core-loop-engine-vine-wallet-audit.md` §4.
+
+### Legacy fields and soft flags
+- `Bucket.currentAmount` is a legacy field initialized on create; the canonical budget math uses `budgetAmount` + `spentCents` only.
+- `CategoryPreference.category` is currently a string and treated as a soft “intentional unbudgeted” flag. Future migration may move this to a `RewardCategory` enum for stronger validation.
+
 ## Future / Target Behavior
 - Keep `spentCents` as the single source of truth; remove or archive `currentAmount` from math.
 - Consider deriving bucket selection rules (e.g., prioritize strict buckets) and document them.
