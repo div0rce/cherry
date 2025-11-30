@@ -1,85 +1,86 @@
 import type { JSX } from 'react';
+import Link from 'next/link';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { getUserActivityLedger } from '@/lib/unified-activity';
+import { fetchActivityFeed } from '@/lib/activity/feed';
 
-function formatAmount(amount: number, currency: string, direction: 'DEBIT' | 'CREDIT'): string {
-  const value = amount.toFixed(2);
-  const sign = direction === 'CREDIT' ? '+' : '-';
-  return `${sign}${value} ${currency}`;
+function formatPoints(points: number | undefined | null): string {
+  return `${points ?? 0} pts`;
 }
 
 export default async function ActivityPage(): Promise<JSX.Element> {
   const userId = await getCurrentUserIdOrRedirect('/activity');
-  const rows = await getUserActivityLedger(userId);
-
-  const hasRows = rows.length > 0;
+  const feed = await fetchActivityFeed(userId, { limit: 100 });
+  const hasRows = feed.items.length > 0;
 
   return (
     <main className="flex-1 overflow-y-auto px-6 py-8">
       <div className="mx-auto max-w-5xl space-y-6">
         <header className="space-y-1">
           <p className="text-xs uppercase tracking-label text-pink-200">Activity</p>
-          <h1 className="text-3xl font-semibold text-white">Activity</h1>
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <h1 className="text-3xl font-semibold text-white">Activity</h1>
+            <Link
+              href="/sessions"
+              className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 hover:border-pink-500/30 hover:text-white"
+            >
+              View sessions
+            </Link>
+          </div>
           <p className="text-slate-300">
-            Real purchases will appear here once Cherry is connected to your cards. Simulated and dev
-            activity live in Dev Tools.
+            Latest session events and ledger changes for your account.
           </p>
         </header>
 
         {hasRows ? (
-          <div className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
-            <table className="min-w-full table-fixed text-sm text-slate-100">
-              <thead className="text-xs uppercase tracking-wide text-slate-400">
-                <tr>
-                  <th className="py-2 pr-4 text-left">When</th>
-                  <th className="py-2 pr-4 text-left">Merchant</th>
-                  <th className="py-2 pr-4 text-left">Card</th>
-                  <th className="py-2 pr-4 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td className="py-2 pr-4 text-xs text-slate-400">
-                      {row.occurredAt.toLocaleString()}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{row.merchantName ?? 'Unknown merchant'}</span>
-                        <span className="text-xs text-slate-500">
-                          {row.mcc ? `MCC ${row.mcc}` : 'MCC unknown'}
-                          {row.merchantLocation?.city ? ` · ${row.merchantLocation.city}` : ''}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-4 text-xs text-slate-400">
-                      {row.cardName ??
-                        (row.cardBrand
-                          ? `${row.cardBrand}${row.cardLast4 ? ` •••• ${row.cardLast4}` : ''}`
-                          : '—')}
-                    </td>
-                    <td className="py-2 pr-4 text-right">
-                      <span
-                        className={
-                          row.direction === 'DEBIT'
-                            ? 'font-semibold text-slate-100'
-                            : 'font-semibold text-emerald-300'
-                        }
-                      >
-                        {formatAmount(row.amount, row.currency, row.direction)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {feed.items.map((item) => (
+              <div
+                key={`${item.type}-${item.sessionId ?? ''}-${item.occurredAt.toISOString()}-${item.points ?? ''}`}
+                className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow hover:border-pink-500/30"
+              >
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-pink-200">
+                      <span>{item.type.replace(/_/g, ' ')}</span>
+                      {item.sessionId && (
+                        <Link
+                          href={`/sessions/${item.sessionId}`}
+                          className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold text-slate-100"
+                        >
+                          Session
+                        </Link>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-200">
+                      {item.type === 'SESSION_CREATED' && (
+                        <>
+                          {item.merchantName ?? 'Manual scan'} · {item.category} ·{' '}
+                          {item.amountCents != null ? `$${(item.amountCents / 100).toFixed(2)}` : '—'}
+                        </>
+                      )}
+                      {item.type === 'SESSION_CONFIRMED' && (
+                        <>Session confirmed · {item.points ? formatPoints(item.points) : ''}</>
+                      )}
+                      {item.type === 'LEDGER_POSTED' && <>Points posted · {formatPoints(item.points)}</>}
+                      {item.type === 'LEDGER_REVOKED' && (
+                        <>Points revoked · {formatPoints(item.points)}</>
+                      )}
+                    </p>
+                    {item.verdict && (
+                      <p className="text-xs text-slate-400">Verdict: {item.verdict}</p>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {new Date(item.occurredAt).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
             <p className="text-sm text-slate-300">
-              No real transactions yet. You’re still in simulation mode. Use Vine or Manual tools in
-              Dev Tools to experiment; those events won’t appear here until Cherry is hooked up to real
-              transactions.
+              No activity yet. Create a session from the Scan page to see it show up here.
             </p>
           </div>
         )}
