@@ -63,4 +63,21 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['app/scan/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.name="fetch"]',
+          message:
+            'Use lib/client/api.callApi + useApiAction instead of raw fetch in React components.',
+        },
+        {
+          selector: 'JSXElement JSXText[value=/Scan failed/i]',
+          message: 'Error messages must be rendered from error state, not hard-coded.',
+        },
+      ],
+    },
+  },
 ]);

@@ -1,348 +1,391 @@
 'use client';
 
-import type { JSX } from 'react';
-import type { OverallVerdict } from '@/lib/enums';
-import { useState, FormEvent } from 'react';
-import { signIn } from 'next-auth/react';
+import { useEffect, useMemo, useState, type FormEvent, type JSX } from 'react';
+import Link from 'next/link';
 import type { EngineDecision } from '@/lib/engine';
+import type { ScanResponse } from '@/lib/schemas/scan';
+import { ScanResponseSchema } from '@/lib/schemas/scan';
+import { callApi } from '@/lib/client/api';
+import { useApiAction } from '@/lib/client/useApiAction';
+import { ErrorBanner } from '@/components/ErrorBanner';
 
-type ScanState =
-  | { status: 'idle' }
-  | { status: 'submitting' }
-  | { status: 'recommended'; sessionId: string; decision: EngineDecision }
-  | { status: 'confirming'; sessionId: string; decision: EngineDecision }
-  | {
-      status: 'claimed';
-      pointsPending: number;
-      decision: EngineDecision;
-      sessionStatus: string;
-      ledgerStatus: string;
-      message?: string;
-    };
-
-type SessionResponse = {
-  sessionId: string;
+type ScanPreview = {
+  category: string | null;
+  amountCents: number;
+  merchantName: string | null;
+  bucketName: string | null;
+  bucketVerdict: string;
+  bucketSpentCents: number | null;
+  bucketBudgetCents: number | null;
+  recommendedCardName: string | null;
+  recommendedRewardLabel: string | null;
+  advisoryPoints: number;
+  isSnapshot: boolean;
   decision: EngineDecision;
 };
 
-type ConfirmResponse = {
-  sessionStatus: string;
-  ledgerStatus: string;
+type SessionState = {
+  id: string;
+  orderToken: string;
+  expiresAt: string;
   pointsPending: number;
-  message?: string;
+  pointsPosted: number;
+  status: 'OPEN' | 'CLAIMED' | 'VERIFIED' | 'REJECTED' | 'EXPIRED' | 'UNKNOWN';
 };
 
 const inputClass =
   'w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none';
 
+function mapScanResponseToPreview(api: ScanResponse, request: { merchantName: string | null }): ScanPreview {
+  const bucket = api.bucket ?? null;
+  const isSnapshot = api.amountCents === 0;
+  return {
+    category: api.category ?? null,
+    amountCents: api.amountCents,
+    merchantName: api.merchantName ?? request.merchantName,
+    bucketName: bucket?.name ?? null,
+    bucketVerdict: bucket?.verdict ?? 'UNKNOWN',
+    bucketSpentCents: bucket?.spentAfterCents ?? bucket?.spentBeforeCents ?? null,
+    bucketBudgetCents: bucket?.limitCents ?? null,
+    recommendedCardName: api.cardRecommendation.cardNickname ?? null,
+    recommendedRewardLabel:
+      api.cardRecommendation.rewardMultiplier != null
+        ? `${api.cardRecommendation.rewardMultiplier}x rewards`
+        : null,
+    advisoryPoints: api.cherryIncentive.pointsIfFollowed ?? 0,
+    isSnapshot,
+    decision: api.engineDecision as EngineDecision,
+  };
+}
+
 export default function ScanClient(): JSX.Element {
   const [merchantName, setMerchantName] = useState('');
-  const [amountDollars, setAmountDollars] = useState('');
+  const [amount, setAmount] = useState<string>('');
   const [category, setCategory] = useState('');
-  const [state, setState] = useState<ScanState>({ status: 'idle' });
+  const [scanPreview, setScanPreview] = useState<ScanPreview | null>(null);
+  const [sessionState, setSessionState] = useState<SessionState | null>(null);
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+  const { isLoading: isScanning, run: runScan } = useApiAction<ScanResponse>();
+
+  const formattedCountdown = useMemo(() => {
+    if (countdownSeconds == null) return '';
+    const mins = Math.floor(countdownSeconds / 60);
+    const secs = countdownSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, [countdownSeconds]);
+
+  useEffect(() => {
+    if (!sessionState || countdownSeconds == null) return;
+    const id = setInterval(() => {
+      setCountdownSeconds((prev) => {
+        if (prev == null) return prev;
+        if (prev <= 1) {
+          setSessionState((s) => (s ? { ...s, status: 'EXPIRED' } : s));
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sessionState, countdownSeconds]);
 
   const reset = () => {
-    setState({ status: 'idle' });
-    setError(null);
     setMerchantName('');
-    setAmountDollars('');
+    setAmount('');
     setCategory('');
+    setScanPreview(null);
+    setSessionState(null);
+    setCountdownSeconds(null);
+    setError(null);
   };
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    setScanPreview(null);
+    setSessionState(null);
+    setCountdownSeconds(null);
 
-    const parsedAmount = Number.parseFloat(amountDollars);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError('Enter an amount greater than 0.');
+    const parsedAmount = Number.parseFloat(amount || '0');
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+      setError('Enter an amount of 0 or more.');
       return;
     }
-    const amountCents = Math.round(parsedAmount * 100);
+    const expectedAmountCents = Math.round(parsedAmount * 100);
 
-    setState({ status: 'submitting' });
+    const payload = {
+      merchantName: merchantName.trim() || null,
+      expectedAmountCents,
+      category: category.trim() || null,
+    };
 
-    const res = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        merchantName: merchantName.trim() || undefined,
-        amountCents,
-        category: category.trim() || undefined,
-      }),
-    });
+    const result = await runScan(() =>
+      callApi<ScanResponse>('/api/scan', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        responseSchema: ScanResponseSchema,
+      })
+    );
 
-    if (res.status === 401) {
-      setState({ status: 'idle' });
-      setError('Please sign in to run a manual lookup.');
-      void signIn(undefined, { callbackUrl: window.location.href });
-      return;
-    }
-
-    if (!res.ok) {
-      const message = await res.text();
-      setState({ status: 'idle' });
-      setError(message || 'Failed to create session');
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
-    const data = (await res.json()) as SessionResponse;
-    setState({ status: 'recommended', sessionId: data.sessionId, decision: data.decision });
+    const preview = mapScanResponseToPreview(result.data, payload);
+    setScanPreview(preview);
   }
 
-  async function confirmSession(current: Extract<ScanState, { status: 'recommended' }>) {
-    setState({ status: 'confirming', sessionId: current.sessionId, decision: current.decision });
+  async function startSession() {
+    if (!scanPreview) return;
+    setIsStartingSession(true);
     setError(null);
 
-    const res = await fetch(`/api/sessions/${current.sessionId}/confirm`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        actualAmountCents: current.decision.amountCents,
-        usedCardId: current.decision.card.cardId,
-        followedRecommendation: true,
-      }),
-    });
+    try {
+      const result = await callApi<{
+        sessionId: string;
+        orderToken: string;
+        expiresAt: string;
+      }>('/api/sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          merchantName: scanPreview.merchantName ?? (merchantName.trim() || undefined),
+          amountCents: scanPreview.amountCents,
+          category: scanPreview.category ?? undefined,
+        }),
+      });
 
-    if (res.status === 401) {
-      setError('Please sign in to confirm.');
-      void signIn(undefined, { callbackUrl: window.location.href });
-      setState({ status: 'recommended', sessionId: current.sessionId, decision: current.decision });
-      return;
-    }
+      if (!result.ok) {
+        setError(result.error);
+        setIsStartingSession(false);
+        return;
+      }
 
-    if (!res.ok) {
-      const message = await res.text();
-      setError(message || 'Failed to confirm session');
-      setState({ status: 'recommended', sessionId: current.sessionId, decision: current.decision });
-      return;
-    }
+      const remainingSec = Math.max(
+        0,
+        Math.floor((new Date(result.data.expiresAt).getTime() - Date.now()) / 1000),
+      );
 
-    const data = (await res.json()) as ConfirmResponse;
-    const nextState: Extract<ScanState, { status: 'claimed' }> = {
-      status: 'claimed',
-      pointsPending: data.pointsPending,
-      decision: current.decision,
-      sessionStatus: data.sessionStatus,
-      ledgerStatus: data.ledgerStatus,
-    };
-    if (data.message) {
-      nextState.message = data.message;
+      setSessionState({
+        id: result.data.sessionId,
+        orderToken: result.data.orderToken,
+        expiresAt: result.data.expiresAt,
+        pointsPending: scanPreview.advisoryPoints,
+        pointsPosted: 0,
+        status: 'OPEN',
+      });
+      setCountdownSeconds(remainingSec);
+    } catch {
+      setError('Failed to start session');
+    } finally {
+      setIsStartingSession(false);
     }
-    setState(nextState);
   }
 
-  function renderContent() {
-    switch (state.status) {
-      case 'idle':
-      case 'submitting':
-        return (
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur"
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-1">
-                <span className="text-sm text-slate-300">Merchant name</span>
-                <input
-                  className={inputClass}
-                  value={merchantName}
-                  onChange={(e) => setMerchantName(e.target.value)}
-                  placeholder="Cherry Coffee"
-                  required
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-sm text-slate-300">Amount (USD)</span>
-                <input
-                  className={inputClass}
-                  value={amountDollars}
-                  onChange={(e) => setAmountDollars(e.target.value)}
-                  placeholder="24.50"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </label>
-              <label className="space-y-1">
-                <span className="text-sm text-slate-300">Category (optional)</span>
-                <input
-                  className={inputClass}
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="DINING"
-                />
-              </label>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={state.status === 'submitting'}
-                className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-              >
-                {state.status === 'submitting' ? 'Looking up…' : 'Manual Lookup & Rewards'}
-              </button>
-              {error && <span className="text-sm text-red-300">{error}</span>}
-            </div>
-          </form>
-        );
-      case 'recommended': {
-        const d = state.decision;
-        const insufficient = 'INSUFFICIENT_DATA' as OverallVerdict;
-        const canClaim =
-          d.overallVerdict !== insufficient &&
-          d.cherryIncentive.pointsIfFollowed > 0;
-        return (
-          <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-label text-slate-400">Recommendation</p>
-                <h2 className="text-xl font-semibold text-white">
-                  {d.category} · ${(d.amountCents / 100).toFixed(2)} ·{' '}
-                  {d.budget.name || 'No bucket'}
-                </h2>
-                <p className="text-sm text-slate-300">
-                  {d.budget.verdict === 'BREAKS_BUDGET'
-                    ? 'Over budget'
-                    : d.budget.verdict === 'BORDERLINE'
-                      ? 'Near your budget limit'
-                      : d.budget.verdict === 'UNCONFIGURED'
-                        ? 'No bucket configured; Cherry cannot assess budget.'
-                        : d.budget.verdict === 'UNBOUNDED'
-                          ? 'Unbudgeted by choice; optimizing rewards only.'
-                          : 'Within budget'}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  d.overallVerdict === 'GREEN'
-                    ? 'bg-emerald-500/20 text-emerald-100'
-                    : d.overallVerdict === 'YELLOW'
-                      ? 'bg-amber-500/20 text-amber-100'
-                      : d.overallVerdict === 'RED'
-                        ? 'bg-red-500/20 text-red-100'
-                        : 'bg-slate-500/20 text-slate-100'
-                }`}
-              >
-                {d.overallVerdict}
-              </span>
-            </div>
+  async function confirmSession() {
+    if (!sessionState || !scanPreview) return;
+    setIsConfirming(true);
+    setError(null);
+    try {
+      const result = await callApi<{ sessionStatus: string; ledgerStatus: string }>(
+        `/api/sessions/${sessionState.id}/confirm`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            actualAmountCents: scanPreview.amountCents,
+            usedCardId: scanPreview.decision.card.cardId,
+            followedRecommendation: true,
+          }),
+        }
+      );
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Card</p>
-                <p className="text-sm text-white">{d.card.cardNickname ?? 'No card on file'}</p>
-                {d.card.multiplier != null && (
-                  <p className="text-xs text-slate-400">{d.card.multiplier}x rewards</p>
-                )}
-                {d.card.verdict === 'NO_CARD_DATA' && (
-                  <p className="text-xs text-amber-200">No card data to optimize rewards.</p>
-                )}
-              </div>
-              <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Bucket impact</p>
-                <p className="text-sm text-white">
-                  {d.budget.remainingAfterCents != null
-                    ? `Remaining ${(d.budget.remainingAfterCents / 100).toFixed(2)}`
-                    : 'No bucket'}
-                </p>
-                {d.budget.spentAfterCents != null && d.budget.limitCents != null && (
-                  <p className="text-xs text-slate-400">
-                    {(d.budget.spentAfterCents / 100).toFixed(2)} /{' '}
-                    {(d.budget.limitCents / 100).toFixed(2)}
-                  </p>
-                )}
-                {d.budget.verdict === 'UNCONFIGURED' && (
-                  <p className="text-xs text-amber-200">
-                    Create a bucket to track this category and get budget verdicts.
-                  </p>
-                )}
-                {d.budget.verdict === 'UNBOUNDED' && (
-                  <p className="text-xs text-slate-300">
-                    Unbudgeted by choice; Cherry will focus on card optimization only.
-                  </p>
-                )}
-              </div>
-              <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Cherry Points</p>
-                <p className="text-sm text-white">
-                  {d.cherryIncentive.pointsIfFollowed} pts if followed
-                </p>
-                <p className="text-xs text-slate-400">Expires in {d.cherryIncentive.expiryMinutes} min</p>
-              </div>
-              </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              {canClaim ? (
-                <button
-                  type="button"
-                  onClick={() => confirmSession(state)}
-                  className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-                >
-                  I used this card
-                </button>
-              ) : (
-                <span className="text-sm text-amber-200">
-                  No points available — add a card and bucket to enable rewards.
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={reset}
-                className="rounded-md border border-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/5"
-              >
-                Dismiss
-              </button>
-              {error && <span className="text-sm text-red-300">{error}</span>}
-            </div>
-          </div>
-        );
+      if (!result.ok) {
+        setError(result.error);
+        setIsConfirming(false);
+        return;
       }
-      case 'confirming':
-        return (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg text-slate-100">
-            <p className="text-sm">Confirming your session…</p>
-          </div>
-        );
-      case 'claimed':
-        return (
-          <div className="space-y-3 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg text-slate-100">
-            <p className="text-xs uppercase tracking-label text-pink-200">Claim submitted</p>
-            <p className="text-lg font-semibold text-white">
-              {state.pointsPending} Cherry Points pending verification.
-            </p>
-            <p className="text-sm text-slate-300">
-              Session: {state.sessionStatus} · Ledger: {state.ledgerStatus}
-            </p>
-            <p className="text-sm text-slate-400">
-              {state.message ?? 'Points will post after verification. Pending points are not yet in your balance.'}
-            </p>
-            <button
-              type="button"
-              onClick={reset}
-              className="inline-flex rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-            >
-              New lookup
-            </button>
-          </div>
-        );
+
+      setSessionState((prev) => (prev ? { ...prev, status: 'CLAIMED' } : prev));
+    } catch {
+      setError('Failed to confirm session');
+    } finally {
+      setIsConfirming(false);
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 space-y-6 text-slate-100">
-      <header className="space-y-2">
-        <p className="text-sm uppercase tracking-label text-pink-200">Cherry</p>
-        <h1 className="text-3xl font-semibold text-white">Manual Lookup &amp; Rewards</h1>
-        <p className="text-slate-300">
-          Enter where you are paying and the amount—Cherry will look up the best card and estimated
-          points, even without Cherry Vine.
-        </p>
-      </header>
+    <div className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur"
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-sm text-slate-300">Merchant name</span>
+            <input
+              className={inputClass}
+              value={merchantName}
+              onChange={(e) => setMerchantName(e.target.value)}
+              placeholder="Cherry Coffee"
+              required
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-sm text-slate-300">Amount (USD)</span>
+            <input
+              className={inputClass}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="24.50"
+              type="number"
+              min="0"
+              step="0.01"
+            />
+            <p className="text-xs text-slate-500">Enter 0 for a bucket snapshot (no points).</p>
+          </label>
+          <label className="space-y-1">
+            <span className="text-sm text-slate-300">Category (optional)</span>
+            <input
+              className={inputClass}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="DINING"
+            />
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            disabled={isScanning}
+            className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+          >
+            {isScanning ? 'Looking up…' : 'Manual Lookup & Rewards'}
+          </button>
+          <ErrorBanner message={error} />
+          <button
+            type="button"
+            onClick={reset}
+            className="text-xs text-slate-400 underline decoration-dotted underline-offset-4"
+          >
+            Reset
+          </button>
+        </div>
+      </form>
 
-      {renderContent()}
+      {scanPreview && (
+        <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-label text-slate-400">Advisory preview</p>
+              <h2 className="text-xl font-semibold text-white">
+                {scanPreview.category ?? 'UNCATEGORIZED'} · $
+                {(scanPreview.amountCents / 100).toFixed(2)} · {scanPreview.bucketName || 'No bucket'}
+              </h2>
+              <p className="text-sm text-slate-300">
+                This is a stateless preview. Start a session to track and earn points.
+              </p>
+            </div>
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100">
+              {scanPreview.bucketVerdict}
+            </span>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Card</p>
+              <p className="text-sm text-white">
+                {scanPreview.recommendedCardName ?? 'No card on file'}
+              </p>
+              {scanPreview.recommendedRewardLabel && (
+                <p className="text-xs text-slate-400">{scanPreview.recommendedRewardLabel}</p>
+              )}
+            </div>
+            <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Points (advisory)</p>
+              <p className="text-lg font-semibold text-white">
+                {scanPreview.isSnapshot
+                  ? '0 pts (snapshot only)'
+                  : `${scanPreview.advisoryPoints} pts`}
+              </p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Bucket</p>
+              <p className="text-sm text-white">{scanPreview.bucketName ?? 'None'}</p>
+              {scanPreview.bucketBudgetCents != null && scanPreview.bucketSpentCents != null && (
+                <p className="text-xs text-slate-400">
+                  Spent {((scanPreview.bucketSpentCents / scanPreview.bucketBudgetCents) * 100).toFixed(0)}%
+                </p>
+              )}
+            </div>
+          </div>
+
+          {!sessionState && (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={startSession}
+                disabled={isStartingSession || scanPreview.isSnapshot}
+                className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+              >
+                {isStartingSession ? 'Starting session…' : 'Start session & earn points'}
+              </button>
+              {scanPreview.isSnapshot && (
+                <span className="text-xs text-slate-400">
+                  Snapshot only — start a session with an amount to earn points.
+                </span>
+              )}
+            </div>
+          )}
+
+          {sessionState && (
+            <div className="space-y-2 rounded-xl border border-white/5 bg-slate-900/50 p-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200">
+                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                  Session ID: {sessionState.id}
+                </span>
+                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                  Order token: {sessionState.orderToken}
+                </span>
+                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                  Expires in: {formattedCountdown || '—'}
+                </span>
+                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                  Status: {sessionState.status}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300">
+                1) Pay with your recommended card. 2) Tap “I used this card” to claim. 3) Use Bank
+                Simulator to post points.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={confirmSession}
+                  disabled={isConfirming || sessionState.status !== 'OPEN'}
+                  className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+                >
+                  {isConfirming ? 'Submitting…' : 'I used this card'}
+                </button>
+                <Link
+                  href="/bank-simulator"
+                  className="text-sm text-pink-200 underline decoration-dotted underline-offset-4"
+                >
+                  Open Bank Simulator
+                </Link>
+                <Link
+                  href="/sessions"
+                  className="text-sm text-slate-300 underline decoration-dotted underline-offset-4"
+                >
+                  View in Sessions/Activity
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
