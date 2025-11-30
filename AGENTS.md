@@ -1,13 +1,45 @@
+Status: Active
+Last updated: 2025-11-30
+
 # Cherry Agents — Canonical Operating Guide
 
-Status: **Active**. This file is the authoritative playbook for any AI/copilot working in this repo. It must stay aligned with:
+This file is the authoritative playbook for any AI/copilot working in this repo. It must stay aligned with:
 - `docs/cherry-vision.md` (product identity)
+- `docs/legal-constraints.md` (hard legal guardrails)
 - `docs/cherry-vine.md` (hardware/context)
 - `docs/wallet-pass.md` (Apple Wallet scaffold and 501 gate)
 - `docs/api.md` (API reference including `/api/scan`)
+- `docs/repo-structure.md` (canonical layout)
 - `README.md` (setup/commands)
 
-If code or docs conflict with these, treat the canonical list above as truth and open follow-up debt in code.
+---
+
+## Product Identity & Guardrails (never violate)
+- Cherry is a **real-time spending copilot**, not a card, proxy, processor, or payment terminal. It never fronts transactions, holds funds, or touches payment rails.
+- Cherry’s loop is **Observe → Evaluate → Recommend → Reward**. Nothing beyond that (no authorization or routing).
+- Cherry Vine is a **context beacon** (merchant + amount + timestamp over BLE/NFC), not an EMV device or reader. It never accepts taps/swipes/PIN.
+- Cherry Pass is a **storeCard-style Wallet pass** that triggers advisory flows; it is not a payment instrument. `GET /api/wallet/cherry-pass` returns **501** until Apple Wallet certs exist and the feature flag is enabled.
+- Recommendation sessions and Cherry Points are **advisory/sandbox**. `RecommendationSession` + `CherryPointLedger` record what was suggested and what the user claims; they do not settle money.
+- Verification is layered and simulated today; anomalies are diagnostic only (not fraud labels).
+- When in doubt, read `docs/legal-constraints.md` and choose the legally conservative path.
+
+Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Cherry,” “Cherry terminal,” “payment card.”
+
+---
+
+## Canonical Docs Index
+- Identity & legal: `docs/cherry-vision.md`, `docs/legal-constraints.md`
+- Hardware/context: `docs/cherry-vine.md`
+- Wallet pass: `docs/wallet-pass.md`
+- API surface: `docs/api.md`
+- Buckets/rollover: `docs/buckets-rollover-plan.md`
+- System map: `docs/master.md`
+- Repo layout: `docs/repo-structure.md`
+- Auth architecture: `docs/architecture/auth.md`
+- Sign-in tasks: `docs/signin-tasks.md`
+- Agent rules: this file + `.github/copilot-instructions.md`
+
+Agents must consult relevant docs before changing code. For directory layout, see `docs/repo-structure.md` and treat it as authoritative.
 
 ---
 
@@ -143,3 +175,39 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Apple Wallet pass is scaffolded but disabled until certs are configured; `/api/wallet/cherry-pass` returns 501 by design.
 - Admin tools (`/admin`) that clear user data, sessions, or ledger entries are for local/sandbox environments only. Do not expose these endpoints in production without additional auth/role checks.
 - Integrity/audit scripts (`scripts/audit-integrity.ts`) are diagnostic; they should never mutate production data without explicit review.
+
+## Default Agent Workflow
+1. Read relevant docs (Vision, Legal Constraints, Vine, Wallet, API, System Map, Repo Structure, Auth).
+2. Inspect code: `app/api/*`, `lib/*`, `prisma/*`, and relevant UI files.
+3. Implement changes:
+   - Keep API handlers thin; push domain logic into `lib/`.
+   - Use `withUser` for auth on stateful routes.
+   - Validate payloads via `lib/validation/*`.
+4. Update docs when behavior changes (Status + Last updated required; separate Current vs Future behavior).
+5. Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` before handoff.
+
+## Doc Editing Rules
+- Preserve legal guardrails; never weaken them.
+- Every major doc must start with `Status` and `Last updated`.
+- Split **Current behavior** vs **Future/Target behavior**; mark TODOs clearly.
+- Cross-link to `docs/legal-constraints.md` for anything near payments, Vine, or Wallet.
+
+## AGENT_TASK_TEMPLATE
+For any non-trivial request, rewrite it internally into this structure:
+
+1. Context
+   - Repo path and domains involved (engine, auth, Vine, etc.).
+2. Goal
+   - One or two sentences of what must be achieved.
+3. Constraints
+   - Legal guardrails from `docs/legal-constraints.md`.
+   - Branching rules (no branches, no commits).
+   - Required commands (lint, typecheck, test, build).
+4. Plan
+   - Ordered steps: files to inspect, changes to make, docs to touch.
+5. Execution Checklist
+   - Concrete actions with file paths.
+6. Validation
+   - Which commands to run and success criteria.
+7. Reporting
+   - Summary format: what changed, where, why, and remaining TODOs.

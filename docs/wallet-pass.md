@@ -1,4 +1,9 @@
+Status: Active
+Last updated: 2025-11-30
+
 # Cherry Wallet Pass (Apple Wallet)
+
+Refer to `docs/legal-constraints.md` for hard guardrails. The pass is loyalty/advisory only—never a payment instrument.
 
 ## Status and Positioning
 - **Feature type:** Non-payment `storeCard` loyalty trigger (not a payment card, not a proxy BIN).

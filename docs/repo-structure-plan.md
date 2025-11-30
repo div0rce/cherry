@@ -1,6 +1,9 @@
+Status: Draft — superseded by `docs/repo-structure.md`
+Last updated: 2025-11-30
+
 # Repo Structure Plan (Cherry)
 
-Status: **Active plan** for structure rationalization (2025-11-28). Current state already largely matches the target layout; no risky moves required now. Use this as the reference for any future relocations.
+Use the canonical layout in `docs/repo-structure.md` for current decisions; this file tracks prior planning notes.
 
 ## Snapshot and Classification
 

@@ -1,184 +1,129 @@
+Status: Active
+Last updated: 2025-11-30
+
 # Cherry API Reference (App Router)
 
-Status: **Active**. This file documents the server routes under `app/api/*` and how they align with the product contract:
-- Cherry is an advisory copilot (not a card/terminal).
-- `/api/scan` is stateless advisory.
-- Sessions + ledger handle persistence and rewards.
-- Vine is context-only ingestion.
-- Wallet pass is scaffolded and returns 501 until certs exist.
+This file documents the server routes under `app/api/*` and how they align with Cherry’s product contract (copilot, not a card/terminal). See `docs/legal-constraints.md` for hard guardrails. Authenticate protected endpoints with cookies from `./scripts/dev-login.sh` (`-b cookies.txt`).
 
-Authenticate all protected endpoints with cookies from `./scripts/dev-login.sh` (`-b cookies.txt`).
+---
+
+## Auth
+- Auth stack: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`.
+- Auth guard: `withUser` (`lib/with-user.ts`) wraps all stateful routes; unauthenticated calls return `401`.
+- Client rule: on `401`, prompt sign-in (`signIn()`); server components redirect to `/signin?callbackUrl=...`.
 
 ---
 
 ## Core Advisory API — `POST /api/scan` (stateless)
-Route: `app/api/scan/route.ts`
-
-Purpose: pre-swipe advisory for manual scans, Cherry Pass/App Clip triggers, or quick bucket snapshots. **No DB writes.**
-
-Request:
-```json
-{
-  "merchantName": "Chipotle",
-  "category": "DINING",           // optional RewardCategory
-  "expectedAmountCents": 2000     // optional integer >= 0; 0 = bucket snapshot
-}
-```
-- `merchantName`: required string.
-- `category`: optional; if absent, engine infers (MCC → history → OTHER).
-- `expectedAmountCents`: optional non-negative integer. **Current route rejects <= 0 with 400**; target behavior (per spec) is to allow `0` for bucket snapshots.
-
-Response (conceptual):
-```json
-{
-  "merchantName": "Chipotle",
-  "category": "DINING",
-  "amountCents": 2000,
-  "bucket": {
-    "name": "Dining Weekly",
-    "limitCents": 20000,
-    "spentBeforeCents": 15000,
-    "spentAfterCents": 17000,
-    "remainingAfterCents": 3000,
-    "strictMode": true,
-    "wouldExceed": false,
-    "coverageMode": "BUDGETED",
-    "verdict": "BORDERLINE"
-  },
-  "cardRecommendation": {
-    "cardId": "card_123",
-    "cardNickname": "Amex Gold",
-    "rewardMultiplier": 4,
-    "estimatedRewards": 200,
-    "verdict": "OPTIMAL"
-  },
-  "budgetVerdict": "BORDERLINE",
-  "cardVerdict": "OPTIMAL",
-  "overallVerdict": "YELLOW",
-  "cherryIncentive": {
-    "pointsIfFollowed": 15,
-    "expiryMinutes": 15
-  },
-  "engineDecision": { "...": "raw decision for debug surfaces" }
-}
-```
-Behavior:
-- Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody`.
-- Infers category using MCC map when available, falls back to merchant heuristics/history.
-- Uses `lib/engine.ts` to compute verdicts and incentives; throws if invariants fail.
-- Does **not** create sessions, ledger rows, or modify buckets.
-
-Example:
-```bash
-curl -X POST http://localhost:3000/api/scan \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"merchantName":"Chipotle","category":"DINING","expectedAmountCents":2500}' | jq
-```
+- Route: `app/api/scan/route.ts`
+- Purpose: pre-swipe advisory for manual scans, Cherry Pass/App Clip triggers, or quick bucket snapshots. **No DB writes.**
+- Request:
+  ```json
+  {
+    "merchantName": "Chipotle",
+    "category": "DINING",           // optional RewardCategory
+    "expectedAmountCents": 2000,    // optional integer >= 0; 0 gives bucket snapshot
+    "mccCode": 5812                 // optional MCC
+  }
+  ```
+  - `merchantName`: required string.
+  - `expectedAmountCents`: optional non-negative integer; defaults to `0` if omitted/invalid.
+  - `category` and `mccCode`: optional. Category resolution prefers explicit → MCC map → merchant heuristics/history.
+- Behavior:
+  - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody`.
+  - Resolves category via `resolveScanCategory` (MCC-aware).
+  - Calls `lib/engine.ts` and `validateEngineDecision`; never persists.
+- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging.
 
 ---
 
 ## Session + Reward Lifecycle
-Routes: `app/api/sessions/route.ts`, `app/api/sessions/[id]/confirm/route.ts`, `app/api/sessions/[id]/verify/route.ts`
+Routes: `app/api/sessions/route.ts`, `app/api/sessions/[id]/route.ts`, `app/api/sessions/[id]/confirm/route.ts`, `app/api/sessions/[id]/verify/route.ts`
 
-Purpose: persist a recommendation (manual scan or Vine), let the user claim they followed advice, and move Cherry Points between PENDING/POSTED/REVOKED.
+Purpose: persist a recommendation (manual scan or Vine), let the user claim they followed advice, and move Cherry Points between `PENDING`/`POSTED`/`REVOKED`.
 
 ### `POST /api/sessions`
-Body:
-```json
-{
-  "merchantName": "Chipotle",
-  "amountCents": 2200,
-  "category": "DINING",    // optional
-  "currency": "USD",       // optional, default USD
-  "deviceId": "VINE-SIM-1", "storeId": "STORE-1", "terminalId": "TERM-1", "orderId": "ORDER-123", "mccCode": 5812 // all optional
-}
-```
-Behavior:
-- Validates via `lib/schemas/sessions.ts`.
-- Calls `lib/engine.ts` for decision; stores `RecommendationSession` with verdicts, coverageMode, offered points, and expiry (~15 minutes).
-- Returns `{ sessionId, decision }`.
+- Body fields: `merchantName?`, `amountCents` (int > 0), `category?`, `currency?` (default `USD`), optional `deviceId`, `storeId`, `terminalId`, `orderId`, `mccCode`.
+- Behavior:
+  - Validates via `lib/schemas/sessions.ts`.
+  - Runs engine and persists `RecommendationSession` with verdicts, coverageMode, offered points, expiry (~15 minutes), `orderToken` (UUID), `source = APP_SCAN`.
+  - Returns `{ sessionId, orderToken, expiresAt, source, decision }`.
+
+### `GET /api/sessions`
+- Query params: `limit` (<=100), `offset`, `status` (`all|active|expired|confirmed`), `verdict` (comma list), `from`, `to`, `source`.
+- Returns paginated summaries via `fetchSessionSummaries`.
+
+### `GET /api/sessions/[id]`
+- Returns a single session with verdicts, coverageMode, expiry, anomalyCode, and computed `pointsPosted`/`pointsPending`. Marks `isExpired` based on `expiresAt`.
 
 ### `POST /api/sessions/[id]/confirm`
-Body:
-```json
-{
-  "actualAmountCents": 2200,    // optional; defaults to recommended
-  "usedCardId": "card_abc",     // optional
-  "followedRecommendation": true
-}
-```
-Behavior:
-- Loads session, rejects expired/claimed/verified/rejected.
-- Flags anomalies (amount mismatch, time window, card mismatch) and writes `CherryPointLedger` rows with `PENDING` status.
-- Returns session + ledger status and pending points.
+- Body:
+  ```json
+  {
+    "actualAmountCents": 2200,    // optional positive int; defaults to recommended amount
+    "usedCardId": "card_abc",     // optional override
+    "followedRecommendation": true
+  }
+  ```
+- Behavior:
+  - Rejects missing/unauthorized/expired/claimed/verified/rejected sessions.
+  - Flags anomalies:
+    - amount mismatch (<85% or >115% of recommended),
+    - time window violation (>24h since creation),
+    - card mismatch when a different card is claimed.
+  - Freshens the recommended bucket via `ensureBucketFresh` and increments `spentCents` once per session.
+  - Creates `CherryPointLedger` row(s) with `PENDING` status; anomaly codes propagate to ledger.
+  - Calls `autoVerifySession` (stub today).
+  - Response: sessionStatus `CLAIMED`, ledgerStatus `PENDING`, pending points, message.
 
 ### `POST /api/sessions/[id]/verify`
-Body:
-```json
-{ "verified": true }
-```
-Behavior:
-- Simulated verification: flips session status to VERIFIED/REJECTED and ledger entries to POSTED/REVOKED, carries anomaly flags through.
+- Body: `{ "verified": true | false }`.
+- Behavior:
+  - Finalizes session to `VERIFIED`/`REJECTED`; updates `verificationStatus`, `verifiedAt`/`rejectedAt`.
+  - Moves pending ledger rows to `POSTED` (when verified) or `REVOKED` (when rejected); anomaly codes mirror session.
+  - Response: `{ ok: true, sessionStatus, ledgerStatus }`.
 
 ---
 
-## Vine Order Ingestion (dev-only today)
-Route: `app/api/vine/order/route.ts`
-
-Purpose: ingest order context from the Vine simulator or future hardware, run the engine, and create a bound `RecommendationSession`.
-
-Accepted payloads:
-1) **Terminal event form** (`lib/schemas/vine-terminal.ts`):
-```json
-{
-  "amount": 2450,
-  "currency": "USD",
-  "mcc": "5812",
-  "merchant": { "merchantName": "Cherry Coffee", "storeId": "STORE-1" },
-  "terminal": { "terminalId": "TERM-1" },
-  "vine": { "source": "VINE_SIM", "sessionId": "optional" }
-}
-```
-2) **OrderContext form** (`lib/schemas/vine.ts`):
-```json
-{
-  "deviceId": "VINE-SIM-1",
-  "amountCents": 2450,
-  "currency": "USD",
-  "merchantName": "Cherry Coffee",
-  "mccCode": 5812,
-  "timestamp": 1732765200000,
-  "source": "VINE_SIM",
-  "storeId": "STORE-1",
-  "terminalId": "TERM-1",
-  "orderId": "ORDER-123",
-  "nonce": "optional"
-}
-```
-
-Behavior:
-- Validates JSON; maps terminal events to `OrderContext`.
-- Uses `runRecommendationFromOrderContext` to call the engine and persist a `RecommendationSession` with an `orderToken` and expiry (~15 minutes).
-- Returns `{ sessionId, decision, orderToken }`.
-- Dev-only: exercised via `/vine-simulator`.
+## Vine Order Ingestion (dev-only)
+- Route: `app/api/vine/order/route.ts`
+- Purpose: ingest order context from the Vine simulator or future hardware, run the engine, and create a bound `RecommendationSession`.
+- Accepted payloads:
+  1) **Terminal event form** (`lib/schemas/vine-terminal.ts`): amount, optional currency, merchant block (name/storeId/MCC), terminal block (terminalId), vine block (source/sessionId).
+  2) **OrderContext form** (`lib/schemas/vine.ts`): `deviceId`, `amountCents` (positive int), `timestamp` (epoch ms), optional merchant/store/terminal/order IDs, optional `mccCode`, optional `nonce`, optional `source` (default `VINE_SIM`).
+- Behavior:
+  - Parses terminal event first; falls back to `OrderContext`.
+  - Validates MCC when provided; rejects stale payloads (> ~3 minutes old).
+  - Calls `runRecommendationFromOrderContext` → engine; persists `RecommendationSession` with `source` = `VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes.
+  - Returns `{ sessionId, decision, orderToken }`.
+- Not implemented yet: HMAC/nonce verification, cleanup of expired order tokens.
 
 ---
 
 ## Wallet Pass Scaffold
-Route: `app/api/wallet/cherry-pass/route.ts`
-
-Status: **SCAFFOLDED**. Returns `501 Not Implemented` until Apple Wallet certs/env vars are provided. See `docs/wallet-pass.md`. Never attempt to make this a payment card; it is a `storeCard`-style loyalty pass.
+- Route: `app/api/wallet/cherry-pass/route.ts`
+- Behavior:
+  - Guarded by `withUser`.
+  - Gating via `getWalletPassConfigStatus`:
+    - Requires `CHERRY_WALLET_PASS_ENABLED=true`.
+    - Requires Apple Wallet env vars: `APPLE_WALLET_TEAM_ID`, `APPLE_WALLET_PASS_TYPE_ID`, `APPLE_WALLET_ORG_NAME`, `APPLE_WALLET_PASS_DESCRIPTION`, `APPLE_WALLET_CERT_PASSWORD`, `APPLE_WALLET_CERT_PATH`, `APPLE_WALLET_WWDR_CERT_PATH`.
+  - If disabled/misconfigured: returns `501` JSON `{ error: "wallet_pass_not_configured", reason, message }`.
+  - When fully configured: generates a `storeCard` `.pkpass` via `lib/wallet/cherryPass.ts`.
+- Positioning: loyalty/advisory pass only; never a payment instrument (see `docs/wallet-pass.md`).
 
 ---
 
-## Cards, Buckets, Simulation
-- `/api/cards` — CRUD for cards/reward rules (auth required).
-- `/api/buckets` — CRUD for buckets (auth required); period windows computed on create.
-- `/api/simulate` — Runs engine and records a `SimulatedTransaction` for sandbox history; may update bucket spend according to strict-mode logic.
-- `/api/mccs` — Read MCC mapping (used by engine for category resolution).
+## Cards, Buckets, Simulation, MCCs
+- `/api/cards` — CRUD for cards (auth required).
+- `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card.
+- `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
+- `/api/buckets/[bucketId]` — Delete a specific bucket.
+- `/api/simulate` — Runs engine and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets.
+- `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
+- `/api/mccs` — Read MCC → RewardCategory mapping.
+- `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
 
-All routes validate with `lib/validation/*` and guard with `withUser`.
+All use Zod validation in `lib/schemas/*` and `withUser` guard.
 
 ---
 
@@ -186,14 +131,15 @@ All routes validate with `lib/validation/*` and guard with `withUser`.
 - `/api/admin/clear-user` — clear user data (cards/buckets/etc).
 - `/api/admin/clear-sessions` — clear `RecommendationSession` rows.
 - `/api/admin/clear-ledger` — clear `CherryPointLedger` rows.
-- `/api/admin/health` and `/api/health` — simple health checks.
-- `/api/seed-demo` — seed demo data (cards, buckets, sessions, ledger).
+- `/api/admin/health` and `/api/health` — health checks.
+- `/api/seed-demo` and `/api/seed-demo/cards-buckets` — seed demo data.
+- `/api/dev/pending-sessions` — list PENDING-ledger sessions for the user.
 
 ---
 
 ## Notes and Invariants
-- Never persist data in `/api/scan`; persistence belongs in sessions/ledger.
-- Do not store card PAN/CVV/track data; Vine payloads are context-only.
+- `/api/scan` is stateless; persistence belongs in sessions/ledger.
 - Monetary values are integer cents in APIs and DB.
-- Handle `401` by prompting sign-in (UI) or adding cookies (CLI).
-- Wallet pass remains gated at 501 until Apple certs/env vars are provided.
+- Do not store card PAN/CVV/track data; Vine payloads are context-only.
+- Wallet pass remains gated at 501 until Apple certs/env vars are provided and the feature flag is set.
+- All routes must respect the legal guardrails in `docs/legal-constraints.md`.

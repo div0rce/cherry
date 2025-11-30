@@ -1,13 +1,16 @@
+Status: Active and canonical
+Last updated: 2025-11-30
+
 # Cherry Vision & Product Identity
 
 *A living document for how Cherry should exist in the world*
 
-Status: **Active and canonical.** All other docs and code must conform to this file (and `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`). If reality drifts, fix the code—not this identity.
+All other docs and code must conform to this file (and `docs/legal-constraints.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`). If reality drifts, fix the code—not this identity. See `docs/legal-constraints.md` for hard legal guardrails.
 
 Where this lives in the repo today:
 - Advisory entry: `/api/scan` (stateless) in `app/api/scan/route.ts`.
-- Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`.
-- Engine: `lib/engine.ts` + invariants in `lib/engine-invariants.ts`.
+- Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`. Bucket spend is incremented on confirm after `ensureBucketFresh` rollover.
+- Engine: `lib/engine.ts` + invariants in `lib/engine-invariants.ts` (single canonical path).
 - Vine context ingest (dev-only): `/api/vine/order` + simulator UI `/vine-simulator`.
 - Wallet pass scaffold: `/api/wallet/cherry-pass` (501 until Apple certs).
 

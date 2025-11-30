@@ -6,7 +6,7 @@ Cherry is a **real-time spending copilot**. It observes context (merchant, amoun
 
 Cherry Vine (future hardware) is a **context beacon** (merchant + amount) and never touches payment rails. Cherry Pass is a **storeCard-style Apple Wallet pass** that triggers advisory flows; until Apple certs exist, `GET /api/wallet/cherry-pass` intentionally returns **501**.
 
-Canonical docs: `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `AGENTS.md`.
+Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `AGENTS.md`.
 
 ---
 

@@ -1,17 +1,42 @@
+Status: Active blueprint + dev-only backend simulator
+Last updated: 2025-11-30
+
 # Cherry Vine Design Document
 
 *Reference architecture for the Cherry in-store hardware node*
 
-Status: **Active blueprint + dev-only backend simulator.** Vine is **context-only hardware**, never a payment terminal. Current code hooks (dev-only) and caveats:
+Vine is **context-only hardware**, never a payment terminal. See `docs/legal-constraints.md` for the hard guardrails.
+
+Current code hooks (dev-only) and caveats:
 - Backend ingest: `app/api/vine/order/route.ts` accepts Vine terminal events or `OrderContext` and creates a `RecommendationSession` via `lib/vine/run-recommendation.ts`.
 - Types: `lib/vine/order-context.ts`, `lib/schemas/vine.ts`, `lib/schemas/vine-terminal.ts`.
 - Dev UI: `/vine-simulator` (App Router page) posts to `/api/vine/order` and shows decision/orderToken.
 - Engine: `lib/engine.ts` computes verdicts; results persist to `RecommendationSession` and Cherry Points ledger when confirmed.
-- Current handler requires a valid MCC code and has no HMAC/nonce enforcement yet; freshness/HMAC are TODOs.
+- MCC is optional but validated when provided; freshness window (~3 minutes) is enforced. HMAC/nonce auth is **TODO**.
 
 All firmware and future device work must match this document and **never** touch card rails.
 
 ---
+
+## Current implementation (dev-only)
+- Endpoint: `POST /api/vine/order` guarded by `withUser`.
+- Accepted payloads:
+  - **Terminal event form** (`lib/schemas/vine-terminal.ts`): amount (number), optional currency, merchant block (name/storeId/MCC), terminal block (terminalId), vine block with source/sessionId.
+  - **OrderContext form** (`lib/schemas/vine.ts`): deviceId, amountCents (positive integer), timestamp (epoch ms), optional merchant/store/terminal/order IDs, optional MCC, optional nonce, `source` defaults to `VINE_SIM`.
+- Behavior:
+  - Validates payload; rejects stale timestamps (`> ~3 minutes` old).
+  - MCC is optional; when present it must pass `isValidMcc`.
+  - Maps payload to `OrderContext`, calls `runRecommendationFromOrderContext` → `runEngine`, and persists a `RecommendationSession` with `source = VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes.
+  - Returns `{ sessionId, decision, orderToken }` to the simulator/client.
+- Not implemented yet (explicit TODOs):
+  - HMAC/nonce verification and device secrets.
+  - Order token cleanup/expiry sweeps.
+  - Hardware/firmware transport; today is backend-only for simulation.
+
+- Safety assertions:
+  - Vine does **not** read cards or act as a terminal.
+  - Vine payloads contain only merchant/order context (merchant ID/name, amount, timestamp, optional MCC/store/terminal/order IDs).
+  - No EMV/ISO8583 or payment-rail protocols are emitted or consumed.
 
 ## 0. Purpose of this Document
 

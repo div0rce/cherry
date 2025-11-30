@@ -67,6 +67,8 @@ export async function POST(
           ? LedgerAnomalyCode.NONE
           : LedgerAnomalyCode.SESSION_ANOMALOUS;
 
+      // TODO: Consider reversing bucket spend on rejection once policy is defined
+      // (see docs/buckets-rollover-plan.md#future--target-behavior).
       await prisma.$transaction(async (tx) => {
         await tx.recommendationSession.update({
           where: { id: session.id },

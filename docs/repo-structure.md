@@ -1,6 +1,9 @@
+Status: Canonical layout
+Last updated: 2025-11-30
+
 # Cherry Repository Structure
 
-Status: **Canonical layout** (2025-11-28). Use this as the source of truth for where things live and where new code should go.
+Use this as the source of truth for where things live and where new code should go. See `AGENTS.md` for operating rules and `docs/legal-constraints.md` for product guardrails.
 
 ## Top-Level Overview (curated)
 ```

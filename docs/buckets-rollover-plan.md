@@ -1,86 +1,57 @@
-# Bucket Rollover Plan (Phase 0 – Mapping Current State)
+Status: Active
+Last updated: 2025-11-30
 
-Status: mapping only. No code changes yet. This documents the current schema/behavior and observed gaps.
+# Bucket Rollover & Spend Semantics
+
+This doc explains how bucket periods and spend tracking work today, what gaps remain, and what future behavior should look like. See `docs/legal-constraints.md` and `docs/cherry-vision.md` for broader guardrails.
 
 ## Current Schema (prisma/schema.prisma)
 - Model: `Bucket`
   - `id`, `userId`, `name`
-  - `period` (`BucketPeriod` enum: `WEEKLY`, `MONTHLY`)
-  - `budgetAmount` (cents)
-  - `currentAmount` (remaining cents; set on create)
-  - `spentCents` (int, default 0; intended “spent this period”)
-  - `strictMode` (boolean)
+  - `period` (`BucketPeriod`: `WEEKLY` | `MONTHLY`)
+  - `budgetAmount` (int, cents)
+  - `currentAmount` (int, cents; set on create only, legacy)
+  - `spentCents` (int, default 0; “spent this period”)
+  - `strictMode` (boolean, default true)
   - `category` (`RewardCategory`)
-  - `periodStart`, `periodEnd` (DateTime, default `now()`)
+  - `periodStart`, `periodEnd` (DateTime, defaults `now()`)
+  - `lastResetAt` (DateTime?)
   - timestamps: `createdAt`, `updatedAt`
-- No `lastResetAt` or similar anchor.
-- Unique/indexes: none specific to rollover; default indexes on relations.
 
-## Where Buckets Are Used Today
-- Creation: `app/api/buckets/route.ts`
-  - Uses `getPeriodWindow(period, now)` to set `periodStart`/`periodEnd` at create time (weekly starts Monday 00:00, monthly starts first of month).
-  - Sets `spentCents = budgetAmount - currentAmount` if `currentAmount` provided, else 0.
-  - No further rollover logic after creation.
-- Engine: `lib/engine.ts`
-  - Reads `spentCents` and `budgetAmount` to compute:
-    - `spentBefore = spentCents`
-    - `spentAfter = spentBefore + amountCents`
-    - `remainingAfter = limit - spentAfter`
-    - verdicts/strict mode flags.
-  - Ignores `currentAmount`, `periodStart`, `periodEnd`.
-- Other routes:
-  - `/api/scan`, `/api/sessions`, `/api/vine/order` all rely on engine outputs; no bucket mutations.
-  - `/api/sessions/[id]/confirm|verify` do not update buckets.
-- Seed data: `lib/demo-seeder.ts` seeds `spentCents` values; no dynamic updates.
+## Current Behavior (code reality)
+- **Creation (`POST /api/buckets`)**
+  - Computes weekly window (Monday 00:00 → next Monday 00:00) or monthly (first of month → first of next month) via `getPeriodWindow`.
+  - Initializes `spentCents` to `budgetAmount - currentAmount` when `currentAmount` is provided, else `0`. Stores `periodStart`/`periodEnd`, `strictMode`, `category`.
+  - `currentAmount` is not used after creation.
 
-## How `spentCents` Is Mutated
-- Only on bucket creation (and demo seed). No increments/updates elsewhere.
-- Confirming sessions/ledger updates do **not** touch `spentCents`.
-- Simulations (`/api/simulate`) do not mutate buckets.
+- **Rollover helpers**
+  - `lib/buckets/periods.ts#applyInMemoryRollover` advances `periodStart`/`periodEnd` forward until `periodEnd > now`, resets `spentCents` to `0`, and marks `isExpired` when rollover happened. Multi-period gaps are covered by looping windows.
+  - `lib/buckets/ensure-fresh.ts` fetches a bucket, applies the in-memory rollover, and persists `periodStart`/`periodEnd`/`spentCents`/`lastResetAt` when they changed.
 
-## Period Fields Usage
-- `periodStart` / `periodEnd` are set on create (weekly/monthly window) and never touched again.
-- No reads in engine or UI; no rollover when time passes.
+- **Engine usage (`lib/engine.ts`)**
+  - Loads buckets for the category, runs them through `applyInMemoryRollover`, and bases budget verdicts on `budgetAmount` + rolled `spentCents`.
+  - Chooses the earliest-created bucket for the category (first in list). Ignores `currentAmount`.
+  - Verdicts: `BORDERLINE` when <10% remains; `BREAKS_BUDGET` when spend would exceed `budgetAmount`; respects `strictMode` flag in outputs.
 
-## Observed Problems
-- Rollover is **never performed**; `periodStart`/`periodEnd` become stale.
-- `spentCents` stays at its creation-time value; budget health drifts as time passes and as real spend occurs.
-- Engine verdicts ignore period boundaries and time; they operate on stale `spentCents`.
-- `currentAmount` is legacy/unused after creation, leading to double-source-of-truth risk.
-- No anchor (`lastResetAt`) to prevent double resets or track rollover application.
+- **Spend mutation (`POST /api/sessions/[id]/confirm`)**
+  - Ensures the recommended bucket is fresh via `ensureBucketFresh` before updates.
+  - Increments `spentCents` by the claimed amount (or recommended amount when `actualAmountCents` is absent). Happens once per session because status checks block double-claims.
+  - Does not currently decrement on verification failure; spend remains even if ledger rows are later revoked.
 
-## Next Steps (future phases)
-- Define canonical rollover rules for WEEKLY/MONTHLY.
-- Add centralized helper(s) for rollover and bucket freshness.
-- Decide on balance source of truth (`spentCents` vs ledger-derived) and enforce updates on confirm/verify.
-- Add tests for weekly/monthly rollover and multi-period gaps.
+- **Other paths**
+  - `/api/scan`, `/api/sessions`, `/api/vine/order`, `/api/simulate` do **not** mutate buckets.
+  - Engine in-memory rollover means verdicts stay time-accurate even if the DB has not been refreshed yet; persistence happens on confirm via `ensureBucketFresh`.
 
-## Canonical Rollover Rules (Target Behavior)
+## Gaps / Inconsistencies
+- `currentAmount` is legacy and unused after creation; risks confusion as a second balance field.
+- Spend is not reversed if verification rejects a claim; `spentCents` remains incremented.
+- Bucket selection is naive (first created for a category) and ignores multiple buckets for the same category.
+- No background job to pre-roll buckets; freshness relies on engine reads and confirm-time `ensureBucketFresh`.
+- `lastResetAt` is only set when rollover occurs via `ensureBucketFresh`; initial creation leaves it null.
 
-- **Source of truth:** `spentCents` = “spent in current period.” Ledger (`CherryPointLedger`) is audit-only. `currentAmount` is legacy (set on create) and not used in future math.
-- **When expired:** `now > periodEnd`.
-- **On rollover:** advance `periodStart`/`periodEnd` forward by full periods until `periodEnd > now`; reset `spentCents = 0`.
-- **Gap handling:** if multiple periods passed, still end with a single fresh window (`spentCents = 0`) covering `now`.
-
-### WEEKLY
-- Window: starts Monday 00:00 local; ends next Monday 00:00 local (per `getPeriodWindow` in creation path).
-- Expiry: `now > periodEnd`.
-- Rollover: move start/end forward in 7-day increments until `periodEnd > now`; reset `spentCents = 0`.
-
-### MONTHLY
-- Window: first day of month 00:00 local → first day of next month 00:00 local (per `getPeriodWindow` in creation path).
-- Expiry: `now > periodEnd`.
-- Rollover: advance start/end month-by-month until `periodEnd > now`; reset `spentCents = 0`.
-
-## Real Spend Semantics (Target)
-- Real spend is counted when a session is **claimed/confirmed** (first transition from recommended to claimed). Verification may change ledger status but does not double-count spend.
-- Before incrementing bucket spend, apply rollover so spend always lands in the active window.
-- Increment rule: `bucket.spentCents = fresh.spentCents + amountCents` where `amountCents` is the claimed (or recommended) amount for the session.
-- Guardrails: only increment once per session; repeated claims should be blocked by status checks.
-
-## Implementation Status
-- Rollover helpers live in `lib/buckets/periods.ts` (in-memory) and `lib/buckets/ensure-fresh.ts` (DB-aware).
-- Engine pipes buckets through in-memory rollover so verdicts reflect the current period even if DB is stale.
-- `Bucket.lastResetAt` has been added to track when rollover was last applied; backfill script: `scripts/backfill_bucket_last_reset_at.ts`.
-- Real spend increment happens in `/api/sessions/[id]/confirm`: bucket is freshened via `ensureBucketFresh` and `spentCents` is incremented once per claim.
-- `currentAmount` remains legacy and is not used after creation; UI and engine rely on `budgetAmount` + `spentCents`.
+## Future / Target Behavior
+- Keep `spentCents` as the single source of truth; remove or archive `currentAmount` from math.
+- Consider deriving bucket selection rules (e.g., prioritize strict buckets) and document them.
+- Add optional reversal or adjustment when verification fails, or mark rejected sessions for audit before reversing spend.
+- Add periodic freshness sweeps or on-read hooks for other bucket consumers if more surfaces start relying on bucket windows.
+- Expand tests around weekly/monthly rollover, gap handling, and strict-mode overspend enforcement.
