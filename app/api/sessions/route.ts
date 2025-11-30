@@ -4,6 +4,7 @@ import {
   CategoryCoverageModeDb,
   RecommendationStatus,
   RecommendationSource,
+  RecommendationSession,
   RewardCategory,
   SessionAnomalyCode,
   VerificationStatus,
@@ -16,6 +17,7 @@ import { CreateSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { randomUUID } from 'crypto';
+import { fetchSessionSummaries } from '@/lib/sessions/summaries';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -100,6 +102,56 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     } catch (error) {
       logError('Error in /api/sessions POST', error);
       return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
+    }
+  });
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return withUser(request, async (userId) => {
+    try {
+      const params = request.nextUrl.searchParams;
+      const limit = Math.min(Number(params.get('limit')) || 20, 100);
+      const offset = Math.max(Number(params.get('offset')) || 0, 0);
+
+      const statusParam = params.get('status') ?? 'all';
+      const verdictParam = params.get('verdict');
+      const fromParam = params.get('from');
+      const toParam = params.get('to');
+      const sourceParam = params.get('source');
+
+      const verdicts =
+        verdictParam?.split(',').map((v) => v.trim()).filter(Boolean) ?? [];
+
+      const sources =
+        sourceParam
+          ?.split(',')
+          .map((s) => s.trim())
+          .filter(Boolean) as RecommendationSource[] | undefined;
+
+      const fromDate = fromParam ? new Date(fromParam) : null;
+      const toDate = toParam ? new Date(toParam) : null;
+
+      const { items, hasMore } = await fetchSessionSummaries(userId, {
+        limit,
+        offset,
+        status: (statusParam as 'all' | 'active' | 'expired' | 'confirmed') ?? 'all',
+        verdict: verdicts.length > 0 ? (verdicts as RecommendationSession['verdict'][]) : null,
+        from: fromDate,
+        to: toDate,
+        source: sources ?? null,
+      });
+
+      return NextResponse.json({
+        items,
+        pagination: {
+          limit,
+          offset,
+          hasMore,
+        },
+      });
+    } catch (error) {
+      logError('Error in /api/sessions GET', error);
+      return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
     }
   });
 }

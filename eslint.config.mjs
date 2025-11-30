@@ -43,4 +43,41 @@ export default defineConfig([
       '@next/next/no-img-element': 'off',
     },
   },
+  {
+    files: ['app/**/page.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'JSXAttribute[name.name=/^on.*/][value.expression.type="ArrowFunctionExpression"]',
+          message:
+            'Server Components (page.tsx) must not define inline event handlers. Move interactivity into a client component.',
+        },
+        {
+          selector:
+            'JSXAttribute[name.name=/^on.*/][value.expression.type="Identifier"]',
+          message:
+            'Server Components (page.tsx) must not pass handler props. Move interactivity into a client component.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['app/scan/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.name="fetch"]',
+          message:
+            'Use lib/client/api.callApi + useApiAction instead of raw fetch in React components.',
+        },
+        {
+          selector: 'JSXElement JSXText[value=/Scan failed/i]',
+          message: 'Error messages must be rendered from error state, not hard-coded.',
+        },
+      ],
+    },
+  },
 ]);
