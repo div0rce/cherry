@@ -354,6 +354,8 @@ model RecommendationSession {
   recommendedCardId String?
   recommendedBucket Bucket? @relation(fields: [recommendedBucketId], references: [id], onDelete: SetNull)
   recommendedBucketId String?
+  confirmedAmountCents Int?
+  bucketSpendReversed  Boolean @default(false)
 
   verdict              RecommendationVerdict
   cherryPointsOffered  Int     @default(0)

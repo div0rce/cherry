@@ -43,7 +43,7 @@ Docs consulted:
   - Schema fields: `budgetAmount`, `currentAmount` (legacy after create), `spentCents` (default 0), `strictMode` default true, `periodStart/periodEnd` defaults now, `lastResetAt` optional.
   - Creation sets weekly window (Monday 00:00) or monthly (1st → next 1st) and initializes `spentCents = budgetAmount - currentAmount` when `currentAmount` provided.
   - `ensureBucketFresh` applies in-memory rollover and persists updated `periodStart`/`periodEnd`/`spentCents`/`lastResetAt` when stale.
-  - No automatic reversal of `spentCents` on verification rejection.
+- Verification rejection now reverses bucket spend once: when a confirmed session is rejected, `Bucket.spentCents` is decremented by `confirmedAmountCents` (bounded at 0) and `bucketSpendReversed` is set to prevent double reversals.
 
 - Sessions & ledger:
   - Creation (`POST /api/sessions`, `app/api/sessions/route.ts`):
@@ -53,13 +53,13 @@ Docs consulted:
   - Confirm (`POST /api/sessions/[id]/confirm`, `app/api/sessions/[id]/confirm/route.ts`):
     - Blocks missing/expired/claimed/verified/rejected sessions.
     - Anomalies: amount ratio outside 0.85–1.15 → `AMOUNT_MISMATCH`; claim older than 24h → `TIME_WINDOW_VIOLATION`; card mismatch → `CARD_MISMATCH`.
-    - Freshens bucket via `ensureBucketFresh` and increments `spentCents` by claimed/recommended amount once per session.
+    - Freshens bucket via `ensureBucketFresh` and increments `spentCents` by claimed/recommended amount once per session; records `confirmedAmountCents` on the session and resets `bucketSpendReversed` to false.
     - Writes `CherryPointLedger` row(s) with `status = PENDING`, anomaly mirrored to ledger code `SESSION_ANOMALOUS`.
     - Calls `autoVerifySession` (stub returns null).
   - Verify (`POST /api/sessions/[id]/verify`, `app/api/sessions/[id]/verify/route.ts`):
     - Sets session to `VERIFIED` or `REJECTED`, `verificationStatus` accordingly; anomaly escalates to `VERIFICATION_CONFLICT` if rejecting a clean session.
     - Updates PENDING ledger rows to `POSTED` (verified) or `REVOKED` (rejected); sets anomaly code if present.
-    - TODO noted to consider reversing bucket spend on rejection (code comment added).
+    - Reverses bucket spend exactly once when `verified=false` and `confirmedAmountCents` is set, using `bucketSpendReversed` to prevent double reversals.
   - Ledger model: `CherryPointLedger.status` default `PENDING` in schema; anomaly flags stored separately; linked to `sessionId`, `cardId`, `merchantObservationId`.
 
 - Vine ingest (`app/api/vine/order/route.ts`):
@@ -82,7 +82,7 @@ Docs consulted:
   - Engine invariants, wallet-pass config, bucket periods, vine order mapping, and client API smoke tests in `tests/*.test.js`; all passing as of this audit.
 
 ## 2. Gaps vs Vision / Legal Constraints
-- Spend reversal on verification rejection is absent; rejected claims leave bucket `spentCents` incremented (vision expects advisory accuracy; legal OK but can mislead budgets).
+- Reversal implemented only for single-bucket sessions using `confirmedAmountCents` and `bucketSpendReversed`; multi-bucket or partial verification flows are not supported.
 - Verification automation is stubbed (`lib/verification/verify-session.ts`); no real signals or auto-posting.
 - Vine security is minimal: no HMAC/nonce validation or device registry; freshness only. Needs future hardening to avoid spoofed context (legal constraint: context-only, but spoofing could degrade trust).
 - Legacy/duplicate engine logic in `lib/simulation.ts` (separate category resolver, bucket/currentAmount usage) risks drift from canonical engine; not used by core flow but could confuse contributors.
@@ -91,8 +91,8 @@ Docs consulted:
 - Wallet pass generation still reads certs when fully enabled; acceptable, but ensure feature flag stays off by default to avoid accidental filesystem access. Currently compliant.
 
 ## 3. Risks and Impact (Ranked)
-- High — Verification stub & spend permanence on rejection:
-  - Impact: budgets remain inflated after a rejected claim; user-facing advice could be off. Evidence: `app/api/sessions/[id]/confirm/route.ts` increments bucket; `app/api/sessions/[id]/verify/route.ts` has TODO and no reversal.
+- High — Verification stub (signals) and limited reversal semantics:
+  - Impact: reversal only covers the confirmed bucket/amount; no automation from external signals. Evidence: `app/api/sessions/[id]/confirm/route.ts` sets `confirmedAmountCents`; `app/api/sessions/[id]/verify/route.ts` reverses when `verified=false` using `bucketSpendReversed`.
 - Medium — Vine lacks HMAC/nonce/device auth:
   - Impact: spoofed Vine events could create sessions with misleading recommendations. Evidence: `app/api/vine/order/route.ts` TODO comment section, no auth beyond freshness.
 - Medium — Legacy simulation engine drift:
@@ -102,7 +102,7 @@ Docs consulted:
 
 ## 4. Concrete Fixes / Migrations
 - Bucket spend reversal policy:
-  - Decide whether to reverse `spentCents` on verification rejection. If yes, adjust `app/api/sessions/[id]/verify/route.ts` to roll back `spentCents` for the relevant bucket (after `ensureBucketFresh`) when moving to `REJECTED`. Document in `docs/buckets-rollover-plan.md`.
+  - Implemented: `confirmedAmountCents` persists the applied spend; `verify(verified=false)` reverses once using `bucketSpendReversed` and `ensureBucketFresh`. Future: consider multi-bucket or partial verification semantics if ever supported.
 - Verification automation:
   - Implement signals in `lib/verification/verify-session.ts` (bank/receipt/Vine) and trigger `/api/sessions/[id]/verify` with `verified: true/false` based on evidence. Add tests covering state transitions and anomalies.
 - Vine hardening:
@@ -116,8 +116,8 @@ Docs consulted:
 
 ## 5. Short-Term Plan (Implementation Checklist)
 1) Bucket verification alignment:
-   - Add rollback logic in `app/api/sessions/[id]/verify/route.ts` (guarded by TODO) and document in `docs/buckets-rollover-plan.md`.
-   - Add unit test covering confirm → reject → bucket spend reversal.
+   - DONE: rollback logic implemented in `/api/sessions/[id]/verify`. Remaining: expand if multi-bucket sessions are introduced.
+   - Add more tests if bucket selection changes (strict-first, multi-bucket).
 2) Verification automation:
    - Flesh out `lib/verification/verify-session.ts` to call `/api/sessions/[id]/verify` based on mock/fixture signals; add tests for posted/revoked ledger transitions and anomaly propagation.
 3) Vine security hardening:

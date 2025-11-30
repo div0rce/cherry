@@ -50,7 +50,7 @@ export async function POST(
         });
       }
 
-      if (session.status === RecommendationStatus.CLAIMED) {
+      if (session.status === RecommendationStatus.CLAIMED || session.confirmedAmountCents != null) {
         return NextResponse.json({ error: 'Session already claimed' }, { status: 400 });
       }
 
@@ -85,6 +85,9 @@ export async function POST(
 
       const pointsClaimed = Math.max(session.cherryPointsOffered ?? 0, 0);
       const spendAmount = actualAmountCents ?? session.amountCents;
+      if (!Number.isInteger(spendAmount) || spendAmount <= 0) {
+        return NextResponse.json({ error: 'A positive amountCents is required to confirm' }, { status: 400 });
+      }
 
       const reasonBase = followedRecommendation
         ? 'CLAIM_FOLLOWED_RECOMMENDATION'
@@ -137,8 +140,10 @@ export async function POST(
             verificationStatus: VerificationStatus.PENDING,
             anomalyCode,
             anomalyDetails,
-            amountCents: actualAmountCents ?? session.amountCents,
+            amountCents: spendAmount,
             recommendedCardId: session.recommendedCardId ?? usedCardId ?? null,
+            confirmedAmountCents: spendAmount,
+            bucketSpendReversed: false,
           },
         });
 

@@ -12,6 +12,8 @@ import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 import { VerifySessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
+import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
+import { computeBucketReversal } from '@/lib/sessions/reversal';
 
 export async function POST(
   request: NextRequest,
@@ -62,19 +64,30 @@ export async function POST(
         }
       }
 
-      // TODO(bucket-spend-reversal): When a session is REJECTED after being
-      // previously CONFIRMED, consider reversing the bucket.spentCents
-      // increment applied during confirm. Implement only after mapping session →
-      // bucket/amount is solid and tests cover confirm → verify(rejected) to
-      // avoid double-counting. See docs/cherry-core-loop-engine-vine-wallet-audit.md §4.
-
       const ledgerAnomaly =
         anomalyCode === SessionAnomalyCode.NONE
           ? LedgerAnomalyCode.NONE
           : LedgerAnomalyCode.SESSION_ANOMALOUS;
 
-      // TODO: Consider reversing bucket spend on rejection once policy is defined
-      // (see docs/buckets-rollover-plan.md#future--target-behavior).
+      let reversalBucketUpdate: { bucketId: string; newSpentCents: number } | null = null;
+      let freshBucketId: string | null = null;
+      let freshBucketSpent: number | null = null;
+      if (session.recommendedBucketId) {
+        const freshBucket = await ensureBucketFresh(session.recommendedBucketId, new Date());
+        if (freshBucket) {
+          freshBucketId = freshBucket.id;
+          freshBucketSpent = freshBucket.spentCents ?? 0;
+        }
+      }
+
+      reversalBucketUpdate = computeBucketReversal({
+        verified: body.verified,
+        confirmedAmountCents: session.confirmedAmountCents ?? null,
+        bucketSpendReversed: session.bucketSpendReversed ?? false,
+        bucketId: freshBucketId,
+        currentBucketSpentCents: freshBucketSpent,
+      });
+
       await prisma.$transaction(async (tx) => {
         await tx.recommendationSession.update({
           where: { id: session.id },
@@ -86,6 +99,11 @@ export async function POST(
             anomalyCode,
             verifiedAt: body.verified ? now : null,
             rejectedAt: body.verified ? null : now,
+            ...(reversalBucketUpdate
+              ? {
+                  bucketSpendReversed: true,
+                }
+              : {}),
           },
         });
 
@@ -99,6 +117,13 @@ export async function POST(
             anomalyCode: ledgerAnomaly,
           },
         });
+
+        if (reversalBucketUpdate) {
+          await tx.bucket.update({
+            where: { id: reversalBucketUpdate.bucketId },
+            data: { spentCents: reversalBucketUpdate.newSpentCents },
+          });
+        }
       });
 
       return NextResponse.json({
