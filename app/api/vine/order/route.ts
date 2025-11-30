@@ -4,60 +4,79 @@ import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 import { runRecommendationFromOrderContext } from '@/lib/vine/run-recommendation';
 import type { OrderContext } from '@/lib/vine/order-context';
+import { mapTerminalEventToOrderContext } from '@/lib/vine/order-context';
 import { OrderContextSchema } from '@/lib/schemas/vine';
-import { parseJsonBody } from '@/lib/validation';
 import { VineOrderSource } from '@/lib/enums';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
-import type { VineTerminalEventInput } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
       const raw: unknown = await request.json();
-      let orderContext: OrderContext | null = null;
+
+      let orderContext: OrderContext;
 
       const terminalParsed = vineTerminalEventSchema.safeParse(raw);
       if (terminalParsed.success) {
-        orderContext = mapTerminalEventToOrderContext(terminalParsed.data);
+        const parsed = terminalParsed.data;
+        const parsedMcc = parsed.merchant?.mcc ?? parsed.mcc;
+        const parsedTimestamp =
+          (parsed.timestampUtc ? Date.parse(parsed.timestampUtc) : Number.NaN) ??
+          (parsed.timestampLocal ? Date.parse(parsed.timestampLocal) : Number.NaN);
+        orderContext = mapTerminalEventToOrderContext({
+          amountCents: Math.round(parsed.amount),
+          currency: parsed.currency ?? 'USD',
+          merchantName: parsed.merchant?.merchantName ?? null,
+          storeId: parsed.merchant?.storeId ?? null,
+          terminalId: parsed.terminal?.terminalId ?? null,
+          mccCode:
+            parsedMcc != null && Number.isFinite(Number.parseInt(parsedMcc, 10))
+              ? Number.parseInt(parsedMcc, 10)
+              : null,
+          timestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : Date.now(),
+          deviceId: parsed.terminal?.terminalId ?? 'VINE-SIM',
+          orderId: parsed.vine?.sessionId ?? null,
+          nonce: null,
+          source: parsed.vine?.source ?? VineOrderSource.VINE_SIM,
+        });
       } else {
-        const fallback = await parseJsonBody(request, OrderContextSchema);
-        if (!fallback.ok) return fallback.response;
-        const body = fallback.data;
-        const mccCode =
-          typeof body.mccCode === 'number' && Number.isInteger(body.mccCode) ? body.mccCode : null;
+        const parsed = OrderContextSchema.safeParse(raw);
+        if (!parsed.success) {
+          return NextResponse.json(
+            { error: 'invalid_payload', issues: parsed.error.issues },
+            { status: 400 }
+          );
+        }
         orderContext = {
-          deviceId: body.deviceId.trim(),
-          amountCents: Math.floor(body.amountCents as number),
+          deviceId: parsed.data.deviceId.trim(),
+          amountCents: Math.floor(parsed.data.amountCents as number),
           currency: 'USD',
-          timestamp: Date.now(),
-          source: VineOrderSource.VINE_SIM,
-          ...(typeof body.storeId === 'string' && body.storeId.trim().length > 0
-            ? { storeId: body.storeId.trim() }
-            : {}),
-          ...(typeof body.terminalId === 'string' && body.terminalId.trim().length > 0
-            ? { terminalId: body.terminalId.trim() }
-            : {}),
-          ...(typeof body.orderId === 'string' && body.orderId.trim().length > 0
-            ? { orderId: body.orderId.trim() }
-            : {}),
-          ...(typeof body.merchantName === 'string' && body.merchantName.trim().length > 0
-            ? { merchantName: body.merchantName.trim() }
-            : {}),
-          ...(mccCode != null ? { mccCode } : {}),
-          ...(typeof body.nonce === 'string' && body.nonce.trim().length > 0
-            ? { nonce: body.nonce.trim() }
-            : {}),
+          timestamp: parsed.data.timestamp,
+          source: parsed.data.source ?? VineOrderSource.VINE_SIM,
+          ...(parsed.data.storeId ? { storeId: parsed.data.storeId.trim() } : {}),
+          ...(parsed.data.terminalId ? { terminalId: parsed.data.terminalId.trim() } : {}),
+          ...(parsed.data.orderId ? { orderId: parsed.data.orderId.trim() } : {}),
+          ...(parsed.data.merchantName ? { merchantName: parsed.data.merchantName.trim() } : {}),
+          ...(parsed.data.mccCode != null ? { mccCode: parsed.data.mccCode } : {}),
+          ...(parsed.data.nonce ? { nonce: parsed.data.nonce.trim() } : {}),
         };
       }
 
-      if (orderContext.mccCode == null || !Number.isInteger(orderContext.mccCode)) {
-        return NextResponse.json({ error: 'Invalid MCC code' }, { status: 400 });
-      }
-
-      if (!isValidMcc(orderContext.mccCode)) {
+      if (orderContext.mccCode != null && !isValidMcc(orderContext.mccCode)) {
         return NextResponse.json({ error: 'MCC must be a valid merchant category code' }, { status: 400 });
       }
+
+      const nowMs = Date.now();
+      const ageMs = nowMs - orderContext.timestamp;
+      const maxAgeMs = 3 * 60 * 1000; // TODO: tune freshness window
+      if (ageMs > maxAgeMs) {
+        return NextResponse.json(
+          { error: 'stale_order', ageMs },
+          { status: 400 }
+        );
+      }
+      // TODO: HMAC/nonce verification with device secrets for orderContext
 
       const result = await runRecommendationFromOrderContext(orderContext, userId);
 
@@ -71,33 +90,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Failed to process order' }, { status: 500 });
     }
   });
-}
-
-function mapTerminalEventToOrderContext(event: VineTerminalEventInput): OrderContext {
-  const amountCents = Math.round(event.amount);
-  const mccCode = Number.parseInt(event.mcc, 10);
-  const timestamp =
-    (event.timestampUtc ? Date.parse(event.timestampUtc) : Number.NaN) ??
-    (event.timestampLocal ? Date.parse(event.timestampLocal) : Number.NaN);
-  const derivedTimestamp = Number.isFinite(timestamp) ? timestamp : Date.now();
-
-  if (!Number.isInteger(mccCode)) {
-    throw new Error('Invalid MCC code; expected numeric 4 digits');
-  }
-
-  const ctx: OrderContext = {
-    deviceId: event.terminal?.terminalId ?? 'VINE-SIM',
-    amountCents,
-    currency: 'USD',
-    timestamp: derivedTimestamp,
-    source: event.vine?.source ?? VineOrderSource.VINE_SIM,
-  };
-
-  if (event.merchant?.merchantName) ctx.merchantName = event.merchant.merchantName;
-  if (event.merchant?.storeId) ctx.storeId = event.merchant.storeId;
-  if (event.terminal?.terminalId) ctx.terminalId = event.terminal.terminalId;
-  ctx.mccCode = mccCode;
-  if (event.vine?.sessionId) ctx.orderId = event.vine.sessionId;
-
-  return ctx;
 }

@@ -13,7 +13,8 @@ import type { VineTerminalEventInput } from '@/lib/schemas/vine-terminal';
 type VineOrderResponse = {
   sessionId: string;
   decision: EngineDecision;
-  orderToken?: string;
+  orderToken: string;
+  expiresAt?: string;
 };
 
 type ConfirmResponse = {
@@ -370,6 +371,11 @@ export function VineSimulatorClient(): JSX.Element {
               <p className="text-lg font-semibold text-white">{orderResult.sessionId}</p>
               {orderResult.orderToken && (
                 <p className="text-xs text-slate-400">Token: {orderResult.orderToken}</p>
+              )}
+              {orderResult.expiresAt && (
+                <p className="text-xs text-slate-400">
+                  Expires at: {new Date(orderResult.expiresAt).toLocaleString()}
+                </p>
               )}
             </div>
               <div className="text-right">

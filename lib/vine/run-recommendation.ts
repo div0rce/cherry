@@ -19,7 +19,7 @@ export async function runRecommendationFromOrderContext(
   const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : Date.now();
   const amountCents = Math.floor(ctx.amountCents);
 
-  if (!amountCents || amountCents <= 0) {
+  if (amountCents <= 0) {
     throw new Error('amountCents must be a positive integer');
   }
 
@@ -35,6 +35,10 @@ export async function runRecommendationFromOrderContext(
 
   const expiresAt = new Date(Math.max(timestamp, Date.now()) + 15 * 60 * 1000);
   const orderToken = ctx.nonce ?? randomUUID();
+  const source: RecommendationSource =
+    ctx.source === RecommendationSource.VINE_DEVICE
+      ? RecommendationSource.VINE_DEVICE
+      : RecommendationSource.VINE_SIM;
 
   const session = await prisma.recommendationSession.create({
     data: {
@@ -49,7 +53,7 @@ export async function runRecommendationFromOrderContext(
       terminalId: ctx.terminalId ?? null,
       orderId: ctx.orderId ?? null,
       orderToken,
-      source: (ctx.source ?? 'VINE_SIM') as RecommendationSource,
+      source,
       recommendedCardId: decision.card.cardId ?? null,
       recommendedBucketId: decision.budget.bucketId ?? null,
       verdict:
