@@ -11,11 +11,14 @@ import { runEngine } from '@/lib/engine';
 import type { EngineDecision } from '@/lib/engine';
 import type { OrderContext } from './order-context';
 import { validateEngineDecision } from '@/lib/engine-invariants';
+import { ensureUser } from '@/lib/ensure-user';
 
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
   userId: string
 ): Promise<{ sessionId: string; orderToken: string; decision: EngineDecision }> {
+  await ensureUser(userId);
+
   const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : Date.now();
   const amountCents = Math.floor(ctx.amountCents);
 

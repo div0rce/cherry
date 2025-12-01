@@ -10,6 +10,7 @@ import { VineOrderSource } from '@/lib/enums';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
 import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
+import { Prisma } from '@prisma/client';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -103,6 +104,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         orderToken: result.orderToken,
       });
     } catch (error) {
+      if (error instanceof Error && error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
+        return NextResponse.json(
+          { error: 'vine_user_missing', message: error.message },
+          { status: 500 }
+        );
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+        return NextResponse.json(
+          { error: 'vine_fk_violation', meta: error.meta },
+          { status: 500 }
+        );
+      }
       logError('Error in /api/vine/order', error);
       return NextResponse.json({ error: 'Failed to process order' }, { status: 500 });
     }
