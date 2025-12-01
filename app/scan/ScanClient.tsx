@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from 'react';
 import Link from 'next/link';
 import type { EngineDecision } from '@/lib/engine';
 import type { ScanResponse } from '@/lib/schemas/scan';
@@ -8,6 +8,7 @@ import { ScanResponseSchema } from '@/lib/schemas/scan';
 import { callApi } from '@/lib/client/api';
 import { useApiAction } from '@/lib/client/useApiAction';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { EmptyStateCard } from '@/components/empty-state-card';
 
 type ScanPreview = {
   category: string | null;
@@ -68,6 +69,7 @@ export default function ScanClient(): JSX.Element {
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
+  const merchantInputRef = useRef<HTMLInputElement | null>(null);
   const { isLoading: isScanning, run: runScan } = useApiAction<ScanResponse>();
 
   const formattedCountdown = useMemo(() => {
@@ -100,6 +102,13 @@ export default function ScanClient(): JSX.Element {
     setSessionState(null);
     setCountdownSeconds(null);
     setError(null);
+  };
+
+  const focusMerchantField = () => {
+    if (merchantInputRef.current) {
+      merchantInputRef.current.focus();
+      merchantInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -216,176 +225,310 @@ export default function ScanClient(): JSX.Element {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur"
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-1">
-            <span className="text-sm text-slate-300">Merchant name</span>
-            <input
-              className={inputClass}
-              value={merchantName}
-              onChange={(e) => setMerchantName(e.target.value)}
-              placeholder="Cherry Coffee"
-              required
-            />
-          </label>
-          <label className="space-y-1">
-            <span className="text-sm text-slate-300">Amount (USD)</span>
-            <input
-              className={inputClass}
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="24.50"
-              type="number"
-              min="0"
-              step="0.01"
-            />
-            <p className="text-xs text-slate-500">Enter 0 for a bucket snapshot (no points).</p>
-          </label>
-          <label className="space-y-1">
-            <span className="text-sm text-slate-300">Category (optional)</span>
-            <input
-              className={inputClass}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder="DINING"
-            />
-          </label>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={isScanning}
-            className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-          >
-            {isScanning ? 'Looking up…' : 'Manual Lookup & Rewards'}
-          </button>
-          <ErrorBanner message={error} />
-          <button
-            type="button"
-            onClick={reset}
-            className="text-xs text-slate-400 underline decoration-dotted underline-offset-4"
-          >
-            Reset
-          </button>
-        </div>
-      </form>
+  const formatCents = (cents: number | null | undefined) => {
+    if (cents == null) return '—';
+    return `$${(cents / 100).toFixed(2)}`;
+  };
 
-      {scanPreview && (
-        <div className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-label text-slate-400">Advisory preview</p>
-              <h2 className="text-xl font-semibold text-white">
-                {scanPreview.category ?? 'UNCATEGORIZED'} · $
-                {(scanPreview.amountCents / 100).toFixed(2)} · {scanPreview.bucketName || 'No bucket'}
-              </h2>
-              <p className="text-sm text-slate-300">
-                This is a stateless preview. Start a session to track and earn points.
-              </p>
-            </div>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100">
-              {scanPreview.bucketVerdict}
-            </span>
+  const renderResultBody = (): JSX.Element | null => {
+    if (isScanning) {
+      return (
+        <div className="rounded-xl border border-white/5 bg-slate-900/60 px-4 py-5 text-sm text-slate-200">
+          Looking up…
+        </div>
+      );
+    }
+
+    if (!scanPreview && !error) {
+      return (
+        <EmptyStateCard
+          badge="Lab"
+          title="No manual lookup yet"
+          body="Describe a merchant, amount, and optional category on the left, then run a manual lookup to see how Cherry would route the swipe."
+          hint="Advisory only; start a session after you get a recommendation if you want to claim Cherry Points."
+          action={
+            <button
+              type="button"
+              onClick={focusMerchantField}
+              className="text-sm text-pink-200 underline decoration-dotted underline-offset-4 hover:text-pink-100"
+            >
+              Run a lookup
+            </button>
+          }
+        />
+      );
+    }
+
+    if (!scanPreview && error) {
+      return (
+        <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
+            Lookup failed
+          </p>
+          <p className="text-sm">{error}</p>
+        </div>
+      );
+    }
+
+    if (!scanPreview) return null;
+
+    const hasCard = Boolean(scanPreview.recommendedCardName);
+    const bucketLimit = scanPreview.bucketBudgetCents ?? null;
+    const bucketSpent = scanPreview.bucketSpentCents ?? null;
+    const bucketRemaining =
+      bucketLimit != null && bucketSpent != null ? bucketLimit - bucketSpent : null;
+    const bucketUsagePercent =
+      bucketLimit != null && bucketSpent != null && bucketLimit > 0
+        ? Math.min(100, Math.max(0, (bucketSpent / bucketLimit) * 100))
+        : null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/5 bg-slate-900/60 px-4 py-3">
+          <div className="space-y-1">
+            <p className="text-xs uppercase tracking-label-tight text-slate-400">Advisory preview</p>
+            <p className="text-lg font-semibold text-white">
+              {scanPreview.category ?? 'UNCATEGORIZED'} · {formatCents(scanPreview.amountCents)} ·{' '}
+              {scanPreview.bucketName || 'No bucket'}
+            </p>
+            <p className="text-sm text-slate-300">
+              Stateless preview. Start a session to track and earn points.
+            </p>
           </div>
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100">
+            {scanPreview.bucketVerdict}
+          </span>
+        </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Card</p>
-              <p className="text-sm text-white">
+        {error ? (
+          <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+            <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
+              Lookup issue
+            </p>
+            <p className="text-sm">{error}</p>
+          </div>
+        ) : null}
+
+        {hasCard ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3">
+            <div className="space-y-0.5">
+              <p className="text-xs text-slate-400">Recommended card</p>
+              <p className="text-sm font-semibold text-slate-100">
                 {scanPreview.recommendedCardName ?? 'No card on file'}
               </p>
-              {scanPreview.recommendedRewardLabel && (
-                <p className="text-xs text-slate-400">{scanPreview.recommendedRewardLabel}</p>
-              )}
             </div>
-            <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Points (advisory)</p>
-              <p className="text-lg font-semibold text-white">
-                {scanPreview.isSnapshot
-                  ? '0 pts (snapshot only)'
-                  : `${scanPreview.advisoryPoints} pts`}
+            <div className="text-right">
+              <p className="text-xs text-slate-400">Estimated rewards</p>
+              <p className="text-sm font-semibold text-pink-200">
+                {scanPreview.recommendedRewardLabel ?? '—'}
               </p>
             </div>
-            <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Bucket</p>
-              <p className="text-sm text-white">{scanPreview.bucketName ?? 'None'}</p>
-              {scanPreview.bucketBudgetCents != null && scanPreview.bucketSpentCents != null && (
-                <p className="text-xs text-slate-400">
-                  Spent {((scanPreview.bucketSpentCents / scanPreview.bucketBudgetCents) * 100).toFixed(0)}%
-                </p>
-              )}
-            </div>
           </div>
+        ) : (
+          <EmptyStateCard
+            badge="Engine"
+            title="No rewards match found"
+            body="Cherry could not find a card with a clear rewards advantage for this swipe."
+            hint="You can still review bucket impact and start a session."
+          />
+        )}
 
-          {!sessionState && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3">
+            <p className="text-xs font-semibold text-slate-300">Advisory points</p>
+            <p className="text-lg font-semibold text-white">
+              {scanPreview.isSnapshot
+                ? '0 pts (snapshot only)'
+                : `${scanPreview.advisoryPoints} pts`}
+            </p>
+            <p className="text-xs text-slate-500">
+              {scanPreview.isSnapshot
+                ? 'Set amount above 0 to earn points.'
+                : 'Earned if you follow the recommendation.'}
+            </p>
+          </div>
+          <div className="space-y-1 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3">
+            <p className="text-xs font-semibold text-slate-300">Bucket impact</p>
+            <p className="text-sm text-slate-200">{scanPreview.bucketName ?? 'No bucket matched'}</p>
+            {bucketUsagePercent != null ? (
+              <p className="text-xs text-slate-500">
+                Used {bucketUsagePercent.toFixed(0)}% ·{' '}
+                {bucketRemaining != null ? `${formatCents(bucketRemaining)} left` : null}
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500">
+                {scanPreview.bucketBudgetCents != null
+                  ? 'No spend recorded yet.'
+                  : 'No tracked balances for this category.'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {!sessionState ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3">
+            <button
+              type="button"
+              onClick={startSession}
+              disabled={isStartingSession || scanPreview.isSnapshot}
+              className="rounded-md bg-pink-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-500 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
+              {isStartingSession ? 'Starting session…' : 'Start session & earn points'}
+            </button>
+            {scanPreview.isSnapshot ? (
+              <span className="text-xs text-slate-400">
+                Snapshot only — set an amount to open a session.
+              </span>
+            ) : (
+              <span className="text-xs text-slate-400">
+                Sessions let you claim Cherry Points for following the recommendation.
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2 rounded-xl border border-white/5 bg-slate-900/70 p-3">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200">
+              <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                Session ID: {sessionState.id}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                Order token: {sessionState.orderToken}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                Expires in: {formattedCountdown || '—'}
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
+                Status: {sessionState.status}
+              </span>
+            </div>
+            <p className="text-xs text-slate-300">
+              1) Pay with your recommended card. 2) Tap “I used this card” to claim. 3) Use Bank
+              Simulator to post points.
+            </p>
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={startSession}
-                disabled={isStartingSession || scanPreview.isSnapshot}
-                className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+                onClick={confirmSession}
+                disabled={isConfirming || sessionState.status !== 'OPEN'}
+                className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
               >
-                {isStartingSession ? 'Starting session…' : 'Start session & earn points'}
+                {isConfirming ? 'Submitting…' : 'I used this card'}
               </button>
-              {scanPreview.isSnapshot && (
-                <span className="text-xs text-slate-400">
-                  Snapshot only — start a session with an amount to earn points.
-                </span>
-              )}
+              <Link
+                href="/bank-simulator"
+                className="text-sm text-pink-200 underline decoration-dotted underline-offset-4"
+              >
+                Open Bank Simulator
+              </Link>
+              <Link
+                href="/sessions"
+                className="text-sm text-slate-300 underline decoration-dotted underline-offset-4"
+              >
+                View in Sessions/Activity
+              </Link>
             </div>
-          )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-          {sessionState && (
-            <div className="space-y-2 rounded-xl border border-white/5 bg-slate-900/50 p-3">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-200">
-                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
-                  Session ID: {sessionState.id}
-                </span>
-                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
-                  Order token: {sessionState.orderToken}
-                </span>
-                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
-                  Expires in: {formattedCountdown || '—'}
-                </span>
-                <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
-                  Status: {sessionState.status}
-                </span>
-              </div>
-              <p className="text-xs text-slate-300">
-                1) Pay with your recommended card. 2) Tap “I used this card” to claim. 3) Use Bank
-                Simulator to post points.
+  return (
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-lg font-semibold text-slate-100">Manual lookup &amp; rewards</h1>
+        <p className="text-sm text-slate-400">
+          Probe the decision engine for a single hypothetical swipe: see card choice, rewards, and bucket impact.
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur lg:p-5"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-semibold text-slate-100">Request</h2>
+              <p className="text-xs text-slate-400">
+                Describe a hypothetical swipe for Cherry to evaluate.
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={confirmSession}
-                  disabled={isConfirming || sessionState.status !== 'OPEN'}
-                  className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-                >
-                  {isConfirming ? 'Submitting…' : 'I used this card'}
-                </button>
-                <Link
-                  href="/bank-simulator"
-                  className="text-sm text-pink-200 underline decoration-dotted underline-offset-4"
-                >
-                  Open Bank Simulator
-                </Link>
-                <Link
-                  href="/sessions"
-                  className="text-sm text-slate-300 underline decoration-dotted underline-offset-4"
-                >
-                  View in Sessions/Activity
-                </Link>
-              </div>
             </div>
-          )}
-        </div>
-      )}
+            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
+              Lab
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-sm text-slate-300">Merchant name</span>
+              <input
+                ref={merchantInputRef}
+                className={inputClass}
+                value={merchantName}
+                onChange={(e) => setMerchantName(e.target.value)}
+                placeholder="Cherry Coffee"
+                required
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm text-slate-300">Amount (USD)</span>
+              <input
+                className={inputClass}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="24.50"
+                type="number"
+                min="0"
+                step="0.01"
+              />
+              <p className="text-xs text-slate-500">Enter 0 for a bucket snapshot (no points).</p>
+            </label>
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-sm text-slate-300">Category (optional)</span>
+              <input
+                className={inputClass}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder="DINING"
+              />
+              <p className="text-xs text-slate-500">
+                Optional. Helps Cherry disambiguate when MCC metadata is missing.
+              </p>
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="submit"
+              disabled={isScanning}
+              className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+            >
+              {isScanning ? 'Looking up…' : 'Manual lookup & rewards'}
+            </button>
+            <button
+              type="button"
+              onClick={reset}
+              className="text-xs text-slate-400 underline decoration-dotted underline-offset-4"
+            >
+              Reset
+            </button>
+          </div>
+          <ErrorBanner message={error} />
+        </form>
+
+        <section className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur lg:p-5">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-100">Result</h2>
+              <p className="text-xs text-slate-400">
+                See the recommended card, rewards, and bucket impact for this swipe.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">{renderResultBody()}</div>
+        </section>
+      </div>
     </div>
   );
 }

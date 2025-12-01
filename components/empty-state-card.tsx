@@ -6,6 +6,7 @@ type EmptyStateCardProps = {
   description?: string;
   body?: string;
   hint?: string;
+  badge?: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
@@ -16,6 +17,7 @@ export function EmptyStateCard({
   description,
   body,
   hint,
+  badge,
   icon,
   action,
   className,
@@ -38,7 +40,14 @@ export function EmptyStateCard({
       ) : null}
 
       <div className="flex-1 space-y-1">
-        <p className="text-[0.8rem] font-medium uppercase tracking-wide text-slate-300">{title}</p>
+        <div className="flex items-center gap-2">
+          {badge ? (
+            <span className="inline-flex items-center rounded-full bg-white/5 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-200 ring-1 ring-inset ring-white/10">
+              {badge}
+            </span>
+          ) : null}
+          <p className="text-[0.8rem] font-medium uppercase tracking-wide text-slate-300">{title}</p>
+        </div>
         {bodyText ? (
           <p className="text-[0.8rem] leading-relaxed text-slate-500">{bodyText}</p>
         ) : null}
