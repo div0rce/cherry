@@ -5,7 +5,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { RewardCategory } from '@prisma/client';
-import { withUser } from '@/lib/with-user';
+import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '@/lib/user-context';
 import { RewardRuleCreateSchema, RewardRuleDeleteSchema } from '@/lib/schemas/cards';
 import { parseJsonBody } from '@/lib/validation';
 
@@ -34,21 +34,21 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    const { cardId } = await params;
+  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards/[cardId]/rewards GET');
+  const { cardId } = await params;
 
-    const card = await assertCardForUser(cardId, userId);
-    if (!card) {
-      return new NextResponse('Card not found for user', { status: 404 });
-    }
+  const card = await assertCardForUser(cardId, userId);
+  if (!card) {
+    return new NextResponse('Card not found for user', { status: 404 });
+  }
 
-    const rewardRules = await prisma.rewardRule.findMany({
-      where: { cardId: card.id },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return NextResponse.json(rewardRules);
+  const rewardRules = await prisma.rewardRule.findMany({
+    where: { cardId: card.id },
+    orderBy: { createdAt: 'desc' },
   });
+
+  return NextResponse.json(rewardRules);
 }
 
 /**
@@ -67,8 +67,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    const { cardId } = await params;
+  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards/[cardId]/rewards POST');
+  const { cardId } = await params;
     const parsed = await parseJsonBody(request, RewardRuleCreateSchema);
     if (!parsed.ok) return parsed.response;
     const { category, multiplier, capAmountCents } = parsed.data;
@@ -103,11 +104,12 @@ export async function POST(
       );
     }
 
-    const card = await assertCardForUser(cardId, userId);
-    if (!card) {
-      return new NextResponse('Card not found for user', { status: 404 });
-    }
+  const card = await assertCardForUser(cardId, userId);
+  if (!card) {
+    return new NextResponse('Card not found for user', { status: 404 });
+  }
 
+  try {
     const rewardRule = await prisma.rewardRule.create({
       data: {
         cardId: card.id,
@@ -118,7 +120,13 @@ export async function POST(
     });
 
     return NextResponse.json(rewardRule, { status: 201 });
-  });
+  } catch (err) {
+    if (isPrismaP2003(err)) {
+      logInvariant('P2003 in api/cards/[cardId]/rewards POST', { userId, mode, meta: err.meta ?? null });
+      return new NextResponse('User context or FK error', { status: 500 });
+    }
+    throw err;
+  }
 }
 
 /**
@@ -134,8 +142,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    const { cardId } = await params;
+  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards/[cardId]/rewards DELETE');
+  const { cardId } = await params;
     const parsed = await parseJsonBody(request, RewardRuleDeleteSchema);
     if (!parsed.ok) return parsed.response;
     const { rewardRuleId } = parsed.data;
@@ -144,23 +153,30 @@ export async function DELETE(
       return new NextResponse('rewardRuleId is required', { status: 400 });
     }
 
-    const card = await assertCardForUser(cardId, userId);
-    if (!card) {
-      return new NextResponse('Card not found for user', { status: 404 });
-    }
+  const card = await assertCardForUser(cardId, userId);
+  if (!card) {
+    return new NextResponse('Card not found for user', { status: 404 });
+  }
 
-    const rule = await prisma.rewardRule.findFirst({
-      where: { id: rewardRuleId, cardId: card.id },
-    });
+  const rule = await prisma.rewardRule.findFirst({
+    where: { id: rewardRuleId, cardId: card.id },
+  });
 
-    if (!rule) {
-      return new NextResponse('Reward rule not found for card', { status: 404 });
-    }
+  if (!rule) {
+    return new NextResponse('Reward rule not found for card', { status: 404 });
+  }
 
+  try {
     await prisma.rewardRule.delete({
       where: { id: rule.id },
     });
+  } catch (err) {
+    if (isPrismaP2003(err)) {
+      logInvariant('P2003 in api/cards/[cardId]/rewards DELETE', { userId, mode, meta: err.meta ?? null });
+      return new NextResponse('User context or FK error', { status: 500 });
+    }
+    throw err;
+  }
 
-    return new NextResponse(null, { status: 204 });
-  });
+  return new NextResponse(null, { status: 204 });
 }

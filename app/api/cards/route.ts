@@ -3,11 +3,11 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, RewardCategory } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { withUser } from '@/lib/with-user';
 import { CardCreateSchema, CardDeleteSchema } from '@/lib/schemas/cards';
 import { parseJsonBody } from '@/lib/validation';
 import { assertUserId } from '@/lib/invariants';
 import { logInvariant } from '@/lib/logging';
+import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -93,20 +93,23 @@ function parseRewardRules(rawRules: unknown): {
   return { ok: true, rules: parsed };
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    const cards = await prisma.card.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      include: { rewardRules: true },
-    });
-    return NextResponse.json(cards);
+export async function GET(_request: NextRequest): Promise<NextResponse> {
+  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards GET');
+
+  const cards = await prisma.card.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    include: { rewardRules: true },
   });
+  return NextResponse.json(cards);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    assertUserId(userId);
+  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards POST');
+
+  try {
     const parsed = await parseJsonBody(request, CardCreateSchema);
     if (!parsed.ok) return parsed.response;
     const { nickname, issuer, network, isCredit, annualFee, rewardRules } = parsed.data;
@@ -139,36 +142,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       };
     }
 
-    try {
-      const card = await prisma.card.create({
-        data,
-        include: {
-          rewardRules: true,
-        },
-      });
+    const card = await prisma.card.create({
+      data,
+      include: {
+        rewardRules: true,
+      },
+    });
 
-      return NextResponse.json(card, { status: 201 });
-    } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
-        return NextResponse.json(
-          { error: 'User not found for card creation' },
-          { status: 404 }
-        );
-      }
-       if (error instanceof PrismaClientKnownRequestError && error.code === 'P2003') {
-        logInvariant('Card FK violation during create', { meta: error.meta ?? null });
-        return NextResponse.json(
-          { error: 'User foreign key violation while creating card' },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json({ error: 'Failed to create card' }, { status: 500 });
+    return NextResponse.json(card, { status: 201 });
+  } catch (error) {
+    if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
+      return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
     }
-  });
+    if (isPrismaP2003(error)) {
+      logInvariant('Card FK violation during create', { userId, mode, meta: error.meta ?? null });
+      return NextResponse.json(
+        { error: 'User foreign key violation while creating card' },
+        { status: 500 }
+      );
+    }
+    return NextResponse.json({ error: 'Failed to create card' }, { status: 500 });
+  }
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
+  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards DELETE');
+  try {
     const parsed = await parseJsonBody(request, CardDeleteSchema);
     if (!parsed.ok) return parsed.response;
     const { cardId } = parsed.data;
@@ -185,15 +185,28 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       return new NextResponse('Card not found for user', { status: 404 });
     }
 
-    await prisma.simulatedTransaction.updateMany({
-      where: { chosenCardId: card.id, userId },
-      data: { chosenCardId: null },
-    });
+    try {
+      await prisma.simulatedTransaction.updateMany({
+        where: { chosenCardId: card.id, userId },
+        data: { chosenCardId: null },
+      });
 
-    await prisma.card.delete({
-      where: { id: card.id },
-    });
+      await prisma.card.delete({
+        where: { id: card.id },
+      });
+    } catch (err) {
+      if (isPrismaP2003(err)) {
+        logInvariant('Card FK violation during delete', { userId, mode, meta: err.meta ?? null });
+        return new NextResponse('User foreign key violation while deleting card', { status: 500 });
+      }
+      throw err;
+    }
 
     return new NextResponse(null, { status: 204 });
-  });
+  } catch (error) {
+    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+    return new NextResponse('Failed to delete card', { status: 500 });
+  }
 }
