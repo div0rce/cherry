@@ -5,6 +5,8 @@ import { cookies } from 'next/headers';
 import { RunSimulationForm, DeleteSimulationButton } from './client';
 import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
+import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';
+import { SimulationHistoryList } from '@/components/simulations/simulation-history-list';
 
 type Simulation = {
   id: string;
@@ -57,6 +59,84 @@ function formatRewards(sim: Simulation) {
   if (sim.rewardsEarned != null) return `${sim.rewardsEarned} pts`;
   if (sim.rewardMultiplier != null) return `${sim.rewardMultiplier}x multiplier`;
   return '—';
+}
+
+function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
+  return simulations.map((sim) => {
+    const cardDisplayName = sim.chosenCard
+      ? `${sim.chosenCard.nickname} (${sim.chosenCard.issuer} · ${sim.chosenCard.network})`
+      : sim.chosenCardName ?? null;
+    const bucketLabel = sim.bucketName ?? sim.bucket?.name ?? null;
+    const bucketCategory = sim.bucket?.category ?? sim.resolvedCategory;
+    const bucketLimit = sim.bucketLimitCents ?? sim.bucket?.budgetAmount ?? null;
+    const bucketRemainingBefore = sim.bucketBeforeCents;
+    const bucketRemainingAfter = sim.bucketAfterCents ?? sim.bucket?.currentAmount ?? null;
+    const bucketStrictFlag =
+      typeof sim.bucket?.strictMode === 'boolean'
+        ? sim.bucket.strictMode
+        : sim.strictDecline
+          ? true
+          : undefined;
+    const bucketDetails = [
+      bucketLimit != null ? `Limit ${formatCents(bucketLimit)}` : null,
+      bucketRemainingBefore != null ? `Before ${formatCents(bucketRemainingBefore)}` : null,
+      bucketRemainingAfter != null ? `After ${formatCents(bucketRemainingAfter)}` : null,
+    ].filter(Boolean);
+    const bucketDisciplineLabel =
+      bucketStrictFlag == null ? null : bucketStrictFlag ? '(strict)' : '(soft)';
+    const bucketMeta = [bucketCategory ? `Category ${bucketCategory}` : null, bucketLabel].filter(
+      Boolean
+    ) as string[];
+
+    return {
+      id: sim.id,
+      createdAt: sim.createdAt,
+      title: `${formatCents(sim.amount)} · ${sim.resolvedCategory}${
+        sim.mccCode ? ` · MCC ${sim.mccCode}` : ''
+      }`,
+      subtitle: sim.merchantName || 'Merchant N/A',
+      status: sim.status,
+      statusTone: sim.status === 'APPROVED' ? 'positive' : 'negative',
+      meta: bucketMeta,
+      body: (
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
+            <p className="text-[11px] uppercase tracking-label-tight text-slate-400">Card</p>
+            {cardDisplayName ? (
+              <p className="text-sm font-semibold text-white">{cardDisplayName}</p>
+            ) : (
+              <p className="text-sm text-slate-500">None (declined/no card)</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
+            <p className="text-[11px] uppercase tracking-label-tight text-slate-400">Bucket</p>
+            {bucketLabel ? (
+              <div className="text-sm text-slate-200">
+                <p className="font-semibold text-white">
+                  {bucketLabel}
+                  {bucketCategory ? ` · ${bucketCategory}` : ''}
+                </p>
+                <p className="text-slate-400">
+                  {bucketDetails.length > 0 ? bucketDetails.join(' · ') : 'No tracked balances'}
+                  {bucketDisciplineLabel ? ` ${bucketDisciplineLabel}` : ''}
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">No bucket matched</p>
+            )}
+          </div>
+        </div>
+      ),
+      footer: (
+        <>
+          <span>Reason: {sim.reason || '—'}</span>
+          <span>Rewards: {formatRewards(sim)}</span>
+        </>
+      ),
+      action: <DeleteSimulationButton simulationId={sim.id} />,
+    };
+  });
 }
 
 type SimulationResponse = {
@@ -124,11 +204,6 @@ export default async function SimulatePage({
   );
   const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
 
-  const search = new URLSearchParams();
-  if (statusParam) search.set('status', statusParam);
-  if (categoryParam) search.set('category', categoryParam);
-  if (page > 1) search.set('page', String(page));
-
   let response: SimulationResponse | null = null;
   let error: string | null = null;
 
@@ -148,6 +223,7 @@ export default async function SimulatePage({
   const total = response?.total ?? 0;
   const pageSize = response?.pageSize ?? 10;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const historyItems = toHistoryItems(simulations);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
@@ -161,146 +237,45 @@ export default async function SimulatePage({
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
         <section className="space-y-4">
-          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur">
-            <div className="border-b border-white/5 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Simulation history</h2>
+          <SimulationHistoryList
+            items={historyItems}
+            title="Simulation history"
+            subtitle="Recent simulated swipes with bucket and card decisions."
+            headerAction={
               <Link href="/cards" className="text-sm text-pink-200 hover:text-pink-100">
                 Manage cards →
               </Link>
-            </div>
-            {error ? (
-              <div className="p-4 text-sm text-red-300">{error}</div>
-            ) : (
-              <>
-                <SimulationFilters
-                  status={statusParam || 'ALL'}
-                  category={categoryParam || ''}
-                  page={page}
-                />
-                {simulations.length === 0 ? (
-                  <div className="p-4 text-sm text-slate-300">
-                    No simulations yet. Run one on the right.
-                  </div>
-                ) : (
-                  <ul className="divide-y divide-white/5">
-                    {simulations.map((sim) => {
-                      const cardDisplayName = sim.chosenCard
-                        ? `${sim.chosenCard.nickname} (${sim.chosenCard.issuer} · ${sim.chosenCard.network})`
-                        : sim.chosenCardName ?? null;
-                      const bucketLabel = sim.bucketName ?? sim.bucket?.name ?? null;
-                      const bucketCategory = sim.bucket?.category ?? sim.resolvedCategory;
-                      const bucketLimit = sim.bucketLimitCents ?? sim.bucket?.budgetAmount ?? null;
-                      const bucketRemainingBefore = sim.bucketBeforeCents;
-                      const bucketRemainingAfter =
-                        sim.bucketAfterCents ?? sim.bucket?.currentAmount ?? null;
-                      const bucketStrictFlag =
-                        typeof sim.bucket?.strictMode === 'boolean'
-                          ? sim.bucket.strictMode
-                          : sim.strictDecline
-                            ? true
-                            : undefined;
-                      const bucketDetails = [
-                        bucketLimit != null ? `Limit ${formatCents(bucketLimit)}` : null,
-                        bucketRemainingBefore != null
-                          ? `Before ${formatCents(bucketRemainingBefore)}`
-                          : null,
-                        bucketRemainingAfter != null
-                          ? `After ${formatCents(bucketRemainingAfter)}`
-                          : null,
-                      ].filter(Boolean);
-                      const bucketDisciplineLabel =
-                        bucketStrictFlag == null
-                          ? null
-                          : bucketStrictFlag
-                            ? '(strict)'
-                            : '(soft)';
-
-                      return (
-                        <li key={sim.id} className="p-4 space-y-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-sm text-slate-400">
-                                {new Date(sim.createdAt).toLocaleString()}
-                              </p>
-                              <p className="text-lg font-semibold text-white">
-                                {formatCents(sim.amount)} · {sim.resolvedCategory}
-                                {sim.mccCode ? ` · MCC ${sim.mccCode}` : ''}
-                              </p>
-                              <p className="text-sm text-slate-300">
-                                {sim.merchantName || 'Merchant N/A'}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  sim.status === 'APPROVED'
-                                    ? 'bg-green-600/30 text-green-100'
-                                    : 'bg-red-600/30 text-red-100'
-                                }`}
-                              >
-                                {sim.status}
-                              </div>
-                              <DeleteSimulationButton simulationId={sim.id} />
-                            </div>
-                          </div>
-
-                        <div className="grid gap-3 md:grid-cols-2">
-                          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
-                            <p className="text-xs uppercase text-slate-400 tracking-label-tight">Card</p>
-                            {cardDisplayName ? (
-                              <p className="text-sm font-semibold text-white">{cardDisplayName}</p>
-                            ) : (
-                              <p className="text-sm text-slate-500">None (declined/no card)</p>
-                            )}
-                          </div>
-
-                          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
-                            <p className="text-xs uppercase text-slate-400 tracking-label-tight">Bucket</p>
-                            {bucketLabel ? (
-                              <div className="text-sm text-slate-200">
-                                <p className="font-semibold text-white">
-                                  {bucketLabel}
-                                  {bucketCategory ? ` · ${bucketCategory}` : ''}
-                                </p>
-                                <p className="text-slate-400">
-                                  {bucketDetails.length > 0
-                                    ? bucketDetails.join(' · ')
-                                    : 'No tracked balances'}
-                                  {bucketDisciplineLabel ? ` ${bucketDisciplineLabel}` : ''}
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-sm text-slate-500">No bucket matched</p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-sm text-slate-600">
-                          <p>Reason: {sim.reason || '—'}</p>
-                          <p>Rewards: {formatRewards(sim)}</p>
-                        </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                <SimulationPagination
-                  total={total}
-                  page={page}
-                  pageSize={pageSize}
-                  status={statusParam || 'ALL'}
-                  category={categoryParam || ''}
-                  totalPages={totalPages}
-                />
-              </>
-            )}
-          </div>
+            }
+            toolbar={
+              <SimulationFilters
+                status={statusParam || 'ALL'}
+                category={categoryParam || ''}
+                page={page}
+              />
+            }
+            footer={
+              <SimulationPagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                status={statusParam || 'ALL'}
+                category={categoryParam || ''}
+                totalPages={totalPages}
+              />
+            }
+            emptyState={{
+              title: 'No simulations yet',
+              body: 'Run a simulation to see how Cherry would route a swipe across your cards and buckets.',
+              hint: 'Use the form on the right to post a scenario and we will show it here.',
+            }}
+            error={error}
+          />
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur p-4 text-slate-100">
-            <h3 className="text-base font-semibold mb-2 text-white">Run a simulation</h3>
-            <p className="text-sm text-slate-400 mb-3">
+          <div className="rounded-2xl border border-white/5 bg-slate-950/60 shadow-lg backdrop-blur p-4 text-slate-100">
+            <h3 className="mb-2 text-base font-semibold text-white">Run a simulation</h3>
+            <p className="mb-3 text-sm text-slate-400">
               Enter dollars; we convert to cents before calling the API. Categories must match your buckets/rules.
             </p>
             <RunSimulationForm />
@@ -321,13 +296,15 @@ function SimulationFilters({
   page: number;
 }) {
   return (
-    <form method="get" className="flex flex-wrap items-end gap-3 px-4 py-3 border-b border-slate-200">
+    <form method="get" className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-label-tight text-slate-500">Status</label>
+        <label className="block text-[11px] uppercase tracking-label-tight text-slate-400">
+          Status
+        </label>
         <select
           name="status"
           defaultValue={status || 'ALL'}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-pink-500 focus:outline-none"
         >
           <option value="ALL">All</option>
           <option value="APPROVED">Approved</option>
@@ -335,18 +312,20 @@ function SimulationFilters({
         </select>
       </div>
       <div className="space-y-1">
-        <label className="block text-xs uppercase tracking-label-tight text-slate-500">Category</label>
+        <label className="block text-[11px] uppercase tracking-label-tight text-slate-400">
+          Category
+        </label>
         <input
           name="category"
           defaultValue={category}
-          className="rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
           placeholder="DINING"
         />
       </div>
       <input type="hidden" name="page" value={page} />
       <button
         type="submit"
-        className="mt-5 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+        className="mt-5 rounded-lg bg-pink-600/80 px-3 py-2 text-sm font-semibold text-white transition hover:bg-pink-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-400"
       >
         Apply
       </button>
@@ -384,15 +363,17 @@ function SimulationPagination({
   nextParams.set('page', String(nextPage));
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 text-sm text-slate-600">
-      <p>
+    <div className="flex flex-col gap-3 text-sm text-slate-300 md:flex-row md:items-center md:justify-between">
+      <p className="text-xs text-slate-400">
         Page {page} of {totalPages} · {total} total
       </p>
       <div className="flex items-center gap-2">
         <Link
           href={`/simulate?${prevParams.toString()}`}
-          className={`rounded-md px-3 py-2 border ${
-            page === 1 ? 'border-slate-200 text-slate-400' : 'border-slate-300 hover:bg-slate-50'
+          className={`rounded-lg border px-3 py-2 text-sm transition ${
+            page === 1
+              ? 'cursor-not-allowed border-white/5 text-slate-500'
+              : 'border-white/10 text-slate-100 hover:bg-white/5'
           }`}
           aria-disabled={page === 1}
         >
@@ -400,10 +381,10 @@ function SimulationPagination({
         </Link>
         <Link
           href={`/simulate?${nextParams.toString()}`}
-          className={`rounded-md px-3 py-2 border ${
+          className={`rounded-lg border px-3 py-2 text-sm transition ${
             page === totalPages
-              ? 'border-slate-200 text-slate-400'
-              : 'border-slate-300 hover:bg-slate-50'
+              ? 'cursor-not-allowed border-white/5 text-slate-500'
+              : 'border-white/10 text-slate-100 hover:bg-white/5'
           }`}
           aria-disabled={page === totalPages}
         >

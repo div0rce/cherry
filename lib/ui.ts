@@ -11,4 +11,4 @@
  * For <ul> lists, prefer wrapping it via <EmptyList />.
  */
 export const EMPTY_STATE_CARD_CLASSES =
-  'rounded-xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-5 text-sm text-slate-400 backdrop-blur shadow-sm';
+  'rounded-2xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-5 text-sm text-slate-400 backdrop-blur shadow-sm';

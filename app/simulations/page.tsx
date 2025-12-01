@@ -1,9 +1,10 @@
 import type { JSX } from 'react';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserId } from '@/lib/auth';
-import { EmptyStateCard } from '@/components/empty-state-card';
+import Link from 'next/link';
+import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';
+import { SimulationHistoryList } from '@/components/simulations/simulation-history-list';
 
 export default async function SimulationsPage(): Promise<JSX.Element | null> {
   let userId: string;
@@ -24,6 +25,17 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
     },
   });
 
+  const items: SimulationHistoryItem[] = simulations.map((sim) => ({
+    id: sim.id,
+    createdAt: sim.createdAt,
+    title: sim.name || 'Simulation',
+    subtitle: `${sim.transactions.length} simulated ${
+      sim.transactions.length === 1 ? 'transaction' : 'transactions'
+    }`,
+    meta: [`ID ${sim.id.slice(0, 6)}`],
+    href: `/simulations/${sim.id}`,
+  }));
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="flex items-center justify-between">
@@ -40,35 +52,21 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
         </Link>
       </header>
 
-      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-        {simulations.length === 0 ? (
-          <EmptyStateCard
-            title="No simulations yet"
-            description="Run your first simulation to see how your buckets behave and which card Cherry would choose."
-          />
-        ) : (
-          <ul className="divide-y divide-white/5">
-            {simulations.map((sim) => (
-              <li key={sim.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    {sim.name || 'Simulation'} · {sim.id.slice(0, 6)}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {new Date(sim.createdAt).toLocaleString()} · {sim.transactions.length} txns
-                  </p>
-                </div>
-                <Link
-                  href={`/simulations/${sim.id}`}
-                  className="text-sm text-pink-200 hover:text-pink-100"
-                >
-                  Open →
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <SimulationHistoryList
+        items={items}
+        title="Simulation history"
+        subtitle="Recent simulation runs and their recorded transactions."
+        emptyState={{
+          title: 'No simulations yet',
+          body: 'Run your first simulation to see how your buckets behave and which card Cherry would choose.',
+          hint: 'Use the Simulate page to post a scenario and Cherry will save the history here.',
+          action: (
+            <Link href="/simulate" className="text-pink-200 hover:text-pink-100">
+              Run a simulation →
+            </Link>
+          ),
+        }}
+      />
     </div>
   );
 }

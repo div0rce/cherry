@@ -46,6 +46,7 @@ This file summarizes where those concepts live in code today and highlights gaps
 - Session + ledger lifecycle exists with anomaly handling, verification stubs, and bucket spend increment on confirm.
 - Dev tooling: Vine simulator UI, admin clear/seed endpoints, MCC ingest script, integrity audit script.
 - UI surfaces: Manual Lookup & Rewards (`/scan`), Sessions list (`/sessions`), Vine simulator (`/vine-simulator`), Admin panel (`/admin`).
+- Shared simulations history UI: `/simulate` and `/simulations` render `SimulationHistoryList` (`components/simulations/simulation-history-list.tsx`) with the dark-glass `EmptyStateCard`; extend it by mapping new fields into the `SimulationHistoryItem` shape (title/subtitle/status/meta/body/footer).
 
 ---
 
