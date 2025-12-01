@@ -1,13 +1,15 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { withUser } from '@/lib/with-user';
+import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
 import { BucketCreateSchema, BucketDeleteSchema } from '@/lib/schemas/buckets';
 import { parseJsonBody } from '@/lib/validation';
-import { assertUserId } from '@/lib/invariants';
-import { logInvariant } from '@/lib/logging';
+import {
+  assertUserId,
+  isPrismaP2003,
+  logInvariant,
+  resolveUserContext,
+} from '@/lib/user-context';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -38,152 +40,209 @@ function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: D
  *
  * Lists all buckets for the current user (demo user for now).
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    try {
-      const buckets = await prisma.bucket.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-      });
+export async function GET(_request: NextRequest): Promise<NextResponse> {
+  try {
+    const { userId } = await resolveUserContext({
+      requireAuth: true,
+      allowLabDemo: false,
+    });
+    assertUserId(userId, 'api/buckets GET');
 
-      return NextResponse.json(buckets);
-    } catch (error) {
-      logError('Error fetching buckets', error);
-      return new NextResponse('Failed to fetch buckets', { status: 500 });
+    const buckets = await prisma.bucket.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json(buckets);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  });
+
+    logError('Error fetching buckets', error);
+    return new NextResponse('Failed to fetch buckets', { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    try {
-      assertUserId(userId);
-      const parsed = await parseJsonBody(request, BucketCreateSchema);
-      if (!parsed.ok) return parsed.response;
-      const {
-        name,
-        period,
-        budgetAmountCents,
-        currentAmountCents,
-        strictMode = true,
-        category,
-      } = parsed.data;
+  let userId: string | null = null;
+  let mode: string | null = null;
 
-      if (
-        typeof name !== 'string' ||
-        typeof period !== 'string' ||
-        budgetAmountCents == null ||
-        typeof category !== 'string'
-      ) {
-        return new NextResponse(
-          'Missing required fields: name, period, budgetAmountCents, category',
-          { status: 400 }
-        );
-      }
-
-      const normalizedName = name.trim();
-      const normalizedCategory = category.trim().toUpperCase();
-
-      if (!normalizedName) {
-        return new NextResponse('name is required', { status: 400 });
-      }
-
-      if (typeof budgetAmountCents !== 'number' || Number.isNaN(budgetAmountCents) || budgetAmountCents <= 0) {
-        return new NextResponse('budgetAmountCents must be a positive number', {
-          status: 400,
-        });
-      }
-
-      // currentAmount is legacy; only used here to seed spentCents on creation.
-      let currentCentsValue: number | null = null;
-      if (
-        currentAmountCents != null &&
-        (typeof currentAmountCents !== 'number' || Number.isNaN(currentAmountCents) || currentAmountCents < 0)
-      ) {
-        return new NextResponse(
-          'currentAmountCents must be a non-negative number when provided',
-          { status: 400 }
-        );
-      } else if (typeof currentAmountCents === 'number') {
-        currentCentsValue = Math.floor(currentAmountCents);
-      }
-
-      const validPeriods: BucketPeriod[] = [BucketPeriod.WEEKLY, BucketPeriod.MONTHLY];
-      if (!validPeriods.includes(period as BucketPeriod)) {
-        return new NextResponse(
-          `Invalid period. Expected one of: ${validPeriods.join(', ')}`,
-          { status: 400 }
-        );
-      }
-
-      const validCategories = Object.values(RewardCategory) as string[];
-      if (!validCategories.includes(normalizedCategory)) {
-        return new NextResponse(
-          `Invalid category. Expected one of: ${validCategories.join(', ')}`,
-          { status: 400 }
-        );
-      }
-
-      const now = new Date();
-      const { start: periodStart, end: periodEnd } = getPeriodWindow(period as BucketPeriod, now);
-
-      const bucket = await prisma.bucket.create({
-        data: {
-          userId,
-          name: normalizedName,
-          period: period as BucketPeriod,
-          budgetAmount: Math.floor(budgetAmountCents),
-          currentAmount:
-            currentCentsValue == null
-              ? Math.floor(budgetAmountCents)
-              : Math.min(currentCentsValue, Math.floor(budgetAmountCents)),
-          spentCents:
-            currentCentsValue == null
-              ? 0
-              : Math.max(Math.floor(budgetAmountCents) - currentCentsValue, 0),
-          periodStart,
-          periodEnd,
-          strictMode: Boolean(strictMode),
-          category: normalizedCategory as RewardCategory,
-        },
-      });
-
-      return NextResponse.json(bucket, { status: 201 });
-    } catch (error) {
-      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2003') {
-        logInvariant('Bucket FK violation', { meta: error.meta ?? null });
-        return new NextResponse('User foreign key violation while creating bucket', {
-          status: 500,
-        });
-      }
-      logError('Error creating bucket', error);
-      return new NextResponse('Failed to create bucket', { status: 500 });
+  try {
+    const ctx = await resolveUserContext({
+      requireAuth: true,
+      allowLabDemo: false,
+    });
+    userId = ctx.userId;
+    mode = ctx.mode;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  });
+    logError('Error resolving user context in api/buckets POST', error);
+    return new NextResponse('Failed to resolve user context', { status: 500 });
+  }
+
+  try {
+    assertUserId(userId, 'api/buckets POST');
+    const parsed = await parseJsonBody(request, BucketCreateSchema);
+    if (!parsed.ok) return parsed.response;
+    const {
+      name,
+      period,
+      budgetAmountCents,
+      currentAmountCents,
+      strictMode = true,
+      category,
+    } = parsed.data;
+
+    if (
+      typeof name !== 'string' ||
+      typeof period !== 'string' ||
+      budgetAmountCents == null ||
+      typeof category !== 'string'
+    ) {
+      return new NextResponse(
+        'Missing required fields: name, period, budgetAmountCents, category',
+        { status: 400 }
+      );
+    }
+
+    const normalizedName = name.trim();
+    const normalizedCategory = category.trim().toUpperCase();
+
+    if (!normalizedName) {
+      return new NextResponse('name is required', { status: 400 });
+    }
+
+    if (typeof budgetAmountCents !== 'number' || Number.isNaN(budgetAmountCents) || budgetAmountCents <= 0) {
+      return new NextResponse('budgetAmountCents must be a positive number', {
+        status: 400,
+      });
+    }
+
+    // currentAmount is legacy; only used here to seed spentCents on creation.
+    let currentCentsValue: number | null = null;
+    if (
+      currentAmountCents != null &&
+      (typeof currentAmountCents !== 'number' || Number.isNaN(currentAmountCents) || currentAmountCents < 0)
+    ) {
+      return new NextResponse(
+        'currentAmountCents must be a non-negative number when provided',
+        { status: 400 }
+      );
+    } else if (typeof currentAmountCents === 'number') {
+      currentCentsValue = Math.floor(currentAmountCents);
+    }
+
+    const validPeriods: BucketPeriod[] = [BucketPeriod.WEEKLY, BucketPeriod.MONTHLY];
+    if (!validPeriods.includes(period as BucketPeriod)) {
+      return new NextResponse(
+        `Invalid period. Expected one of: ${validPeriods.join(', ')}`,
+        { status: 400 }
+      );
+    }
+
+    const validCategories = Object.values(RewardCategory) as string[];
+    if (!validCategories.includes(normalizedCategory)) {
+      return new NextResponse(
+        `Invalid category. Expected one of: ${validCategories.join(', ')}`,
+        { status: 400 }
+      );
+    }
+
+    const now = new Date();
+    const { start: periodStart, end: periodEnd } = getPeriodWindow(period as BucketPeriod, now);
+
+    const bucket = await prisma.bucket.create({
+      data: {
+        userId,
+        name: normalizedName,
+        period: period as BucketPeriod,
+        budgetAmount: Math.floor(budgetAmountCents),
+        currentAmount:
+          currentCentsValue == null
+            ? Math.floor(budgetAmountCents)
+            : Math.min(currentCentsValue, Math.floor(budgetAmountCents)),
+        spentCents:
+          currentCentsValue == null
+            ? 0
+            : Math.max(Math.floor(budgetAmountCents) - currentCentsValue, 0),
+        periodStart,
+        periodEnd,
+        strictMode: Boolean(strictMode),
+        category: normalizedCategory as RewardCategory,
+      },
+    });
+
+    return NextResponse.json(bucket, { status: 201 });
+  } catch (error) {
+    if (isPrismaP2003(error)) {
+      logInvariant('P2003 in api/buckets POST', {
+        userId,
+        mode,
+        meta: error.meta,
+      });
+    } else {
+      logInvariant('Error in api/buckets POST', { userId, mode, error });
+      logError('Error creating bucket', error);
+    }
+    return NextResponse.json(
+      { error: 'Bucket create failed due to FK or user context' },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
-    try {
-      const parsed = await parseJsonBody(request, BucketDeleteSchema);
-      if (!parsed.ok) return parsed.response;
-      const { bucketId } = parsed.data;
+  let userId: string | null = null;
+  let mode: string | null = null;
 
-      const bucket = await prisma.bucket.findFirst({
-        where: { id: bucketId, userId },
-      });
-      if (!bucket) {
-        return new NextResponse('Bucket not found for user', { status: 404 });
-      }
-
-      await prisma.bucket.delete({
-        where: { id: bucket.id },
-      });
-
-      return new NextResponse(null, { status: 204 });
-    } catch (error) {
-      logError('Error deleting bucket', error);
-      return new NextResponse('Failed to delete bucket', { status: 500 });
+  try {
+    const ctx = await resolveUserContext({
+      requireAuth: true,
+      allowLabDemo: false,
+    });
+    userId = ctx.userId;
+    mode = ctx.mode;
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  });
+    logError('Error resolving user context in api/buckets DELETE', error);
+    return new NextResponse('Failed to resolve user context', { status: 500 });
+  }
+
+  try {
+    assertUserId(userId, 'api/buckets DELETE');
+
+    const parsed = await parseJsonBody(request, BucketDeleteSchema);
+    if (!parsed.ok) return parsed.response;
+    const { bucketId } = parsed.data;
+
+    const bucket = await prisma.bucket.findFirst({
+      where: { id: bucketId, userId },
+    });
+    if (!bucket) {
+      return new NextResponse('Bucket not found for user', { status: 404 });
+    }
+
+    await prisma.bucket.deleteMany({
+      where: { id: bucket.id, userId },
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    if (isPrismaP2003(error)) {
+      logInvariant('P2003 in api/buckets DELETE', {
+        userId,
+        mode,
+        meta: error.meta,
+      });
+    } else {
+      logInvariant('Error in api/buckets DELETE', { userId, mode, error });
+      logError('Error deleting bucket', error);
+    }
+    return new NextResponse('Failed to delete bucket', { status: 500 });
+  }
 }
