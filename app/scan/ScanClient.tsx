@@ -446,7 +446,7 @@ export default function ScanClient(): JSX.Element {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur lg:p-5"
+          className="space-y-4 rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg backdrop-blur lg:p-5"
         >
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-0.5">
@@ -517,8 +517,8 @@ export default function ScanClient(): JSX.Element {
           <ErrorBanner message={error} />
         </form>
 
-        <section className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur lg:p-5">
-          <div className="mb-3 flex items-center justify-between gap-2">
+        <section className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg backdrop-blur text-slate-100 lg:p-5">
+          <div className="flex items-center justify-between gap-2 border-b border-white/5 px-1 pb-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-100">Result</h2>
               <p className="text-xs text-slate-400">
@@ -527,7 +527,7 @@ export default function ScanClient(): JSX.Element {
             </div>
           </div>
 
-          <div className="space-y-3">{renderResultBody()}</div>
+          <div className="space-y-3 px-1 pt-3">{renderResultBody()}</div>
         </section>
       </div>
     </div>
