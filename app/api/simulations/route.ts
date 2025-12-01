@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
 import { logError } from '@/lib/logger';
-import { resolveUserContext } from '@/lib/user-context';
+import { resolveUserContext, assertUserId } from '@/lib/user-context';
 
 /**
  * GET /api/simulations
@@ -23,6 +23,7 @@ import { resolveUserContext } from '@/lib/user-context';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    assertUserId(userId, 'api/simulations GET');
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const category = searchParams.get('category');

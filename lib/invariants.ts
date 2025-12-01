@@ -1,5 +1,9 @@
-export function assertUserId(userId: string | null | undefined): asserts userId is string {
+export function assertUserId(
+  userId: string | null | undefined,
+  context?: string
+): asserts userId is string {
   if (!userId || typeof userId !== 'string') {
-    throw new Error('Invariant: userId is missing or invalid');
+    const prefix = context ? `${context}: ` : '';
+    throw new Error(`${prefix}Invariant: userId is missing or invalid`);
   }
 }

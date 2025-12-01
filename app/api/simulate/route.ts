@@ -1,23 +1,25 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { prisma } from '@/lib/prisma';
 import { runSimulation } from '@/lib/simulation-adapter';
 import { logError, logWarn } from '@/lib/logger';
 import { parseJsonBody } from '@/lib/validation';
 import { SimulateRequestSchema } from '@/lib/schemas/simulate';
 import { validateEngineDecision } from '@/lib/engine-invariants';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
-import { logInvariant } from '@/lib/logging';
+import {
+  resolveUserContext,
+  assertUserId,
+  logInvariant,
+  isPrismaP2003,
+} from '@/lib/user-context';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
-    assertUserId(userId);
+    const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    assertUserId(userId, 'api/simulate POST');
     try {
       const parsed = await parseJsonBody(request, SimulateRequestSchema);
       if (!parsed.ok) return parsed.response;
@@ -75,8 +77,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             })
           ).id;
         } catch (err) {
-          if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
-            logInvariant('FK violation while creating simulation', { meta: err.meta ?? null });
+          if (isPrismaP2003(err)) {
+            logInvariant('P2003 while creating simulation', { userId, mode, meta: err.meta ?? null });
             return NextResponse.json(
               { error: 'Failed to create simulation (FK violation)' },
               { status: 500 }
@@ -146,8 +148,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           decision,
         });
       } catch (err) {
-        if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
-          logInvariant('FK violation while creating simulated transaction', { meta: err.meta ?? null });
+        if (isPrismaP2003(err)) {
+          logInvariant('P2003 while creating simulated transaction', { userId, mode, meta: err.meta ?? null });
           return NextResponse.json(
             { error: 'Failed to save simulated transaction (FK violation)' },
             { status: 500 }

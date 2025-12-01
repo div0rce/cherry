@@ -1,5 +1,8 @@
 import { getServerSession } from 'next-auth';
 import { prisma } from './prisma.ts';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { logInvariant } from './logging.ts';
+import { assertUserId } from './invariants.ts';
 
 export type UserContextMode = 'AUTHENTICATED' | 'LAB_DEMO';
 
@@ -81,3 +84,9 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
     'Invariant: resolveUserContext reached unreachable state (check requireAuth/allowLabDemo flags)'
   );
 }
+
+export function isPrismaP2003(err: unknown): err is PrismaClientKnownRequestError {
+  return err instanceof PrismaClientKnownRequestError && err.code === 'P2003';
+}
+
+export { logInvariant, assertUserId };

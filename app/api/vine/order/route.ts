@@ -9,13 +9,12 @@ import { VineOrderSource } from '@/lib/enums';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
 import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
-import { Prisma } from '@prisma/client';
-import { resolveUserContext } from '@/lib/user-context';
-import { logInvariant } from '@/lib/logging';
+import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '@/lib/user-context';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    assertUserId(userId, 'api/vine/order POST');
     const raw: unknown = await request.json();
 
     let orderContext: OrderContext;
@@ -97,13 +96,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const result = await runRecommendationFromOrderContext(orderContext, userId);
+    try {
+      const result = await runRecommendationFromOrderContext(orderContext, userId);
 
-    return NextResponse.json({
-      sessionId: result.sessionId,
-      decision: result.decision,
-      orderToken: result.orderToken,
-    });
+      return NextResponse.json({
+        sessionId: result.sessionId,
+        decision: result.decision,
+        orderToken: result.orderToken,
+      });
+    } catch (err: unknown) {
+      if (isPrismaP2003(err)) {
+        logInvariant('P2003 in api/vine/order POST', { userId, mode, meta: err.meta ?? null });
+      } else {
+        logInvariant('Error in api/vine/order POST', { userId, mode, err });
+      }
+      return NextResponse.json({ error: 'User context or FK error' }, { status: 500 });
+    }
   } catch (error) {
     if (error instanceof Error && error.message?.includes('lab demo mode is disabled in production')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -114,13 +122,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (error instanceof Error && error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
       return NextResponse.json(
         { error: 'vine_user_missing', message: error.message },
-        { status: 500 }
-      );
-    }
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-      logInvariant('FK violation in /api/vine/order', { meta: error.meta });
-      return NextResponse.json(
-        { error: 'vine_fk_violation', meta: error.meta },
         { status: 500 }
       );
     }

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
+import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '@/lib/user-context';
 
 /**
  * DELETE /api/simulations/[id]
@@ -12,7 +12,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    assertUserId(userId, 'api/simulations DELETE');
     const { id } = await params;
 
     const simulation = await prisma.simulatedTransaction.findFirst({
@@ -23,9 +24,17 @@ export async function DELETE(
       return new NextResponse('Simulation not found for user', { status: 404 });
     }
 
-    await prisma.simulatedTransaction.delete({
-      where: { id: simulation.id },
-    });
+    try {
+      await prisma.simulatedTransaction.delete({
+        where: { id: simulation.id },
+      });
+    } catch (err) {
+      if (isPrismaP2003(err)) {
+        logInvariant('P2003 in api/simulations DELETE', { userId, mode, meta: err.meta ?? null });
+        return new NextResponse('User context or FK error', { status: 500 });
+      }
+      throw err;
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
