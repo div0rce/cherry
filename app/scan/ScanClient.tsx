@@ -434,10 +434,11 @@ export default function ScanClient(): JSX.Element {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
       <div className="space-y-1">
-        <h1 className="text-lg font-semibold text-slate-100">Manual lookup &amp; rewards</h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Lab</p>
+        <h1 className="text-3xl font-semibold text-white">Manual lookup &amp; rewards</h1>
+        <p className="text-slate-300">
           Probe the decision engine for a single hypothetical swipe: see card choice, rewards, and bucket impact.
         </p>
       </div>
