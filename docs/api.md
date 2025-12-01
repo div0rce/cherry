@@ -118,7 +118,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card.
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
 - `/api/buckets/[bucketId]` — Delete a specific bucket.
-- `/api/simulate` — Runs engine and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets.
+- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `lib/engine.ts` and `lib/simulation-adapter.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.

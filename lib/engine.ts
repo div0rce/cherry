@@ -1,5 +1,22 @@
 // lib/engine.ts
 // Deterministic transaction decision engine with budget/card/overall verdicts and coverage modes.
+/**
+ * Canonical Cherry decision engine.
+ *
+ * Responsibilities:
+ * - Resolve merchant/category (MCC → explicit category → heuristics).
+ * - Pull relevant buckets, apply in-memory rollover, and compute budget verdicts.
+ * - Select the best card/reward rule and compute reward multipliers.
+ * - Compute Cherry incentive offers under the invariants enforced in lib/engine-invariants.ts.
+ *
+ * This is the single source of truth for Observe → Evaluate → Recommend:
+ * - /api/scan (stateless advisory)
+ * - /api/sessions (persisted sessions)
+ * - /api/vine/order (Vine ingest)
+ * - /api/simulate (sandbox simulations via lib/simulation-adapter.ts)
+ *
+ * Do not implement parallel decision logic elsewhere (e.g., legacy lib/simulation.ts).
+ */
 
 import { prisma } from '@/lib/prisma';
 import { Bucket, RewardCategory } from '@prisma/client';

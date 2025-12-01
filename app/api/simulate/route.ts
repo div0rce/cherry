@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
 import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
-import { runEngine } from '@/lib/engine';
+import { runSimulation } from '@/lib/simulation-adapter';
 import { logError, logWarn } from '@/lib/logger';
 import { parseJsonBody } from '@/lib/validation';
 import { SimulateRequestSchema } from '@/lib/schemas/simulate';
@@ -69,45 +69,45 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           })
         ).id;
 
-      const engineResult = await runEngine({
+      const { decision } = await runSimulation({
         userId,
         amountCents: body.amountCents as number,
         category: normalizedCategory as RewardCategory,
         merchantName,
         mccCode: mccCode ?? null,
       });
-      validateEngineDecision(engineResult);
+      validateEngineDecision(decision);
 
       const strictDecline =
-        (engineResult.budget.wouldExceed ?? false) && (engineResult.budget.strictMode ?? false);
+        (decision.budget.wouldExceed ?? false) && (decision.budget.strictMode ?? false);
       const bucketBeforeCents =
-        engineResult.budget.limitCents != null && engineResult.budget.spentBeforeCents != null
-          ? engineResult.budget.limitCents - engineResult.budget.spentBeforeCents
+        decision.budget.limitCents != null && decision.budget.spentBeforeCents != null
+          ? decision.budget.limitCents - decision.budget.spentBeforeCents
           : null;
       const bucketAfterCents = strictDecline
         ? bucketBeforeCents
-        : engineResult.budget.remainingAfterCents ?? null;
-      const bucketLimitCents = engineResult.budget.limitCents ?? null;
-      const rewardMultiplier = engineResult.card.multiplier ?? null;
-      const rewardsEarnedPoints = engineResult.card.estimatedRewards ?? null;
+        : decision.budget.remainingAfterCents ?? null;
+      const bucketLimitCents = decision.budget.limitCents ?? null;
+      const rewardMultiplier = decision.card.multiplier ?? null;
+      const rewardsEarnedPoints = decision.card.estimatedRewards ?? null;
       const tx = await prisma.simulatedTransaction.create({
         data: {
           simulationId,
           userId,
           amount: body.amountCents as number,
           merchantName,
-          resolvedCategory: engineResult.category,
+          resolvedCategory: decision.category,
           mccCode,
 
-          bucketId: engineResult.budget.bucketId ?? null,
-          bucketName: engineResult.budget.name ?? null,
+          bucketId: decision.budget.bucketId ?? null,
+          bucketName: decision.budget.name ?? null,
           bucketPeriod: null,
           bucketBeforeCents,
           bucketAfterCents,
           bucketLimitCents,
 
-          chosenCardId: engineResult.card.cardId ?? null,
-          chosenCardName: engineResult.card.cardNickname ?? null,
+          chosenCardId: decision.card.cardId ?? null,
+          chosenCardName: decision.card.cardNickname ?? null,
 
           rewardMultiplier,
           rewardsEarned: rewardsEarnedPoints,
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({
         simulationId,
         transaction: tx,
-        decision: engineResult,
+        decision,
       });
     } catch (error) {
       logError('Error in /api/simulate', error);

@@ -38,6 +38,7 @@ Docs consulted:
   - Card selection chooses best multiplier rule per category (fallback GENERAL_MERCHANDISE/OTHER) and estimates rewards; if no cards, verdict `NO_CARD_DATA`.
   - Incentives: base `min(floor(amount/1000), 20)`, doubled for `HEALTHY`, zeroed for `BREAKS_BUDGET`; zero if `amountCents <= 0`.
   - Invariants enforce consistency (no incentives with `INSUFFICIENT_DATA` or `NO_CARD_DATA`, coverage mode matches bucket presence, etc.).
+  - `/api/simulate` uses the same engine via `lib/simulation-adapter.ts`; `lib/simulation.ts` is archived legacy and unused at runtime.
 
 - Buckets (`prisma/schema.prisma`, `app/api/buckets/route.ts`, `lib/buckets/*`):
   - Schema fields: `budgetAmount`, `currentAmount` (legacy after create), `spentCents` (default 0), `strictMode` default true, `periodStart/periodEnd` defaults now, `lastResetAt` optional.

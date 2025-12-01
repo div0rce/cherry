@@ -1,5 +1,20 @@
 // lib/simulation.ts
-// Core simulation engine wired to unified RewardCategory + MCC mapping.
+// Legacy simulation engine (archived; do not use in runtime paths).
+/**
+ * LEGACY SIMULATION ENGINE (ARCHIVED)
+ *
+ * This module predates the canonical engine in lib/engine.ts and its
+ * invariants in lib/engine-invariants.ts. It is kept only for historical
+ * reference. Do NOT import this module from runtime code (app/api/*, lib/*,
+ * scripts/*). All decision logic must use lib/engine.ts and simulations should
+ * go through lib/simulation-adapter.ts.
+ *
+ * TODO(simulation-migration):
+ * - Audit any remaining consumers (tests, docs).
+ * - Migrate or remove; consider moving this file under legacy/ if kept.
+ *
+ * See docs/cherry-core-loop-engine-vine-wallet-audit.md §3.
+ */
 
 import {
   PrismaClient,
