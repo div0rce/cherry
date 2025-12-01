@@ -325,7 +325,7 @@ function SimulationFilters({
       <input type="hidden" name="page" value={page} />
       <button
         type="submit"
-        className="mt-5 rounded-lg bg-pink-600/80 px-3 py-2 text-sm font-semibold text-white transition hover:bg-pink-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-pink-400"
+        className="mt-5 rounded-lg bg-pink-600/80 px-3 py-2 text-sm font-semibold text-white transition hover:bg-pink-600 focus-visible:outline-2 focus-visible:outline-pink-400"
       >
         Apply
       </button>
