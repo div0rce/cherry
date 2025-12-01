@@ -7,6 +7,8 @@ import { withUser } from '@/lib/with-user';
 import { CardCreateSchema, CardDeleteSchema } from '@/lib/schemas/cards';
 import { parseJsonBody } from '@/lib/validation';
 import { ensureUser } from '@/lib/ensure-user';
+import { assertUserId } from '@/lib/invariants';
+import { logInvariant } from '@/lib/logging';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -105,6 +107,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
+    assertUserId(userId);
     const parsed = await parseJsonBody(request, CardCreateSchema);
     if (!parsed.ok) return parsed.response;
     const { nickname, issuer, network, isCredit, annualFee, rewardRules } = parsed.data;
@@ -153,6 +156,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json(
           { error: 'User not found for card creation' },
           { status: 404 }
+        );
+      }
+       if (error instanceof PrismaClientKnownRequestError && error.code === 'P2003') {
+        logInvariant('Card FK violation during create', { meta: error.meta ?? null });
+        return NextResponse.json(
+          { error: 'User foreign key violation while creating card' },
+          { status: 500 }
         );
       }
       return NextResponse.json({ error: 'Failed to create card' }, { status: 500 });

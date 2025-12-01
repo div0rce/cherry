@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withUser } from '@/lib/with-user';
 import { runEngine } from '@/lib/engine';
 import { resolveScanCategory } from '@/lib/scan-helpers';
 import type { ScanResponseBody } from '@/lib/scan-types';
@@ -7,9 +6,11 @@ import { logError } from '@/lib/logger';
 import { ScanRequestSchema } from '@/lib/schemas/scan';
 import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
+import { resolveUserContext } from '@/lib/user-context';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
+  try {
+    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     const parsed = await parseJsonBody(request, ScanRequestSchema);
     if (!parsed.ok) return parsed.response;
     const body = parsed.data;
@@ -82,5 +83,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       logError('Error in /api/scan', error);
       return NextResponse.json({ error: 'Failed to evaluate scan' }, { status: 500 });
     }
-  });
+  } catch (error) {
+    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logError('Error in /api/scan', error);
+    return NextResponse.json({ error: 'Failed to evaluate scan' }, { status: 500 });
+  }
 }

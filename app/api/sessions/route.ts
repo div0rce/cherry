@@ -18,10 +18,14 @@ import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { randomUUID } from 'crypto';
 import { fetchSessionSummaries } from '@/lib/sessions/summaries';
+import { assertUserId } from '@/lib/invariants';
+import { logInvariant } from '@/lib/logging';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
+      assertUserId(userId);
       const parsed = await parseJsonBody(request, CreateSessionSchema);
       if (!parsed.ok) return parsed.response;
       const body = parsed.data;
@@ -100,6 +104,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         decision,
       });
     } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError && error.code === 'P2003') {
+        logInvariant('FK violation while creating recommendation session', {
+          meta: error.meta ?? null,
+        });
+        return NextResponse.json(
+          { error: 'Failed to create session (FK violation)' },
+          { status: 500 }
+        );
+      }
       logError('Error in /api/sessions POST', error);
       return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
     }

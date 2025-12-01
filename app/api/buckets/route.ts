@@ -7,6 +7,8 @@ import { logError } from '@/lib/logger';
 import { BucketCreateSchema, BucketDeleteSchema } from '@/lib/schemas/buckets';
 import { parseJsonBody } from '@/lib/validation';
 import { ensureUser } from '@/lib/ensure-user';
+import { assertUserId } from '@/lib/invariants';
+import { logInvariant } from '@/lib/logging';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -56,6 +58,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     try {
+      assertUserId(userId);
       const parsed = await parseJsonBody(request, BucketCreateSchema);
       if (!parsed.ok) return parsed.response;
       const {
@@ -151,7 +154,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(bucket, { status: 201 });
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError && error.code === 'P2003') {
-        logError('Bucket FK violation', error);
+        logInvariant('Bucket FK violation', { meta: error.meta ?? null });
         return new NextResponse('User foreign key violation while creating bucket', {
           status: 500,
         });

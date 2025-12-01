@@ -11,13 +11,15 @@ import { runEngine } from '@/lib/engine';
 import type { EngineDecision } from '@/lib/engine';
 import type { OrderContext } from './order-context';
 import { validateEngineDecision } from '@/lib/engine-invariants';
-import { ensureUser } from '@/lib/ensure-user';
+import { assertUserId } from '@/lib/invariants';
+import { logInvariant } from '@/lib/logging';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
   userId: string
 ): Promise<{ sessionId: string; orderToken: string; decision: EngineDecision }> {
-  await ensureUser(userId);
+  assertUserId(userId);
 
   const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : Date.now();
   const amountCents = Math.floor(ctx.amountCents);
@@ -43,41 +45,52 @@ export async function runRecommendationFromOrderContext(
       ? RecommendationSource.VINE_DEVICE
       : RecommendationSource.VINE_SIM;
 
-  const session = await prisma.recommendationSession.create({
-    data: {
-      userId,
-      merchantName: ctx.merchantName ?? null,
-      mccCode: ctx.mccCode ?? null,
-      category: decision.category,
-      amountCents,
-      currency: ctx.currency ?? 'USD',
-      deviceId: ctx.deviceId,
-      storeId: ctx.storeId ?? null,
-      terminalId: ctx.terminalId ?? null,
-      orderId: ctx.orderId ?? null,
-      orderToken,
-      source,
-      recommendedCardId: decision.card.cardId ?? null,
-      recommendedBucketId: decision.budget.bucketId ?? null,
-      verdict:
-        decision.budget.verdict === 'BREAKS_BUDGET'
-          ? 'BREAKS_BUDGET'
-          : decision.budget.verdict === 'BORDERLINE'
-            ? 'BORDERLINE'
-            : 'HEALTHY',
-      budgetVerdict: decision.budget.verdict,
-      cardVerdict: decision.card.verdict,
-      overallVerdict: decision.overallVerdict,
-      coverageMode: (decision.budget.coverageMode ?? 'UNCONFIGURED') as CategoryCoverageModeDb,
-      cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
-      status: RecommendationStatus.RECOMMENDED,
-      verificationStatus: VerificationStatus.UNVERIFIED,
-      anomalyCode: SessionAnomalyCode.NONE,
-      anomalyDetails: null,
-      expiresAt,
-    },
-    select: { id: true },
-  });
+  try {
+    const session = await prisma.recommendationSession.create({
+      data: {
+        userId,
+        merchantName: ctx.merchantName ?? null,
+        mccCode: ctx.mccCode ?? null,
+        category: decision.category,
+        amountCents,
+        currency: ctx.currency ?? 'USD',
+        deviceId: ctx.deviceId,
+        storeId: ctx.storeId ?? null,
+        terminalId: ctx.terminalId ?? null,
+        orderId: ctx.orderId ?? null,
+        orderToken,
+        source,
+        recommendedCardId: decision.card.cardId ?? null,
+        recommendedBucketId: decision.budget.bucketId ?? null,
+        verdict:
+          decision.budget.verdict === 'BREAKS_BUDGET'
+            ? 'BREAKS_BUDGET'
+            : decision.budget.verdict === 'BORDERLINE'
+              ? 'BORDERLINE'
+              : 'HEALTHY',
+        budgetVerdict: decision.budget.verdict,
+        cardVerdict: decision.card.verdict,
+        overallVerdict: decision.overallVerdict,
+        coverageMode: (decision.budget.coverageMode ?? 'UNCONFIGURED') as CategoryCoverageModeDb,
+        cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
+        status: RecommendationStatus.RECOMMENDED,
+        verificationStatus: VerificationStatus.UNVERIFIED,
+        anomalyCode: SessionAnomalyCode.NONE,
+        anomalyDetails: null,
+        expiresAt,
+      },
+      select: { id: true },
+    });
 
-  return { sessionId: session.id, orderToken, decision };
+    return { sessionId: session.id, orderToken, decision };
+  } catch (err) {
+    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
+      logInvariant('FK failure in recommendationSession.create', {
+        code: err.code,
+        meta: err.meta ?? null,
+      });
+      throw new Error('Internal error: failed to persist recommendation session (FK violation)');
+    }
+    throw err;
+  }
 }

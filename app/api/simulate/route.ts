@@ -1,18 +1,23 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
-import { withUser } from '@/lib/with-user';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { prisma } from '@/lib/prisma';
 import { runSimulation } from '@/lib/simulation-adapter';
 import { logError, logWarn } from '@/lib/logger';
 import { parseJsonBody } from '@/lib/validation';
 import { SimulateRequestSchema } from '@/lib/schemas/simulate';
 import { validateEngineDecision } from '@/lib/engine-invariants';
+import { resolveUserContext } from '@/lib/user-context';
+import { assertUserId } from '@/lib/invariants';
+import { logInvariant } from '@/lib/logging';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async (userId) => {
+  try {
+    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    assertUserId(userId);
     try {
       const parsed = await parseJsonBody(request, SimulateRequestSchema);
       if (!parsed.ok) return parsed.response;
@@ -60,14 +65,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           ? Number.parseInt(String(body.mccCode), 10)
           : null;
 
-      const simulationId =
-        body.simulationId ??
-        (
-          await prisma.simulation.create({
-            data: { userId },
-            select: { id: true },
-          })
-        ).id;
+      let simulationId = body.simulationId;
+      if (!simulationId) {
+        try {
+          simulationId = (
+            await prisma.simulation.create({
+              data: { userId },
+              select: { id: true },
+            })
+          ).id;
+        } catch (err) {
+          if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
+            logInvariant('FK violation while creating simulation', { meta: err.meta ?? null });
+            return NextResponse.json(
+              { error: 'Failed to create simulation (FK violation)' },
+              { status: 500 }
+            );
+          }
+          throw err;
+        }
+      }
 
       const { decision } = await runSimulation({
         userId,
@@ -90,46 +107,63 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const bucketLimitCents = decision.budget.limitCents ?? null;
       const rewardMultiplier = decision.card.multiplier ?? null;
       const rewardsEarnedPoints = decision.card.estimatedRewards ?? null;
-      const tx = await prisma.simulatedTransaction.create({
-        data: {
+      try {
+        const tx = await prisma.simulatedTransaction.create({
+          data: {
+            simulationId,
+            userId,
+            amount: body.amountCents as number,
+            merchantName,
+            resolvedCategory: decision.category,
+            mccCode,
+
+            bucketId: decision.budget.bucketId ?? null,
+            bucketName: decision.budget.name ?? null,
+            bucketPeriod: null,
+            bucketBeforeCents,
+            bucketAfterCents,
+            bucketLimitCents,
+
+            chosenCardId: decision.card.cardId ?? null,
+            chosenCardName: decision.card.cardNickname ?? null,
+
+            rewardMultiplier,
+            rewardsEarned: rewardsEarnedPoints,
+            multiplier: rewardMultiplier,
+            cashbackPercent: null,
+            rewardsEarnedPoints: rewardsEarnedPoints,
+            rewardsEarnedCents: null,
+
+            strictDecline,
+            status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
+            reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
+          },
+        });
+
+        return NextResponse.json({
           simulationId,
-          userId,
-          amount: body.amountCents as number,
-          merchantName,
-          resolvedCategory: decision.category,
-          mccCode,
-
-          bucketId: decision.budget.bucketId ?? null,
-          bucketName: decision.budget.name ?? null,
-          bucketPeriod: null,
-          bucketBeforeCents,
-          bucketAfterCents,
-          bucketLimitCents,
-
-          chosenCardId: decision.card.cardId ?? null,
-          chosenCardName: decision.card.cardNickname ?? null,
-
-          rewardMultiplier,
-          rewardsEarned: rewardsEarnedPoints,
-          multiplier: rewardMultiplier,
-          cashbackPercent: null,
-          rewardsEarnedPoints: rewardsEarnedPoints,
-          rewardsEarnedCents: null,
-
-          strictDecline,
-          status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,
-          reason: strictDecline ? 'STRICT_DECLINE' : 'APPROVED',
-        },
-      });
-
-      return NextResponse.json({
-        simulationId,
-        transaction: tx,
-        decision,
-      });
+          transaction: tx,
+          decision,
+        });
+      } catch (err) {
+        if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
+          logInvariant('FK violation while creating simulated transaction', { meta: err.meta ?? null });
+          return NextResponse.json(
+            { error: 'Failed to save simulated transaction (FK violation)' },
+            { status: 500 }
+          );
+        }
+        throw err;
+      }
     } catch (error) {
       logError('Error in /api/simulate', error);
       return NextResponse.json({ error: 'Failed to run simulation' }, { status: 500 });
     }
-  });
+  } catch (error) {
+    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logError('Error in /api/simulate', error);
+    return NextResponse.json({ error: 'Failed to run simulation' }, { status: 500 });
+  }
 }
