@@ -9,7 +9,7 @@ import { OrderContextSchema } from '@/lib/schemas/vine';
 import { VineOrderSource } from '@/lib/enums';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
-import { verifyVinePayloadSignature } from '@/lib/vine/security';
+import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -68,10 +68,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         return NextResponse.json({ error: 'MCC must be a valid merchant category code' }, { status: 400 });
       }
 
-      // TODO(vine-signature): wire real signature fields from payload into this call.
-      // Currently ignored; verification is a stub and must not gate ingestion yet.
-      await verifyVinePayloadSignature();
-
       const nowMs = Date.now();
       const ageMs = nowMs - orderContext.timestamp;
       const maxAgeMs = 3 * 60 * 1000; // TODO: tune freshness window
@@ -81,7 +77,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           { status: 400 }
         );
       }
-      // TODO: HMAC/nonce verification with device secrets for orderContext
+      const signatureHeader = request.headers.get('x-vine-signature');
+      const sigCtx: VineSignatureContext = {
+        deviceId: orderContext.deviceId,
+        amountCents: orderContext.amountCents,
+        currency: orderContext.currency ?? 'USD',
+        timestamp: orderContext.timestamp,
+        storeId: orderContext.storeId ?? null,
+        terminalId: orderContext.terminalId ?? null,
+        orderId: orderContext.orderId ?? null,
+      };
+      const sigResult = await verifyVineSignature(sigCtx, signatureHeader);
+      if (!sigResult.ok) {
+        return NextResponse.json(
+          { error: 'vine_signature_invalid', reason: sigResult.reason ?? 'invalid_signature' },
+          { status: 401 }
+        );
+      }
 
       const result = await runRecommendationFromOrderContext(orderContext, userId);
 

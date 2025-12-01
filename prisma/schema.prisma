@@ -382,6 +382,17 @@ model RecommendationSession {
   ledgerEntries CherryPointLedger[]
 }
 
+model VineDevice {
+  id        String   @id @default(cuid())
+  deviceId  String   @unique
+  label     String?
+  storeId   String?
+  secret    String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model CherryPointLedger {
   id     String @id @default(cuid())
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
