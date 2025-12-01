@@ -418,7 +418,7 @@ model CategoryPreference {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
 
-  category  String
+  category  RewardCategory
   mode      CategoryBudgetMode
 
   createdAt DateTime @default(now())

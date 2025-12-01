@@ -1,0 +1,51 @@
+import { prisma } from '@/lib/prisma';
+import { RewardCategory } from '@prisma/client';
+
+async function main(): Promise<void> {
+  // Check if legacy column still exists; if not, exit early.
+  const columnCheck = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'CategoryPreference'
+        AND column_name = 'categoryEnum'
+    ) as "exists";
+  `;
+  if (!columnCheck[0]?.exists) {
+    console.warn('categoryEnum column not found; schema already migrated. Nothing to backfill.');
+    return;
+  }
+
+  // If legacy column exists, perform a raw backfill to avoid type drift in generated client.
+  const rawCounts = await prisma.$queryRaw<
+    Array<{ count: bigint }>
+  >`SELECT COUNT(*)::bigint as count FROM "CategoryPreference" WHERE "categoryEnum" IS NULL`;
+  const count = rawCounts[0]?.count ?? 0n;
+
+  const enumValues = (Object.values(RewardCategory) as string[])
+    .map((val) => `'${val}'`)
+    .join(',');
+
+  await prisma.$executeRawUnsafe(`
+    UPDATE "CategoryPreference"
+    SET "categoryEnum" = (
+      CASE
+        WHEN UPPER(REPLACE(REPLACE("category", ' ', '_'), '-', '_')) IN (${enumValues}) THEN UPPER(REPLACE(REPLACE("category", ' ', '_'), '-', '_'))::"RewardCategory"
+        ELSE 'OTHER'::"RewardCategory"
+      END
+    )
+    WHERE "categoryEnum" IS NULL;
+  `);
+
+  console.warn(`Backfilled legacy CategoryPreference rows: ${Number(count)}`);
+}
+
+main()
+  .then(() => {
+    console.warn('Done.');
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

@@ -123,6 +123,8 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.
 - Engine: `lib/engine.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
 - Simulations: `/api/simulate` must use the canonical engine (`lib/engine.ts` via `lib/simulation-adapter.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
+- Category preferences: `CategoryPreference.category` is a `RewardCategory` enum; do not store free-form strings. Use Zod enum validation on write paths.
+- Buckets: `currentAmount` is legacy; budget math uses `budgetAmount` + `spentCents` (with rollover) only.
 - Wallet pass scaffold: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/cherryPass.ts` (returns 501 without certs).
 - API reference: `docs/api.md` (keep in sync when endpoints change).
 - Product identity: `docs/cherry-vision.md` (copilot, not a card).

@@ -92,6 +92,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
       }
 
+      // currentAmount is legacy; only used here to seed spentCents on creation.
       let currentCentsValue: number | null = null;
       if (
         currentAmountCents != null &&

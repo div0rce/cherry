@@ -53,8 +53,8 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - Current behavior: when a session is confirmed, `Bucket.spentCents` increments by the confirmed amount (`confirmedAmountCents` on `RecommendationSession`). On `verify(verified: true)`, the increment remains. On `verify(verified: false)`, if the session was confirmed and not yet reversed, the bucket spend is decremented by `confirmedAmountCents` (bounded at 0) and `bucketSpendReversed` is set on the session to avoid double reversal. Reversal uses `ensureBucketFresh` so the active period window is respected.
 
 ### Legacy fields and soft flags
-- `Bucket.currentAmount` is a legacy field initialized on create; the canonical budget math uses `budgetAmount` + `spentCents` only.
-- `CategoryPreference.category` is currently a string and treated as a soft “intentional unbudgeted” flag. Future migration may move this to a `RewardCategory` enum for stronger validation.
+- `Bucket.currentAmount` is a legacy field initialized on create; the canonical budget math uses `budgetAmount` + `spentCents` only. Engine and UI must not read `currentAmount`.
+- `CategoryPreference.category` is now a `RewardCategory` enum; no arbitrary strings are allowed (legacy string field has been migrated).
 
 ## Future / Target Behavior
 - Keep `spentCents` as the single source of truth; remove or archive `currentAmount` from math.

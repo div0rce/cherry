@@ -87,8 +87,8 @@ Docs consulted:
 - Verification automation is stubbed (`lib/verification/verify-session.ts`); no real signals or auto-posting.
 - Vine security is minimal: no HMAC/nonce validation or device registry; freshness only. Needs future hardening to avoid spoofed context (legal constraint: context-only, but spoofing could degrade trust).
 - Legacy/duplicate engine logic in `lib/simulation.ts` (separate category resolver, bucket/currentAmount usage) risks drift from canonical engine; not used by core flow but could confuse contributors.
-- `currentAmount` field remains legacy; docs and engine ignore it post-create, which can cause misunderstanding.
-- `CategoryPreference.category` is a string, not enum-validated; intentional/unbudgeted coverage relies on string accuracy.
+- `currentAmount` field remains legacy; docs and engine ignore it post-create. Column persists but is not used in budget math.
+- `CategoryPreference.category` is now a `RewardCategory` enum; no arbitrary strings allowed (legacy string field migrated).
 - Wallet pass generation still reads certs when fully enabled; acceptable, but ensure feature flag stays off by default to avoid accidental filesystem access. Currently compliant.
 
 ## 3. Risks and Impact (Ranked)
@@ -98,8 +98,8 @@ Docs consulted:
   - Impact: spoofed Vine events could create sessions with misleading recommendations. Evidence: `app/api/vine/order/route.ts` TODO comment section, no auth beyond freshness.
 - Medium — Legacy simulation engine drift:
   - Impact: future contributors might reuse `lib/simulation.ts` and diverge from canonical engine (rollover/incentive rules). Evidence: separate `resolveCategory`/card logic in `lib/simulation.ts` not used by main APIs.
-- Low — `currentAmount` legacy field and CategoryPreference string:
-  - Impact: confusion about balance source of truth and potential typos for unbudgeted mode. Evidence: schema `Bucket.currentAmount`, `CategoryPreference.category String` in `prisma/schema.prisma`; engine ignores `currentAmount`.
+- Low — `currentAmount` legacy field:
+  - Impact: confusion about balance source of truth if surfaced; engine uses `spentCents` only. Evidence: schema `Bucket.currentAmount` remains but is documented as legacy; creation seeds `spentCents` only.
 
 ## 4. Concrete Fixes / Migrations
 - Bucket spend reversal policy:
@@ -112,8 +112,7 @@ Docs consulted:
 - Engine/Simulation consolidation:
   - Mark `lib/simulation.ts` as legacy in its header or refactor callers to use `runEngine`; ensure any remaining uses either import the canonical engine or are archived.
 - Schema hygiene:
-  - Optionally migrate `CategoryPreference.category` to `RewardCategory` enum to prevent typos; add validation on write paths.
-  - Consider deprecating `Bucket.currentAmount` or documenting it as legacy-only; ensure UI does not surface it as live balance.
+  - `CategoryPreference.category` is enum-based; keep validation aligned. Consider dropping legacy `currentAmount` column in a future cleanup; today it is documented as legacy and unused in budget math.
 
 ## 5. Short-Term Plan (Implementation Checklist)
 1) Bucket verification alignment:
@@ -127,8 +126,8 @@ Docs consulted:
 4) Simulation engine drift:
    - Add a header comment or README note marking `lib/simulation.ts` as legacy; route new logic through `runEngine` where feasible.
 5) Schema/input hygiene:
-   - Migrate `CategoryPreference.category` to enum and add write-time validation.
-   - Clarify `currentAmount` as legacy in bucket docs/UI or remove from UI surfaces.
+   - DONE: `CategoryPreference.category` is enum-based; keep validation aligned.
+   - Clarify `currentAmount` as legacy in bucket docs/UI; drop column in future cleanup if desired.
 
 ## 6. Long-Term Plan (Anchored to Vision)
 - Advisory accuracy & legal guardrails:

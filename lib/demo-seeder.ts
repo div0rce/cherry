@@ -90,11 +90,6 @@ async function assertUserExists(userId: string) {
   await ensureUser(userId);
 }
 
-function getCategoryPreferenceModel() {
-  return (prisma as unknown as { categoryPreference?: typeof prisma.categoryPreference })
-    .categoryPreference;
-}
-
 async function upsertDemoCardForUser(userId: string, def: (typeof cardDefinitions)[number]) {
   const existing = await prisma.card.findFirst({
     where: { userId, nickname: def.nickname },
@@ -185,13 +180,11 @@ async function seedDemoBucketsForUser(
 }
 
 async function seedCategoryPreferenceIfMissing(userId: string) {
-  const categoryPreferenceModel = getCategoryPreferenceModel();
-  if (!categoryPreferenceModel?.findFirst || !categoryPreferenceModel.create) return;
-  const existing = await categoryPreferenceModel.findFirst({
+  const existing = await prisma.categoryPreference.findFirst({
     where: { userId, category: RewardCategory.ENTERTAINMENT },
   });
   if (!existing) {
-    await categoryPreferenceModel.create({
+    await prisma.categoryPreference.create({
       data: {
         userId,
         category: RewardCategory.ENTERTAINMENT,
@@ -234,11 +227,7 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
   await prisma.simulation.deleteMany({ where: { userId } });
   await prisma.bucket.deleteMany({ where: { userId } });
   await prisma.card.deleteMany({ where: { userId } });
-  // Guard in case Prisma client is out of date; optional chain to avoid runtime error.
-  const categoryPreferenceModel = getCategoryPreferenceModel();
-  if (categoryPreferenceModel?.deleteMany) {
-    await categoryPreferenceModel.deleteMany({ where: { userId } });
-  }
+  await prisma.categoryPreference.deleteMany({ where: { userId } });
 
   const now = new Date();
   const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
