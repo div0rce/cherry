@@ -12,8 +12,7 @@ import type { EngineDecision } from '@/lib/engine';
 import type { OrderContext } from './order-context';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { assertUserId } from '@/lib/invariants';
-import { logInvariant } from '@/lib/logging';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { isPrismaP2003, logInvariant } from '@/lib/user-context';
 
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
@@ -83,14 +82,15 @@ export async function runRecommendationFromOrderContext(
     });
 
     return { sessionId: session.id, orderToken, decision };
-  } catch (err) {
-    if (err instanceof PrismaClientKnownRequestError && err.code === 'P2003') {
+  } catch (err: unknown) {
+    if (isPrismaP2003(err)) {
       logInvariant('FK failure in recommendationSession.create', {
-        code: err.code,
+        userId,
         meta: err.meta ?? null,
       });
       throw new Error('Internal error: failed to persist recommendation session (FK violation)');
     }
+    logInvariant('Error creating recommendation session from Vine', { userId, err });
     throw err;
   }
 }

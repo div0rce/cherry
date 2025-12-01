@@ -20,8 +20,8 @@ export interface UserContext {
   email: string | null;
 }
 
-const LAB_EMAIL = 'lab+single-user@cherry.dev';
-const LAB_NAME = 'Cherry Lab User';
+export const LAB_USER_EMAIL = 'lab+single-user@cherry.dev';
+export const LAB_USER_NAME = 'Cherry Lab User';
 
 async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string; email?: string | null }>) {
   if (process.env.NODE_ENV === 'production') {
@@ -32,13 +32,13 @@ async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string;
     return factoryOverride();
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: LAB_EMAIL } });
+  const existing = await prisma.user.findUnique({ where: { email: LAB_USER_EMAIL } });
   if (existing) return existing;
 
   return prisma.user.create({
     data: {
-      email: LAB_EMAIL,
-      name: LAB_NAME,
+      email: LAB_USER_EMAIL,
+      name: LAB_USER_NAME,
     },
   });
 }

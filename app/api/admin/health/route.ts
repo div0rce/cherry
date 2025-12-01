@@ -1,17 +1,42 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
+import {
+  assertUserId,
+  logInvariant,
+  resolveUserContext,
+} from '@/lib/user-context';
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  return withUser(request, async () => {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      return NextResponse.json({ message: 'Database OK' });
-    } catch (err) {
-      logError('Admin health check failed', err);
-      return NextResponse.json({ message: 'Database error' }, { status: 500 });
+export async function GET(_request: NextRequest): Promise<NextResponse> {
+  const isProd = process.env.NODE_ENV === 'production';
+  if (isProd) {
+    logInvariant('Admin route access in production', { route: 'api/admin/health' });
+    return NextResponse.json(
+      { error: 'Admin tools are disabled in production' },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const { userId } = await resolveUserContext({
+      requireAuth: true,
+      allowLabDemo: false,
+    });
+    assertUserId(userId, 'api/admin/health GET');
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  });
+    logError('Error resolving user context in api/admin/health', error);
+    return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
+  }
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return NextResponse.json({ message: 'Database OK' });
+  } catch (err) {
+    logError('Admin health check failed', err);
+    return NextResponse.json({ message: 'Database error' }, { status: 500 });
+  }
 }

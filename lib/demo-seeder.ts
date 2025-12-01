@@ -15,6 +15,8 @@ import {
 import type { OverallVerdict } from './enums';
 import { runEngine } from './engine';
 import { randomUUID } from 'crypto';
+import { assertUserId } from './invariants';
+import { isPrismaP2003, logInvariant } from './user-context';
 
 const cardDefinitions = [
   {
@@ -86,6 +88,7 @@ type SeedCardsBucketsSummary = {
 };
 
 async function assertUserExists(userId: string) {
+  assertUserId(userId, 'demo-seeder assertUserExists');
   const existing = await prisma.user.findUnique({ where: { id: userId } });
   if (existing) return existing;
   return prisma.user.create({
@@ -209,122 +212,144 @@ export async function seedCardsAndBucketsForUser(
     includeCategoryPreference?: boolean;
   },
 ): Promise<SeedCardsBucketsSummary> {
-  await assertUserExists(userId);
+  assertUserId(userId, 'seedCardsAndBucketsForUser');
 
-  const now = new Date();
-  const periodStart = options?.periodStart ?? new Date(now.getFullYear(), now.getMonth(), 1);
-  const periodEnd = options?.periodEnd ?? new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  try {
+    await assertUserExists(userId);
 
-  const cardsSeeded = await seedDemoCardsForUser(userId);
-  const bucketsSeeded = await seedDemoBucketsForUser(userId, periodStart, periodEnd);
+    const now = new Date();
+    const periodStart = options?.periodStart ?? new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = options?.periodEnd ?? new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  if (options?.includeCategoryPreference) {
-    await seedCategoryPreferenceIfMissing(userId);
+    const cardsSeeded = await seedDemoCardsForUser(userId);
+    const bucketsSeeded = await seedDemoBucketsForUser(userId, periodStart, periodEnd);
+
+    if (options?.includeCategoryPreference) {
+      await seedCategoryPreferenceIfMissing(userId);
+    }
+
+    return { cards: cardsSeeded, buckets: bucketsSeeded };
+  } catch (err: unknown) {
+    if (isPrismaP2003(err)) {
+      logInvariant('P2003 in seedCardsAndBucketsForUser', { userId, meta: err.meta });
+    } else {
+      logInvariant('Error in seedCardsAndBucketsForUser', { userId, err });
+    }
+    throw err;
   }
-
-  return { cards: cardsSeeded, buckets: bucketsSeeded };
 }
 
 export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> {
-  await assertUserExists(userId);
-  // Clear user data for a clean seed slate
-  await prisma.cherryPointLedger.deleteMany({ where: { userId } });
-  await prisma.recommendationSession.deleteMany({ where: { userId } });
-  await prisma.simulatedTransaction.deleteMany({ where: { userId } });
-  await prisma.simulation.deleteMany({ where: { userId } });
-  await prisma.bucket.deleteMany({ where: { userId } });
-  await prisma.card.deleteMany({ where: { userId } });
-  await prisma.categoryPreference.deleteMany({ where: { userId } });
+  assertUserId(userId, 'seedDemoForUser');
 
-  const now = new Date();
-  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  try {
+    await assertUserExists(userId);
+    // Clear user data for a clean seed slate
+    await prisma.cherryPointLedger.deleteMany({ where: { userId } });
+    await prisma.recommendationSession.deleteMany({ where: { userId } });
+    await prisma.simulatedTransaction.deleteMany({ where: { userId } });
+    await prisma.simulation.deleteMany({ where: { userId } });
+    await prisma.bucket.deleteMany({ where: { userId } });
+    await prisma.card.deleteMany({ where: { userId } });
+    await prisma.categoryPreference.deleteMany({ where: { userId } });
 
-  const { cards: cardCount, buckets } = await seedCardsAndBucketsForUser(userId, {
-    periodStart,
-    periodEnd,
-    includeCategoryPreference: true,
-  });
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  const cards = await prisma.card.findMany({ where: { userId } });
-  const cardMap = cards.reduce<Record<string, string>>((acc, card) => {
-    acc[card.nickname] = card.id;
-    return acc;
-  }, {});
-
-  // Seed demo sessions via engine + posted ledger rows
-  const demoSessions = [
-    { merchantName: 'Demo Chipotle', category: RewardCategory.DINING, amountCents: 2_000 },
-    { merchantName: 'Demo Overbudget Steakhouse', category: RewardCategory.DINING, amountCents: 9_000 },
-    { merchantName: 'Demo Netflix', category: RewardCategory.ENTERTAINMENT, amountCents: 1_599 },
-    { merchantName: 'Demo Trader Joe’s', category: RewardCategory.GROCERIES, amountCents: 4_000 },
-  ];
-
-  let sessionsCreated = 0;
-  let ledgerCreated = 0;
-  for (const demo of demoSessions) {
-    const decision = await runEngine({
-      userId,
-      merchantName: demo.merchantName,
-      category: demo.category,
-      amountCents: demo.amountCents,
+    const { cards: cardCount, buckets } = await seedCardsAndBucketsForUser(userId, {
+      periodStart,
+      periodEnd,
+      includeCategoryPreference: true,
     });
 
-    const session = await prisma.recommendationSession.create({
-      data: {
+    const cards = await prisma.card.findMany({ where: { userId } });
+    const cardMap = cards.reduce<Record<string, string>>((acc, card) => {
+      acc[card.nickname] = card.id;
+      return acc;
+    }, {});
+
+    // Seed demo sessions via engine + posted ledger rows
+    const demoSessions = [
+      { merchantName: 'Demo Chipotle', category: RewardCategory.DINING, amountCents: 2_000 },
+      { merchantName: 'Demo Overbudget Steakhouse', category: RewardCategory.DINING, amountCents: 9_000 },
+      { merchantName: 'Demo Netflix', category: RewardCategory.ENTERTAINMENT, amountCents: 1_599 },
+      { merchantName: 'Demo Trader Joe’s', category: RewardCategory.GROCERIES, amountCents: 4_000 },
+    ];
+
+    let sessionsCreated = 0;
+    let ledgerCreated = 0;
+    for (const demo of demoSessions) {
+      const decision = await runEngine({
         userId,
         merchantName: demo.merchantName,
-        category: decision.category,
-        amountCents: decision.amountCents,
-        currency: 'USD',
-        recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
-        recommendedBucketId: decision.budget.bucketId ?? null,
-        orderToken: randomUUID(),
-        source: RecommendationSource.APP_SCAN,
-        verdict:
-          decision.budget.verdict === 'BREAKS_BUDGET'
-            ? RecommendationVerdict.BREAKS_BUDGET
-            : decision.budget.verdict === 'BORDERLINE'
-              ? RecommendationVerdict.BORDERLINE
-              : RecommendationVerdict.HEALTHY,
-        budgetVerdict: decision.budget.verdict,
-        cardVerdict: decision.card.verdict,
-        overallVerdict: decision.overallVerdict as OverallVerdict,
-        coverageMode:
-          (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
-          CategoryCoverageModeDb.UNCONFIGURED,
-        status: RecommendationStatus.VERIFIED,
-        verificationStatus: VerificationStatus.VERIFIED,
-        anomalyCode: SessionAnomalyCode.NONE,
-        anomalyDetails: null,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-        verifiedAt: new Date(),
-        cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
-      },
-    });
-    sessionsCreated += 1;
+        category: demo.category,
+        amountCents: demo.amountCents,
+      });
 
-    const points = decision.cherryIncentive.pointsIfFollowed;
-    await prisma.cherryPointLedger.create({
-      data: {
-        userId,
-        sessionId: session.id,
-        points,
-        reason: `Demo: ${demo.merchantName}`,
-        status: CherryPointLedgerStatus.POSTED,
-        isAnomalous: false,
-        anomalyCode: LedgerAnomalyCode.NONE,
-        awardedAt: new Date(),
-        postedAt: new Date(),
-      },
-    });
-    ledgerCreated += 1;
+      const session = await prisma.recommendationSession.create({
+        data: {
+          userId,
+          merchantName: demo.merchantName,
+          category: decision.category,
+          amountCents: decision.amountCents,
+          currency: 'USD',
+          recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
+          recommendedBucketId: decision.budget.bucketId ?? null,
+          orderToken: randomUUID(),
+          source: RecommendationSource.APP_SCAN,
+          verdict:
+            decision.budget.verdict === 'BREAKS_BUDGET'
+              ? RecommendationVerdict.BREAKS_BUDGET
+              : decision.budget.verdict === 'BORDERLINE'
+                ? RecommendationVerdict.BORDERLINE
+                : RecommendationVerdict.HEALTHY,
+          budgetVerdict: decision.budget.verdict,
+          cardVerdict: decision.card.verdict,
+          overallVerdict: decision.overallVerdict as OverallVerdict,
+          coverageMode:
+            (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
+            CategoryCoverageModeDb.UNCONFIGURED,
+          status: RecommendationStatus.VERIFIED,
+          verificationStatus: VerificationStatus.VERIFIED,
+          anomalyCode: SessionAnomalyCode.NONE,
+          anomalyDetails: null,
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+          verifiedAt: new Date(),
+          cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
+        },
+      });
+      sessionsCreated += 1;
+
+      const points = decision.cherryIncentive.pointsIfFollowed;
+      await prisma.cherryPointLedger.create({
+        data: {
+          userId,
+          sessionId: session.id,
+          points,
+          reason: `Demo: ${demo.merchantName}`,
+          status: CherryPointLedgerStatus.POSTED,
+          isAnomalous: false,
+          anomalyCode: LedgerAnomalyCode.NONE,
+          awardedAt: new Date(),
+          postedAt: new Date(),
+        },
+      });
+      ledgerCreated += 1;
+    }
+
+    return {
+      cards: cardCount,
+      buckets,
+      sessions: sessionsCreated,
+      ledgerEntries: ledgerCreated,
+    };
+  } catch (err: unknown) {
+    if (isPrismaP2003(err)) {
+      logInvariant('P2003 in seedDemoForUser', { userId, meta: err.meta });
+    } else {
+      logInvariant('Error in seedDemoForUser', { userId, err });
+    }
+    throw err;
   }
-
-  return {
-    cards: cardCount,
-    buckets,
-    sessions: sessionsCreated,
-    ledgerEntries: ledgerCreated,
-  };
 }

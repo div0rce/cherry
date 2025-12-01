@@ -11,11 +11,17 @@
 import { prisma } from '../lib/prisma';
 import { logError, logInfo } from '../lib/logger';
 import { seedDemoForUser } from '../lib/demo-seeder';
+import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context';
 
 async function resolveTargetUser() {
   const cliArg = process.argv[2];
   const envEmail = process.env['SEED_USER_EMAIL'];
   const envUserId = process.env['SEED_USER_ID'];
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd) {
+    throw new Error('Demo seeding scripts are disabled in production');
+  }
 
   const findByEmail = (email: string) =>
     prisma.user.findUnique({ where: { email } });
@@ -23,7 +29,12 @@ async function resolveTargetUser() {
   const ensureByEmail = async (email: string) => {
     const existing = await findByEmail(email);
     if (existing) return existing;
-    return prisma.user.create({ data: { email } });
+    return prisma.user.create({
+      data: {
+        email,
+        ...(email === LAB_USER_EMAIL ? { name: LAB_USER_NAME } : {}),
+      },
+    });
   };
 
   if (cliArg) {
@@ -52,12 +63,7 @@ async function resolveTargetUser() {
     return user;
   }
 
-  const fallbackUser = await prisma.user.findFirst();
-  if (!fallbackUser) {
-    // As a last resort, create a default dev user to allow seeding without a prior session.
-    return prisma.user.create({ data: { email: 'dev@example.com' } });
-  }
-  return fallbackUser;
+  return ensureByEmail(LAB_USER_EMAIL);
 }
 
 async function main() {

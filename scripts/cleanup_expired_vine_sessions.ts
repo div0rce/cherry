@@ -1,7 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { RecommendationStatus, RecommendationSource } from '@prisma/client';
+import { logInvariant } from '@/lib/user-context';
 
 async function main(): Promise<void> {
+  if (process.env.NODE_ENV === 'production') {
+    logInvariant('cleanup_expired_vine_sessions invoked in production', {});
+    throw new Error('This cleanup script is disabled in production');
+  }
+
   const now = new Date();
   const result = await prisma.recommendationSession.updateMany({
     where: {
@@ -26,4 +32,3 @@ main()
     console.error(err);
     process.exit(1);
   });
-
