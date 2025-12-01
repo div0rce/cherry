@@ -31,7 +31,7 @@ async function assertCardForUser(cardId: string, userId: string) {
  * Lists reward rules for a given card (demo user scoped).
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });

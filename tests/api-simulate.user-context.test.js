@@ -1,0 +1,198 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+const assert = require('node:assert/strict');
+
+process.env.NODE_OPTIONS = '--experimental-specifier-resolution=node';
+process.env.NODE_PATH = [__dirname + '/__mocks__', process.env.NODE_PATH || ''].filter(Boolean).join(':');
+require('module').Module._initPaths();
+process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
+  module: 'commonjs',
+  moduleResolution: 'node',
+  baseUrl: '.',
+  paths: { '@/*': ['./*'] },
+});
+const Module = require('module');
+const path = require('path');
+const originalResolve = Module._resolveFilename;
+Module._resolveFilename = function (request, parent, isMain, options) {
+  if (request.startsWith('@/')) {
+    const mapped = path.join(__dirname, '..', request.slice(2));
+    return originalResolve.call(this, mapped, parent, isMain, options);
+  }
+  return originalResolve.call(this, request, parent, isMain, options);
+};
+
+function mockModule(modulePath, exports) {
+  require.cache[require.resolve(modulePath)] = {
+    id: modulePath,
+    filename: modulePath,
+    loaded: true,
+    exports,
+  };
+}
+
+function mockNextAuth(sessionValue) {
+  const wrapper = async () => wrapper.__nextValue ?? sessionValue;
+  wrapper.mockResolvedValueOnce = (val) => {
+    wrapper.__nextValue = val;
+  };
+  mockModule('next-auth', { getServerSession: wrapper, default: () => ({}) });
+}
+
+function mockNextServer() {
+  class MockResponse extends Response {
+    static json(body, init = {}) {
+      return new Response(JSON.stringify(body), {
+        status: init.status ?? 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+  }
+  const exports = {
+    NextResponse: MockResponse,
+    NextRequest: class extends Request {},
+  };
+  const resolved = require.resolve('next/server');
+  mockModule(resolved, exports);
+  mockModule(resolved.replace(/\.js$/, ''), exports);
+  try {
+    const alt = require.resolve('next/server.js');
+    mockModule(alt, exports);
+  } catch {
+    // ignore
+  }
+}
+
+function setupSimulationMocks() {
+  mockModule('../lib/simulation-adapter', {
+    runSimulation: async () => ({
+      decision: {
+        budget: {
+          wouldExceed: false,
+          strictMode: false,
+          limitCents: 10_000,
+          spentBeforeCents: 1_000,
+          remainingAfterCents: 9_000,
+          name: 'Demo Bucket',
+          bucketId: null,
+          coverageMode: 'UNCONFIGURED',
+          verdict: 'HEALTHY',
+        },
+        card: {
+          multiplier: 1,
+          estimatedRewards: 10,
+          cardId: 'card-1',
+          cardNickname: 'Demo Card',
+          verdict: 'GREEN',
+        },
+        category: 'DINING',
+        amountCents: 1000,
+        overallVerdict: 'GREEN',
+        cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
+      },
+    }),
+  });
+
+  mockModule('../lib/prisma', {
+    prisma: {
+      user: {
+        findUnique: async () => ({ id: 'lab-user-1', email: 'lab@example.com' }),
+        create: async () => ({ id: 'lab-user-1', email: 'lab@example.com' }),
+      },
+      simulation: {
+        create: async () => ({ id: 'sim-1' }),
+      },
+      simulatedTransaction: {
+        create: async (args) => ({ id: 'tx-1', ...args.data }),
+        findFirst: async () => null,
+        delete: async () => null,
+        count: async () => 0,
+        findMany: async () => [],
+      },
+      $transaction: async () => [0, []],
+    },
+  });
+}
+
+function resetRouteCache() {
+  delete require.cache[require.resolve('../app/api/simulate/route')];
+  delete require.cache[require.resolve('../app/api/simulations/route')];
+}
+
+async function runSimulateDev() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { POST } = require('../app/api/simulate/route');
+  const payload = {
+    amountCents: 1000,
+    category: 'DINING',
+    merchantName: 'Test',
+    mccCode: 5812,
+  };
+  const res = await POST({
+    json: async () => payload,
+  });
+  assert.equal(res.status, 200);
+}
+
+async function runSimulateProdUnauthorized() {
+  process.env.NODE_ENV = 'production';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { POST } = require('../app/api/simulate/route');
+  const payload = {
+    amountCents: 1000,
+    category: 'DINING',
+    merchantName: 'Test',
+    mccCode: 5812,
+  };
+  const res = await POST({
+    json: async () => payload,
+  });
+  assert.ok(res.status === 401 || res.status >= 400);
+}
+
+async function runSimulationsGetDev() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { GET } = require('../app/api/simulations/route');
+  const res = await GET({ url: 'http://localhost/api/simulations' });
+  assert.equal(res.status, 200);
+}
+
+async function runSimulationsGetProdUnauthorized() {
+  process.env.NODE_ENV = 'production';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { GET } = require('../app/api/simulations/route');
+  const res = await GET({ url: 'http://localhost/api/simulations' });
+  assert.ok(res.status === 401 || res.status >= 400);
+}
+
+async function run() {
+  const originalEnv = process.env.NODE_ENV;
+  await runSimulateDev();
+  await runSimulateProdUnauthorized();
+  await runSimulationsGetDev();
+  await runSimulationsGetProdUnauthorized();
+  process.env.NODE_ENV = originalEnv;
+  console.warn('api-simulate/simulations user-context: ok');
+}
+
+run().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
