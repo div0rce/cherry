@@ -1,12 +1,14 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { prisma } from '@/lib/prisma';
+import { prisma } from './prisma.ts';
 
 export type UserContextMode = 'AUTHENTICATED' | 'LAB_DEMO';
 
 export interface ResolveUserContextOptions {
   requireAuth: boolean;
   allowLabDemo: boolean;
+  sessionOverride?: { user?: { id?: string | null; email?: string | null } } | null;
+  labUserFactory?: () => Promise<{ id: string; email?: string | null }>;
+  getSession?: () => Promise<{ user?: { id?: string | null; email?: string | null } } | null>;
 }
 
 export interface UserContext {
@@ -18,11 +20,36 @@ export interface UserContext {
 const LAB_EMAIL = 'lab+single-user@cherry.dev';
 const LAB_NAME = 'Cherry Lab User';
 
-export async function resolveUserContext(opts: ResolveUserContextOptions): Promise<UserContext> {
-  const { requireAuth, allowLabDemo } = opts;
-  const isProd = process.env.NODE_ENV === 'production';
+async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string; email?: string | null }>) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Unauthorized: lab demo mode is disabled in production');
+  }
 
-  const session = await getServerSession(authOptions);
+  if (factoryOverride) {
+    return factoryOverride();
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: LAB_EMAIL } });
+  if (existing) return existing;
+
+  return prisma.user.create({
+    data: {
+      email: LAB_EMAIL,
+      name: LAB_NAME,
+    },
+  });
+}
+
+export async function resolveUserContext(opts: ResolveUserContextOptions): Promise<UserContext> {
+  const { requireAuth, allowLabDemo, sessionOverride, labUserFactory, getSession } = opts;
+
+  const session =
+    sessionOverride ??
+    (await (async () => {
+      if (getSession) return getSession();
+      const mod = await import('../app/api/auth/[...nextauth]/route');
+      return getServerSession((mod as { authOptions: unknown }).authOptions as never);
+    })());
 
   if (session?.user?.id) {
     return {
@@ -33,18 +60,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
   }
 
   if (!session && allowLabDemo) {
-    if (isProd) {
-      throw new Error('Unauthorized: lab demo mode is disabled in production');
-    }
-
-    const user = await prisma.user.upsert({
-      where: { email: LAB_EMAIL },
-      create: {
-        email: LAB_EMAIL,
-        name: LAB_NAME,
-      },
-      update: {},
-    });
+    const user = await findOrCreateLabUser(labUserFactory);
 
     if (!user.id) {
       throw new Error('Invariant: lab user upsert did not return an id');

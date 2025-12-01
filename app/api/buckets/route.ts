@@ -6,7 +6,6 @@ import { withUser } from '@/lib/with-user';
 import { logError } from '@/lib/logger';
 import { BucketCreateSchema, BucketDeleteSchema } from '@/lib/schemas/buckets';
 import { parseJsonBody } from '@/lib/validation';
-import { ensureUser } from '@/lib/ensure-user';
 import { assertUserId } from '@/lib/invariants';
 import { logInvariant } from '@/lib/logging';
 
@@ -127,8 +126,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const now = new Date();
       const { start: periodStart, end: periodEnd } = getPeriodWindow(period as BucketPeriod, now);
-
-      await ensureUser(userId);
 
       const bucket = await prisma.bucket.create({
         data: {

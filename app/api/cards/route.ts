@@ -6,7 +6,6 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { withUser } from '@/lib/with-user';
 import { CardCreateSchema, CardDeleteSchema } from '@/lib/schemas/cards';
 import { parseJsonBody } from '@/lib/validation';
-import { ensureUser } from '@/lib/ensure-user';
 import { assertUserId } from '@/lib/invariants';
 import { logInvariant } from '@/lib/logging';
 
@@ -139,8 +138,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         })),
       };
     }
-
-    await ensureUser(userId);
 
     try {
       const card = await prisma.card.create({

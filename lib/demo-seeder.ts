@@ -14,7 +14,6 @@ import {
 } from '@prisma/client';
 import type { OverallVerdict } from './enums';
 import { runEngine } from './engine';
-import { ensureUser } from './ensure-user';
 import { randomUUID } from 'crypto';
 
 const cardDefinitions = [
@@ -87,7 +86,15 @@ type SeedCardsBucketsSummary = {
 };
 
 async function assertUserExists(userId: string) {
-  await ensureUser(userId);
+  const existing = await prisma.user.findUnique({ where: { id: userId } });
+  if (existing) return existing;
+  return prisma.user.create({
+    data: {
+      id: userId,
+      email: `${userId}@dev.cherry.local`,
+      name: 'Cherry Demo User',
+    },
+  });
 }
 
 async function upsertDemoCardForUser(userId: string, def: (typeof cardDefinitions)[number]) {
