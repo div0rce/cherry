@@ -32,7 +32,7 @@ function DevShortcut({ href, title, description }: { href: string; title: string
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+      className="group rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
     >
       <p className="text-xs uppercase tracking-label text-slate-400">Dev tool</p>
       <p className="mt-1 text-sm font-semibold text-white">{title}</p>
@@ -61,13 +61,13 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           <>
             <Link
               href="/scan"
-              className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
             >
               Scan
             </Link>
             <Link
               href="/simulate"
-              className="rounded-md border border-pink-500/40 bg-pink-600/20 px-3 py-2 text-sm font-semibold text-pink-100 hover:bg-pink-600/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              className="rounded-md border border-pink-500/40 bg-pink-600/20 px-3 py-2 text-sm font-semibold text-pink-100 hover:bg-pink-600/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
             >
               Simulate
             </Link>
@@ -120,13 +120,13 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/buckets"
-              className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
             >
               Manage buckets
             </Link>
             <Link
               href="/cards"
-              className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
             >
               Manage cards
             </Link>
@@ -139,7 +139,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           actions={
             <Link
               href="/activity"
-              className="text-sm font-semibold text-pink-200 hover:text-pink-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              className="text-sm font-semibold text-pink-200 hover:text-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
             >
               View all →
             </Link>
@@ -194,7 +194,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
         actions={
           <Link
             href="/simulations"
-            className="text-sm font-semibold text-pink-200 hover:text-pink-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            className="text-sm font-semibold text-pink-200 hover:text-pink-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
           >
             View all →
           </Link>

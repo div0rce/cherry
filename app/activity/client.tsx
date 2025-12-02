@@ -2,6 +2,7 @@
 
 import type { JSX, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { ActivitySource, UnifiedActivityRow } from '@/lib/unified-activity';
 
 type TypeFilter = 'REAL' | 'SIMULATED';
@@ -200,29 +201,25 @@ function ActivityTable({
   if (rows.length === 0) {
     if (currentMode === 'SIMULATED') {
       return (
-        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-          <p className="text-sm text-slate-300">
-            No simulated activity yet. Run a Vine simulation or Manual Lookup to see simulated
-            payments here.
-          </p>
-        </div>
+        <EmptyState
+          title="No simulated activity"
+          description="Run a Vine simulation or Manual Lookup to populate simulated payments here."
+        />
       );
     }
     if (currentMode === 'REAL') {
       return (
-        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-          <p className="text-sm text-slate-300">
-            No real transactions yet. Connect a bank feed to populate this view.
-          </p>
-        </div>
+        <EmptyState
+          title="No real transactions"
+          description="Connect a bank feed to populate this view."
+        />
       );
     }
     return (
-      <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-        <p className="text-sm text-slate-300">
-          No activity yet. Connect accounts or run a simulation to populate this view.
-        </p>
-      </div>
+      <EmptyState
+        title="No activity yet"
+        description="Connect accounts or run a simulation to populate this view."
+      />
     );
   }
 

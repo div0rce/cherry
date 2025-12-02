@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { EmptyState } from '@/components/ui/empty-state';
 import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client';
 
 function formatCents(cents: number | null) {
@@ -56,7 +57,10 @@ export default async function CardDetailPage({
           <AddRewardRuleForm cardId={card.id} />
         </div>
         {card.rewardRules.length === 0 ? (
-          <p className="text-sm text-slate-300">No rules yet. Add a category multiplier.</p>
+          <EmptyState
+            title="No rules yet"
+            description="Add a category multiplier so Cherry can compute rewards for this card."
+          />
         ) : (
           <ul className="divide-y divide-white/5">
             {card.rewardRules.map((rule) => (

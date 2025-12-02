@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   AddCardForm,
   AddRewardRuleForm,
@@ -152,7 +153,12 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
 function CardList({ cards }: { cards: Card[] }) {
   if (!cards.length) {
     return (
-      <div className="p-4 text-sm text-slate-300">No cards yet. Add one to get started.</div>
+      <div className="p-4">
+        <EmptyState
+          title="No cards yet"
+          description="Add your cards so the engine can recommend them in simulations and scans."
+        />
+      </div>
     );
   }
 
@@ -179,7 +185,10 @@ function CardList({ cards }: { cards: Card[] }) {
               <AddRewardRuleForm cardId={card.id} />
             </div>
             {card.rewardRules.length === 0 ? (
-              <p className="text-sm text-slate-300">No rules yet. Add a category multiplier.</p>
+              <EmptyState
+                title="No rules yet"
+                description="Add a category multiplier so Cherry can compute rewards for this card."
+              />
             ) : (
               <ul className="space-y-2">
                 {card.rewardRules.map((rule) => (

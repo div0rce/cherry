@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 import Link from 'next/link';
-import { EmptyStateCard } from '@/components/empty-state-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export type SimulationHistoryItem = {
   id: string;
@@ -18,9 +18,10 @@ export type SimulationHistoryItem = {
 
 type EmptyState = {
   title: string;
-  body: string;
-  hint?: string;
-  action?: ReactNode;
+  description: string;
+  actionLabel?: string;
+  actionHref?: string;
+  actionNode?: ReactNode;
 };
 
 type SimulationHistoryListProps = {
@@ -75,8 +76,7 @@ export function SimulationHistoryList({
 
   const emptyStateContent: EmptyState = emptyState ?? {
     title: 'No simulations yet',
-    body: 'Run your first simulation to see how a purchase affects your buckets and card strategy.',
-    hint: 'Use the form on this page to run a scenario, and we will show it here.',
+    description: 'Run your first simulation to see how a purchase affects your buckets and card strategy.',
   };
 
   const headerExists = Boolean(title || subtitle || headerAction);
@@ -158,11 +158,12 @@ export function SimulationHistoryList({
         </ul>
       ) : (
         <div className="px-4 py-5">
-          <EmptyStateCard
+          <EmptyState
             title={emptyStateContent.title}
-            body={emptyStateContent.body}
-            action={emptyStateContent.action}
-            {...(emptyStateContent.hint ? { hint: emptyStateContent.hint } : {})}
+            description={emptyStateContent.description}
+            actionLabel={emptyStateContent.actionLabel}
+            actionHref={emptyStateContent.actionHref}
+            actionNode={emptyStateContent.actionNode}
           />
         </div>
       )}

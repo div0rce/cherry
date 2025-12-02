@@ -265,8 +265,8 @@ export default async function SimulatePage({
             }
             emptyState={{
               title: 'No simulations yet',
-              body: 'Run a simulation to see how Cherry would route a swipe across your cards and buckets.',
-              hint: 'Use the form on the right to post a scenario and we will show it here.',
+              description:
+                'Run a simulation to see how Cherry would route a swipe across your cards and buckets.',
             }}
             error={error}
           />

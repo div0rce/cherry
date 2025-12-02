@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserId } from '@/lib/auth';
 
 function formatCents(cents: number) {
@@ -51,7 +52,10 @@ export default async function SimulationDetailPage({
 
       <section className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
         {sim.transactions.length === 0 ? (
-          <p className="text-sm text-slate-300">No transactions in this simulation yet.</p>
+          <EmptyState
+            title="No transactions yet"
+            description="Run this simulation to generate transaction detail. Each run shows bucket impact and chosen card."
+          />
         ) : (
           <ul className="divide-y divide-white/5">
             {sim.transactions.map((tx, idx) => (

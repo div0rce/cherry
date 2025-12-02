@@ -58,9 +58,9 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
         subtitle="Recent simulation runs and their recorded transactions."
         emptyState={{
           title: 'No simulations yet',
-          body: 'Run your first simulation to see how your buckets behave and which card Cherry would choose.',
-          hint: 'Use the Simulate page to post a scenario and Cherry will save the history here.',
-          action: (
+          description:
+            'Run your first simulation to see how your buckets behave and which card Cherry would choose.',
+          actionNode: (
             <Link href="/simulate" className="text-pink-200 hover:text-pink-100">
               Run a simulation →
             </Link>

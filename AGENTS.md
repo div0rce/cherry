@@ -126,6 +126,12 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 
 ---
 
+### Empty states
+- Use the single shared `EmptyState` component from `components/ui/empty-state.tsx` (or `EmptyList` when inside `<ul>`). Do not inline custom “No X yet” markup.
+- If an action is needed, pass `actionLabel` + `onAction`/`actionHref` or `actionNode`; avoid bespoke CTA layouts.
+
+---
+
 ## Quick File Pointers (per surface)
 - Manual advisory: `app/scan/ScanClient.tsx` → `/api/sessions` (creates session) and `/api/sessions/[id]/confirm`.
 - Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.

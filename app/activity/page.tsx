@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { fetchActivityFeed } from '@/lib/activity/feed';
 
@@ -78,11 +79,10 @@ export default async function ActivityPage(): Promise<JSX.Element> {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-            <p className="text-sm text-slate-300">
-              No activity yet. Create a session from the Scan page to see it show up here.
-            </p>
-          </div>
+          <EmptyState
+            title="No activity yet"
+            description="Create a session from the Scan page or run a simulation to see events show up here."
+          />
         )}
       </div>
     </main>

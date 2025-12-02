@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserId } from '@/lib/auth';
 import { DeleteBucketButton, AddBucketForm } from './client';
 import { getBaseUrl } from '@/lib/base-url';
@@ -89,7 +90,12 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
           {error ? (
             <div className="p-4 text-sm text-red-300">{error}</div>
           ) : buckets.length === 0 ? (
-            <div className="p-4 text-sm text-slate-300">No buckets yet. Add one below.</div>
+            <div className="p-4">
+              <EmptyState
+                title="No buckets yet"
+                description="Create budget envelopes to enforce weekly or monthly limits."
+              />
+            </div>
           ) : (
             <ul className="divide-y divide-white/5">
               {buckets.map((bucket) => (
