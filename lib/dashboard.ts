@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { UnifiedActivityRow } from '@/lib/unified-activity';
 import { getUnifiedActivityForUser } from '@/lib/unified-activity';
+import { computeBucketBalanceFromNumbers } from './buckets-runtime';
 
 export type DashboardStats = {
   cardCount: number;
@@ -39,9 +40,10 @@ function getMonthRange(now: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
-function classifyBucketHealth(bucket: { budgetAmount: number; currentAmount: number }): 'ON_TRACK' | 'AT_RISK' | 'OVER_LIMIT' {
-  const limit = bucket.budgetAmount ?? 0;
-  const remaining = bucket.currentAmount ?? 0;
+function classifyBucketHealth(bucket: { budgetAmount: number; spentCents: number }): 'ON_TRACK' | 'AT_RISK' | 'OVER_LIMIT' {
+  const balance = computeBucketBalanceFromNumbers(bucket.budgetAmount, bucket.spentCents, 0);
+  const limit = balance.limitCents ?? 0;
+  const remaining = balance.remainingCents ?? 0;
 
   if (limit <= 0) {
     return remaining > 0 ? 'AT_RISK' : 'OVER_LIMIT';
@@ -54,7 +56,7 @@ function classifyBucketHealth(bucket: { budgetAmount: number; currentAmount: num
 }
 
 function summarizeBucketHealth(
-  buckets: Array<{ budgetAmount: number; currentAmount: number }>
+  buckets: Array<{ budgetAmount: number; spentCents: number }>
 ): DashboardStats['bucketHealth'] {
   return buckets.reduce<DashboardStats['bucketHealth']>(
     (acc, bucket) => {
@@ -125,7 +127,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     prisma.card.count({ where: { userId } }),
     prisma.bucket.findMany({
       where: { userId },
-      select: { budgetAmount: true, currentAmount: true },
+      select: { budgetAmount: true, spentCents: true },
     }),
     prisma.bankTransaction.count({
       where: {

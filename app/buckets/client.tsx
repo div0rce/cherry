@@ -180,7 +180,7 @@ export function AddBucketForm(): JSX.Element {
         </div>
         <div className="space-y-1">
           <label className="block text-sm font-medium text-slate-300">
-            Current amount (USD, optional)
+            Remaining (USD, optional)
           </label>
           <input
             type="number"
@@ -189,7 +189,7 @@ export function AddBucketForm(): JSX.Element {
             value={currentDollars}
             onChange={(e) => setCurrentDollars(e.target.value)}
             className={inputClass}
-            placeholder="200.00"
+            placeholder="Remaining dollars if already spent some"
           />
         </div>
       </div>

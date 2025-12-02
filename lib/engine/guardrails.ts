@@ -23,11 +23,23 @@ export function validateEngineState(state: EngineState): EngineValidationIssue[]
   }
 
   for (const bucket of state.buckets) {
-    if (bucket.spentCents < 0) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket spentCents' });
+    if (bucket.postedSpendCents < 0) {
+      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket postedSpendCents' });
+    }
+    if (bucket.pendingSpendCents < 0) {
+      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket pendingSpendCents' });
     }
     if (bucket.limitCents != null && bucket.limitCents < 0) {
       issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket limitCents' });
+    }
+    const expectedCommitted = bucket.postedSpendCents + bucket.pendingSpendCents;
+    if (bucket.committedCents !== expectedCommitted) {
+      issues.push({ field: `bucket:${bucket.id}`, message: 'Bucket committedCents mismatch' });
+    }
+    const expectedRemaining =
+      bucket.limitCents != null ? Math.max(0, bucket.limitCents - expectedCommitted) : 0;
+    if (bucket.limitCents != null && bucket.remainingCents !== expectedRemaining) {
+      issues.push({ field: `bucket:${bucket.id}`, message: 'Bucket remainingCents mismatch' });
     }
   }
 
@@ -80,7 +92,11 @@ export function evaluateConstraintsForDecision(
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
     if (!bucket) continue;
-    if (bucket.isEssential && bucket.limitCents != null && proj.projectedSpentCents > bucket.limitCents) {
+    if (
+      bucket.isEssential &&
+      bucket.limitCents != null &&
+      proj.projectedCommittedCents > bucket.limitCents
+    ) {
       breaches.push('HARD:ESSENTIAL_BUCKET_OVER_LIMIT');
     }
   }
@@ -116,7 +132,7 @@ export function evaluateConstraintsForDecision(
       (bucket) => bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential
     );
     if (essentialBucket && essentialBucket.limitCents != null) {
-      const margin = essentialBucket.limitCents - essentialBucket.spentCents - amount;
+      const margin = essentialBucket.remainingCents - amount;
       if (margin >= 0) {
         breaches.push('SOFT:ESSENTIAL_PURCHASE_DELAY');
       }

@@ -51,13 +51,12 @@ export function mapSolverDecisionToLegacyDecision(input: {
   const bucketProj = solverDecision.projections.buckets.at(0);
   const bucket = bucketProj ? state.buckets.find((b) => b.id === bucketProj.bucketId) : undefined;
   const limitCents = bucket?.limitCents ?? null;
-  const spentAfterCents = bucketProj?.projectedSpentCents ?? null;
-  const spentBeforeCents =
-    spentAfterCents != null ? Math.max(spentAfterCents - amountCents, 0) : null;
+  const committedAfterCents = bucketProj?.projectedCommittedCents ?? null;
+  const committedBeforeCents = bucket?.committedCents ?? null;
   const remainingAfterCents =
-    limitCents != null && spentAfterCents != null ? limitCents - spentAfterCents : null;
+    limitCents != null && committedAfterCents != null ? limitCents - committedAfterCents : null;
   const wouldExceed =
-    limitCents != null && spentAfterCents != null ? spentAfterCents > limitCents : false;
+    limitCents != null && committedAfterCents != null ? committedAfterCents > limitCents : false;
 
   let budgetVerdict: BudgetVerdict = 'UNCONFIGURED';
   let coverageMode: LegacyEngineDecision['budget']['coverageMode'] = 'UNCONFIGURED';
@@ -67,7 +66,11 @@ export function mapSolverDecisionToLegacyDecision(input: {
       budgetVerdict = 'UNBOUNDED';
     } else if (wouldExceed) {
       budgetVerdict = 'BREAKS_BUDGET';
-    } else if (remainingAfterCents != null && limitCents > 0 && remainingAfterCents / limitCents < 0.1) {
+    } else if (
+      remainingAfterCents != null &&
+      limitCents > 0 &&
+      remainingAfterCents / limitCents < 0.1
+    ) {
       budgetVerdict = 'BORDERLINE';
     } else {
       budgetVerdict = 'HEALTHY';
@@ -115,8 +118,8 @@ export function mapSolverDecisionToLegacyDecision(input: {
   if (bucket?.id) budget.bucketId = bucket.id;
   if (bucket?.name) budget.name = bucket.name;
   if (limitCents != null) budget.limitCents = limitCents;
-  if (spentBeforeCents != null) budget.spentBeforeCents = spentBeforeCents;
-  if (spentAfterCents != null) budget.spentAfterCents = spentAfterCents;
+  if (committedBeforeCents != null) budget.spentBeforeCents = committedBeforeCents;
+  if (committedAfterCents != null) budget.spentAfterCents = committedAfterCents;
   if (remainingAfterCents != null) budget.remainingAfterCents = remainingAfterCents;
 
   const cardPayload: LegacyEngineDecision['card'] = {

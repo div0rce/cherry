@@ -23,6 +23,14 @@ function cloneDebts(debts: EngineState['debts']): EngineState['debts'] {
   return debts.map((d) => ({ ...d }));
 }
 
+function recomputeBucketBalance(bucket: EngineState['buckets'][number]): void {
+  const limit = bucket.limitCents ?? 0;
+  const posted = bucket.postedSpendCents ?? 0;
+  const pending = bucket.pendingSpendCents ?? 0;
+  bucket.committedCents = posted + pending;
+  bucket.remainingCents = Math.max(0, limit - bucket.committedCents);
+}
+
 function applyUseCard(
   buckets: EngineState['buckets'],
   debts: EngineState['debts'],
@@ -37,7 +45,8 @@ function applyUseCard(
   if (bucketId) {
     const bucket = buckets.find((b) => b.id === bucketId);
     if (bucket) {
-      bucket.spentCents += amount;
+      bucket.postedSpendCents += amount;
+      recomputeBucketBalance(bucket);
     }
   }
 
@@ -79,6 +88,7 @@ export function simulateAction(
 } {
   const amount = ctx.amountCents ?? 0;
   const clonedBuckets = cloneBuckets(state.buckets);
+  clonedBuckets.forEach(recomputeBucketBalance);
   const clonedDebts = cloneDebts(state.debts);
 
   switch (action.type) {
@@ -112,11 +122,20 @@ export function simulateAction(
       break;
   }
 
-  const buckets: BucketProjection[] = clonedBuckets.map((b) => ({
-    bucketId: b.id,
-    projectedSpentCents: b.spentCents,
-    projectedOverLimit: b.limitCents != null ? b.spentCents > b.limitCents : false,
-  }));
+  const buckets: BucketProjection[] = clonedBuckets.map((b) => {
+    const projectedCommitted = b.postedSpendCents + b.pendingSpendCents;
+    const projectedRemaining = Math.max(0, (b.limitCents ?? 0) - projectedCommitted);
+    const projectedOverLimit =
+      b.limitCents != null ? projectedCommitted > b.limitCents : false;
+    return {
+      bucketId: b.id,
+      projectedPostedSpendCents: b.postedSpendCents,
+      projectedPendingSpendCents: b.pendingSpendCents,
+      projectedCommittedCents: projectedCommitted,
+      projectedRemainingCents: projectedRemaining,
+      projectedOverLimit,
+    };
+  });
 
   const debt: DebtProjection[] = clonedDebts.map((d) => ({
     debtId: d.id,

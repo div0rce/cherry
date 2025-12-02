@@ -194,7 +194,10 @@ function testSimulateActionUpdatesBucket() {
         name: 'Dining',
         categoryKey: 'DINING',
         limitCents: 5000,
-        spentCents: 1000,
+        postedSpendCents: 1000,
+        pendingSpendCents: 0,
+        committedCents: 1000,
+        remainingCents: 4000,
         period: 'MONTHLY',
         isEssential: false,
         strictMode: false,
@@ -205,7 +208,8 @@ function testSimulateActionUpdatesBucket() {
   const ctx = buildStubContext();
   const projections = simulateAction(state, ctx, { type: 'USE_CARD', cardId: 'card-strong' });
   const bucketProj = projections.buckets.find((b) => b.bucketId === 'bucket-1');
-  assert.equal(bucketProj?.projectedSpentCents, 2000);
+  assert.equal(bucketProj?.projectedPostedSpendCents, 2000);
+  assert.equal(bucketProj?.projectedCommittedCents, 2000);
 }
 
 function testGenerateCandidatesAddsAdvancedActions() {

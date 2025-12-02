@@ -1,5 +1,5 @@
 Status: Active reference
-Last updated: 2025-11-30
+Last updated: 2025-12-02
 
 # Cherry System Map and Near-Term Plan
 
@@ -20,7 +20,7 @@ This file summarizes where those concepts live in code today and highlights gaps
   - Advisory-only: `/api/scan` (stateless) in `app/api/scan/route.ts` for pre-swipe lookup, App Clip/Pass hooks; accepts MCC/category hints and allows `expectedAmountCents = 0`.
   - Context ingest: `/api/vine/order` (dev-only) accepts Vine terminal payloads or `OrderContext`, enforces freshness (~3 minutes), and creates sessions; simulator UI at `/vine-simulator`.
 - **Evaluate**
-  - Canonical engine: `lib/engine.ts` (+ invariants in `lib/engine-invariants.ts`), MCC-aware via `resolveCategory`; buckets are rolled in-memory before verdicts.
+  - Canonical engine: `lib/engine.ts` (+ invariants in `lib/engine-invariants.ts`), MCC-aware via `resolveCategory`; buckets are rolled in-memory and normalized via `lib/buckets-runtime.ts` before verdicts.
   - Zod schemas ensure typed inputs (`lib/validation/*`).
 - **Recommend**
   - Decisions flow back to clients (`ScanClient`, Vine simulator) with bucket/card verdicts and Cherry incentive offers; `RecommendationSession` stores verdicts, coverageMode, orderToken, expiry.
@@ -31,7 +31,7 @@ This file summarizes where those concepts live in code today and highlights gaps
 ---
 
 ## Data Model Snapshot (Prisma)
-- `Bucket`: budgets per RewardCategory (`budgetAmount`, `spentCents`, `strictMode`, `periodStart/End`).
+- `Bucket`: budgets per RewardCategory (`budgetAmount`, `spentCents`, `strictMode`, `periodStart/End`, legacy `currentAmount`); runtime balances (`committedCents`, `remainingCents`) come from `lib/buckets-runtime.ts`.
 - `Card` + `RewardRule`: user cards and category multipliers.
 - `RecommendationSession`: persisted recommendation (merchant/mcc/category/amount, verdicts, coverageMode, offered points, expiry, anomalies, orderToken/device/store/terminal IDs).
 - `CherryPointLedger`: points movements (PENDING/POSTED/REVOKED) tied to sessions; anomalies recorded.
@@ -52,7 +52,7 @@ This file summarizes where those concepts live in code today and highlights gaps
 
 ## Known Gaps / TODOs
 - Bucket balance reversals are not wired to verification outcomes; rejected claims leave `spentCents` incremented.
-- `currentAmount` remains a legacy field; multiple buckets per category are not prioritized beyond first-created.
+- Multiple buckets per category are not prioritized beyond first-created; bucket selection remains naive.
 - Vine ingest lacks HMAC/nonce verification and cleanup of expired order tokens (dev-only).
 - Wallet pass remains gated; keep 501 until certs are provided and feature flag is on.
 - Auto-verification is stubbed; future bank/receipt/Vine correlation should move ledger from PENDING → POSTED without manual calls.
@@ -62,7 +62,7 @@ This file summarizes where those concepts live in code today and highlights gaps
 ## Next Focus Areas
 1) **Bucket integrity**
    - Decide on spend reversal policy when verification fails; document and implement.
-   - Remove/retire `currentAmount` from math or clearly mark as legacy in UI.
+   - Keep `lib/buckets-runtime.ts` as the single source of truth for balances; ensure any legacy `currentAmount` mirrors derived remaining only.
    - Add tests for rollover, strict-mode overspend, and confirm-time spend increments.
 2) **Vine hardening**
    - Add HMAC/nonce validation and token cleanup; keep freshness window documented.

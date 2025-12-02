@@ -1,4 +1,5 @@
 import { applyInMemoryRollover } from '@/lib/buckets/periods';
+import { toBucketRuntime } from '@/lib/buckets-runtime';
 import { prisma } from '@/lib/prisma';
 import type {
   Bucket,
@@ -140,15 +141,19 @@ async function loadBuckets(userId: string): Promise<Bucket[]> {
 
   return buckets.map((bucket) => {
     const rolled = applyInMemoryRollover(bucket, now);
+    const runtime = toBucketRuntime(rolled);
     return {
-      id: rolled.id,
-      name: rolled.name,
-      categoryKey: rolled.category,
-      limitCents: rolled.budgetAmount ?? null,
-      spentCents: rolled.spentCents ?? 0,
-      period: rolled.period === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY',
+      id: runtime.id,
+      name: runtime.name,
+      categoryKey: runtime.category,
+      limitCents: runtime.limitCents,
+      postedSpendCents: runtime.postedSpendCents,
+      pendingSpendCents: runtime.pendingSpendCents,
+      committedCents: runtime.committedCents,
+      remainingCents: runtime.remainingCents,
+      period: runtime.period === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY',
       isEssential: false,
-      strictMode: rolled.strictMode ?? false,
+      strictMode: runtime.strictMode ?? false,
     };
   });
 }

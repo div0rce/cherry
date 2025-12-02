@@ -1,11 +1,12 @@
 import { prisma } from '@/lib/prisma';
 import type { Bucket } from '@prisma/client';
 import { logError, logInfo } from '@/lib/logger';
+import { computeBucketBalanceFromNumbers } from '@/lib/buckets-runtime';
 
 /**
  * One-off reconciliation script to normalize buckets:
  * - Uppercases categories (so they align with reward rule categories)
- * - Ensures currentAmount is initialized and not negative; resets missing/negative to budgetAmount
+ * - Ensures currentAmount mirrors the canonical remaining (budgetAmount - spentCents, clamped at 0)
  *
  * Run with:
  *   npx tsx prisma/scripts/fixBuckets.ts
@@ -14,14 +15,16 @@ async function main() {
   const buckets = await prisma.bucket.findMany();
   for (const bucket of buckets) {
     const updates: Partial<Pick<Bucket, 'category' | 'currentAmount'>> = {};
+    const balance = computeBucketBalanceFromNumbers(bucket.budgetAmount, bucket.spentCents, 0);
+    const derivedCurrentAmount = balance.remainingCents;
 
     const normalizedCategory = bucket.category.toUpperCase() as Bucket['category'];
     if (normalizedCategory !== bucket.category) {
       updates.category = normalizedCategory;
     }
 
-    if (bucket.currentAmount == null || bucket.currentAmount < 0) {
-      updates.currentAmount = bucket.budgetAmount;
+    if (bucket.currentAmount == null || bucket.currentAmount < 0 || bucket.currentAmount !== derivedCurrentAmount) {
+      updates.currentAmount = derivedCurrentAmount;
     }
 
     if (Object.keys(updates).length > 0) {

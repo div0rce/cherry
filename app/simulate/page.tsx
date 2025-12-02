@@ -70,7 +70,7 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
     const bucketCategory = sim.bucket?.category ?? sim.resolvedCategory;
     const bucketLimit = sim.bucketLimitCents ?? sim.bucket?.budgetAmount ?? null;
     const bucketRemainingBefore = sim.bucketBeforeCents;
-    const bucketRemainingAfter = sim.bucketAfterCents ?? sim.bucket?.currentAmount ?? null;
+    const bucketRemainingAfter = sim.bucketAfterCents ?? null;
     const bucketStrictFlag =
       typeof sim.bucket?.strictMode === 'boolean'
         ? sim.bucket.strictMode

@@ -230,6 +230,13 @@ model RewardRule {
   updatedAt DateTime @updatedAt
 }
 
+/// Bucket invariants (runtime, not DB-enforced):
+/// - budgetAmount: configured periodic cap/target (limit).
+/// - spentCents: settled/posted debits for this period.
+/// - pendingSpendCents: not stored in the DB today; assumed 0 unless added later.
+/// - committed = spentCents + pendingSpendCents.
+/// - remaining = max(0, budgetAmount - committed).
+/// - currentAmount is legacy and should mirror remaining on write; do not treat it as the source of truth.
 model Bucket {
   id     String @id @default(cuid())
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -238,8 +245,8 @@ model Bucket {
   name          String // "Food", "Fun", "Gas"
   period        BucketPeriod
   budgetAmount  Int // total budget for the period (cents)
-  currentAmount Int // remaining amount in this period (cents)
-  spentCents    Int      @default(0) // total spent in this period (cents)
+  currentAmount Int // legacy remaining at write time (cents); derive from budgetAmount/spentCents
+  spentCents    Int      @default(0) // settled/posted spend for this period (cents)
   strictMode    Boolean      @default(true) // decline if over
   category      RewardCategory
   periodStart   DateTime @default(now())

@@ -25,6 +25,7 @@ import {
   SimulatedTransaction,
   TransactionStatus,
 } from '@prisma/client';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime';
 
 export interface SimulationInput {
   amountCents: number;
@@ -189,11 +190,13 @@ export async function runSimulation(
   }
 
   const bucket = await pickBucketForCategory(prisma, userId, resolvedCategory);
-  const bucketStartingAmount = bucket?.currentAmount ?? bucket?.budgetAmount ?? null;
-  const bucketBefore = bucketStartingAmount;
+  const bucketBalance = bucket
+    ? computeBucketBalanceFromNumbers(bucket.budgetAmount, bucket.spentCents ?? 0, 0)
+    : null;
+  const bucketBefore = bucketBalance?.remainingCents ?? null;
 
   // strict bucket decline
-  if (bucket && bucket.strictMode && bucket.currentAmount < amountCents) {
+  if (bucket && bucketBalance && bucket.strictMode && bucketBalance.remainingCents < amountCents) {
     const tx = await prisma.simulatedTransaction.create({
       data: {
         userId,
@@ -220,13 +223,22 @@ export async function runSimulation(
 
   // Approved path
   const rewards = computeRewards(amountCents, rule);
-  const bucketAfter = bucketStartingAmount != null ? bucketStartingAmount - amountCents : null;
+  const bucketAfter =
+    bucketBalance != null ? Math.max(0, bucketBalance.remainingCents - amountCents) : null;
 
   const tx = await prisma.$transaction(async (txPrisma) => {
-    if (bucket && bucketAfter != null) {
+    if (bucket && bucketAfter != null && bucketBalance) {
+      const updatedBalance = computeBucketBalanceFromNumbers(
+        bucketBalance.limitCents,
+        bucketBalance.postedSpendCents + amountCents,
+        bucketBalance.pendingSpendCents
+      );
       await txPrisma.bucket.update({
         where: { id: bucket.id },
-        data: { currentAmount: bucketAfter },
+        data: {
+          spentCents: updatedBalance.postedSpendCents,
+          currentAmount: deriveLegacyCurrentAmount(updatedBalance),
+        },
       });
     }
 

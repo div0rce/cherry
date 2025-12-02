@@ -78,6 +78,7 @@ export function applyInMemoryRollover(bucket: Bucket, now: Date): BucketWithDeri
     periodStart: newPeriodStart,
     periodEnd: newPeriodEnd,
     spentCents: 0,
+    currentAmount: bucket.budgetAmount,
     lastResetAt: now,
     isExpired: true,
   };

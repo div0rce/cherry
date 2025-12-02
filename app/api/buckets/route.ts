@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
 import { BucketCreateSchema, BucketDeleteSchema } from '@/lib/schemas/buckets';
 import { parseJsonBody } from '@/lib/validation';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount, toBucketRuntime } from '@/lib/buckets-runtime';
 import {
   assertUserId,
   isPrismaP2003,
@@ -53,7 +54,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json(buckets);
+    const runtimeBuckets = buckets.map(toBucketRuntime);
+    return NextResponse.json(runtimeBuckets);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -153,21 +155,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const now = new Date();
     const { start: periodStart, end: periodEnd } = getPeriodWindow(period as BucketPeriod, now);
+    const limitCents = Math.floor(budgetAmountCents);
+    const postedSpendCents =
+      currentCentsValue == null ? 0 : Math.max(limitCents - currentCentsValue, 0);
+    const balance = computeBucketBalanceFromNumbers(limitCents, postedSpendCents, 0);
 
     const bucket = await prisma.bucket.create({
       data: {
         userId,
         name: normalizedName,
         period: period as BucketPeriod,
-        budgetAmount: Math.floor(budgetAmountCents),
-        currentAmount:
-          currentCentsValue == null
-            ? Math.floor(budgetAmountCents)
-            : Math.min(currentCentsValue, Math.floor(budgetAmountCents)),
-        spentCents:
-          currentCentsValue == null
-            ? 0
-            : Math.max(Math.floor(budgetAmountCents) - currentCentsValue, 0),
+        budgetAmount: limitCents,
+        currentAmount: deriveLegacyCurrentAmount(balance),
+        spentCents: balance.postedSpendCents,
         periodStart,
         periodEnd,
         strictMode: Boolean(strictMode),
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     });
 
-    return NextResponse.json(bucket, { status: 201 });
+    return NextResponse.json(toBucketRuntime(bucket), { status: 201 });
   } catch (error) {
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets POST', {

@@ -50,8 +50,11 @@ export type Bucket = {
   id: BucketId;
   name: string;
   categoryKey: string;
-  limitCents: number | null;
-  spentCents: number;
+  limitCents: number;
+  postedSpendCents: number;
+  pendingSpendCents: number;
+  committedCents: number;
+  remainingCents: number;
   period: 'MONTHLY' | 'WEEKLY' | 'ADHOC';
   isEssential: boolean;
   strictMode?: boolean;
@@ -141,7 +144,10 @@ export type EngineAction = {
 
 export type BucketProjection = {
   bucketId: BucketId;
-  projectedSpentCents: number;
+  projectedPostedSpendCents: number;
+  projectedPendingSpendCents: number;
+  projectedCommittedCents: number;
+  projectedRemainingCents: number;
   projectedOverLimit: boolean;
 };
 

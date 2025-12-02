@@ -17,6 +17,7 @@ import { runEngine } from './engine';
 import { randomUUID } from 'crypto';
 import { assertUserId } from './invariants';
 import { isPrismaP2003, logInvariant } from './user-context';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime';
 
 const cardDefinitions = [
   {
@@ -59,7 +60,6 @@ const bucketDefinitions = [
     name: 'Dining Monthly',
     period: BucketPeriod.MONTHLY,
     budgetAmount: 40_000,
-    currentAmount: 25_000,
     spentCents: 15_000,
     strictMode: true,
     category: RewardCategory.DINING,
@@ -68,7 +68,6 @@ const bucketDefinitions = [
     name: 'Groceries Monthly',
     period: BucketPeriod.MONTHLY,
     budgetAmount: 30_000,
-    currentAmount: 25_000,
     spentCents: 5_000,
     strictMode: false,
     category: RewardCategory.GROCERIES,
@@ -154,6 +153,8 @@ async function seedDemoBucketsForUser(
   periodEnd: Date,
 ): Promise<number> {
   for (const bucket of bucketDefinitions) {
+    const balance = computeBucketBalanceFromNumbers(bucket.budgetAmount, bucket.spentCents, 0);
+    const legacyCurrentAmount = deriveLegacyCurrentAmount(balance);
     const existing = await prisma.bucket.findFirst({ where: { userId, name: bucket.name } });
     if (existing) {
       await prisma.bucket.update({
@@ -161,8 +162,8 @@ async function seedDemoBucketsForUser(
         data: {
           period: bucket.period,
           budgetAmount: bucket.budgetAmount,
-          currentAmount: bucket.currentAmount,
-          spentCents: bucket.spentCents,
+          currentAmount: legacyCurrentAmount,
+          spentCents: balance.postedSpendCents,
           strictMode: bucket.strictMode,
           category: bucket.category,
           periodStart,
@@ -176,8 +177,8 @@ async function seedDemoBucketsForUser(
           name: bucket.name,
           period: bucket.period,
           budgetAmount: bucket.budgetAmount,
-          currentAmount: bucket.currentAmount,
-          spentCents: bucket.spentCents,
+          currentAmount: legacyCurrentAmount,
+          spentCents: balance.postedSpendCents,
           strictMode: bucket.strictMode,
           category: bucket.category,
           periodStart,

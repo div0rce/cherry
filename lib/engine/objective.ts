@@ -175,8 +175,7 @@ function scoreComponents(
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
     if (!bucket) continue;
     if (bucket.isEssential && bucket.limitCents != null) {
-      const remaining = bucket.limitCents - proj.projectedSpentCents;
-      runway += remaining;
+      runway += proj.projectedRemainingCents;
     }
   }
 

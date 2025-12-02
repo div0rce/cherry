@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-11-30
+Last updated: 2025-12-02
 
 # Cherry Core Loop / Engine / Vine / Wallet Pass Audit (Verified)
 
@@ -12,13 +12,13 @@ Audited areas: advisory scan, sessions/ledger, buckets/engine, Vine ingest, Wall
 
 Code inspected:
 - Prisma schema: `prisma/schema.prisma` (Bucket, RecommendationSession, CherryPointLedger, Card/RewardRule, etc.).
-- Engine and helpers: `lib/engine.ts`, `lib/engine-invariants.ts`, `lib/scan-helpers.ts`, `lib/buckets/periods.ts`, `lib/buckets/ensure-fresh.ts`.
+- Engine and helpers: `lib/engine.ts`, `lib/engine-invariants.ts`, `lib/scan-helpers.ts`, `lib/buckets/periods.ts`, `lib/buckets/ensure-fresh.ts`, `lib/buckets-runtime.ts`.
 - Sessions/ledger APIs: `app/api/sessions/route.ts`, `app/api/sessions/[id]/route.ts`, `app/api/sessions/[id]/confirm/route.ts`, `app/api/sessions/[id]/verify/route.ts`, `lib/verification/verify-session.ts`.
 - Advisory scan API: `app/api/scan/route.ts`, `lib/schemas/scan.ts`.
 - Vine ingest: `app/api/vine/order/route.ts`, `lib/vine/order-context.ts`, `lib/vine/run-recommendation.ts`, `lib/schemas/vine.ts`, `lib/schemas/vine-terminal.ts`.
 - Wallet pass: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/config.ts`, `lib/wallet/cherryPass.ts`.
 - Auth helpers: `lib/auth.ts`, `lib/with-user.ts`, `app/api/auth/[...nextauth]/route.ts`.
-- Legacy simulation engine: `lib/simulation.ts` (not used by core routes but relevant for drift).
+- Legacy simulation engine: `lib/simulation.ts` (archived; not used by core routes).
 - Tests: `tests/*.test.js`.
 
 Docs consulted:
@@ -33,18 +33,18 @@ Docs consulted:
 
 - Engine (`lib/engine.ts`, `lib/engine-invariants.ts`):
   - Resolves category (MCC → explicit → heuristics).
-  - Fetches buckets for the category; applies `applyInMemoryRollover` (`lib/buckets/periods.ts`) to advance weekly/monthly windows and reset `spentCents` to 0 when expired; picks the earliest-created bucket.
-  - Budget verdicts computed from `budgetAmount` + rolled `spentCents`; strictness flagged but no decline logic here.
+  - Fetches buckets for the category; applies `applyInMemoryRollover` (`lib/buckets/periods.ts`) to advance weekly/monthly windows, normalizes via `toBucketRuntime` (`lib/buckets-runtime.ts`) to attach `committedCents`/`remainingCents`, and picks the earliest-created bucket.
+  - Budget verdicts/guardrails computed from `remainingCents` (not raw `limitCents`); strictness flagged but no decline logic here.
   - Card selection chooses best multiplier rule per category (fallback GENERAL_MERCHANDISE/OTHER) and estimates rewards; if no cards, verdict `NO_CARD_DATA`.
   - Incentives: base `min(floor(amount/1000), 20)`, doubled for `HEALTHY`, zeroed for `BREAKS_BUDGET`; zero if `amountCents <= 0`.
   - Invariants enforce consistency (no incentives with `INSUFFICIENT_DATA` or `NO_CARD_DATA`, coverage mode matches bucket presence, etc.).
-  - `/api/simulate` uses the same engine via `lib/simulation-adapter.ts`; `lib/simulation.ts` is archived legacy and unused at runtime.
 
-- Buckets (`prisma/schema.prisma`, `app/api/buckets/route.ts`, `lib/buckets/*`):
-  - Schema fields: `budgetAmount`, `currentAmount` (legacy after create), `spentCents` (default 0), `strictMode` default true, `periodStart/periodEnd` defaults now, `lastResetAt` optional.
-  - Creation sets weekly window (Monday 00:00) or monthly (1st → next 1st) and initializes `spentCents = budgetAmount - currentAmount` when `currentAmount` provided.
-  - `ensureBucketFresh` applies in-memory rollover and persists updated `periodStart`/`periodEnd`/`spentCents`/`lastResetAt` when stale.
-- Verification rejection now reverses bucket spend once: when a confirmed session is rejected, `Bucket.spentCents` is decremented by `confirmedAmountCents` (bounded at 0) and `bucketSpendReversed` is set to prevent double reversals.
+- Buckets (`prisma/schema.prisma`, `app/api/buckets/route.ts`, `lib/buckets/*`, `lib/buckets-runtime.ts`):
+  - Schema fields: `budgetAmount` (limit), `spentCents` (posted), `currentAmount` (legacy mirror), `strictMode`, `periodStart/periodEnd`, `lastResetAt`.
+  - Canonical math: `computeBucketBalanceFromNumbers` (pending=0 today) → `committedCents` and `remainingCents` (clamped at 0); `currentAmount` is written as the derived remaining for legacy consumers.
+  - Creation sets weekly window (Monday 00:00) or monthly (1st → next 1st), derives balances via `computeBucketBalanceFromNumbers`, and persists `budgetAmount`/`spentCents`/`currentAmount`.
+  - `ensureBucketFresh` applies in-memory rollover, recomputes balances, and persists updated `periodStart`/`periodEnd`/`spentCents`/`currentAmount`/`lastResetAt` when stale.
+  - No automatic reversal of `spentCents` on verification rejection.
 
 - Sessions & ledger:
   - Creation (`POST /api/sessions`, `app/api/sessions/route.ts`):
@@ -54,13 +54,13 @@ Docs consulted:
   - Confirm (`POST /api/sessions/[id]/confirm`, `app/api/sessions/[id]/confirm/route.ts`):
     - Blocks missing/expired/claimed/verified/rejected sessions.
     - Anomalies: amount ratio outside 0.85–1.15 → `AMOUNT_MISMATCH`; claim older than 24h → `TIME_WINDOW_VIOLATION`; card mismatch → `CARD_MISMATCH`.
-    - Freshens bucket via `ensureBucketFresh` and increments `spentCents` by claimed/recommended amount once per session; records `confirmedAmountCents` on the session and resets `bucketSpendReversed` to false.
+    - Freshens bucket via `ensureBucketFresh` and increments `spentCents` by claimed/recommended amount once per session.
     - Writes `CherryPointLedger` row(s) with `status = PENDING`, anomaly mirrored to ledger code `SESSION_ANOMALOUS`.
     - Calls `autoVerifySession` (stub returns null).
   - Verify (`POST /api/sessions/[id]/verify`, `app/api/sessions/[id]/verify/route.ts`):
     - Sets session to `VERIFIED` or `REJECTED`, `verificationStatus` accordingly; anomaly escalates to `VERIFICATION_CONFLICT` if rejecting a clean session.
     - Updates PENDING ledger rows to `POSTED` (verified) or `REVOKED` (rejected); sets anomaly code if present.
-    - Reverses bucket spend exactly once when `verified=false` and `confirmedAmountCents` is set, using `bucketSpendReversed` to prevent double reversals.
+    - TODO noted to consider reversing bucket spend on rejection (code comment added).
   - Ledger model: `CherryPointLedger.status` default `PENDING` in schema; anomaly flags stored separately; linked to `sessionId`, `cardId`, `merchantObservationId`.
 
 - Vine ingest (`app/api/vine/order/route.ts`):
@@ -80,63 +80,39 @@ Docs consulted:
   - `withUser` (`lib/with-user.ts`) pulls `getServerSession` userId; returns 401 otherwise.
 
 - Tests:
-  - Engine invariants, wallet-pass config, bucket periods, vine order mapping, and client API smoke tests in `tests/*.test.js`; all passing as of this audit.
+  - Engine invariants, wallet-pass config, bucket periods, engine bucket remaining vs total limit, vine order mapping, and client API smoke tests in `tests/*.test.js`; all passing as of this audit.
 
 ## 2. Gaps vs Vision / Legal Constraints
-- Reversal implemented only for single-bucket sessions using `confirmedAmountCents` and `bucketSpendReversed`; multi-bucket or partial verification flows are not supported.
+- Spend reversal on verification rejection is absent; rejected claims leave bucket `spentCents` incremented (vision expects advisory accuracy; legal OK but can mislead budgets).
 - Verification automation is stubbed (`lib/verification/verify-session.ts`); no real signals or auto-posting.
 - Vine security is minimal: no HMAC/nonce validation or device registry; freshness only. Needs future hardening to avoid spoofed context (legal constraint: context-only, but spoofing could degrade trust).
-- Legacy/duplicate engine logic in `lib/simulation.ts` (separate category resolver, bucket/currentAmount usage) risks drift from canonical engine; not used by core flow but could confuse contributors.
-- `currentAmount` field remains legacy; docs and engine ignore it post-create. Column persists but is not used in budget math.
-- `CategoryPreference.category` is now a `RewardCategory` enum; no arbitrary strings allowed (legacy string field migrated).
+- Legacy/duplicate engine logic in `lib/simulation.ts` (archived) still exists; while balance math now reuses canonical helper, the separate category resolver risks drift if revived.
 - Wallet pass generation still reads certs when fully enabled; acceptable, but ensure feature flag stays off by default to avoid accidental filesystem access. Currently compliant.
 
 ## 3. Risks and Impact (Ranked)
-- High — Verification stub (signals) and limited reversal semantics:
-  - Impact: reversal only covers the confirmed bucket/amount; no automation from external signals. Evidence: `app/api/sessions/[id]/confirm/route.ts` sets `confirmedAmountCents`; `app/api/sessions/[id]/verify/route.ts` reverses when `verified=false` using `bucketSpendReversed`.
+- High — Verification stub & spend permanence on rejection:
+  - Impact: budgets remain inflated after a rejected claim; user-facing advice could be off. Evidence: `app/api/sessions/[id]/confirm/route.ts` increments bucket; `app/api/sessions/[id]/verify/route.ts` has TODO and no reversal.
 - Medium — Vine lacks HMAC/nonce/device auth:
   - Impact: spoofed Vine events could create sessions with misleading recommendations. Evidence: `app/api/vine/order/route.ts` TODO comment section, no auth beyond freshness.
 - Medium — Legacy simulation engine drift:
-  - Impact: future contributors might reuse `lib/simulation.ts` and diverge from canonical engine (rollover/incentive rules). Evidence: separate `resolveCategory`/card logic in `lib/simulation.ts` not used by main APIs.
-- Low — `currentAmount` legacy field:
-  - Impact: confusion about balance source of truth if surfaced; engine uses `spentCents` only. Evidence: schema `Bucket.currentAmount` remains but is documented as legacy; creation seeds `spentCents` only.
+  - Impact: future contributors might reuse `lib/simulation.ts` and diverge from canonical engine (rollover/incentive rules) even though balances now use the shared helper. Evidence: separate `resolveCategory`/card logic in `lib/simulation.ts` not used by main APIs.
 
 ## 4. Concrete Fixes / Migrations
 - Bucket spend reversal policy:
-  - Implemented: `confirmedAmountCents` persists the applied spend; `verify(verified=false)` reverses once using `bucketSpendReversed` and `ensureBucketFresh`. Future: consider multi-bucket or partial verification semantics if ever supported.
+  - Decide whether to reverse `spentCents` on verification rejection. If yes, adjust `app/api/sessions/[id]/verify/route.ts` to roll back `spentCents` for the relevant bucket (after `ensureBucketFresh`) when moving to `REJECTED`. Document in `docs/buckets-rollover-plan.md`.
 - Verification automation:
   - Implement signals in `lib/verification/verify-session.ts` (bank/receipt/Vine) and trigger `/api/sessions/[id]/verify` with `verified: true/false` based on evidence. Add tests covering state transitions and anomalies.
 - Vine hardening:
   - Add HMAC/nonce verification and device registry table; validate signatures in `app/api/vine/order/route.ts` before running the engine. Update `docs/cherry-vine.md` and `docs/api.md` with signature format and failure modes.
   - Add cleanup (cron/script) to mark expired Vine-created `RecommendationSession` rows as `EXPIRED` and invalidate tokens.
 - Engine/Simulation consolidation:
-  - Mark `lib/simulation.ts` as legacy in its header or refactor callers to use `runEngine`; ensure any remaining uses either import the canonical engine or are archived.
+  - Keep `lib/simulation.ts` marked legacy or refactor any future callers to use `runEngine`; ensure any remaining uses either import the canonical engine or are archived.
 - Schema hygiene:
-  - `CategoryPreference.category` is enum-based; keep validation aligned. Consider dropping legacy `currentAmount` column in a future cleanup; today it is documented as legacy and unused in budget math.
+  - Keep `currentAmount` documented as legacy-only; rely on `lib/buckets-runtime.ts` for derived balances and avoid surfacing `currentAmount` in UI math.
 
 ## 5. Short-Term Plan (Implementation Checklist)
 1) Bucket verification alignment:
-   - DONE: rollback logic implemented in `/api/sessions/[id]/verify`. Remaining: expand if multi-bucket sessions are introduced.
-   - Add more tests if bucket selection changes (strict-first, multi-bucket).
+   - Add rollback logic in `app/api/sessions/[id]/verify/route.ts` (guarded by TODO) and document in `docs/buckets-rollover-plan.md`.
+   - Add unit test covering confirm → reject → bucket spend reversal.
 2) Verification automation:
    - Flesh out `lib/verification/verify-session.ts` to call `/api/sessions/[id]/verify` based on mock/fixture signals; add tests for posted/revoked ledger transitions and anomaly propagation.
-3) Vine security hardening:
-   - Implement HMAC/nonce validation with device registry; reject unsigned/stale payloads before engine call.
-   - Add cleanup job/script for expired Vine sessions/tokens.
-4) Simulation engine drift:
-   - Add a header comment or README note marking `lib/simulation.ts` as legacy; route new logic through `runEngine` where feasible.
-5) Schema/input hygiene:
-   - DONE: `CategoryPreference.category` is enum-based; keep validation aligned.
-   - Clarify `currentAmount` as legacy in bucket docs/UI; drop column in future cleanup if desired.
-
-## 6. Long-Term Plan (Anchored to Vision)
-- Advisory accuracy & legal guardrails:
-  - Keep Cherry strictly advisory (Observe → Evaluate → Recommend → Reward) and outside payment rails (`docs/legal-constraints.md`). Enhance verification with non-payment signals (bank data, receipts, Vine context) to move ledger from PENDING → POSTED automatically.
-- Vine production readiness:
-  - Define and enforce signature scheme, device provisioning, and token freshness; add merchant portal/device registry while keeping Vine context-only (no card data, no EMV/ISO).
-- Wallet Pass go-live:
-  - Keep `CHERRY_WALLET_PASS_ENABLED` off by default; when certs are ready, enable storeCard pass generation with deep link to advisory flows. Ensure messaging avoids any “pay with Cherry” framing.
-- Engine & bucket robustness:
-  - Expand tests around rollover gaps, multi-bucket selection rules, and incentives; consider configurable bucket selection (strict-first) while keeping `spentCents` as source of truth.
-- Data model tightening:
-  - Normalize category preferences and legacy fields; add indices for common ledger queries (`userId + status`) if performance requires.

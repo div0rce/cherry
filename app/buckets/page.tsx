@@ -17,7 +17,10 @@ type Bucket = {
   name: string;
   period: 'WEEKLY' | 'MONTHLY';
   budgetAmount: number;
-  currentAmount: number;
+  postedSpendCents: number;
+  pendingSpendCents: number;
+  committedCents: number;
+  remainingCents: number;
   strictMode: boolean;
   category: string;
   createdAt: string;
@@ -118,7 +121,7 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
                         {bucket.period} · {bucket.category} · {bucket.strictMode ? 'Strict' : 'Soft'}
                       </p>
                       <p className="text-sm text-slate-400">
-                        Remaining: {formatCents(bucket.currentAmount)} / {formatCents(bucket.budgetAmount)}
+                        Remaining: {formatCents(bucket.remainingCents)} / {formatCents(bucket.budgetAmount)}
                       </p>
                     </div>
                     <DeleteBucketButton bucketId={bucket.id} />
