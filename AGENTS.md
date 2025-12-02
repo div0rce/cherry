@@ -142,6 +142,11 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Add new action types or scoring tweaks in `lib/engine/objective.ts`, `lib/engine/candidates.ts`, `lib/engine/simulate.ts`, and keep `lib/engine-invariants.ts` updated when outputs change. Engine failures must degrade gracefully (structured errors/no recommendation) rather than crashing routes.
 - API usage: `/api/simulate`, `/api/scan`, and `/api/sessions` all route through `safeSolveDecisionForUser` with context builders; mapping back to legacy response shapes happens via helpers (e.g., `mapSolverDecisionToLegacyDecision`).
 
+### Engine logging
+- Centralized via a small helper inside `safeSolveDecisionForUser`; validation errors log as warnings, unexpected errors log as errors.
+- Logging is suppressed entirely when `NODE_ENV=test` to avoid noise from expected failure tests.
+- Do not add ad-hoc `console.error`/`console.warn` in API routes for engine failures; use the engine logger flow instead.
+
 ---
 
 ## Change Management Expectations

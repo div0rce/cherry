@@ -121,6 +121,18 @@ async function testSafeSolveDecisionSuccess() {
 async function testSafeSolveDecisionFailure() {
   const state = buildStubState();
   const ctx = buildStubContext({ amountCents: -5 });
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  const errorCalls = [];
+  const warnCalls = [];
+
+  console.error = (...args) => {
+    errorCalls.push(args);
+  };
+  console.warn = (...args) => {
+    warnCalls.push(args);
+  };
+
   const outcome = await safeSolveDecisionForUser('user-1', ctx, {
     stateOverride: state,
     includeLegacyDecision: false,
@@ -130,6 +142,14 @@ async function testSafeSolveDecisionFailure() {
   if (!outcome.ok) {
     assert.equal(outcome.reason, 'VALIDATION_ERROR');
   }
+
+  if (process.env.NODE_ENV === 'test') {
+    assert.equal(errorCalls.length, 0);
+    assert.equal(warnCalls.length, 0);
+  }
+
+  console.error = originalError;
+  console.warn = originalWarn;
 }
 
 function testGenerateCandidatesSkipsDisabled() {

@@ -34,6 +34,17 @@ export type SolveDecisionResult = {
   legacyDecision?: LegacyEngineDecision;
 };
 
+type EngineLogKind = 'validation' | 'unexpected';
+
+function logEngineError(kind: EngineLogKind, meta: unknown): void {
+  if (process.env.NODE_ENV === 'test') return;
+  if (kind === 'validation') {
+    console.warn('[engine] validation/solve error', meta);
+    return;
+  }
+  console.error('[engine] unexpected solve error', meta);
+}
+
 export async function solveDecision(
   state: EngineState,
   ctx: EngineContext,
@@ -156,7 +167,7 @@ export async function safeSolveDecisionForUser(
     return successResult;
   } catch (err) {
     if (err instanceof EngineError) {
-      console.error('[engine] validation/solve error', { userId, err });
+      logEngineError('validation', { userId, err });
       return {
         ok: false,
         reason: 'VALIDATION_ERROR',
@@ -164,7 +175,7 @@ export async function safeSolveDecisionForUser(
       };
     }
 
-    console.error('[engine] unexpected error', { userId, err });
+    logEngineError('unexpected', { userId, err });
     return {
       ok: false,
       reason: 'ENGINE_ERROR',
