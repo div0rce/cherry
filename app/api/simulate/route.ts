@@ -2,7 +2,6 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { runSimulation } from '@/lib/simulation-adapter';
 import { logError, logWarn } from '@/lib/logger';
 import { parseJsonBody } from '@/lib/validation';
 import { SimulateRequestSchema } from '@/lib/schemas/simulate';
@@ -13,6 +12,11 @@ import {
   logInvariant,
   isPrismaP2003,
 } from '@/lib/user-context';
+import {
+  buildEngineContext,
+  safeSolveDecisionForUser,
+  type LegacyEngineDecision,
+} from '@/lib/engine';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
@@ -88,13 +92,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       }
 
-      const { decision } = await runSimulation({
-        userId,
+      const ctx = buildEngineContext({
+        surface: 'web',
+        now: new Date(),
+        merchantName: merchantName || null,
+        merchantCategoryKey: normalizedCategory,
+        mcc: mccCode != null ? String(mccCode) : null,
         amountCents: body.amountCents as number,
-        category: normalizedCategory as RewardCategory,
-        merchantName,
-        mccCode: mccCode ?? null,
       });
+
+      const engineResult = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
+      if (!engineResult.ok) {
+        logWarn('Engine failed in /api/simulate', { userId, mode, reason: engineResult.reason });
+        return NextResponse.json(
+          {
+            simulationId,
+            transaction: null,
+            decision: null,
+            error: {
+              code: engineResult.reason,
+              message: engineResult.message,
+            },
+          },
+          { status: 200 }
+        );
+      }
+
+      const decision: LegacyEngineDecision = engineResult.legacyDecision;
       validateEngineDecision(decision);
 
       const strictDecline =
