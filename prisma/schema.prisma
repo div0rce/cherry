@@ -178,6 +178,8 @@ model User {
   image         String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  engineObjectiveProfile String? @default("BALANCED")
+  engineObjectiveWeights Json?
 
   cards               Card[]
   buckets             Bucket[]

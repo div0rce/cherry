@@ -96,6 +96,7 @@ export type EngineState = {
     nextPaycheckDate: Date | null;
     nextPaycheckNetCents: number | null;
   } | null;
+  preferences: EngineUserPreferences;
 };
 
 export type EngineContext = {
@@ -166,22 +167,23 @@ export type EngineDecision = {
     cash: CashProjection;
   };
   constraintsBreached: string[];
+  components?: ObjectiveComponentScores;
 };
 
 export type ObjectiveComponentScores = {
   rewards: number;
   runway: number;
   debtRelief: number;
-  volatilityPenalty: number;
-  ruleViolationPenalty: number;
+  volatility: number;
+  ruleViolations: number;
 };
 
 export type ObjectiveWeights = {
   rewards: number;
   runway: number;
   debtRelief: number;
-  volatilityPenalty: number;
-  ruleViolationPenalty: number;
+  volatility: number;
+  ruleViolations: number;
 };
 
 export type EngineConstraintSeverity = 'HARD' | 'SOFT';
@@ -214,5 +216,24 @@ export type EngineDecisionTrace = {
     action: EngineAction;
     score: number;
     constraintsBreached: string[];
+    components?: ObjectiveComponentScores;
   }[];
+};
+
+export type EngineObjectiveProfileId =
+  | 'MAX_REWARDS'
+  | 'KILL_DEBT'
+  | 'DONT_GO_BROKE'
+  | 'BALANCED';
+
+export type EngineObjectiveProfile = {
+  id: EngineObjectiveProfileId;
+  label: string;
+  description: string;
+  weights: ObjectiveWeights;
+};
+
+export type EngineUserPreferences = {
+  profileId: EngineObjectiveProfileId;
+  customWeights?: Partial<ObjectiveWeights>;
 };

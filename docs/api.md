@@ -8,6 +8,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 ---
 
 - Engine overview: versioned solver pipeline in `lib/engine` (`solveDecision`/`safeSolveDecisionForUser` with normalized state + context builders); legacy `runEngine` remains only for compatibility on older surfaces.
+- Engine scoring: multi-objective utility across rewards, runway, debt relief, volatility, and rule adherence. Per-user weights come from `User.engineObjectiveProfile` (+ JSON overrides). `/api/simulate` response shape stays the same; internal ranking adapts to the user profile.
 
 ---
 

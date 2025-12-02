@@ -28,6 +28,7 @@ function buildStubState(overrides = {}) {
     },
     world: { baseInterestRate: null, inflationEstimate: null },
     cash: { liquidCents: 10_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    preferences: { profileId: 'BALANCED' },
     cards: [
       {
         id: 'card-strong',
@@ -309,6 +310,94 @@ async function testCompositeActionImprovesDebtRelief() {
   }
 }
 
+async function testSolveDecisionRespondsToProfiles() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-reward',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Reward Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-reward',
+            cardId: 'card-reward',
+            categoryKey: 'DINING',
+            rateType: 'CASHBACK',
+            rateValue: 0.0001,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+      {
+        id: 'card-debt',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Debt Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-debt',
+            cardId: 'card-debt',
+            categoryKey: 'DINING',
+            rateType: 'CASHBACK',
+            rateValue: 0,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+    debts: [
+      {
+        id: 'debt-1',
+        name: 'Debt',
+        type: 'CREDIT_CARD',
+        balanceCents: 20_000,
+        creditLimitCents: 25_000,
+        aprPercent: 20,
+        minPaymentCents: 1_000,
+        dueDayOfMonth: 5,
+      },
+    ],
+    cash: { liquidCents: 20_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+  });
+
+  const ctx = buildStubContext({ amountCents: 10_000, surface: 'web' });
+
+  const rewardsResult = await solveDecision(
+    { ...state, preferences: { profileId: 'MAX_REWARDS' } },
+    ctx
+  );
+  const debtResult = await solveDecision(
+    { ...state, preferences: { profileId: 'KILL_DEBT' } },
+    ctx
+  );
+
+  const rewardsTop = rewardsResult.decisions[0];
+  const debtTop = debtResult.decisions[0];
+
+  assert.equal(rewardsTop?.action.type, 'USE_CARD');
+  assert.equal(rewardsTop?.action.cardId, 'card-reward');
+
+  assert.ok(debtTop);
+  assert.notEqual(debtTop?.actionId, rewardsTop?.actionId);
+  assert.ok(
+    debtTop?.action.type === 'USE_CARD_WITH_PAYDOWN' ||
+      debtTop?.action.type === 'PAY_DOWN_DEBT'
+  );
+}
+
 async function run() {
   await testSolveDecisionSorts();
   await testSolveDecisionValidation();
@@ -319,6 +408,7 @@ async function run() {
   testGenerateCandidatesAddsAdvancedActions();
   testPaydownGuardrailBlocksExcess();
   await testCompositeActionImprovesDebtRelief();
+  await testSolveDecisionRespondsToProfiles();
   console.warn('engine solver: ok');
 }
 

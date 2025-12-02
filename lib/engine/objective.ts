@@ -4,30 +4,132 @@ import type {
   DebtProjection,
   EngineAction,
   EngineContext,
+  EngineObjectiveProfile,
+  EngineObjectiveProfileId,
   EngineState,
+  EngineUserPreferences,
   ObjectiveComponentScores,
   ObjectiveWeights,
 } from './types';
 
-// Default weights; tune per user once preferences are persisted.
-export const DEFAULT_OBJECTIVE_WEIGHTS: ObjectiveWeights = {
-  rewards: 1.0,
-  runway: 1.0,
-  debtRelief: 1.0,
-  volatilityPenalty: 1.0,
-  ruleViolationPenalty: 3.0,
+export const OBJECTIVE_PROFILES: Record<EngineObjectiveProfileId, EngineObjectiveProfile> = {
+  MAX_REWARDS: {
+    id: 'MAX_REWARDS',
+    label: 'Maximize rewards',
+    description:
+      'Favor high-reward cards even at the cost of some volatility, while keeping hard rules intact.',
+    weights: {
+      rewards: 1,
+      runway: 0.4,
+      debtRelief: 0.4,
+      volatility: 0.3,
+      ruleViolations: 3,
+    },
+  },
+  KILL_DEBT: {
+    id: 'KILL_DEBT',
+    label: 'Kill debt fast',
+    description: 'Prioritize debt relief and utilization improvements over raw rewards.',
+    weights: {
+      rewards: 0.5,
+      runway: 0.7,
+      debtRelief: 1.5,
+      volatility: 0.8,
+      ruleViolations: 3,
+    },
+  },
+  DONT_GO_BROKE: {
+    id: 'DONT_GO_BROKE',
+    label: "Don't go broke",
+    description: 'Favor buffer and stability; rewards matter but safety wins.',
+    weights: {
+      rewards: 0.4,
+      runway: 1.5,
+      debtRelief: 0.7,
+      volatility: 1,
+      ruleViolations: 3,
+    },
+  },
+  BALANCED: {
+    id: 'BALANCED',
+    label: 'Balanced',
+    description: 'Blend rewards, safety, and debt relief evenly.',
+    weights: {
+      rewards: 1,
+      runway: 1,
+      debtRelief: 1,
+      volatility: 1,
+      ruleViolations: 3,
+    },
+  },
 };
 
-function clampWeights(weights: ObjectiveWeights): ObjectiveWeights {
-  const sanitize = (value: number) => (!Number.isFinite(value) || value < 0 ? 0 : value);
+export const DEFAULT_ENGINE_USER_PREFERENCES: EngineUserPreferences = {
+  profileId: 'BALANCED',
+};
 
+// Explicit defaults mirror the balanced profile.
+export const DEFAULT_OBJECTIVE_WEIGHTS: ObjectiveWeights = {
+  ...OBJECTIVE_PROFILES.BALANCED.weights,
+};
+
+function logObjectiveWarning(message: string, meta?: unknown) {
+  if (process.env.NODE_ENV === 'test') return;
+  console.warn('[engine] objective warning', { message, meta });
+}
+
+function clampNonNegative(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return value;
+}
+
+export function normalizeObjectiveWeights(weights: ObjectiveWeights): ObjectiveWeights {
   return {
-    rewards: sanitize(weights.rewards),
-    runway: sanitize(weights.runway),
-    debtRelief: sanitize(weights.debtRelief),
-    volatilityPenalty: sanitize(weights.volatilityPenalty),
-    ruleViolationPenalty: sanitize(weights.ruleViolationPenalty),
+    rewards: clampNonNegative(weights.rewards),
+    runway: clampNonNegative(weights.runway),
+    debtRelief: clampNonNegative(weights.debtRelief),
+    volatility: clampNonNegative(weights.volatility),
+    ruleViolations: clampNonNegative(weights.ruleViolations),
   };
+}
+
+export function getObjectiveProfileById(id: EngineObjectiveProfileId): EngineObjectiveProfile {
+  const profile = OBJECTIVE_PROFILES[id];
+  if (!profile) {
+    logObjectiveWarning('Unknown objective profile; using BALANCED', { id });
+    return OBJECTIVE_PROFILES.BALANCED;
+  }
+  return profile;
+}
+
+export function mergeProfileWithOverrides(
+  profile: EngineObjectiveProfile,
+  overrides?: Partial<ObjectiveWeights> | null
+): ObjectiveWeights {
+  const merged: ObjectiveWeights = {
+    rewards: overrides?.rewards ?? profile.weights.rewards,
+    runway: overrides?.runway ?? profile.weights.runway,
+    debtRelief: overrides?.debtRelief ?? profile.weights.debtRelief,
+    volatility: overrides?.volatility ?? profile.weights.volatility,
+    ruleViolations: overrides?.ruleViolations ?? profile.weights.ruleViolations,
+  };
+
+  return normalizeObjectiveWeights(merged);
+}
+
+export function getObjectiveWeightsForPreferences(
+  preferences: EngineUserPreferences | null | undefined
+): ObjectiveWeights {
+  if (!preferences) {
+    logObjectiveWarning('Missing preferences; using defaults');
+    return normalizeObjectiveWeights(DEFAULT_OBJECTIVE_WEIGHTS);
+  }
+  const profile = getObjectiveProfileById(preferences.profileId);
+  return mergeProfileWithOverrides(profile, preferences.customWeights ?? null);
+}
+
+export function getObjectiveWeightsForState(state: EngineState): ObjectiveWeights {
+  return getObjectiveWeightsForPreferences(state.preferences);
 }
 
 function scoreComponents(
@@ -104,8 +206,8 @@ function scoreComponents(
   }
 
   // 4) Volatility penalty: placeholder for now.
-  const volatilityPenalty = 0;
-  const ruleViolationPenalty = 0;
+  const volatility = 0;
+  const ruleViolations = 0;
 
   if (action.type === 'DELAY_PURCHASE' && ctx.amountCents) {
     runway -= 0.01 * ctx.amountCents;
@@ -119,23 +221,20 @@ function scoreComponents(
     rewards,
     runway,
     debtRelief,
-    volatilityPenalty,
-    ruleViolationPenalty,
+    volatility,
+    ruleViolations,
   };
 }
 
-function combineScores(
-  components: ObjectiveComponentScores,
-  weights: ObjectiveWeights
-): number {
-  const w = clampWeights(weights);
+function combineScores(components: ObjectiveComponentScores, weights: ObjectiveWeights): number {
+  const w = normalizeObjectiveWeights(weights);
 
   return (
     components.rewards * w.rewards +
     components.runway * w.runway +
     components.debtRelief * w.debtRelief -
-    components.volatilityPenalty * w.volatilityPenalty -
-    components.ruleViolationPenalty * w.ruleViolationPenalty
+    components.volatility * w.volatility -
+    components.ruleViolations * w.ruleViolations
   );
 }
 
@@ -149,10 +248,12 @@ export function scoreDecision(
     debt: DebtProjection[];
     cash: CashProjection;
   },
-  weights: ObjectiveWeights = DEFAULT_OBJECTIVE_WEIGHTS
-): { score: number; reasons: string[] } {
+  weights?: ObjectiveWeights
+): { score: number; reasons: string[]; components: ObjectiveComponentScores; weights: ObjectiveWeights } {
   const components = scoreComponents(state, ctx, action, projections);
-  const score = combineScores(components, weights);
+  const resolvedWeights = weights ?? getObjectiveWeightsForState(state);
+  const normalizedWeights = normalizeObjectiveWeights(resolvedWeights);
+  const score = combineScores(components, normalizedWeights);
 
   const reasons: string[] = [];
 
@@ -189,5 +290,21 @@ export function scoreDecision(
     reasons.push('Recommends skipping this purchase to protect constraints.');
   }
 
-  return { score, reasons };
+  return { score, reasons, components, weights: normalizedWeights };
+}
+
+export function scoreAction(
+  state: EngineState,
+  ctx: EngineContext,
+  action: EngineAction,
+  projections: {
+    buckets: BucketProjection[];
+    debt: DebtProjection[];
+    cash: CashProjection;
+  },
+  weights: ObjectiveWeights
+): { score: number; components: ObjectiveComponentScores } {
+  const components = scoreComponents(state, ctx, action, projections);
+  const score = combineScores(components, weights);
+  return { score, components };
 }

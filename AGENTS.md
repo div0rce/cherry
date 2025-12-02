@@ -158,6 +158,13 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Add new action types or scoring tweaks in `lib/engine/objective.ts`, `lib/engine/candidates.ts`, `lib/engine/simulate.ts`, and keep `lib/engine-invariants.ts` updated when outputs change. Engine failures must degrade gracefully (structured errors/no recommendation) rather than crashing routes.
 - API usage: `/api/simulate`, `/api/scan`, and `/api/sessions` all route through `safeSolveDecisionForUser` with context builders; mapping back to legacy response shapes happens via helpers (e.g., `mapSolverDecisionToLegacyDecision`).
 
+### Engine multi-objective scoring
+- Components (`ObjectiveComponentScores`): `rewards`, `runway`, `debtRelief`, `volatility`, `ruleViolations` (positive volatility/violations are penalties).
+- Weights (`ObjectiveWeights`): non-negative weights for each component; defaults mirror the balanced profile. Profiles: `MAX_REWARDS`, `KILL_DEBT`, `DONT_GO_BROKE`, `BALANCED`.
+- Per-user control: stored on `User.engineObjectiveProfile` + optional JSON overrides in `User.engineObjectiveWeights`. Mapped to `EngineState.preferences` and merged via `getObjectiveWeightsForState` with clamping of invalid/negative/NaN values.
+- Scoring: `scoreDecision` in `lib/engine/objective.ts` computes component scores and scalar utility as `rewards*w.rewards + runway*w.runway + debtRelief*w.debtRelief - volatility*w.volatility - ruleViolations*w.ruleViolations`. Components and weights are attached to traces; `/api/simulate` response shape stays the same.
+- Guardrails: unknown profiles fall back to `BALANCED` with a warning; malformed overrides are ignored; scoring must fail soft (log + defaults) rather than throwing.
+
 ### Engine logging
 - Centralized via a small helper inside `safeSolveDecisionForUser`; validation errors log as warnings, unexpected errors log as errors.
 - Logging is suppressed entirely when `NODE_ENV=test` to avoid noise from expected failure tests.

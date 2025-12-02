@@ -1,7 +1,12 @@
 import { runEngine, type EngineDecision as LegacyEngineDecision } from './legacy';
 import { generateCandidateActions } from './candidates';
 import { simulateAction } from './simulate';
-import { scoreDecision, DEFAULT_OBJECTIVE_WEIGHTS } from './objective';
+import {
+  DEFAULT_OBJECTIVE_WEIGHTS,
+  scoreDecision,
+  getObjectiveWeightsForState,
+  normalizeObjectiveWeights,
+} from './objective';
 import {
   EngineError,
   enforceHardConstraints,
@@ -59,10 +64,18 @@ export async function solveDecision(
     );
   }
 
-  const weights: ObjectiveWeights = {
-    ...DEFAULT_OBJECTIVE_WEIGHTS,
-    ...options.weights,
-  };
+  let weights: ObjectiveWeights;
+  try {
+    const baseWeights = getObjectiveWeightsForState(state);
+    weights = options.weights
+      ? normalizeObjectiveWeights({ ...baseWeights, ...options.weights })
+      : baseWeights;
+  } catch (err) {
+    logEngineError('unexpected', { userId: state.userId, err, context: 'resolve_weights' });
+    weights = options.weights
+      ? normalizeObjectiveWeights({ ...DEFAULT_OBJECTIVE_WEIGHTS, ...options.weights })
+      : DEFAULT_OBJECTIVE_WEIGHTS;
+  }
 
   const candidateActions = generateCandidateActions(state, ctx);
   const constrainedCandidates =
@@ -75,7 +88,7 @@ export async function solveDecision(
 
   for (const action of constrainedCandidates) {
     const projections = simulateAction(state, ctx, action);
-    const { score, reasons } = scoreDecision(state, ctx, action, projections, weights);
+    const { score, reasons, components } = scoreDecision(state, ctx, action, projections, weights);
     const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
 
     for (const constraint of hardConstraints) {
@@ -89,6 +102,7 @@ export async function solveDecision(
       reasons,
       projections,
       constraintsBreached: constraintTags,
+      components,
     });
   }
 
@@ -111,6 +125,7 @@ export async function solveDecision(
       action: d.action,
       score: d.score,
       constraintsBreached: d.constraintsBreached,
+      ...(d.components ? { components: d.components } : {}),
     })),
   };
 

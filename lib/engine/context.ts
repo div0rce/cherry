@@ -6,22 +6,27 @@ import type {
   EngineContext,
   EngineState,
   EngineSurface,
+  EngineObjectiveProfileId,
+  EngineUserPreferences,
   NormalizedCard,
+  ObjectiveWeights,
   RewardRule,
   UserConstraints,
   WorldParams,
 } from './types';
+import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from './objective';
 
 // Bump when core decision behavior or payload shapes materially change.
-export const ENGINE_VERSION = 'v0.1.0';
+export const ENGINE_VERSION = 'v0.2.0';
 
 export async function fromPrismaUserToEngineState(userId: string): Promise<EngineState> {
-  const [cards, buckets, debts, constraints, world] = await Promise.all([
+  const [cards, buckets, debts, constraints, world, preferences] = await Promise.all([
     loadNormalizedCards(userId),
     loadBuckets(userId),
     loadDebts(userId),
     loadUserConstraints(userId),
     loadWorldParams(),
+    loadUserPreferences(userId),
   ]);
 
   const cash =
@@ -39,6 +44,7 @@ export async function fromPrismaUserToEngineState(userId: string): Promise<Engin
     constraints,
     world,
     cash,
+    preferences,
   };
 }
 
@@ -178,4 +184,69 @@ async function loadCashSnapshot(_userId: string): Promise<EngineState['cash']> {
     nextPaycheckDate: null,
     nextPaycheckNetCents: null,
   };
+}
+
+function logPreferencesWarning(message: string, meta?: unknown) {
+  if (process.env.NODE_ENV === 'test') return;
+  console.warn('[engine] preferences warning', { message, meta });
+}
+
+function coerceObjectiveWeights(raw: unknown): Partial<ObjectiveWeights> | undefined {
+  if (!raw || typeof raw !== 'object' || raw == null) {
+    return undefined;
+  }
+
+  const maybeWeights = raw as Record<string, unknown>;
+  const partial: Partial<ObjectiveWeights> = {};
+
+  if (typeof maybeWeights['rewards'] === 'number') partial.rewards = maybeWeights['rewards'];
+  if (typeof maybeWeights['runway'] === 'number') partial.runway = maybeWeights['runway'];
+  if (typeof maybeWeights['debtRelief'] === 'number')
+    partial.debtRelief = maybeWeights['debtRelief'];
+  if (typeof maybeWeights['volatility'] === 'number') partial.volatility = maybeWeights['volatility'];
+  if (typeof maybeWeights['ruleViolations'] === 'number')
+    partial.ruleViolations = maybeWeights['ruleViolations'];
+
+  return Object.keys(partial).length > 0 ? partial : undefined;
+}
+
+async function loadUserPreferences(userId: string): Promise<EngineUserPreferences> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        engineObjectiveProfile: true,
+        engineObjectiveWeights: true,
+      },
+    });
+
+    if (!user) {
+      logPreferencesWarning('User missing while loading preferences; using defaults', { userId });
+      return { ...DEFAULT_ENGINE_USER_PREFERENCES };
+    }
+
+    const profileId = (user.engineObjectiveProfile ??
+      DEFAULT_ENGINE_USER_PREFERENCES.profileId) as EngineObjectiveProfileId;
+    const profile = getObjectiveProfileById(profileId);
+
+    let customWeights: Partial<ObjectiveWeights> | undefined;
+    try {
+      customWeights = coerceObjectiveWeights(user.engineObjectiveWeights ?? undefined);
+    } catch (err) {
+      logPreferencesWarning('Failed to parse engineObjectiveWeights; ignoring overrides', {
+        userId,
+        err,
+      });
+    }
+
+    const preferences: EngineUserPreferences = customWeights
+      ? { profileId: profile.id, customWeights }
+      : { profileId: profile.id };
+
+    return preferences;
+  } catch (err) {
+    logPreferencesWarning('Unexpected error loading preferences; using defaults', { userId, err });
+    return { ...DEFAULT_ENGINE_USER_PREFERENCES };
+  }
 }
