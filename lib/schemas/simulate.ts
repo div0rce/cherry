@@ -5,8 +5,8 @@ export const SimulateRequestSchema = z
   .object({
     amountCents: CentsSchema.positive(),
     category: RewardCategorySchema,
-    merchantName: z.string().min(1),
+    merchantName: z.string().min(1).optional(),
     simulationId: z.string().optional(),
-    mccCode: z.number().int().optional(),
+    mccCode: z.number().int().optional().nullable(),
   })
   .strict();
