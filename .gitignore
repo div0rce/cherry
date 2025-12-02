@@ -26,7 +26,8 @@
 cookies.txt
 
 # editor settings
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # debug
 npm-debug.log*

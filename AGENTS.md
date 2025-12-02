@@ -116,6 +116,12 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - **Testing mindset**: prefer focused unit tests for engine invariants, session/ledger lifecycle, and MCC mapping. Keep lint/typecheck green.
 - **Banned changes**: do not turn Cherry into a payment card/terminal; do not bypass the Wallet 501 gate; do not store or process sensitive card data.
 
+## Bucket Model & Invariants
+- Canonical balance fields: `budgetAmount` (limit), `spentCents` (posted), optional `pendingSpendCents` (not stored yet), `committedCents = posted + pending`, `remainingCents = max(0, limit - committed)`.
+- Single source of truth: `lib/buckets-runtime.ts`. Engine, seeds/admin scripts, and UI/API surfaces must use this helper (or wrappers around it) instead of ad hoc math.
+- `currentAmount` is legacy and only mirrors `remainingCents` on write; never treat it as authoritative input.
+- Guardrails and over-limit checks must compare against `remainingCents`, not raw `limitCents`. `/api/buckets` should return runtime buckets with derived balance fields.
+
 ---
 
 ## Dev Console Layout & Components
@@ -132,6 +138,11 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Use the single shared `EmptyState` component from `components/ui/empty-state.tsx` (or `EmptyList` when inside `<ul>`). Do not inline custom “No X yet” markup.
 - If an action is needed, pass `actionLabel` + `onAction`/`actionHref` or `actionNode`; avoid bespoke CTA layouts.
 
+## Editor Tooling Defaults
+- VS Code in this repo is configured via `.vscode/settings.json`; do not override the shared workspace config.
+- Tailwind CSS IntelliSense treats `cssConflict` diagnostics as **errors**. Resolve conflicts (e.g., duplicate `focus-visible:outline*` utilities) instead of downgrading the rule.
+- If Tailwind linting seems out of sync, run “Developer: Reload Window” in VS Code so the extension reloads the workspace settings.
+
 ---
 
 ## Quick File Pointers (per surface)
@@ -140,7 +151,7 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Engine: `lib/engine/*` (types/solver/context/guardrails/objective/simulate/candidates), legacy shim in `lib/engine/legacy.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
 - Simulations: `/api/simulate` must use the canonical engine (`safeSolveDecisionForUser` in `lib/engine/solver.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
 - Category preferences: `CategoryPreference.category` is a `RewardCategory` enum; do not store free-form strings. Use Zod enum validation on write paths.
-- Buckets: `currentAmount` is legacy; budget math uses `budgetAmount` + `spentCents` (with rollover) only.
+- Buckets: balances are derived via `lib/buckets-runtime.ts` (`budgetAmount`, `spentCents` → `committedCents`/`remainingCents`); `currentAmount` is legacy-only.
 - Wallet pass scaffold: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/cherryPass.ts` (returns 501 without certs).
 - API reference: `docs/api.md` (keep in sync when endpoints change).
 - Product identity: `docs/cherry-vision.md` (copilot, not a card).
