@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-11-30
+Last updated: 2025-12-01
 
 # Cherry Agents — Canonical Operating Guide
 
@@ -122,7 +122,8 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Manual advisory: `app/scan/ScanClient.tsx` → `/api/sessions` (creates session) and `/api/sessions/[id]/confirm`.
 - Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.
 - Engine: `lib/engine.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
-- Simulations: `/api/simulate` must use the canonical engine (`lib/engine.ts` via `lib/simulation-adapter.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
+- Engine: `lib/engine/*` (types/solver/context/guardrails), legacy shim in `lib/engine/legacy.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
+- Simulations: `/api/simulate` must use the canonical engine (`safeSolveDecisionForUser` in `lib/engine/solver.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
 - Category preferences: `CategoryPreference.category` is a `RewardCategory` enum; do not store free-form strings. Use Zod enum validation on write paths.
 - Buckets: `currentAmount` is legacy; budget math uses `budgetAmount` + `spentCents` (with rollover) only.
 - Wallet pass scaffold: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/cherryPass.ts` (returns 501 without certs).
@@ -130,6 +131,15 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Product identity: `docs/cherry-vision.md` (copilot, not a card).
 - Hardware blueprint: `docs/cherry-vine.md` (context beacon).
 - Wallet pass status: `docs/wallet-pass.md` (501 until certs).
+
+---
+
+## Cherry Engine
+- Single entrypoint: `solveDecision` + `safeSolveDecisionForUser` in `lib/engine/solver.ts`; type shapes live in `lib/engine/types.ts`; guardrails in `lib/engine/guardrails.ts`; context builders in `lib/engine/context.ts`.
+- Legacy compatibility (`runEngine`, card/bucket verdicts) is isolated to `lib/engine/legacy.ts` until all surfaces migrate.
+- New recommendation/simulation surfaces must call `safeSolveDecisionForUser` (or `solveDecision` with a prebuilt state) instead of rolling bespoke decision logic.
+- Add new action types or scoring tweaks via `lib/engine/objective.ts` + `lib/engine/solver.ts`; keep `lib/engine-invariants.ts` updated when outputs change.
+- Engine failures must degrade gracefully (return structured errors/no recommendation) rather than crashing routes.
 
 ---
 

@@ -1,5 +1,5 @@
 Status: Active and canonical
-Last updated: 2025-11-30
+Last updated: 2025-12-01
 
 # Cherry Vision & Product Identity
 
@@ -10,7 +10,7 @@ All other docs and code must conform to this file (and `docs/legal-constraints.m
 Where this lives in the repo today:
 - Advisory entry: `/api/scan` (stateless) in `app/api/scan/route.ts`.
 - Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`. Bucket spend is incremented on confirm after `ensureBucketFresh` rollover.
-- Engine: `lib/engine.ts` + invariants in `lib/engine-invariants.ts` (single canonical path).
+- Engine: `lib/engine/solver.ts` (`solveDecision` + `safeSolveDecisionForUser`) with invariants in `lib/engine-invariants.ts`; legacy shim lives in `lib/engine/legacy.ts`.
 - Vine context ingest (dev-only): `/api/vine/order` + simulator UI `/vine-simulator`.
 - Wallet pass scaffold: `/api/wallet/cherry-pass` (501 until Apple certs).
 
@@ -638,6 +638,15 @@ Because Cherry is defined as a **copilot, not a card**, the roadmap naturally ce
 At no point is “Cherry becomes a fronting card” on the roadmap.
 That’s either a separate entity with licenses and a bank partner, or not part of Cherry at all.
 Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; if that ever happens, it is a separate, heavily regulated project with different constraints and partners.
+
+---
+
+## 12. Engine Appendix
+
+- Deterministic core: `EngineUserState + EngineContext → ranked actions + projections`, exposed via `solveDecision`/`safeSolveDecisionForUser` (`lib/engine/solver.ts`).
+- Canonical types live in `lib/engine/types.ts`; guardrails live in `lib/engine/guardrails.ts`; context builders in `lib/engine/context.ts`.
+- Legacy compatibility (`runEngine`, card/bucket verdicts) sits in `lib/engine/legacy.ts` until all surfaces migrate.
+- `/api/simulate` now wraps the engine through `safeSolveDecisionForUser` for graceful failures; `/api/scan`/`/api/sessions` will follow the same path as they migrate.
 
 ---
 

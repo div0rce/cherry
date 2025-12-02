@@ -63,33 +63,49 @@ function mockNextServer() {
 }
 
 function setupSimulationMocks() {
-  mockModule('../lib/simulation-adapter', {
-    runSimulation: async () => ({
-      decision: {
-        budget: {
-          wouldExceed: false,
-          strictMode: false,
-          limitCents: 10_000,
-          spentBeforeCents: 1_000,
-          remainingAfterCents: 9_000,
-          name: 'Demo Bucket',
-          bucketId: null,
-          coverageMode: 'UNCONFIGURED',
-          verdict: 'HEALTHY',
-        },
-        card: {
-          multiplier: 1,
-          estimatedRewards: 10,
-          cardId: 'card-1',
-          cardNickname: 'Demo Card',
-          verdict: 'GREEN',
-        },
-        category: 'DINING',
-        amountCents: 1000,
-        overallVerdict: 'GREEN',
-        cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
+  const legacyDecision = {
+    budget: {
+      wouldExceed: false,
+      strictMode: false,
+      limitCents: 10_000,
+      spentBeforeCents: 1_000,
+      spentAfterCents: 2_000,
+      remainingAfterCents: 9_000,
+      name: 'Demo Bucket',
+      bucketId: null,
+      coverageMode: 'UNCONFIGURED',
+      verdict: 'HEALTHY',
+      hasBucket: false,
+    },
+    card: {
+      multiplier: 1,
+      estimatedRewards: 10,
+      cardId: 'card-1',
+      cardNickname: 'Demo Card',
+      verdict: 'OPTIMAL',
+      hasCardData: true,
+    },
+    category: 'DINING',
+    amountCents: 1000,
+    overallVerdict: 'GREEN',
+    cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
+  };
+
+  mockModule('../lib/engine', {
+    buildEngineContext: (input) => input,
+    safeSolveDecisionForUser: async () => ({
+      ok: true,
+      decisions: [],
+      trace: {
+        engineVersion: 'test',
+        weights: {},
+        stateSummary: { bucketCount: 0, cardCount: 0, debtCount: 0 },
+        contextSummary: { surface: 'web', amountCents: 0 },
+        candidates: [],
       },
+      legacyDecision,
     }),
+    validateEngineDecision: () => {},
   });
 
   mockModule('../lib/prisma', {

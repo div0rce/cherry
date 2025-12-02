@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-11-30
+Last updated: 2025-12-01
 
 # Cherry API Reference (App Router)
 
@@ -32,7 +32,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 - Behavior:
   - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody`.
   - Resolves category via `resolveScanCategory` (MCC-aware).
-  - Calls `lib/engine.ts` and `validateEngineDecision`; never persists.
+  - Calls `runEngine` (legacy, in `lib/engine/legacy.ts`) and `validateEngineDecision`; never persists. New entrypoints should prefer `solveDecision`/`safeSolveDecisionForUser`.
 - Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging.
 
 ---
@@ -118,7 +118,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card.
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
 - `/api/buckets/[bucketId]` — Delete a specific bucket.
-- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `lib/engine.ts` and `lib/simulation-adapter.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets.
+- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
