@@ -6,6 +6,7 @@ import { getCherryPointsBalance } from '@/lib/points';
 import { getSessionStats } from '@/lib/admin/getSessionStats';
 import { getLedgerStats } from '@/lib/admin/getLedgerStats';
 import { prisma } from '@/lib/prisma';
+import { PageHeader } from '@/components/ui/page-header';
 import AdminClient from './AdminClient';
 
 async function getHealth() {
@@ -47,13 +48,11 @@ export default async function AdminPage(): Promise<JSX.Element> {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <header className="space-y-1">
-        <p className="text-xs uppercase tracking-label text-pink-200">Admin</p>
-        <h1 className="text-3xl font-semibold text-white">Admin & Tools</h1>
-        <p className="text-slate-300">
-          Dev utilities live here. Seed/nuke demo data and check basic health.
-        </p>
-      </header>
+      <PageHeader
+        label="Admin"
+        title="Admin & tools"
+        description="Dev utilities live here. Seed/nuke demo data and check basic health."
+      />
 
       <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg space-y-3">
         <h2 className="text-lg font-semibold text-white">Cherry Session Diagnostics</h2>

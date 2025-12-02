@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from 'react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/page-header';
+import { Panel } from '@/components/ui/panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { LegacyEngineDecision } from '@/lib/engine';
 import type { ScanResponse } from '@/lib/schemas/scan';
 import { ScanResponseSchema } from '@/lib/schemas/scan';
 import { callApi } from '@/lib/client/api';
 import { useApiAction } from '@/lib/client/useApiAction';
 import { ErrorBanner } from '@/components/ErrorBanner';
-import { EmptyStateCard } from '@/components/empty-state-card';
 
 type ScanPreview = {
   category: string | null;
@@ -241,32 +243,22 @@ export default function ScanClient(): JSX.Element {
 
     if (!scanPreview && !error) {
       return (
-        <EmptyStateCard
-          badge="Lab"
+        <EmptyState
           title="No manual lookup yet"
-          body="Describe a merchant, amount, and optional category on the left, then run a manual lookup to see how Cherry would route the swipe."
-          hint="Advisory only; start a session after you get a recommendation if you want to claim Cherry Points."
-          action={
-            <button
-              type="button"
-              onClick={focusMerchantField}
-              className="text-sm text-pink-200 underline decoration-dotted underline-offset-4 hover:text-pink-100"
-            >
-              Run a lookup
-            </button>
-          }
+          description="Describe a merchant, amount, and optional category, then run a scan to see how Cherry would route the swipe."
+          actionLabel="Run a lookup"
+          onAction={focusMerchantField}
         />
       );
     }
 
     if (!scanPreview && error) {
       return (
-        <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-200">
-          <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
-            Lookup failed
-          </p>
-          <p className="text-sm">{error}</p>
-        </div>
+        <EmptyState
+          variant="error"
+          title="Lookup failed"
+          description={error}
+        />
       );
     }
 
@@ -325,11 +317,9 @@ export default function ScanClient(): JSX.Element {
             </div>
           </div>
         ) : (
-          <EmptyStateCard
-            badge="Engine"
+          <EmptyState
             title="No rewards match found"
-            body="Cherry could not find a card with a clear rewards advantage for this swipe."
-            hint="You can still review bucket impact and start a session."
+            description="Cherry could not find a card with a clear rewards advantage for this swipe. You can still review bucket impact and start a session."
           />
         )}
 
@@ -434,101 +424,99 @@ export default function ScanClient(): JSX.Element {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
-      <div className="space-y-1">
-        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Lab</p>
-        <h1 className="text-3xl font-semibold text-white">Manual lookup &amp; rewards</h1>
-        <p className="text-slate-300">
-          Probe the decision engine for a single hypothetical swipe: see card choice, rewards, and bucket impact.
-        </p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-8 text-slate-100">
+      <PageHeader
+        label="Engine"
+        title="Scan"
+        description="Exercise the engine on a single transaction context and inspect decisions before you create a session."
+        actions={
+          <>
+            <Link
+              href="/sessions"
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              Sessions
+            </Link>
+            <Link
+              href="/bank-simulator"
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              Bank simulator
+            </Link>
+          </>
+        }
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg backdrop-blur lg:p-5"
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+        <Panel
+          title="Scan input"
+          description="Describe a hypothetical swipe for Cherry to evaluate. Use amount 0 for a bucket snapshot."
         >
-          <div className="flex items-center justify-between gap-2">
-            <div className="space-y-0.5">
-              <h2 className="text-sm font-semibold text-slate-100">Request</h2>
-              <p className="text-xs text-slate-400">
-                Describe a hypothetical swipe for Cherry to evaluate.
-              </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-1">
+                <span className="text-sm text-slate-300">Merchant name</span>
+                <input
+                  ref={merchantInputRef}
+                  className={inputClass}
+                  value={merchantName}
+                  onChange={(e) => setMerchantName(e.target.value)}
+                  placeholder="Cherry Coffee"
+                  required
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-sm text-slate-300">Amount (USD)</span>
+                <input
+                  className={inputClass}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="24.50"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                />
+                <p className="text-xs text-slate-500">Enter 0 for a bucket snapshot (no points).</p>
+              </label>
+              <label className="space-y-1 md:col-span-2">
+                <span className="text-sm text-slate-300">Category (optional)</span>
+                <input
+                  className={inputClass}
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="DINING"
+                />
+                <p className="text-xs text-slate-500">
+                  Optional. Helps Cherry disambiguate when MCC metadata is missing.
+                </p>
+              </label>
             </div>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
-              Lab
-            </span>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-sm text-slate-300">Merchant name</span>
-              <input
-                ref={merchantInputRef}
-                className={inputClass}
-                value={merchantName}
-                onChange={(e) => setMerchantName(e.target.value)}
-                placeholder="Cherry Coffee"
-                required
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-sm text-slate-300">Amount (USD)</span>
-              <input
-                className={inputClass}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="24.50"
-                type="number"
-                min="0"
-                step="0.01"
-              />
-              <p className="text-xs text-slate-500">Enter 0 for a bucket snapshot (no points).</p>
-            </label>
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-sm text-slate-300">Category (optional)</span>
-              <input
-                className={inputClass}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="DINING"
-              />
-              <p className="text-xs text-slate-500">
-                Optional. Helps Cherry disambiguate when MCC metadata is missing.
-              </p>
-            </label>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={isScanning}
-              className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:ring-offset-2 focus:ring-offset-slate-900"
-            >
-              {isScanning ? 'Looking up…' : 'Manual lookup & rewards'}
-            </button>
-            <button
-              type="button"
-              onClick={reset}
-              className="text-xs text-slate-400 underline decoration-dotted underline-offset-4"
-            >
-              Reset
-            </button>
-          </div>
-          <ErrorBanner message={error} />
-        </form>
-
-        <section className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg backdrop-blur text-slate-100 lg:p-5">
-          <div className="flex items-center justify-between gap-2 border-b border-white/5 px-1 pb-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-100">Result</h2>
-              <p className="text-xs text-slate-400">
-                See the recommended card, rewards, and bucket impact for this swipe.
-              </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={isScanning}
+                className="rounded-md bg-pink-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-pink-400 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300 focus-visible:ring-offset-slate-900"
+              >
+                {isScanning ? 'Looking up…' : 'Manual lookup & rewards'}
+              </button>
+              <button
+                type="button"
+                onClick={reset}
+                className="text-xs text-slate-400 underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              >
+                Reset
+              </button>
             </div>
-          </div>
+            <ErrorBanner message={error} />
+          </form>
+        </Panel>
 
-          <div className="space-y-3 px-1 pt-3">{renderResultBody()}</div>
-        </section>
+        <Panel
+          title="Engine output"
+          description="Recommended card, projected rewards, and bucket impact for this context."
+        >
+          <div className="space-y-3">{renderResultBody()}</div>
+        </Panel>
       </div>
     </div>
   );

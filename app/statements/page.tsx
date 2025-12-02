@@ -1,8 +1,10 @@
 import type { JSX } from 'react';
+import { PageHeader } from '@/components/ui/page-header';
+import { MetricCard } from '@/components/ui/metric-card';
+import { Panel } from '@/components/ui/panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
-import { EmptyList } from '@/components/empty-list';
-import { EmptyStateCard } from '@/components/empty-state-card';
 import MonthPicker from './client';
 
 type SearchParams = Promise<{ month?: string }>;
@@ -64,7 +66,7 @@ function coerceDate(value: Date | string): Date {
 function StatementTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
   if (rows.length === 0) {
     return (
-      <EmptyStateCard
+      <EmptyState
         title="No activity this period"
         description="Connect accounts or run a simulation to populate this view."
       />
@@ -72,56 +74,60 @@ function StatementTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
   }
 
   return (
-    <div className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
-      <table className="min-w-full table-fixed text-sm text-slate-100">
-        <thead className="text-xs uppercase tracking-wide text-slate-400">
-          <tr>
-            <th className="py-2 pr-4 text-left">When</th>
-            <th className="py-2 pr-4 text-left">Merchant</th>
-            <th className="py-2 pr-4 text-left">Card</th>
-            <th className="py-2 pr-4 text-right">Amount</th>
-            <th className="py-2 pr-4 text-right">Points</th>
-            <th className="py-2 text-right">Source</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/5">
-          {rows.map((row) => {
-            const occurredAt = coerceDate(row.occurredAt);
-            return (
-              <tr key={row.id}>
-                <td className="py-2 pr-4 text-xs text-slate-400">{occurredAt.toLocaleString()}</td>
-                <td className="py-2 pr-4">
-                  <div className="flex flex-col">
-                    <span className="font-medium">
-                      {row.merchantName ?? 'Unknown merchant'}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      {row.mcc ? `MCC ${row.mcc}` : 'MCC unknown'}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-2 pr-4 text-xs text-slate-400">
-                  {row.cardName ??
-                    (row.cardBrand
-                      ? `${row.cardBrand}${row.cardLast4 ? ` •••• ${row.cardLast4}` : ''}`
-                      : '—')}
-                </td>
-                <td className="py-2 pr-4 text-right">
-                  <AmountCell row={row} />
-                </td>
-                <td className="py-2 pr-4 text-right">
-                  <PointsCell row={row} />
-                </td>
-                <td className="py-2 text-right">
-                  <UserSourceBadge source={row.source} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <div className="overflow-x-auto rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
+        <table className="min-w-full table-fixed text-sm text-slate-100">
+          <thead className="text-xs uppercase tracking-wide text-slate-400">
+            <tr>
+              <th className="py-2 pr-4 text-left">When</th>
+              <th className="py-2 pr-4 text-left">Merchant</th>
+              <th className="py-2 pr-4 text-left">Card</th>
+              <th className="py-2 pr-4 text-right">Amount</th>
+              <th className="py-2 pr-4 text-right">Points</th>
+              <th className="py-2 text-right">Source</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {rows.map((row) => {
+              const occurredAt = coerceDate(row.occurredAt);
+              return (
+                <tr key={row.id}>
+                  <td className="py-2 pr-4 text-xs text-slate-400">
+                    {occurredAt.toLocaleString()}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {row.merchantName ?? 'Unknown merchant'}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {row.mcc ? `MCC ${row.mcc}` : 'MCC unknown'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-2 pr-4 text-xs text-slate-400">
+                    {row.cardName ??
+                      (row.cardBrand
+                        ? `${row.cardBrand}${row.cardLast4 ? ` •••• ${row.cardLast4}` : ''}`
+                        : '—')}
+                  </td>
+                  <td className="py-2 pr-4 text-right">
+                    <AmountCell row={row} />
+                  </td>
+                  <td className="py-2 pr-4 text-right">
+                    <PointsCell row={row} />
+                  </td>
+                  <td className="py-2 text-right">
+                    <UserSourceBadge source={row.source} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="text-xs text-slate-500">
         This is a consolidated analytic statement generated by Cherry from your connected accounts
         and simulations. For official statements, refer to your bank or card issuer.
       </p>
@@ -148,90 +154,64 @@ export default async function StatementsPage({
   const stats = summarize(rows);
 
   return (
-    <main className="flex-1 overflow-y-auto px-6 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="space-y-1">
-          <p className="text-xs uppercase tracking-label text-pink-200">Statements</p>
-          <h1 className="text-3xl font-semibold text-white">Periodic statement</h1>
-          <p className="text-slate-300">
-            Monthly rollup of your real card activity. Switch months to review spend, credits, and
-            points.
-          </p>
-        </header>
+    <main className="flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
+      <div className="mx-auto max-w-6xl space-y-8">
+        <PageHeader
+          label="Spend"
+          title="Statements"
+          description="Inspect per-statement and aggregate spend, engine tags, buckets, and card usage."
+          actions={
+            <div className="w-full md:w-auto">
+              <MonthPicker initialMonth={selectedMonth} />
+            </div>
+          }
+        />
 
-        <MonthPicker initialMonth={selectedMonth} />
-
-        <section className="grid gap-4 md:grid-cols-4">
-          <SummaryCard
-            label="Total debits"
-            value={formatCurrency(stats.totalDebitsCents / 100)}
-          />
-          <SummaryCard
-            label="Total credits"
-            value={formatCurrency(stats.totalCreditsCents / 100)}
-          />
-          <SummaryCard
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <MetricCard label="Total debits" value={formatCurrency(stats.totalDebitsCents / 100)} />
+          <MetricCard label="Total credits" value={formatCurrency(stats.totalCreditsCents / 100)} />
+          <MetricCard
             label="Net"
             value={formatCurrency(stats.netCents / 100)}
             tone={stats.netCents >= 0 ? 'positive' : 'negative'}
           />
-          <SummaryCard label="Points earned" value={`${stats.pointsEarned}`} tone="positive" />
+          <MetricCard
+            label="Points earned"
+            value={`${stats.pointsEarned}`}
+            helper="Posted in the period"
+            tone="positive"
+          />
         </section>
 
-        <section className="grid gap-4 md:grid-cols-1">
-          <div className="rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-label text-slate-400">Category breakdown</p>
-                <p className="text-xs text-slate-500">
-                  Real debits only · excludes simulations and pending items.
-                </p>
-              </div>
-            </div>
+        <Panel
+          title="Category breakdown"
+          description="Real debits only; excludes simulations and pending items."
+        >
+          {stats.categoryBreakdown.length === 0 ? (
+            <EmptyState
+              title="No real spend this month"
+              description="When real transaction debits land, Cherry will break them down by category here."
+            />
+          ) : (
             <ul className="mt-2 space-y-1 text-sm text-slate-100">
-              {stats.categoryBreakdown.length === 0 ? (
-                <EmptyList
-                  title="No real spend this month"
-                  description="When real transaction debits land, Cherry will break them down by category here."
-                />
-              ) : (
-                stats.categoryBreakdown.map((cat) => (
-                  <li key={cat.category} className="flex items-center justify-between">
-                    <span>{cat.category}</span>
-                    <span className="text-slate-300">{formatCurrency(cat.totalCents / 100)}</span>
-                  </li>
-                ))
-              )}
+              {stats.categoryBreakdown.map((cat) => (
+                <li key={cat.category} className="flex items-center justify-between">
+                  <span>{cat.category}</span>
+                  <span className="text-slate-300">{formatCurrency(cat.totalCents / 100)}</span>
+                </li>
+              ))}
             </ul>
-          </div>
-        </section>
+          )}
+        </Panel>
 
-        <StatementTable rows={rows} />
+        <Panel
+          title="Statement detail"
+          description="Consolidated analytic statement generated by Cherry from connected accounts and simulations."
+        >
+          <StatementTable rows={rows} />
+        </Panel>
       </div>
     </main>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  tone = 'neutral',
-}: {
-  label: string;
-  value: string;
-  tone?: 'neutral' | 'positive' | 'negative';
-}): JSX.Element {
-  const toneClass =
-    tone === 'positive'
-      ? 'border-emerald-500/40 bg-emerald-500/10'
-      : tone === 'negative'
-        ? 'border-pink-500/40 bg-pink-500/10'
-        : 'border-white/5 bg-white/5';
-  return (
-    <div className={`rounded-2xl border ${toneClass} p-4 shadow-lg`}>
-      <p className="text-xs uppercase tracking-label text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-    </div>
   );
 }
 

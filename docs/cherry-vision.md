@@ -641,7 +641,19 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 
 ---
 
-## 12. Engine Appendix
+## 12. Dev console surfaces (loop in the UI)
+
+- Dashboard (`/`): unified header + metrics view anchoring spend, engine activity, and shortcuts into Scan, Simulate, Sessions, and tools.
+- Statements (`/statements`): spend history that reflects bucket/budget impact and engine-tagged transactions.
+- Scan (`/scan`): manual Observe → Evaluate surface for single contexts, with session handoff and Cherry Points preview.
+- Sessions (`/sessions`): timeline of engine decisions, overrides, and Cherry Point states across Scan/Simulate/Vine.
+- Vine simulator (`/vine-simulator`): hardware-context sandbox for `/api/vine/order`, showing the same engine outputs as Scan.
+- Admin (`/admin`): health, seed/clear tools, and diagnostics; guarded as a dev-only surface.
+- All pages share the same pattern (PageHeader → metrics → Panels + Empty/Error states) to reinforce Cherry as advisory, not a payment front.
+
+---
+
+## 13. Engine Appendix
 
 - Deterministic core: `EngineState + EngineContext → ranked actions + projections`, exposed via `solveDecision`/`safeSolveDecisionForUser` (`lib/engine/solver.ts`).
 - Canonical types live in `lib/engine/types.ts` (`NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`); guardrails live in `lib/engine/guardrails.ts`; context/state builders in `lib/engine/context.ts`.
@@ -650,7 +662,7 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 
 ---
 
-## 13. Summary & Mantra
+## 14. Summary & Mantra
 
 **Cherry’s identity in one line:**
 

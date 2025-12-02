@@ -118,6 +118,14 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 
 ---
 
+## Dev Console Layout & Components
+- Shell lives in `app/layout.tsx` + `components/sidebar-nav.tsx` + `components/dev-console-header.tsx`. Sidebar groups are **Spend & data**, **Setup**, **Engine**, and **Hardware & tools**; keep new pages in those buckets.
+- Page pattern: `PageHeader` → metric row (`MetricCard`) → panelized content (`Panel`) with consistent spacing. Keep headers semantic (`h1` per page, `h2` per section).
+- Shared UI primitives live under `components/ui/*`: `PageHeader`, `MetricCard`, `Panel`, `EmptyState`, `ErrorBanner`, `LoadingRows`/`LoadingMetricGrid`. Prefer these over ad hoc empty/loading/error text.
+- Engine-first surfaces (Dashboard, Statements, Scan, Sessions, Vine, Admin) should expose backend context and use the same header/metric/panel vocabulary; avoid bespoke layouts unless required by data.
+
+---
+
 ## Quick File Pointers (per surface)
 - Manual advisory: `app/scan/ScanClient.tsx` → `/api/sessions` (creates session) and `/api/sessions/[id]/confirm`.
 - Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.

@@ -11,6 +11,17 @@ This file documents the server routes under `app/api/*` and how they align with 
 
 ---
 
+## Dev console surfaces (UI entry points)
+- `/` Dashboard: consolidated metrics and shortcuts into engine, spend, and admin tools.
+- `/scan`: manual advisory UI for `POST /api/scan` with session handoff to `/api/sessions`.
+- `/sessions`: timeline and detail views mapped to `/api/sessions` CRUD and confirmation/verification flows.
+- `/simulate` + `/simulations`: exercise `/api/simulate` and inspect simulation history.
+- `/statements`: spend/statement view against `/api/activity`.
+- `/vine-simulator`: UI harness for `/api/vine/order`.
+- `/admin`: surface for `/api/admin/*`, seed endpoints, and `/api/health`.
+
+---
+
 ## Auth
 - Auth stack: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`.
 - Auth guard: `withUser` (`lib/with-user.ts`) wraps all stateful routes; unauthenticated calls return `401`.

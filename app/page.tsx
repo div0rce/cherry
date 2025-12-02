@@ -1,5 +1,9 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/ui/page-header';
+import { MetricCard } from '@/components/ui/metric-card';
+import { Panel } from '@/components/ui/panel';
+import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getDashboardStats } from '@/lib/dashboard';
 
@@ -24,50 +28,17 @@ function formatTimestamp(date: Date): string {
   return isToday ? `Today ${formatter.format(date)}` : formatter.format(date);
 }
 
-type Tone = 'default' | 'positive';
-
-function StatCard({
-  label,
-  value,
-  href,
-  tone = 'default',
-}: {
-  label: string;
-  value: string | number;
-  href?: string;
-  tone?: Tone;
-}): JSX.Element {
-  const base = 'rounded-2xl border p-4 shadow-lg transition bg-white/5 border-white/5';
-  const toneClass = tone === 'positive' ? 'border-emerald-500/40 bg-emerald-500/10' : '';
-  const content = (
-    <div className={`${base} ${toneClass}`}>
-      <p className="text-xs uppercase tracking-label text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-    </div>
-  );
-  if (href) {
-    return (
-      <Link
-        href={href}
-        className="block rounded-2xl border border-transparent hover:border-pink-500/50 hover:bg-pink-600/10"
-      >
-        {content}
-      </Link>
-    );
-  }
-  return content;
-}
-
-function DevShortcut({ href, title }: { href: string; title: string }): JSX.Element {
+function DevShortcut({ href, title, description }: { href: string; title: string; description: string }): JSX.Element {
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10"
+      className="group rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
     >
-      <p className="text-xs uppercase tracking-label text-slate-400">Dev Tool</p>
-      <p className="mt-1 text-sm text-slate-200">{title}</p>
+      <p className="text-xs uppercase tracking-label text-slate-400">Dev tool</p>
+      <p className="mt-1 text-sm font-semibold text-white">{title}</p>
+      <p className="mt-1 text-xs text-slate-400">{description}</p>
       <span className="mt-3 inline-flex items-center text-xs font-semibold text-pink-100 group-hover:text-white">
-        Go →
+        Open →
       </span>
     </Link>
   );
@@ -81,125 +52,106 @@ export default async function DashboardPage(): Promise<JSX.Element> {
     stats.bucketHealth.onTrack + stats.bucketHealth.atRisk + stats.bucketHealth.overLimit;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header className="space-y-1">
-        <p className="text-xs uppercase tracking-label text-pink-200">Dashboard</p>
-        <h1 className="text-3xl font-semibold text-white">Cherry Dev Console</h1>
-        <p className="text-slate-300">
-          Cards, buckets, real and simulated activity, and Cherry Points in a single view.
-        </p>
-      </header>
+    <div className="mx-auto max-w-6xl space-y-8">
+      <PageHeader
+        label="Dashboard"
+        title="Cherry Dev Console"
+        description="Single view across spend, the engine, and dev tools. Start with cards/buckets, then simulate, scan, and inspect sessions."
+        actions={
+          <>
+            <Link
+              href="/scan"
+              className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              Scan
+            </Link>
+            <Link
+              href="/simulate"
+              className="rounded-md border border-pink-500/40 bg-pink-600/20 px-3 py-2 text-sm font-semibold text-pink-100 hover:bg-pink-600/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              Simulate
+            </Link>
+          </>
+        }
+      />
 
-      <section className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-        <div className="rounded-2xl border border-pink-500/40 bg-pink-600/10 p-4 shadow-lg">
-          <p className="text-xs uppercase tracking-label text-pink-200">Cherry Points</p>
-          <p className="mt-2 text-3xl font-semibold text-white">{stats.lifetimePoints}</p>
-          <p className="mt-1 text-sm text-pink-100">
-            +{stats.monthPoints} this month across recent events.
-          </p>
-        </div>
-
-        <Link
-          href="/cards"
-          className="group rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10"
-        >
-          <p className="text-xs uppercase tracking-label text-pink-200">1. Cards &amp; Buckets</p>
-          <p className="mt-1 text-sm text-slate-200">
-            Define cards, rewards, and budgets so activity can be evaluated.
-          </p>
-          <span className="mt-3 inline-flex items-center text-xs font-semibold text-pink-100 group-hover:text-white">
-            Go →
-          </span>
-        </Link>
-
-        <Link
-          href="/simulate"
-          className="group rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10"
-        >
-          <p className="text-xs uppercase tracking-label text-pink-200">2. Simulate a swipe</p>
-          <p className="mt-1 text-sm text-slate-200">
-            Test merchants, amounts, and categories against your setup.
-          </p>
-          <span className="mt-3 inline-flex items-center text-xs font-semibold text-pink-100 group-hover:text-white">
-            Run simulation →
-          </span>
-        </Link>
-
-        <Link
-          href="/statements"
-          className="group hidden rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg transition hover:border-pink-500/50 hover:bg-pink-600/10 lg:block"
-        >
-          <p className="text-xs uppercase tracking-label text-pink-200">3. Statements</p>
-          <p className="mt-1 text-sm text-slate-200">
-            Monthly rollups of real activity, credits, and Cherry Points.
-          </p>
-          <span className="mt-3 inline-flex items-center text-xs font-semibold text-pink-100 group-hover:text-white">
-            Open statements →
-          </span>
-        </Link>
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Lifetime Cherry Points"
+          value={stats.lifetimePoints}
+          helper={`+${stats.monthPoints} this month`}
+          tone="positive"
+        />
+        <MetricCard label="Cards" value={stats.cardCount} helper="Configured for engine use" />
+        <MetricCard label="Buckets" value={stats.bucketCount} helper="Budgets tracked" />
+        <MetricCard
+          label="Simulations (month)"
+          value={stats.simulatedTxCountMonth}
+          helper={`${stats.realTxCountMonth} real tx in same period`}
+        />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Cards" value={stats.cardCount} href="/cards" />
-        <StatCard label="Buckets" value={stats.bucketCount} href="/buckets" />
-        <StatCard label="Real tx (month)" value={stats.realTxCountMonth} href="/activity" />
-        <StatCard label="Simulated (month)" value={stats.simulatedTxCountMonth} href="/simulations" />
-      </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-          <p className="text-xs uppercase tracking-label text-slate-400">Buckets health</p>
-          <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
-            <div>
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+        <Panel
+          title="Buckets health"
+          description="Real-time budget state that the engine enforces during Observe → Evaluate."
+        >
+          <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
               <p className="text-xs uppercase tracking-label text-slate-500">On track</p>
-              <p className="mt-1 text-xl font-semibold text-emerald-300">
-                {stats.bucketHealth.onTrack}
-              </p>
+              <p className="mt-1 text-xl font-semibold text-emerald-300">{stats.bucketHealth.onTrack}</p>
             </div>
-            <div>
+            <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
               <p className="text-xs uppercase tracking-label text-slate-500">At risk</p>
-              <p className="mt-1 text-xl font-semibold text-amber-300">
-                {stats.bucketHealth.atRisk}
-              </p>
+              <p className="mt-1 text-xl font-semibold text-amber-300">{stats.bucketHealth.atRisk}</p>
             </div>
-            <div>
+            <div className="rounded-xl border border-white/5 bg-slate-900/60 p-3">
               <p className="text-xs uppercase tracking-label text-slate-500">Over limit</p>
-              <p className="mt-1 text-xl font-semibold text-rose-300">
-                {stats.bucketHealth.overLimit}
-              </p>
+              <p className="mt-1 text-xl font-semibold text-rose-300">{stats.bucketHealth.overLimit}</p>
             </div>
           </div>
-          <p className="mt-3 text-sm text-slate-400">
+          <p className="text-sm text-slate-400">
             {totalBuckets === 0
               ? 'No buckets configured yet. Create buckets to enforce weekly/monthly budgets.'
               : stats.bucketHealth.overLimit > 0 || stats.bucketHealth.atRisk > 0
                 ? `${stats.bucketHealth.atRisk} at risk, ${stats.bucketHealth.overLimit} over limit. Inspect on the Buckets page.`
                 : 'All active buckets are currently within budget.'}
           </p>
-        </div>
-
-        <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-label text-slate-400">Recent</p>
-              <h2 className="text-lg font-semibold text-white">Activity</h2>
-              <p className="text-xs text-slate-500">Last 5 events</p>
-            </div>
-            <Link href="/activity" className="text-sm text-pink-200 hover:text-pink-100">
-              View all →
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/buckets"
+              className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              Manage buckets
+            </Link>
+            <Link
+              href="/cards"
+              className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/40 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              Manage cards
             </Link>
           </div>
+        </Panel>
 
+        <Panel
+          title="Recent activity"
+          description="What the engine has seen lately: real swipes, simulations, points events."
+          actions={
+            <Link
+              href="/activity"
+              className="text-sm font-semibold text-pink-200 hover:text-pink-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            >
+              View all →
+            </Link>
+          }
+        >
           {stats.recentUnifiedActivity.length === 0 ? (
-            <div className="space-y-3 text-sm text-slate-400">
-              <p>No activity yet. Run a simulation or use the Vine / Bank simulators to generate events.</p>
-              <Link
-                href="/simulate"
-                className="inline-flex items-center rounded-md border border-pink-500/40 bg-pink-600/20 px-3 py-2 text-xs font-semibold text-pink-100 hover:bg-pink-600/30"
-              >
-                Run a simulation
-              </Link>
-            </div>
+            <EmptyState
+              title="No activity yet"
+              description="Run a simulation, scan, or Vine event to populate the timeline."
+              actionLabel="Run a simulation"
+              actionHref="/simulate"
+            />
           ) : (
             <ul className="space-y-2 text-sm text-slate-100">
               {stats.recentUnifiedActivity.map((item) => (
@@ -233,24 +185,28 @@ export default async function DashboardPage(): Promise<JSX.Element> {
               ))}
             </ul>
           )}
-        </div>
+        </Panel>
       </section>
 
-      <section className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg">
-        <div className="mb-3 flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-label text-slate-400">Recent</p>
-            <h2 className="text-lg font-semibold text-white">Simulations</h2>
-          </div>
-          <Link href="/simulations" className="text-sm text-pink-200 hover:text-pink-100">
+      <Panel
+        title="Recent simulations"
+        description="Lab runs and surface tests that exercised the engine."
+        actions={
+          <Link
+            href="/simulations"
+            className="text-sm font-semibold text-pink-200 hover:text-pink-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+          >
             View all →
           </Link>
-        </div>
-
+        }
+      >
         {stats.recentSimulations.length === 0 ? (
-          <p className="text-sm text-slate-400">
-            No simulations yet. Use the Simulate page to test swipes against your current configuration.
-          </p>
+          <EmptyState
+            title="No simulations yet"
+            description="Use the Simulate page to test merchants, amounts, and categories against your setup."
+            actionLabel="Simulate a swipe"
+            actionHref="/simulate"
+          />
         ) : (
           <ul className="divide-y divide-white/5 text-sm text-slate-100">
             {stats.recentSimulations.map((sim) => (
@@ -276,13 +232,29 @@ export default async function DashboardPage(): Promise<JSX.Element> {
             ))}
           </ul>
         )}
-      </section>
+      </Panel>
 
-      <section className="grid gap-4 md:grid-cols-4">
-        <DevShortcut href="/vine-simulator" title="Vine Terminal Simulator" />
-        <DevShortcut href="/bank-simulator" title="Bank / Plaid Simulator" />
-        <DevShortcut href="/dev/activity" title="Activity Inspector" />
-        <DevShortcut href="/admin" title="Admin & Tools" />
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <DevShortcut
+          href="/vine-simulator"
+          title="Vine simulator"
+          description="Send Vine context (merchant + amount) without hardware."
+        />
+        <DevShortcut
+          href="/bank-simulator"
+          title="Bank / Plaid simulator"
+          description="Seed bank-like events for ledger verification."
+        />
+        <DevShortcut
+          href="/dev/activity"
+          title="Activity inspector"
+          description="Raw engine activity feed for debugging."
+        />
+        <DevShortcut
+          href="/admin"
+          title="Admin & tools"
+          description="Seed/nuke demo data and basic health."
+        />
       </section>
     </div>
   );

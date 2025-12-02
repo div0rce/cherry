@@ -16,35 +16,38 @@ type NavSection = {
 
 const SECTIONS: NavSection[] = [
   {
-    label: 'Real data',
+    label: 'Spend & data',
     items: [
       { href: '/', label: 'Dashboard' },
       { href: '/activity', label: 'Activity' },
+      { href: '/history', label: 'Spend history' },
       { href: '/statements', label: 'Statements' },
     ],
   },
   {
-    label: 'Configuration',
+    label: 'Setup',
     items: [
       { href: '/cards', label: 'Cards' },
       { href: '/buckets', label: 'Buckets' },
     ],
   },
   {
-    label: 'Lab & simulated',
+    label: 'Engine',
     items: [
+      { href: '/scan', label: 'Scan' },
+      { href: '/sessions', label: 'Sessions' },
       { href: '/simulate', label: 'Simulate swipe' },
       { href: '/simulations', label: 'Simulations' },
-      { href: '/scan', label: 'Manual lookup & rewards' },
-      { href: '/sessions', label: 'Sessions' },
       { href: '/dev/activity', label: 'Activity inspector' },
-      { href: '/vine-simulator', label: 'Vine terminal simulator' },
-      { href: '/bank-simulator', label: 'Bank / Plaid simulator' },
     ],
   },
   {
-    label: 'System',
-    items: [{ href: '/admin', label: 'Admin & tools' }],
+    label: 'Hardware & tools',
+    items: [
+      { href: '/vine-simulator', label: 'Vine simulator' },
+      { href: '/bank-simulator', label: 'Bank / Plaid simulator' },
+      { href: '/admin', label: 'Admin & tools' },
+    ],
   },
 ];
 
