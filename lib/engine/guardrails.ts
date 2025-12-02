@@ -1,9 +1,10 @@
 import type {
+  EngineAction,
   EngineConstraint,
   EngineConstraintSeverity,
   EngineContext,
   EngineDecision,
-  EngineUserState,
+  EngineState,
   EngineValidationIssue,
 } from './types';
 
@@ -14,24 +15,16 @@ export class EngineError extends Error {
   }
 }
 
-export function validateEngineUserState(state: EngineUserState): EngineValidationIssue[] {
+export function validateEngineState(state: EngineState): EngineValidationIssue[] {
   const issues: EngineValidationIssue[] = [];
 
   if (!state.userId) {
-    issues.push({ field: 'userId', message: 'Missing userId in EngineUserState' });
-  }
-
-  if (!Number.isFinite(state.preferences.rewardsWeight)) {
-    issues.push({ field: 'preferences.rewardsWeight', message: 'Invalid rewardsWeight' });
-  }
-
-  if (!Number.isFinite(state.preferences.runwayWeight)) {
-    issues.push({ field: 'preferences.runwayWeight', message: 'Invalid runwayWeight' });
+    issues.push({ field: 'userId', message: 'Missing userId in EngineState' });
   }
 
   for (const bucket of state.buckets) {
-    if (bucket.balanceCents < 0) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket balanceCents' });
+    if (bucket.spentCents < 0) {
+      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket spentCents' });
     }
     if (bucket.limitCents != null && bucket.limitCents < 0) {
       issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket limitCents' });
@@ -42,7 +35,7 @@ export function validateEngineUserState(state: EngineUserState): EngineValidatio
     if (!card.id) {
       issues.push({ field: 'card.id', message: 'Card is missing id' });
     }
-    for (const rule of card.rewards) {
+    for (const rule of card.rewardRules) {
       if (!Number.isFinite(rule.rateValue)) {
         issues.push({ field: `card:${card.id}:reward`, message: 'Non-finite reward rate' });
       }
@@ -62,10 +55,10 @@ export function validateEngineContext(ctx: EngineContext): EngineValidationIssue
   return issues;
 }
 
-export function getHardConstraints(state: EngineUserState): EngineConstraint[] {
+export function getHardConstraints(state: EngineState): EngineConstraint[] {
   const constraints: EngineConstraint[] = [];
 
-  if (state.cash.liquidCents != null && state.cash.liquidCents < 0) {
+  if (state.cash?.liquidCents != null && state.cash.liquidCents < 0) {
     constraints.push({
       id: 'NEGATIVE_LIQUID',
       description: 'User has negative liquid balance',
@@ -74,6 +67,36 @@ export function getHardConstraints(state: EngineUserState): EngineConstraint[] {
   }
 
   return constraints;
+}
+
+export function evaluateConstraintsForDecision(
+  state: EngineState,
+  _ctx: EngineContext,
+  _action: EngineAction,
+  projections: EngineDecision['projections']
+): string[] {
+  const breaches: string[] = [];
+
+  for (const proj of projections.buckets) {
+    const bucket = state.buckets.find((b) => b.id === proj.bucketId);
+    if (!bucket) continue;
+    if (bucket.isEssential && bucket.limitCents != null && proj.projectedSpentCents > bucket.limitCents) {
+      breaches.push('HARD:ESSENTIAL_BUCKET_OVER_LIMIT');
+    }
+  }
+
+  if (state.constraints.hard.maxCardUtilization != null) {
+    for (const proj of projections.debt) {
+      if (
+        proj.projectedUtilization != null &&
+        proj.projectedUtilization > state.constraints.hard.maxCardUtilization
+      ) {
+        breaches.push('HARD:UTILIZATION_THRESHOLD_EXCEEDED');
+      }
+    }
+  }
+
+  return breaches;
 }
 
 export function enforceHardConstraints(decisions: EngineDecision[]): EngineDecision[] {

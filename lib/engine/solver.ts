@@ -1,77 +1,45 @@
 import { runEngine, type EngineDecision as LegacyEngineDecision } from './legacy';
-import {
-  DEFAULT_OBJECTIVE_WEIGHTS,
-  combineScores,
-  scoreComponents,
-} from './objective';
+import { generateCandidateActions } from './candidates';
+import { simulateAction } from './simulate';
+import { scoreDecision, DEFAULT_OBJECTIVE_WEIGHTS } from './objective';
 import {
   EngineError,
   enforceHardConstraints,
+  evaluateConstraintsForDecision,
   formatConstraintTag,
   getHardConstraints,
   validateEngineContext,
-  validateEngineUserState,
+  validateEngineState,
 } from './guardrails';
-import { ENGINE_VERSION, buildEngineUserState } from './context';
+import { ENGINE_VERSION, fromPrismaUserToEngineState } from './context';
 import type {
   EngineAction,
   EngineContext,
   EngineDecision,
   EngineDecisionTrace,
-  EngineUserState,
+  EngineState,
   ObjectiveWeights,
 } from './types';
-
-// Generate candidate actions (currently one USE_CARD per eligible card).
-export function generateCandidateActions(
-  state: EngineUserState,
-  legacyDecision?: LegacyEngineDecision
-): EngineAction[] {
-  const actions: EngineAction[] = [];
-
-  for (const card of state.cards) {
-    if (!card.canUseForContext) continue;
-    actions.push({
-      type: 'USE_CARD',
-      id: `use_card:${card.id}`,
-      cardId: card.id,
-    });
-  }
-
-  if (legacyDecision?.card.cardId && !actions.some((a) => a.cardId === legacyDecision.card.cardId)) {
-    actions.push({
-      type: 'USE_CARD',
-      id: `use_card:${legacyDecision.card.cardId}`,
-      cardId: legacyDecision.card.cardId,
-    });
-  }
-
-  if (actions.length === 0) {
-    actions.push({ type: 'DELAY_PURCHASE', id: 'delay_purchase:default', delayDays: 1 });
-  }
-
-  return actions;
-}
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
   maxCandidates?: number;
-  legacyEngineFn?: typeof runEngine;
-  stateOverride?: EngineUserState;
+  includeLegacyDecision?: boolean;
+  stateOverride?: EngineState;
 };
 
 export type SolveDecisionResult = {
   decisions: EngineDecision[];
   trace: EngineDecisionTrace;
-  legacyDecision: LegacyEngineDecision;
+  legacyDecision?: LegacyEngineDecision;
 };
 
 export async function solveDecision(
-  state: EngineUserState,
+  state: EngineState,
   ctx: EngineContext,
   options: SolveDecisionOptions = {}
 ): Promise<SolveDecisionResult> {
-  const stateIssues = validateEngineUserState(state);
+  const stateIssues = validateEngineState(state);
   const ctxIssues = validateEngineContext(ctx);
 
   if (stateIssues.length > 0 || ctxIssues.length > 0) {
@@ -80,89 +48,36 @@ export async function solveDecision(
     );
   }
 
-  if (
-    ctx.amountCents == null ||
-    Number.isNaN(ctx.amountCents) ||
-    ctx.amountCents <= 0
-  ) {
-    throw new EngineError('amountCents must be a positive number');
-  }
-
-  const parsedMcc =
-    ctx.mcc != null && ctx.mcc !== ''
-      ? Number.parseInt(String(ctx.mcc), 10)
-      : null;
-
-  const legacyRunner = options.legacyEngineFn ?? runEngine;
-
-  const legacyDecision = await legacyRunner({
-    userId: state.userId,
-    amountCents: ctx.amountCents,
-    category: ctx.merchantCategoryKey ?? null,
-    merchantName: ctx.merchantName ?? null,
-    mccCode: Number.isInteger(parsedMcc) ? parsedMcc : null,
-    now: ctx.now,
-  });
-
   const weights: ObjectiveWeights = {
     ...DEFAULT_OBJECTIVE_WEIGHTS,
     ...options.weights,
   };
 
-  const candidateActions = generateCandidateActions(state, legacyDecision);
+  const candidateActions = generateCandidateActions(state, ctx);
   const constrainedCandidates =
     options.maxCandidates && candidateActions.length > options.maxCandidates
       ? candidateActions.slice(0, options.maxCandidates)
       : candidateActions;
 
+  const decisions: EngineDecision[] = [];
   const hardConstraints = getHardConstraints(state);
 
-  const decisions: EngineDecision[] = [];
-
   for (const action of constrainedCandidates) {
-    const components = scoreComponents(state, ctx, action);
-
-    const constraintsBreached: string[] = [];
-
-    if (
-      action.type === 'USE_CARD' &&
-      legacyDecision.budget.strictMode &&
-      legacyDecision.budget.wouldExceed
-    ) {
-      constraintsBreached.push(formatConstraintTag('HARD', 'STRICT_BUCKET_DECLINE'));
-    }
+    const projections = simulateAction(state, ctx, action);
+    const { score, reasons } = scoreDecision(state, ctx, action, projections, weights);
+    const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
 
     for (const constraint of hardConstraints) {
-      if (constraint.severity === 'HARD') {
-        constraintsBreached.push(formatConstraintTag(constraint.severity, constraint.id));
-      }
+      constraintTags.push(formatConstraintTag(constraint.severity, constraint.id));
     }
 
-    const score = combineScores(components, weights);
-
     decisions.push({
+      actionId: buildActionId(action),
       action,
       score,
-      components,
-      constraintsBreached,
-      projections: {
-        buckets:
-          legacyDecision.budget.bucketId != null
-            ? [
-                {
-                  id: legacyDecision.budget.bucketId,
-                  name: legacyDecision.budget.name ?? 'Bucket',
-                  categoryKey: legacyDecision.category,
-                  limitCents: legacyDecision.budget.limitCents ?? null,
-                  balanceCents: legacyDecision.budget.spentAfterCents ?? 0,
-                  period: 'MONTHLY',
-                },
-              ]
-            : undefined,
-        cash: state.cash,
-        debts: state.debts,
-      },
-      explanationBullets: buildExplanationBullets(legacyDecision),
+      reasons,
+      projections,
+      constraintsBreached: constraintTags,
     });
   }
 
@@ -178,22 +93,49 @@ export async function solveDecision(
     },
     contextSummary: {
       surface: ctx.surface,
-      merchantCategoryKey: ctx.merchantCategoryKey,
+      merchantCategoryKey: ctx.merchantCategoryKey ?? null,
       amountCents: ctx.amountCents ?? null,
     },
     candidates: filtered.map((d) => ({
       action: d.action,
-      components: d.components,
       score: d.score,
       constraintsBreached: d.constraintsBreached,
     })),
   };
 
-  return { decisions: filtered, trace, legacyDecision };
+  let legacyDecision: LegacyEngineDecision | undefined;
+  if (options.includeLegacyDecision) {
+    const parsedMcc =
+      ctx.mcc != null && ctx.mcc !== ''
+        ? Number.parseInt(String(ctx.mcc), 10)
+        : null;
+
+    legacyDecision = await runEngine({
+      userId: state.userId,
+      amountCents: ctx.amountCents ?? 0,
+      category: ctx.merchantCategoryKey ?? null,
+      merchantName: ctx.merchantName ?? null,
+      mccCode: Number.isInteger(parsedMcc) ? parsedMcc : null,
+      now: ctx.now,
+    });
+  }
+
+  const result: SolveDecisionResult = { decisions: filtered, trace };
+  if (legacyDecision) {
+    result.legacyDecision = legacyDecision;
+  }
+
+  return result;
 }
 
 export type SafeDecisionOutcome =
-  | { ok: true; decisions: EngineDecision[]; trace: EngineDecisionTrace; legacyDecision: LegacyEngineDecision }
+  | {
+      ok: true;
+      decisions: EngineDecision[];
+      trace: EngineDecisionTrace;
+      legacyDecision?: LegacyEngineDecision;
+      state: EngineState;
+    }
   | { ok: false; reason: 'VALIDATION_ERROR' | 'ENGINE_ERROR'; message: string };
 
 export async function safeSolveDecisionForUser(
@@ -202,9 +144,16 @@ export async function safeSolveDecisionForUser(
   options: SolveDecisionOptions = {}
 ): Promise<SafeDecisionOutcome> {
   try {
-    const state = options.stateOverride ?? (await buildEngineUserState(userId));
-    const { decisions, trace, legacyDecision } = await solveDecision(state, ctx, options);
-    return { ok: true, decisions, trace, legacyDecision };
+    const state = options.stateOverride ?? (await fromPrismaUserToEngineState(userId));
+    const { decisions, trace, legacyDecision } = await solveDecision(state, ctx, {
+      ...options,
+      includeLegacyDecision: options.includeLegacyDecision ?? true,
+    });
+    const successResult: SafeDecisionOutcome = { ok: true, decisions, trace, state };
+    if (legacyDecision) {
+      successResult.legacyDecision = legacyDecision;
+    }
+    return successResult;
   } catch (err) {
     if (err instanceof EngineError) {
       console.error('[engine] validation/solve error', { userId, err });
@@ -224,22 +173,15 @@ export async function safeSolveDecisionForUser(
   }
 }
 
-function buildExplanationBullets(decision: LegacyEngineDecision): string[] {
-  const bullets: string[] = [];
-
-  if (decision.card.cardNickname && decision.card.multiplier != null) {
-    bullets.push(
-      `Use ${decision.card.cardNickname} for ${decision.card.multiplier}x rewards.`
-    );
-  } else if (decision.card.cardNickname) {
-    bullets.push(`Use ${decision.card.cardNickname} for this purchase.`);
+function buildActionId(action: EngineAction): string {
+  switch (action.type) {
+    case 'USE_CARD':
+      return `use_card:${action.cardId ?? 'unknown'}`;
+    case 'DELAY_PURCHASE':
+      return `delay_purchase:${action.delayDays ?? 0}`;
+    case 'REJECT_PURCHASE':
+      return 'reject_purchase';
+    default:
+      return 'unknown';
   }
-
-  if (decision.budget.wouldExceed && decision.budget.strictMode) {
-    bullets.push('Strict budget: this swipe would be declined.');
-  } else if (decision.budget.wouldExceed) {
-    bullets.push('This swipe exceeds your budget for this category.');
-  }
-
-  return bullets;
 }

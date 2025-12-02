@@ -643,8 +643,8 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 
 ## 12. Engine Appendix
 
-- Deterministic core: `EngineUserState + EngineContext → ranked actions + projections`, exposed via `solveDecision`/`safeSolveDecisionForUser` (`lib/engine/solver.ts`).
-- Canonical types live in `lib/engine/types.ts`; guardrails live in `lib/engine/guardrails.ts`; context builders in `lib/engine/context.ts`.
+- Deterministic core: `EngineState + EngineContext → ranked actions + projections`, exposed via `solveDecision`/`safeSolveDecisionForUser` (`lib/engine/solver.ts`).
+- Canonical types live in `lib/engine/types.ts` (`NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`); guardrails live in `lib/engine/guardrails.ts`; context/state builders in `lib/engine/context.ts`.
 - Legacy compatibility (`runEngine`, card/bucket verdicts) sits in `lib/engine/legacy.ts` until all surfaces migrate.
 - `/api/simulate` now wraps the engine through `safeSolveDecisionForUser` for graceful failures; `/api/scan`/`/api/sessions` will follow the same path as they migrate.
 

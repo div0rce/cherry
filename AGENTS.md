@@ -121,8 +121,7 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 ## Quick File Pointers (per surface)
 - Manual advisory: `app/scan/ScanClient.tsx` → `/api/sessions` (creates session) and `/api/sessions/[id]/confirm`.
 - Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.
-- Engine: `lib/engine.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
-- Engine: `lib/engine/*` (types/solver/context/guardrails), legacy shim in `lib/engine/legacy.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
+- Engine: `lib/engine/*` (types/solver/context/guardrails/objective/simulate/candidates), legacy shim in `lib/engine/legacy.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
 - Simulations: `/api/simulate` must use the canonical engine (`safeSolveDecisionForUser` in `lib/engine/solver.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
 - Category preferences: `CategoryPreference.category` is a `RewardCategory` enum; do not store free-form strings. Use Zod enum validation on write paths.
 - Buckets: `currentAmount` is legacy; budget math uses `budgetAmount` + `spentCents` (with rollover) only.
@@ -134,12 +133,13 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 
 ---
 
-## Cherry Engine
-- Single entrypoint: `solveDecision` + `safeSolveDecisionForUser` in `lib/engine/solver.ts`; type shapes live in `lib/engine/types.ts`; guardrails in `lib/engine/guardrails.ts`; context builders in `lib/engine/context.ts`.
-- Legacy compatibility (`runEngine`, card/bucket verdicts) is isolated to `lib/engine/legacy.ts` until all surfaces migrate.
-- New recommendation/simulation surfaces must call `safeSolveDecisionForUser` (or `solveDecision` with a prebuilt state) instead of rolling bespoke decision logic.
-- Add new action types or scoring tweaks via `lib/engine/objective.ts` + `lib/engine/solver.ts`; keep `lib/engine-invariants.ts` updated when outputs change.
-- Engine failures must degrade gracefully (return structured errors/no recommendation) rather than crashing routes.
+## Cherry Engine — Solver Architecture
+- Pure solver: `EngineState` (normalized user state) + `EngineContext` (payload) → ranked `EngineDecision[]` with scores, reasons, projections, and constraint tags.
+- State model lives in `lib/engine/types.ts`: `NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`, `WorldParams`. Do not leak Prisma models into solver logic.
+- State/Context builders: `fromPrismaUserToEngineState(userId)` maps DB → engine state; `fromExternalContextToEngineContext(payload)` maps HTTP/extension/Vine payloads → engine context.
+- Pipeline: `generateCandidateActions` → `simulateAction` → `scoreDecision` (`objective.ts`) → `evaluateConstraintsForDecision`/`enforceHardConstraints` → sorted output. Orchestrated by `solveDecision`; API-safe wrapper is `safeSolveDecisionForUser`.
+- Legacy compatibility (`runEngine`, card/bucket verdicts) is isolated in `lib/engine/legacy.ts` for now; new surfaces must consume `safeSolveDecisionForUser` and map `EngineDecision` to their payloads.
+- Add new action types or scoring tweaks in `lib/engine/objective.ts`, `lib/engine/candidates.ts`, `lib/engine/simulate.ts`, and keep `lib/engine-invariants.ts` updated when outputs change. Engine failures must degrade gracefully (structured errors/no recommendation) rather than crashing routes.
 
 ---
 

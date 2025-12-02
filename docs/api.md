@@ -7,6 +7,10 @@ This file documents the server routes under `app/api/*` and how they align with 
 
 ---
 
+- Engine overview: versioned solver pipeline in `lib/engine` (`solveDecision`/`safeSolveDecisionForUser` with normalized state + context builders); legacy `runEngine` remains for compatibility on older routes until they migrate.
+
+---
+
 ## Auth
 - Auth stack: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`.
 - Auth guard: `withUser` (`lib/with-user.ts`) wraps all stateful routes; unauthenticated calls return `401`.

@@ -95,7 +95,16 @@ function setupSimulationMocks() {
     buildEngineContext: (input) => input,
     safeSolveDecisionForUser: async () => ({
       ok: true,
-      decisions: [],
+      decisions: [
+        {
+          actionId: 'use_card:card-1',
+          action: { type: 'USE_CARD', cardId: 'card-1' },
+          score: 1,
+          reasons: [],
+          projections: { buckets: [], debt: [], cash: { projectedLiquidCents: null, projectedOverdraftRisk: null } },
+          constraintsBreached: [],
+        },
+      ],
       trace: {
         engineVersion: 'test',
         weights: {},
@@ -104,6 +113,31 @@ function setupSimulationMocks() {
         candidates: [],
       },
       legacyDecision,
+      state: {
+        userId: 'lab-user-1',
+        cards: [
+          {
+            id: 'card-1',
+            userId: 'lab-user-1',
+            issuer: 'Test',
+            label: 'Demo Card',
+            rewardRules: [],
+            isCredit: true,
+            isActive: true,
+            isVirtual: false,
+            productSlug: null,
+            last4: null,
+            creditLimitCents: null,
+            currentBalanceCents: null,
+            network: 'VISA',
+          },
+        ],
+        buckets: [],
+        debts: [],
+        constraints: { hard: { minEssentialCoverageDays: 0, maxCardUtilization: null }, soft: { avoidInterest: false, avoidNewDebt: false } },
+        world: { baseInterestRate: null, inflationEstimate: null },
+        cash: { liquidCents: null, nextPaycheckDate: null, nextPaycheckNetCents: null },
+      },
     }),
     validateEngineDecision: () => {},
   });

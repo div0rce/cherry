@@ -1,42 +1,48 @@
 import { applyInMemoryRollover } from '@/lib/buckets/periods';
 import { prisma } from '@/lib/prisma';
 import type {
-  EngineBucketSnapshot,
-  EngineCard,
-  EngineCashSnapshot,
+  Bucket,
+  DebtAccount,
   EngineContext,
-  EngineDebtSnapshot,
+  EngineState,
   EngineSurface,
-  EngineUserPreferences,
-  EngineUserState,
+  NormalizedCard,
+  RewardRule,
+  UserConstraints,
+  WorldParams,
 } from './types';
-import { DEFAULT_OBJECTIVE_WEIGHTS } from './objective';
 
 // Bump when core decision behavior or payload shapes materially change.
 export const ENGINE_VERSION = 'v0.1.0';
 
-export async function buildEngineUserState(userId: string): Promise<EngineUserState> {
-  const [cards, buckets] = await Promise.all([
-    loadCardsForUser(userId),
-    loadBucketsForUser(userId),
+export async function fromPrismaUserToEngineState(userId: string): Promise<EngineState> {
+  const [cards, buckets, debts, constraints, world] = await Promise.all([
+    loadNormalizedCards(userId),
+    loadBuckets(userId),
+    loadDebts(userId),
+    loadUserConstraints(userId),
+    loadWorldParams(),
   ]);
 
-  // Debt + cash snapshots are not modeled yet; keep placeholders to avoid nulls.
-  const debts = await loadDebtsForUser();
-  const cash = await loadCashSnapshotForUser();
-  const preferences = await loadPreferencesForUser();
+  const cash =
+    (await loadCashSnapshot(userId).catch(() => ({
+      liquidCents: null,
+      nextPaycheckDate: null,
+      nextPaycheckNetCents: null,
+    }))) ?? null;
 
   return {
     userId,
     cards,
     buckets,
     debts,
+    constraints,
+    world,
     cash,
-    preferences,
   };
 }
 
-export function buildEngineContext(input: {
+export function fromExternalContextToEngineContext(input: {
   surface?: EngineSurface;
   now?: Date;
   merchantName?: string | null;
@@ -61,17 +67,23 @@ export function buildEngineContext(input: {
   };
 }
 
-async function loadCardsForUser(userId: string): Promise<EngineCard[]> {
+// Legacy alias preserved for existing callers.
+export const buildEngineContext = fromExternalContextToEngineContext;
+
+async function loadNormalizedCards(userId: string): Promise<NormalizedCard[]> {
   const cards = await prisma.card.findMany({
     where: { userId },
     include: { rewardRules: true },
     orderBy: { createdAt: 'asc' },
   });
 
-  return cards.map((card) => ({
+  return cards.map<NormalizedCard>((card) => ({
     id: card.id,
+    userId,
     issuer: card.issuer,
+    productSlug: null,
     label: card.nickname,
+    last4: null,
     network:
       card.network === 'VISA' ||
       card.network === 'MASTERCARD' ||
@@ -79,32 +91,41 @@ async function loadCardsForUser(userId: string): Promise<EngineCard[]> {
       card.network === 'DISCOVER'
         ? card.network
         : 'OTHER',
-    productSlug: null,
-    rewards: card.rewardRules.map((rule) => {
-      const rateType = rule.multiplier != null ? 'POINTS_PER_DOLLAR' : 'CASHBACK';
-      const rateValue =
-        rateType === 'POINTS_PER_DOLLAR'
-          ? rule.multiplier ?? 0
-          : (rule.cashbackPercent ?? 0) / 100;
-
-      return {
-        categoryKey: rule.category,
-        rateType,
-        rateValue,
-        capAmountCents: rule.capAmount ?? null,
-        capPeriod: null,
-        promoStart: rule.promoStart ?? null,
-        promoEnd: rule.promoEnd ?? null,
-        confidence: 1,
-        source: 'STATIC_CONFIG',
-      };
-    }),
     isCredit: card.isCredit,
-    canUseForContext: true,
+    isActive: true,
+    isVirtual: false,
+    rewardRules: mapRewardRules(card.rewardRules, card.id),
+    creditLimitCents: null,
+    currentBalanceCents: null,
   }));
 }
 
-async function loadBucketsForUser(userId: string): Promise<EngineBucketSnapshot[]> {
+function mapRewardRules(rules: { id: string; category: string; multiplier: number | null; cashbackPercent: number | null; capAmount: number | null; promoStart: Date | null; promoEnd: Date | null }[], cardId: string): RewardRule[] {
+  return rules.map((rule) => {
+    const rateType = rule.multiplier != null ? 'POINTS_PER_DOLLAR' : 'CASHBACK';
+    const rateValue =
+      rateType === 'POINTS_PER_DOLLAR'
+        ? rule.multiplier ?? 0
+        : (rule.cashbackPercent ?? 0) / 100;
+
+    return {
+      id: rule.id,
+      cardId,
+      categoryKey: rule.category,
+      mccPattern: null,
+      rateType,
+      rateValue,
+      capAmountCents: rule.capAmount ?? null,
+      capPeriod: null,
+      promoStart: rule.promoStart ?? null,
+      promoEnd: rule.promoEnd ?? null,
+      source: 'STATIC_CONFIG',
+      confidence: 1,
+    };
+  });
+}
+
+async function loadBuckets(userId: string): Promise<Bucket[]> {
   const now = new Date();
   const buckets = await prisma.bucket.findMany({
     where: { userId },
@@ -118,32 +139,43 @@ async function loadBucketsForUser(userId: string): Promise<EngineBucketSnapshot[
       name: rolled.name,
       categoryKey: rolled.category,
       limitCents: rolled.budgetAmount ?? null,
-      balanceCents: rolled.spentCents ?? 0,
+      spentCents: rolled.spentCents ?? 0,
       period: rolled.period === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY',
+      isEssential: false,
+      strictMode: rolled.strictMode ?? false,
     };
   });
 }
 
-async function loadDebtsForUser(): Promise<EngineDebtSnapshot[]> {
+async function loadDebts(_userId: string): Promise<DebtAccount[]> {
   // Debt accounts are not modeled in the current schema; keep an empty list to satisfy the type.
   return [];
 }
 
-async function loadCashSnapshotForUser(): Promise<EngineCashSnapshot> {
-  // Cash runway tracking is not modeled yet; keep nullable placeholders.
+async function loadUserConstraints(_userId: string): Promise<UserConstraints> {
+  return {
+    hard: {
+      minEssentialCoverageDays: 0,
+      maxCardUtilization: null,
+    },
+    soft: {
+      avoidInterest: false,
+      avoidNewDebt: false,
+    },
+  };
+}
+
+async function loadWorldParams(): Promise<WorldParams> {
+  return {
+    baseInterestRate: null,
+    inflationEstimate: null,
+  };
+}
+
+async function loadCashSnapshot(_userId: string): Promise<EngineState['cash']> {
   return {
     liquidCents: null,
     nextPaycheckDate: null,
     nextPaycheckNetCents: null,
-  };
-}
-
-async function loadPreferencesForUser(): Promise<EngineUserPreferences> {
-  return {
-    rewardsWeight: DEFAULT_OBJECTIVE_WEIGHTS.rewards,
-    runwayWeight: DEFAULT_OBJECTIVE_WEIGHTS.runway,
-    debtReliefWeight: DEFAULT_OBJECTIVE_WEIGHTS.debtRelief,
-    volatilityPenaltyWeight: DEFAULT_OBJECTIVE_WEIGHTS.volatilityPenalty,
-    ruleViolationPenaltyWeight: DEFAULT_OBJECTIVE_WEIGHTS.ruleViolationPenalty,
   };
 }

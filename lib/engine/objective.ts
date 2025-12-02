@@ -1,21 +1,24 @@
 import type {
+  BucketProjection,
+  CashProjection,
+  DebtProjection,
   EngineAction,
   EngineContext,
-  EngineUserState,
+  EngineState,
   ObjectiveComponentScores,
   ObjectiveWeights,
 } from './types';
 
 // Default weights; tune per user once preferences are persisted.
 export const DEFAULT_OBJECTIVE_WEIGHTS: ObjectiveWeights = {
-  rewards: 1,
-  runway: 1,
-  debtRelief: 1,
-  volatilityPenalty: 1,
-  ruleViolationPenalty: 3,
+  rewards: 1.0,
+  runway: 1.0,
+  debtRelief: 1.0,
+  volatilityPenalty: 1.0,
+  ruleViolationPenalty: 3.0,
 };
 
-export function clampWeights(weights: ObjectiveWeights): ObjectiveWeights {
+function clampWeights(weights: ObjectiveWeights): ObjectiveWeights {
   const sanitize = (value: number) => (!Number.isFinite(value) || value < 0 ? 0 : value);
 
   return {
@@ -27,53 +30,72 @@ export function clampWeights(weights: ObjectiveWeights): ObjectiveWeights {
   };
 }
 
-export function scoreComponents(
-  state: EngineUserState,
+function scoreComponents(
+  state: EngineState,
   ctx: EngineContext,
-  action: EngineAction
+  action: EngineAction,
+  projections: {
+    buckets: BucketProjection[];
+    debt: DebtProjection[];
+    cash: CashProjection;
+  }
 ): ObjectiveComponentScores {
-  const amountCents = ctx.amountCents ?? 0;
-  const categoryKey = ctx.merchantCategoryKey ?? 'OTHER';
-
+  // 1) Rewards estimate.
   let rewards = 0;
-  let ruleViolationPenalty = 0;
-
-  if (action.type === 'USE_CARD' && action.cardId && amountCents > 0) {
+  if (action.type === 'USE_CARD' && action.cardId && ctx.amountCents) {
     const card = state.cards.find((c) => c.id === action.cardId);
     if (card) {
-      const matchingRule =
-        card.rewards.find((rule) => rule.categoryKey === categoryKey) ??
-        card.rewards.find((rule) => rule.categoryKey === 'GENERAL_MERCHANDISE') ??
-        card.rewards.find((rule) => rule.categoryKey === 'OTHER');
+      const categoryKey = ctx.merchantCategoryKey ?? 'ALL';
+      const rule =
+        card.rewardRules.find((r) => r.categoryKey === categoryKey) ??
+        card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE') ??
+        card.rewardRules.find((r) => r.categoryKey === 'OTHER') ??
+        card.rewardRules.find((r) => r.categoryKey === 'ALL');
 
-      if (matchingRule) {
-        const dollars = amountCents / 100;
-        rewards =
-          matchingRule.rateType === 'CASHBACK'
-            ? amountCents * matchingRule.rateValue
-            : dollars * matchingRule.rateValue;
+      if (rule) {
+        const base = ctx.amountCents;
+        if (rule.rateType === 'CASHBACK') {
+          rewards = base * rule.rateValue;
+        } else if (rule.rateType === 'POINTS_PER_DOLLAR') {
+          rewards = base * rule.rateValue;
+        }
       }
     }
   }
 
-  const bucket = state.buckets.find((b) => b.categoryKey === categoryKey);
-  if (bucket && bucket.limitCents != null && amountCents > 0) {
-    const projected = bucket.balanceCents + amountCents;
-    if (projected > bucket.limitCents) {
-      ruleViolationPenalty = 1;
+  // 2) Runway: prefer leaving room in essential buckets.
+  let runway = 0;
+  for (const proj of projections.buckets) {
+    const bucket = state.buckets.find((b) => b.id === proj.bucketId);
+    if (!bucket) continue;
+    if (bucket.isEssential && bucket.limitCents != null) {
+      const remaining = bucket.limitCents - proj.projectedSpentCents;
+      runway += remaining;
     }
   }
 
+  // 3) Debt relief: penalize utilization.
+  let debtRelief = 0;
+  for (const proj of projections.debt) {
+    if (proj.projectedUtilization != null) {
+      debtRelief -= proj.projectedUtilization;
+    }
+  }
+
+  // 4) Volatility penalty: placeholder for now.
+  const volatilityPenalty = 0;
+  const ruleViolationPenalty = 0;
+
   return {
     rewards,
-    runway: 0,
-    debtRelief: 0,
-    volatilityPenalty: 0,
+    runway,
+    debtRelief,
+    volatilityPenalty,
     ruleViolationPenalty,
   };
 }
 
-export function combineScores(
+function combineScores(
   components: ObjectiveComponentScores,
   weights: ObjectiveWeights
 ): number {
@@ -86,4 +108,36 @@ export function combineScores(
     components.volatilityPenalty * w.volatilityPenalty -
     components.ruleViolationPenalty * w.ruleViolationPenalty
   );
+}
+
+// Main scoring function that returns a scalar + human-readable reasons.
+export function scoreDecision(
+  state: EngineState,
+  ctx: EngineContext,
+  action: EngineAction,
+  projections: {
+    buckets: BucketProjection[];
+    debt: DebtProjection[];
+    cash: CashProjection;
+  },
+  weights: ObjectiveWeights = DEFAULT_OBJECTIVE_WEIGHTS
+): { score: number; reasons: string[] } {
+  const components = scoreComponents(state, ctx, action, projections);
+  const score = combineScores(components, weights);
+
+  const reasons: string[] = [];
+
+  if (components.rewards !== 0) {
+    reasons.push(`Rewards impact: ${(components.rewards / 100).toFixed(2)}`);
+  }
+
+  if (components.runway !== 0) {
+    reasons.push('Runway adjusted by essential bucket margin.');
+  }
+
+  if (components.debtRelief !== 0) {
+    reasons.push('Debt/utilization adjusted.');
+  }
+
+  return { score, reasons };
 }

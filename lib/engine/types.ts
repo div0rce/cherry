@@ -11,70 +11,91 @@ export type EngineSurface =
   | 'sms'
   | 'unknown';
 
-export type EngineBucketSnapshot = {
+export type NormalizedCardId = string;
+export type BucketId = string;
+export type DebtAccountId = string;
+
+export type RewardRule = {
   id: string;
-  name: string;
+  cardId: NormalizedCardId;
   categoryKey: string;
-  limitCents: number | null;
-  balanceCents: number;
-  period: 'MONTHLY' | 'WEEKLY' | 'ADHOC';
-};
-
-export type EngineDebtSnapshot = {
-  id: string;
-  name: string;
-  type: 'CREDIT_CARD' | 'LOAN' | 'OTHER';
-  balanceCents: number;
-  creditLimitCents: number | null;
-  aprPercent: number | null;
-  utilization: number | null;
-};
-
-export type EngineCashSnapshot = {
-  liquidCents: number | null;
-  nextPaycheckDate: Date | null;
-  nextPaycheckNetCents: number | null;
-};
-
-export type EngineCardRewardRule = {
-  categoryKey: string;
+  mccPattern?: string | null;
   rateType: 'CASHBACK' | 'POINTS_PER_DOLLAR';
   rateValue: number;
   capAmountCents?: number | null;
   capPeriod?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
   promoStart?: Date | null;
   promoEnd?: Date | null;
-  confidence: number;
   source: 'STATIC_CONFIG' | 'SCRAPE_LLM' | 'INFERRED_FROM_TXN' | 'USER_OVERRIDE';
+  confidence: number;
 };
 
-export type EngineCard = {
-  id: string;
-  issuer: string;
-  label: string;
-  last4?: string;
-  network?: 'VISA' | 'MASTERCARD' | 'AMEX' | 'DISCOVER' | 'OTHER';
-  productSlug?: string | null;
-  rewards: EngineCardRewardRule[];
-  isCredit: boolean;
-  canUseForContext: boolean;
-};
-
-export type EngineUserPreferences = {
-  rewardsWeight: number;
-  runwayWeight: number;
-  debtReliefWeight: number;
-  volatilityPenaltyWeight: number;
-  ruleViolationPenaltyWeight: number;
-};
-
-export type EngineUserState = {
+export type NormalizedCard = {
+  id: NormalizedCardId;
   userId: string;
-  buckets: EngineBucketSnapshot[];
-  debts: EngineDebtSnapshot[];
-  cash: EngineCashSnapshot;
-  cards: EngineCard[];
-  preferences: EngineUserPreferences;
+  issuer: string;
+  productSlug?: string | null;
+  label: string;
+  last4?: string | null;
+  network?: 'VISA' | 'MASTERCARD' | 'AMEX' | 'DISCOVER' | 'OTHER';
+  isCredit: boolean;
+  isActive: boolean;
+  isVirtual?: boolean;
+  rewardRules: RewardRule[];
+  creditLimitCents?: number | null;
+  currentBalanceCents?: number | null;
+};
+
+export type Bucket = {
+  id: BucketId;
+  name: string;
+  categoryKey: string;
+  limitCents: number | null;
+  spentCents: number;
+  period: 'MONTHLY' | 'WEEKLY' | 'ADHOC';
+  isEssential: boolean;
+  strictMode?: boolean;
+};
+
+export type DebtAccount = {
+  id: DebtAccountId;
+  name: string;
+  type: 'CREDIT_CARD' | 'LOAN' | 'OTHER';
+  balanceCents: number;
+  creditLimitCents: number | null;
+  aprPercent: number | null;
+  minPaymentCents: number | null;
+  dueDayOfMonth: number | null;
+};
+
+export type UserConstraints = {
+  hard: {
+    minEssentialCoverageDays?: number;
+    maxCardUtilization?: number | null;
+  };
+  soft: {
+    avoidNewDebt?: boolean;
+    avoidInterest?: boolean;
+  };
+};
+
+export type WorldParams = {
+  baseInterestRate?: number | null;
+  inflationEstimate?: number | null;
+};
+
+export type EngineState = {
+  userId: string;
+  cards: NormalizedCard[];
+  buckets: Bucket[];
+  debts: DebtAccount[];
+  constraints: UserConstraints;
+  world: WorldParams;
+  cash: {
+    liquidCents: number | null;
+    nextPaycheckDate: Date | null;
+    nextPaycheckNetCents: number | null;
+  } | null;
 };
 
 export type EngineContext = {
@@ -90,23 +111,42 @@ export type EngineContext = {
   payPeriodDayOfCycle?: number | null;
 };
 
-export type EngineActionType =
-  | 'USE_CARD'
-  | 'DELAY_PURCHASE'
-  | 'REJECT_PURCHASE'
-  | 'SWITCH_MERCHANT'
-  | 'ADJUST_BUDGET'
-  | 'PAY_DOWN_DEBT';
+export type EngineActionType = 'USE_CARD' | 'DELAY_PURCHASE' | 'REJECT_PURCHASE';
 
 export type EngineAction = {
   type: EngineActionType;
-  id: string;
-  cardId?: string;
+  cardId?: NormalizedCardId;
   delayDays?: number;
-  altMerchantName?: string;
-  altMerchantCategoryKey?: string;
-  budgetAdjustments?: { bucketId: string; deltaCents: number }[];
-  debtPayment?: { debtId: string; amountCents: number };
+};
+
+export type BucketProjection = {
+  bucketId: BucketId;
+  projectedSpentCents: number;
+  projectedOverLimit: boolean;
+};
+
+export type DebtProjection = {
+  debtId: DebtAccountId;
+  projectedBalanceCents: number;
+  projectedUtilization?: number | null;
+};
+
+export type CashProjection = {
+  projectedLiquidCents: number | null;
+  projectedOverdraftRisk: number | null;
+};
+
+export type EngineDecision = {
+  actionId: string;
+  action: EngineAction;
+  score: number;
+  reasons: string[];
+  projections: {
+    buckets: BucketProjection[];
+    debt: DebtProjection[];
+    cash: CashProjection;
+  };
+  constraintsBreached: string[];
 };
 
 export type ObjectiveComponentScores = {
@@ -123,19 +163,6 @@ export type ObjectiveWeights = {
   debtRelief: number;
   volatilityPenalty: number;
   ruleViolationPenalty: number;
-};
-
-export type EngineDecision = {
-  action: EngineAction;
-  score: number;
-  components: ObjectiveComponentScores;
-  constraintsBreached: string[];
-  projections: {
-    buckets?: EngineBucketSnapshot[];
-    debts?: EngineDebtSnapshot[];
-    cash?: EngineCashSnapshot;
-  };
-  explanationBullets: string[];
 };
 
 export type EngineConstraintSeverity = 'HARD' | 'SOFT';
@@ -166,7 +193,6 @@ export type EngineDecisionTrace = {
   };
   candidates: {
     action: EngineAction;
-    components: ObjectiveComponentScores;
     score: number;
     constraintsBreached: string[];
   }[];

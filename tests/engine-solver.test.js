@@ -5,25 +5,39 @@ const {
   safeSolveDecisionForUser,
   generateCandidateActions,
   buildEngineContext,
+  simulateAction,
   EngineError,
 } = require('../lib/engine');
-const { DEFAULT_OBJECTIVE_WEIGHTS } = require('../lib/engine/objective');
 
 function buildStubState(overrides = {}) {
   return {
     userId: 'user-1',
     buckets: [],
     debts: [],
+    constraints: {
+      hard: {
+        minEssentialCoverageDays: 0,
+        maxCardUtilization: null,
+      },
+      soft: {
+        avoidInterest: false,
+        avoidNewDebt: false,
+      },
+    },
+    world: { baseInterestRate: null, inflationEstimate: null },
     cash: { liquidCents: 10_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
     cards: [
       {
         id: 'card-strong',
+        userId: 'user-1',
         issuer: 'Issuer',
         label: 'Strong Card',
         network: 'VISA',
         productSlug: null,
-        rewards: [
+        rewardRules: [
           {
+            id: 'rule-1',
+            cardId: 'card-strong',
             categoryKey: 'DINING',
             rateType: 'POINTS_PER_DOLLAR',
             rateValue: 2,
@@ -32,16 +46,20 @@ function buildStubState(overrides = {}) {
           },
         ],
         isCredit: true,
-        canUseForContext: true,
+        isActive: true,
+        isVirtual: false,
       },
       {
         id: 'card-weak',
+        userId: 'user-1',
         issuer: 'Issuer',
         label: 'Weak Card',
         network: 'VISA',
         productSlug: null,
-        rewards: [
+        rewardRules: [
           {
+            id: 'rule-2',
+            cardId: 'card-weak',
             categoryKey: 'DINING',
             rateType: 'POINTS_PER_DOLLAR',
             rateValue: 1,
@@ -50,47 +68,11 @@ function buildStubState(overrides = {}) {
           },
         ],
         isCredit: true,
-        canUseForContext: true,
+        isActive: true,
+        isVirtual: false,
       },
     ],
-    preferences: {
-      rewardsWeight: DEFAULT_OBJECTIVE_WEIGHTS.rewards,
-      runwayWeight: DEFAULT_OBJECTIVE_WEIGHTS.runway,
-      debtReliefWeight: DEFAULT_OBJECTIVE_WEIGHTS.debtRelief,
-      volatilityPenaltyWeight: DEFAULT_OBJECTIVE_WEIGHTS.volatilityPenalty,
-      ruleViolationPenaltyWeight: DEFAULT_OBJECTIVE_WEIGHTS.ruleViolationPenalty,
-    },
     ...overrides,
-  };
-}
-
-function buildStubLegacyDecision(cardId = 'card-strong') {
-  return {
-    category: 'DINING',
-    amountCents: 1000,
-    budget: {
-      verdict: 'HEALTHY',
-      coverageMode: 'UNCONFIGURED',
-      hasBucket: false,
-      bucketId: null,
-      name: null,
-      limitCents: null,
-      spentBeforeCents: 0,
-      spentAfterCents: 1000,
-      remainingAfterCents: null,
-      strictMode: false,
-      wouldExceed: false,
-    },
-    card: {
-      verdict: 'OPTIMAL',
-      cardId,
-      cardNickname: 'Stub Card',
-      multiplier: 2,
-      estimatedRewards: 20,
-      hasCardData: true,
-    },
-    overallVerdict: 'GREEN',
-    cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
   };
 }
 
@@ -107,9 +89,7 @@ function buildStubContext(overrides = {}) {
 async function testSolveDecisionSorts() {
   const state = buildStubState();
   const ctx = buildStubContext();
-  const result = await solveDecision(state, ctx, {
-    legacyEngineFn: async () => buildStubLegacyDecision('card-strong'),
-  });
+  const result = await solveDecision(state, ctx);
 
   assert.equal(result.decisions[0]?.action.cardId, 'card-strong');
 }
@@ -119,7 +99,7 @@ async function testSolveDecisionValidation() {
   const ctx = buildStubContext({ amountCents: -10 });
 
   await assert.rejects(
-    () => solveDecision(state, ctx, { legacyEngineFn: async () => buildStubLegacyDecision() }),
+    () => solveDecision(state, ctx),
     EngineError
   );
 }
@@ -129,7 +109,7 @@ async function testSafeSolveDecisionSuccess() {
   const ctx = buildStubContext();
   const outcome = await safeSolveDecisionForUser('user-1', ctx, {
     stateOverride: state,
-    legacyEngineFn: async () => buildStubLegacyDecision('card-strong'),
+    includeLegacyDecision: false,
   });
 
   assert.equal(outcome.ok, true);
@@ -140,17 +120,15 @@ async function testSafeSolveDecisionSuccess() {
 
 async function testSafeSolveDecisionFailure() {
   const state = buildStubState();
-  const ctx = buildStubContext();
+  const ctx = buildStubContext({ amountCents: -5 });
   const outcome = await safeSolveDecisionForUser('user-1', ctx, {
     stateOverride: state,
-    legacyEngineFn: async () => {
-      throw new Error('boom');
-    },
+    includeLegacyDecision: false,
   });
 
   assert.equal(outcome.ok, false);
   if (!outcome.ok) {
-    assert.equal(outcome.reason, 'ENGINE_ERROR');
+    assert.equal(outcome.reason, 'VALIDATION_ERROR');
   }
 }
 
@@ -159,25 +137,52 @@ function testGenerateCandidatesSkipsDisabled() {
     cards: [
       {
         id: 'skip-card',
+        userId: 'user-1',
         issuer: 'Issuer',
         label: 'Skip',
-        rewards: [],
+        rewardRules: [],
         isCredit: true,
-        canUseForContext: false,
+        isActive: false,
+        isVirtual: false,
       },
       {
         id: 'use-card',
+        userId: 'user-1',
         issuer: 'Issuer',
         label: 'Use',
-        rewards: [],
+        rewardRules: [],
         isCredit: true,
-        canUseForContext: true,
+        isActive: true,
+        isVirtual: false,
       },
     ],
   });
 
-  const actions = generateCandidateActions(state);
+  const ctx = buildStubContext();
+  const actions = generateCandidateActions(state, ctx);
   assert.ok(actions.every((a) => a.cardId !== 'skip-card'));
+}
+
+function testSimulateActionUpdatesBucket() {
+  const state = buildStubState({
+    buckets: [
+      {
+        id: 'bucket-1',
+        name: 'Dining',
+        categoryKey: 'DINING',
+        limitCents: 5000,
+        spentCents: 1000,
+        period: 'MONTHLY',
+        isEssential: false,
+        strictMode: false,
+      },
+    ],
+  });
+
+  const ctx = buildStubContext();
+  const projections = simulateAction(state, ctx, { type: 'USE_CARD', cardId: 'card-strong' });
+  const bucketProj = projections.buckets.find((b) => b.bucketId === 'bucket-1');
+  assert.equal(bucketProj?.projectedSpentCents, 2000);
 }
 
 async function run() {
@@ -186,6 +191,7 @@ async function run() {
   await testSafeSolveDecisionSuccess();
   await testSafeSolveDecisionFailure();
   testGenerateCandidatesSkipsDisabled();
+  testSimulateActionUpdatesBucket();
   console.warn('engine solver: ok');
 }
 
