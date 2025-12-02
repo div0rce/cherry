@@ -2,7 +2,11 @@ import type { JSX } from 'react';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { PageHeader } from '@/components/ui/page-header';
+import { MetricCard } from '@/components/ui/metric-card';
+import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorBanner } from '@/components/ErrorBanner';
 import { getCurrentUserId } from '@/lib/auth';
 import { DeleteBucketButton, AddBucketForm } from './client';
 import { getBaseUrl } from '@/lib/base-url';
@@ -63,39 +67,46 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
     error = err instanceof Error ? err.message : 'Failed to load buckets';
   }
 
+  const totalBudgetCents = buckets.reduce((sum, b) => sum + (b.budgetAmount ?? 0), 0);
+  const strictCount = buckets.filter((b) => b.strictMode).length;
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-10 space-y-8 text-slate-100">
-      <header className="space-y-2">
-        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Lab</p>
-        <h1 className="text-3xl font-semibold text-white">Buckets</h1>
-        <p className="text-slate-300">
-          Manage budget envelopes. Values are stored in cents; shown here in dollars.
-        </p>
-        <div className="flex items-center gap-4 text-sm text-pink-200">
-          <Link href="/cards" className="hover:text-white">
-            Manage cards →
-          </Link>
-          <Link href="/simulate" className="hover:text-white">
-            Run simulations →
-          </Link>
-        </div>
-      </header>
+    <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 text-slate-100">
+      <PageHeader
+        title="Buckets"
+        description="Inspect and configure budgets Cherry uses to constrain and score decisions."
+        label="Setup"
+        actions={
+          <div className="flex items-center gap-3 text-sm">
+            <Link href="/cards" className="text-pink-200 hover:text-pink-100">
+              Manage cards →
+            </Link>
+            <Link href="/simulate" className="text-pink-200 hover:text-pink-100">
+              Run simulations →
+            </Link>
+          </div>
+        }
+      />
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <MetricCard label="Total buckets" value={buckets.length} />
+        <MetricCard label="Strict buckets" value={strictCount} helper="Hard stop when exceeded" />
+        <MetricCard
+          label="Total budget"
+          value={formatCents(totalBudgetCents)}
+          helper="All active buckets"
+        />
+      </section>
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
-        <section className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur">
-          <div className="border-b border-white/5 px-4 py-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Your buckets</h2>
-          </div>
-
+        <Panel title="Your buckets" description="Budgets applied during engine evaluation.">
           {error ? (
-            <div className="p-4 text-sm text-red-300">{error}</div>
+            <ErrorBanner message="Failed to load buckets." />
           ) : buckets.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                title="No buckets yet"
-                description="Create budget envelopes to enforce weekly or monthly limits."
-              />
-            </div>
+            <EmptyState
+              title="No buckets yet"
+              description="Create budget envelopes to enforce weekly or monthly limits."
+            />
           ) : (
             <ul className="divide-y divide-white/5">
               {buckets.map((bucket) => (
@@ -116,15 +127,15 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
               ))}
             </ul>
           )}
-        </section>
+        </Panel>
 
-        <section className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur p-4 space-y-3">
-          <h3 className="text-base font-semibold text-white">Create bucket</h3>
-          <p className="text-sm text-slate-300">
-            Amounts are dollars in the UI and sent as cents to the API.
-          </p>
+        <Panel
+          title="Create bucket"
+          description="Amounts are dollars in the UI and sent as cents to the API."
+          padded
+        >
           <AddBucketForm />
-        </section>
+        </Panel>
       </div>
     </div>
   );

@@ -3,7 +3,12 @@ import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { PageHeader } from '@/components/ui/page-header';
+import { MetricCard } from '@/components/ui/metric-card';
+import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
+import { LoadingRows } from '@/components/ui/loading-skeleton';
+import { ErrorBanner } from '@/components/ErrorBanner';
 import {
   AddCardForm,
   AddRewardRuleForm,
@@ -101,50 +106,62 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
     error = err instanceof Error ? err.message : 'Failed to load cards';
   }
 
+  const totalRewardRules = cards.reduce((sum, card) => sum + card.rewardRules.length, 0);
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10 space-y-8 text-slate-100">
-      <header className="space-y-2">
-        <p className="text-sm uppercase tracking-label text-pink-200">Cherry Lab</p>
-        <h1 className="text-3xl font-semibold text-white">Cards & Rewards</h1>
-        <p className="text-slate-300">
-          Manage demo cards and reward rules. Data comes from the Prisma-backed APIs.
-        </p>
-      </header>
+    <div className="mx-auto max-w-5xl space-y-8 px-4 py-10 text-slate-100">
+      <PageHeader
+        title="Cards & rewards"
+        label="Setup"
+        description="View and manage cards Cherry can recommend and simulate against."
+        actions={
+          <div className="flex items-center gap-3 text-sm">
+            <Link href="/buckets" className="text-pink-200 hover:text-pink-100">
+              Buckets →
+            </Link>
+            <Link href="/simulate" className="text-pink-200 hover:text-pink-100">
+              Simulations →
+            </Link>
+          </div>
+        }
+      />
+
+      <section className="grid gap-3 md:grid-cols-3">
+        <MetricCard label="Cards" value={cards.length} helper="Active in engine" />
+        <MetricCard label="Reward rules" value={totalRewardRules} helper="Across all cards" />
+        <MetricCard
+          label="Credit vs debit"
+          value={`${cards.filter((c) => c.isCredit).length} credit / ${cards.filter((c) => !c.isCredit).length} debit`}
+          helper="By card type"
+        />
+      </section>
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur">
-            <div className="border-b border-white/5 px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Your cards</h2>
-              <div className="flex items-center gap-4 text-sm text-pink-200">
-                <Link href="/buckets" className="hover:text-white">
-                  Buckets →
-                </Link>
-                <Link href="/simulate" className="hover:text-white">
-                  Simulations →
-                </Link>
-              </div>
-            </div>
+        <Panel
+          title="Your cards"
+          description="Cards and reward rules used by the engine and simulations."
+        >
+          {error ? (
+            <ErrorBanner message="Failed to load cards." />
+          ) : (
+            <Suspense
+              fallback={
+                <div className="p-2">
+                  <LoadingRows rows={4} columns={1} />
+                </div>
+              }
+            >
+              <CardList cards={cards} />
+            </Suspense>
+          )}
+        </Panel>
 
-            {error ? (
-              <div className="p-4 text-sm text-red-300">{error}</div>
-            ) : (
-              <Suspense fallback={<div className="p-4 text-sm text-slate-300">Loading…</div>}>
-                <CardList cards={cards} />
-              </Suspense>
-            )}
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-white/5 bg-white/5 shadow-lg backdrop-blur p-4">
-            <h3 className="text-base font-semibold mb-2 text-white">Add a card</h3>
-            <p className="text-sm text-slate-300 mb-3">
-              Annual fee is optional; enter it in dollars (we convert to cents).
-            </p>
-            <AddCardForm />
-          </div>
-        </section>
+        <Panel
+          title="Add a card"
+          description="Annual fee is optional; enter it in dollars (we convert to cents)."
+        >
+          <AddCardForm />
+        </Panel>
       </div>
     </div>
   );

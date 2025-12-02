@@ -19,7 +19,6 @@ const SECTIONS: NavSection[] = [
     label: 'Spend & data',
     items: [
       { href: '/', label: 'Dashboard' },
-      { href: '/activity', label: 'Activity' },
       { href: '/history', label: 'Spend history' },
       { href: '/statements', label: 'Statements' },
     ],
@@ -34,6 +33,7 @@ const SECTIONS: NavSection[] = [
   {
     label: 'Engine',
     items: [
+      { href: '/activity', label: 'Engine activity' },
       { href: '/scan', label: 'Scan' },
       { href: '/sessions', label: 'Sessions' },
       { href: '/simulate', label: 'Simulate swipe' },

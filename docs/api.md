@@ -19,6 +19,8 @@ This file documents the server routes under `app/api/*` and how they align with 
 - `/statements`: spend/statement view against `/api/activity`.
 - `/vine-simulator`: UI harness for `/api/vine/order`.
 - `/admin`: surface for `/api/admin/*`, seed endpoints, and `/api/health`.
+- Buckets/Cards/History pages follow the same header → metrics → panels layout with standardized Empty/Loading/Error states.
+- `/history` is spend history (statement/bank-derived timeline); `/activity` is engine activity (sessions/ledger/engine events) under the Engine section.
 
 ---
 

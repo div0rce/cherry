@@ -123,6 +123,8 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Page pattern: `PageHeader` → metric row (`MetricCard`) → panelized content (`Panel`) with consistent spacing. Keep headers semantic (`h1` per page, `h2` per section).
 - Shared UI primitives live under `components/ui/*`: `PageHeader`, `MetricCard`, `Panel`, `EmptyState`, `ErrorBanner`, `LoadingRows`/`LoadingMetricGrid`. Prefer these over ad hoc empty/loading/error text.
 - Engine-first surfaces (Dashboard, Statements, Scan, Sessions, Vine, Admin) should expose backend context and use the same header/metric/panel vocabulary; avoid bespoke layouts unless required by data.
+- Buckets, Cards, History/Activity, and Simulations also follow the same header → metrics → panels pattern; data-heavy areas use `LoadingRows`/`LoadingMetricGrid` during fetch and `ErrorBanner` for failures.
+- `/history` is spend history (transactions/statement-derived timeline). `/activity` is engine activity (sessions/ledger/engine events) and lives under the Engine section of the sidebar.
 
 ---
 

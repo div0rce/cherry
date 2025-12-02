@@ -650,6 +650,8 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 - Vine simulator (`/vine-simulator`): hardware-context sandbox for `/api/vine/order`, showing the same engine outputs as Scan.
 - Admin (`/admin`): health, seed/clear tools, and diagnostics; guarded as a dev-only surface.
 - All pages share the same pattern (PageHeader → metrics → Panels + Empty/Error states) to reinforce Cherry as advisory, not a payment front.
+- Buckets, Cards, and History/Activity surfaces follow the same console grammar, exposing budget constraints and recent engine events alongside standardized loading/empty/error handling.
+- Spend history (`/history`) shows statement/bank timelines; Engine activity (`/activity`) shows engine-driven events (sessions, confirmations, ledger) under dev tools.
 
 ---
 
