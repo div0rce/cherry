@@ -8,7 +8,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { runEngine } from '@/lib/engine';
-import type { EngineDecision } from '@/lib/engine';
+import type { LegacyEngineDecision } from '@/lib/engine';
 import type { OrderContext } from './order-context';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { assertUserId } from '@/lib/invariants';
@@ -17,7 +17,7 @@ import { isPrismaP2003, logInvariant } from '@/lib/user-context';
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
   userId: string
-): Promise<{ sessionId: string; orderToken: string; decision: EngineDecision }> {
+): Promise<{ sessionId: string; orderToken: string; decision: LegacyEngineDecision }> {
   assertUserId(userId);
 
   const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : Date.now();

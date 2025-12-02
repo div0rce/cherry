@@ -5,14 +5,14 @@ import type { JSX } from 'react';
 import type { OverallVerdict } from '@/lib/enums';
 import { useState, FormEvent, useRef, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
-import type { EngineDecision } from '@/lib/engine';
+import type { LegacyEngineDecision } from '@/lib/engine';
 import type { z } from 'zod';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import type { VineTerminalEventInput } from '@/lib/schemas/vine-terminal';
 
 type VineOrderResponse = {
   sessionId: string;
-  decision: EngineDecision;
+  decision: LegacyEngineDecision;
   orderToken: string;
   expiresAt?: string;
 };

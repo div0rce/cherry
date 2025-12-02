@@ -1,9 +1,9 @@
-import type { EngineDecision, EngineInput } from './engine';
+import type { EngineInput, LegacyEngineDecision } from './engine';
 
 export type RunSimulationInput = EngineInput;
 
 export type RunSimulationResult = {
-  decision: EngineDecision;
+  decision: LegacyEngineDecision;
 };
 
 /**
@@ -16,7 +16,7 @@ export type RunSimulationResult = {
  */
 export async function runSimulation(
   input: RunSimulationInput,
-  overrides?: { runEngineFn?: (i: EngineInput) => Promise<EngineDecision> }
+  overrides?: { runEngineFn?: (i: EngineInput) => Promise<LegacyEngineDecision> }
 ): Promise<RunSimulationResult> {
   const runner =
     overrides?.runEngineFn ??

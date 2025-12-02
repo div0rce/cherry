@@ -1,7 +1,7 @@
-import type { EngineDecision } from '@/lib/engine';
+import type { LegacyEngineDecision } from '@/lib/engine';
 
 // Throws if the decision violates internal consistency checks.
-export function validateEngineDecision(decision: EngineDecision): void {
+export function validateEngineDecision(decision: LegacyEngineDecision): void {
   const {
     amountCents,
     budget,

@@ -1,5 +1,5 @@
 import { RewardCategory } from '@prisma/client';
-import type { EngineDecision } from '@/lib/engine';
+import type { LegacyEngineDecision } from '@/lib/engine';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
 
 export type ScanRequestBody = {
@@ -43,5 +43,5 @@ export type ScanResponseBody = {
     expiryMinutes: number;
   };
 
-  engineDecision: EngineDecision;
+  engineDecision: LegacyEngineDecision;
 };

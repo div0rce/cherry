@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from 'react';
 import Link from 'next/link';
-import type { EngineDecision } from '@/lib/engine';
+import type { LegacyEngineDecision } from '@/lib/engine';
 import type { ScanResponse } from '@/lib/schemas/scan';
 import { ScanResponseSchema } from '@/lib/schemas/scan';
 import { callApi } from '@/lib/client/api';
@@ -22,7 +22,7 @@ type ScanPreview = {
   recommendedRewardLabel: string | null;
   advisoryPoints: number;
   isSnapshot: boolean;
-  decision: EngineDecision;
+  decision: LegacyEngineDecision;
 };
 
 type SessionState = {
@@ -55,7 +55,7 @@ function mapScanResponseToPreview(api: ScanResponse, request: { merchantName: st
         : null,
     advisoryPoints: api.cherryIncentive.pointsIfFollowed ?? 0,
     isSnapshot,
-    decision: api.engineDecision as EngineDecision,
+    decision: api.engineDecision as LegacyEngineDecision,
   };
 }
 
