@@ -119,7 +119,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      const topDecision = engineResult.decisions.at(0);
+      const topDecision =
+        engineResult.decisions.find(
+          (decision) =>
+            decision.action.type === 'USE_CARD' || decision.action.type === 'USE_CARD_WITH_PAYDOWN'
+        ) ?? engineResult.decisions.at(0);
       const mappedDecision = mapSolverDecisionToLegacyDecision({
         ...(topDecision ? { solverDecision: topDecision } : {}),
         state: engineResult.state,

@@ -6,6 +6,8 @@ const {
   generateCandidateActions,
   buildEngineContext,
   simulateAction,
+  evaluateConstraintsForDecision,
+  enforceHardConstraints,
   EngineError,
 } = require('../lib/engine');
 
@@ -205,6 +207,108 @@ function testSimulateActionUpdatesBucket() {
   assert.equal(bucketProj?.projectedSpentCents, 2000);
 }
 
+function testGenerateCandidatesAddsAdvancedActions() {
+  const state = buildStubState({
+    debts: [
+      {
+        id: 'debt-1',
+        name: 'Card Debt',
+        type: 'CREDIT_CARD',
+        balanceCents: 100_000,
+        creditLimitCents: 200_000,
+        aprPercent: 20,
+        minPaymentCents: 2_000,
+        dueDayOfMonth: 5,
+      },
+    ],
+    cash: {
+      liquidCents: 250_000,
+      nextPaycheckDate: new Date('2024-01-15T00:00:00Z'),
+      nextPaycheckNetCents: null,
+    },
+  });
+
+  const ctx = buildStubContext({ amountCents: 20_000 });
+  const actions = generateCandidateActions(state, ctx);
+  const types = new Set(actions.map((a) => a.type));
+
+  assert.ok(types.has('USE_CARD'));
+  assert.ok(types.has('USE_CARD_WITH_PAYDOWN'));
+  assert.ok(types.has('DELAY_PURCHASE'));
+  assert.ok(types.has('REJECT_PURCHASE'));
+}
+
+function testPaydownGuardrailBlocksExcess() {
+  const state = buildStubState({
+    debts: [
+      {
+        id: 'debt-1',
+        name: 'Card Debt',
+        type: 'CREDIT_CARD',
+        balanceCents: 50_000,
+        creditLimitCents: 100_000,
+        aprPercent: 20,
+        minPaymentCents: 1_000,
+        dueDayOfMonth: 10,
+      },
+    ],
+    cash: { liquidCents: 2_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+  });
+  const ctx = buildStubContext({ amountCents: 10_000 });
+  const action = { type: 'PAY_DOWN_DEBT', debtId: 'debt-1', paydownAmountCents: 5_000 };
+  const projections = simulateAction(state, ctx, action);
+  const breaches = evaluateConstraintsForDecision(state, ctx, action, projections);
+  assert.ok(breaches.includes('HARD:PAYDOWN_EXCEEDS_LIQUID'));
+
+  const kept = enforceHardConstraints([
+    {
+      actionId: 'paydown-test',
+      action,
+      score: 0,
+      reasons: [],
+      projections,
+      constraintsBreached: breaches,
+    },
+  ]);
+  assert.equal(kept.length, 0);
+}
+
+async function testCompositeActionImprovesDebtRelief() {
+  const state = buildStubState({
+    debts: [
+      {
+        id: 'debt-strong',
+        name: 'Strong Card',
+        type: 'CREDIT_CARD',
+        balanceCents: 100_000,
+        creditLimitCents: 200_000,
+        aprPercent: 25,
+        minPaymentCents: 2_000,
+        dueDayOfMonth: 15,
+      },
+    ],
+    cash: {
+      liquidCents: 120_000,
+      nextPaycheckDate: new Date('2024-01-15T00:00:00Z'),
+      nextPaycheckNetCents: null,
+    },
+  });
+  const ctx = buildStubContext({ amountCents: 10_000 });
+  const result = await solveDecision(state, ctx);
+  const plain = result.decisions.find(
+    (d) => d.action.type === 'USE_CARD' && d.action.cardId === 'card-strong'
+  );
+  const composite = result.decisions.find(
+    (d) => d.action.type === 'USE_CARD_WITH_PAYDOWN' && d.action.cardId === 'card-strong'
+  );
+
+  assert.ok(plain);
+  assert.ok(composite);
+  if (plain && composite) {
+    assert.ok(composite.score > plain.score);
+  }
+}
+
 async function run() {
   await testSolveDecisionSorts();
   await testSolveDecisionValidation();
@@ -212,6 +316,9 @@ async function run() {
   await testSafeSolveDecisionFailure();
   testGenerateCandidatesSkipsDisabled();
   testSimulateActionUpdatesBucket();
+  testGenerateCandidatesAddsAdvancedActions();
+  testPaydownGuardrailBlocksExcess();
+  await testCompositeActionImprovesDebtRelief();
   console.warn('engine solver: ok');
 }
 

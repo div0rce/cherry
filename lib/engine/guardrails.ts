@@ -71,8 +71,8 @@ export function getHardConstraints(state: EngineState): EngineConstraint[] {
 
 export function evaluateConstraintsForDecision(
   state: EngineState,
-  _ctx: EngineContext,
-  _action: EngineAction,
+  ctx: EngineContext,
+  action: EngineAction,
   projections: EngineDecision['projections']
 ): string[] {
   const breaches: string[] = [];
@@ -92,6 +92,33 @@ export function evaluateConstraintsForDecision(
         proj.projectedUtilization > state.constraints.hard.maxCardUtilization
       ) {
         breaches.push('HARD:UTILIZATION_THRESHOLD_EXCEEDED');
+      }
+    }
+  }
+
+  const amount = ctx.amountCents ?? 0;
+
+  if (
+    (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
+    action.paydownAmountCents
+  ) {
+    const liquid = state.cash?.liquidCents ?? null;
+    if (liquid != null && liquid < action.paydownAmountCents) {
+      breaches.push('HARD:PAYDOWN_EXCEEDS_LIQUID');
+    }
+  }
+
+  if (
+    (action.type === 'DELAY_PURCHASE' || action.type === 'REJECT_PURCHASE') &&
+    ctx.merchantCategoryKey
+  ) {
+    const essentialBucket = state.buckets.find(
+      (bucket) => bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential
+    );
+    if (essentialBucket && essentialBucket.limitCents != null) {
+      const margin = essentialBucket.limitCents - essentialBucket.spentCents - amount;
+      if (margin >= 0) {
+        breaches.push('SOFT:ESSENTIAL_PURCHASE_DELAY');
       }
     }
   }

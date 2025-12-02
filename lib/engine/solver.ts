@@ -188,6 +188,12 @@ function buildActionId(action: EngineAction): string {
   switch (action.type) {
     case 'USE_CARD':
       return `use_card:${action.cardId ?? 'unknown'}`;
+    case 'USE_CARD_WITH_PAYDOWN':
+      return `use_card_with_paydown:${action.cardId ?? 'unknown'}:${action.debtId ?? 'none'}`;
+    case 'PAY_DOWN_DEBT':
+      return `pay_down_debt:${action.debtId ?? 'unknown'}`;
+    case 'SWITCH_MERCHANT':
+      return `switch_merchant:${action.altMerchantCategoryKey ?? 'unknown'}`;
     case 'DELAY_PURCHASE':
       return `delay_purchase:${action.delayDays ?? 0}`;
     case 'REJECT_PURCHASE':

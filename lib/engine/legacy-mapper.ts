@@ -39,6 +39,14 @@ export function mapSolverDecisionToLegacyDecision(input: {
     return fallback ?? null;
   }
 
+  const isCardAction =
+    solverDecision.action.type === 'USE_CARD' ||
+    solverDecision.action.type === 'USE_CARD_WITH_PAYDOWN';
+
+  if (!isCardAction && fallback) {
+    return fallback;
+  }
+
   const amountCents = ctx.amountCents;
   const bucketProj = solverDecision.projections.buckets.at(0);
   const bucket = bucketProj ? state.buckets.find((b) => b.id === bucketProj.bucketId) : undefined;
@@ -67,7 +75,9 @@ export function mapSolverDecisionToLegacyDecision(input: {
   }
 
   const card =
-    solverDecision.action.type === 'USE_CARD' && solverDecision.action.cardId
+    (solverDecision.action.type === 'USE_CARD' ||
+      solverDecision.action.type === 'USE_CARD_WITH_PAYDOWN') &&
+    solverDecision.action.cardId
       ? state.cards.find((c) => c.id === solverDecision.action.cardId)
       : undefined;
 

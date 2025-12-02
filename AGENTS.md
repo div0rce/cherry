@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-01
+Last updated: 2025-12-02
 
 # Cherry Agents — Canonical Operating Guide
 
@@ -162,6 +162,16 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Centralized via a small helper inside `safeSolveDecisionForUser`; validation errors log as warnings, unexpected errors log as errors.
 - Logging is suppressed entirely when `NODE_ENV=test` to avoid noise from expected failure tests.
 - Do not add ad-hoc `console.error`/`console.warn` in API routes for engine failures; use the engine logger flow instead.
+
+---
+
+### Engine decision vocabulary
+- Action types include: `USE_CARD`, `USE_CARD_WITH_PAYDOWN`, `DELAY_PURCHASE`, `REJECT_PURCHASE`, `SWITCH_MERCHANT`, and `PAY_DOWN_DEBT`.
+- `generateCandidateActions(state, ctx)` enumerates allowed actions based on state (cards/buckets/debts/cash) and context (surface, amount, merchant/category). Rich, multi-step actions are limited to surfaces like `web`/`extension`.
+- `simulateAction(state, ctx, action)` projects bucket/debt/cash results for each action; composite actions apply both purchase and follow-up debt paydown effects.
+- `scoreDecision(...)` combines rewards, essential-bucket runway, debt relief, and penalties into a scalar score with human-readable reasons. Delay/reject carry small penalties unless constraints force them.
+- Guardrails: `evaluateConstraintsForDecision` tags breaches (e.g., `HARD:ESSENTIAL_BUCKET_OVER_LIMIT`, `HARD:PAYDOWN_EXCEEDS_LIQUID`, `SOFT:ESSENTIAL_PURCHASE_DELAY`), and `enforceHardConstraints` drops unsafe decisions.
+- API surfaces (`/api/scan`, `/api/sessions`, `/api/simulate`) prefer card-based actions for legacy payloads but still trace the full decision set for observability.
 
 ---
 

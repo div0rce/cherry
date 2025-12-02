@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-01
+Last updated: 2025-12-02
 
 # Cherry API Reference (App Router)
 
@@ -135,7 +135,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card.
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
 - `/api/buckets/[bucketId]` — Delete a specific bucket.
-- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets.
+- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
@@ -156,6 +156,7 @@ All use Zod validation in `lib/schemas/*` and `withUser` guard.
 
 ## Notes and Invariants
 - `/api/scan` is stateless; persistence belongs in sessions/ledger.
+- Engine solver traces multiple action types internally; public APIs still expose card-centric recommendations for compatibility.
 - Monetary values are integer cents in APIs and DB.
 - Do not store card PAN/CVV/track data; Vine payloads are context-only.
 - Wallet pass remains gated at 501 until Apple certs/env vars are provided and the feature flag is set.

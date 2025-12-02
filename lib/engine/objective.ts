@@ -42,7 +42,11 @@ function scoreComponents(
 ): ObjectiveComponentScores {
   // 1) Rewards estimate.
   let rewards = 0;
-  if (action.type === 'USE_CARD' && action.cardId && ctx.amountCents) {
+  if (
+    (action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
+    action.cardId &&
+    ctx.amountCents
+  ) {
     const card = state.cards.find((c) => c.id === action.cardId);
     if (card) {
       const categoryKey = ctx.merchantCategoryKey ?? 'ALL';
@@ -74,17 +78,42 @@ function scoreComponents(
     }
   }
 
-  // 3) Debt relief: penalize utilization.
+  // 3) Debt relief: reward lower utilization or balances, plus explicit paydowns.
   let debtRelief = 0;
   for (const proj of projections.debt) {
-    if (proj.projectedUtilization != null) {
-      debtRelief -= proj.projectedUtilization;
+    const debt = state.debts.find((d) => d.id === proj.debtId);
+    if (!debt) continue;
+    const currentUtil =
+      debt.creditLimitCents && debt.creditLimitCents > 0
+        ? debt.balanceCents / debt.creditLimitCents
+        : null;
+
+    if (proj.projectedUtilization != null && currentUtil != null) {
+      debtRelief += currentUtil - proj.projectedUtilization;
+    } else {
+      const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
+      debtRelief += balanceDelta / 100_00;
     }
+  }
+
+  if (
+    (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
+    action.paydownAmountCents
+  ) {
+    debtRelief += 1;
   }
 
   // 4) Volatility penalty: placeholder for now.
   const volatilityPenalty = 0;
   const ruleViolationPenalty = 0;
+
+  if (action.type === 'DELAY_PURCHASE' && ctx.amountCents) {
+    runway -= 0.01 * ctx.amountCents;
+  }
+
+  if (action.type === 'REJECT_PURCHASE' && ctx.amountCents) {
+    runway -= 0.05 * ctx.amountCents;
+  }
 
   return {
     rewards,
@@ -137,6 +166,27 @@ export function scoreDecision(
 
   if (components.debtRelief !== 0) {
     reasons.push('Debt/utilization adjusted.');
+  }
+
+  if (
+    (action.type === 'USE_CARD_WITH_PAYDOWN' || action.type === 'PAY_DOWN_DEBT') &&
+    action.paydownAmountCents
+  ) {
+    reasons.push(
+      `Includes a paydown of ${(action.paydownAmountCents / 100).toFixed(2)} toward debt.`
+    );
+  }
+
+  if (action.type === 'DELAY_PURCHASE' && action.delayDays) {
+    reasons.push(`Delays purchase by ${action.delayDays} day(s) to reduce near-term risk.`);
+  }
+
+  if (action.type === 'SWITCH_MERCHANT') {
+    reasons.push('Suggests an alternate merchant in the same category to save cost.');
+  }
+
+  if (action.type === 'REJECT_PURCHASE') {
+    reasons.push('Recommends skipping this purchase to protect constraints.');
   }
 
   return { score, reasons };

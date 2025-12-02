@@ -1,5 +1,5 @@
 Status: Active and canonical
-Last updated: 2025-12-01
+Last updated: 2025-12-02
 
 # Cherry Vision & Product Identity
 
@@ -247,6 +247,21 @@ For a hypothetical transaction:
 The engine returns a **decision object** summarizing this evaluation.
 
 In environments with Cherry Vine, the evaluation can be triggered automatically at the right second (when the POS finalizes the total) instead of waiting for the user to type, but the decision object and its semantics remain exactly the same.
+
+---
+
+### 5.3. Multi-action solver (advisory only)
+
+Cherry’s engine now evaluates multiple classes of actions for a given purchase context, still within the **advise-only** boundary:
+
+- `USE_CARD` — recommend a specific card for the purchase.
+- `USE_CARD_WITH_PAYDOWN` — recommend a card **and** schedule an extra debt payment (horizon-2).
+- `DELAY_PURCHASE` — suggest deferring for a few days to protect runway.
+- `REJECT_PURCHASE` — suggest skipping entirely (logged as a self-decline).
+- `SWITCH_MERCHANT` — recommend an alternate merchant in the same category when data supports it.
+- `PAY_DOWN_DEBT` — recommend a standalone paydown when liquidity allows.
+
+Guardrails block unsafe actions (e.g., essential budgets over limit, paydowns that exceed liquid cash), and public APIs still surface card-centric outputs while tracing the broader decision space.
 
 ---
 

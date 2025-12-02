@@ -111,12 +111,31 @@ export type EngineContext = {
   payPeriodDayOfCycle?: number | null;
 };
 
-export type EngineActionType = 'USE_CARD' | 'DELAY_PURCHASE' | 'REJECT_PURCHASE';
+export type EngineActionType =
+  | 'USE_CARD'
+  | 'DELAY_PURCHASE'
+  | 'REJECT_PURCHASE'
+  | 'SWITCH_MERCHANT'
+  | 'PAY_DOWN_DEBT'
+  | 'USE_CARD_WITH_PAYDOWN';
 
 export type EngineAction = {
   type: EngineActionType;
+  // Card-directed actions.
   cardId?: NormalizedCardId;
+  // Delay actions.
   delayDays?: number;
+  // Alternate merchant suggestions.
+  altMerchantName?: string | null;
+  altMerchantCategoryKey?: string | null;
+  // Debt actions.
+  debtId?: DebtAccountId;
+  paydownAmountCents?: number;
+  paydownScheduledDate?: Date | null;
+  // Additional hints for UI/telemetry.
+  meta?: {
+    reasonHint?: string;
+  };
 };
 
 export type BucketProjection = {
