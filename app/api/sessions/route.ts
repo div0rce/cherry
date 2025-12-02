@@ -10,7 +10,12 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { runEngine } from '@/lib/engine';
+import {
+  buildEngineContext,
+  mapSolverDecisionToLegacyDecision,
+  safeSolveDecisionForUser,
+  type LegacyEngineDecision,
+} from '@/lib/engine';
 import { logError } from '@/lib/logger';
 import { CreateSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
@@ -59,13 +64,56 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? body.mccCode
         : null;
 
-    const decision = await runEngine({
-      userId,
-      amountCents,
-      category: categoryHint as RewardCategory | null,
+    const ctxForEngine = buildEngineContext({
+      surface: 'web',
+      now: new Date(),
       merchantName,
-      mccCode: mccCode ?? null,
+      merchantCategoryKey: categoryHint ?? null,
+      mcc: mccCode != null ? String(mccCode) : null,
+      amountCents,
     });
+
+    const engineResult = await safeSolveDecisionForUser(userId, ctxForEngine, { maxCandidates: 64 });
+
+    if (!engineResult.ok) {
+      return NextResponse.json(
+        {
+          sessionId: null,
+          orderToken: null,
+          expiresAt: null,
+          source: RecommendationSource.APP_SCAN,
+          error: {
+            code: engineResult.reason,
+            message: engineResult.message,
+          },
+        },
+        { status: 200 }
+      );
+    }
+
+    const topDecision = engineResult.decisions.at(0);
+    const mappedDecision: LegacyEngineDecision | null = mapSolverDecisionToLegacyDecision({
+      ...(topDecision ? { solverDecision: topDecision } : {}),
+      state: engineResult.state,
+      ctx: ctxForEngine,
+      category: (categoryHint as RewardCategory | null) ?? 'OTHER',
+      ...(engineResult.legacyDecision ? { fallback: engineResult.legacyDecision } : {}),
+    });
+
+    if (!mappedDecision) {
+      return NextResponse.json(
+        {
+          error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
+          sessionId: null,
+          orderToken: null,
+          expiresAt: null,
+          source: RecommendationSource.APP_SCAN,
+        },
+        { status: 200 }
+      );
+    }
+
+    const decision: LegacyEngineDecision = mappedDecision;
     validateEngineDecision(decision);
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);

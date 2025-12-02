@@ -7,7 +7,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 
 ---
 
-- Engine overview: versioned solver pipeline in `lib/engine` (`solveDecision`/`safeSolveDecisionForUser` with normalized state + context builders); legacy `runEngine` remains for compatibility on older routes until they migrate.
+- Engine overview: versioned solver pipeline in `lib/engine` (`solveDecision`/`safeSolveDecisionForUser` with normalized state + context builders); legacy `runEngine` remains only for compatibility on older surfaces.
 
 ---
 
@@ -36,7 +36,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 - Behavior:
   - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody`.
   - Resolves category via `resolveScanCategory` (MCC-aware).
-  - Calls `runEngine` (legacy, in `lib/engine/legacy.ts`) and `validateEngineDecision`; never persists. New entrypoints should prefer `solveDecision`/`safeSolveDecisionForUser`.
+  - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; never persists.
 - Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging.
 
 ---
@@ -50,7 +50,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - Body fields: `merchantName?`, `amountCents` (int > 0), `category?`, `currency?` (default `USD`), optional `deviceId`, `storeId`, `terminalId`, `orderId`, `mccCode`.
 - Behavior:
   - Validates via `lib/schemas/sessions.ts`.
-  - Runs engine and persists `RecommendationSession` with verdicts, coverageMode, offered points, expiry (~15 minutes), `orderToken` (UUID), `source = APP_SCAN`.
+  - Runs engine solver (`safeSolveDecisionForUser`) and persists `RecommendationSession` with verdicts, coverageMode, offered points, expiry (~15 minutes), `orderToken` (UUID), `source = APP_SCAN`.
   - Returns `{ sessionId, orderToken, expiresAt, source, decision }`.
 
 ### `GET /api/sessions`

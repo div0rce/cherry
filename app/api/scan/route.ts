@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runEngine } from '@/lib/engine';
+import {
+  buildEngineContext,
+  mapSolverDecisionToLegacyDecision,
+  safeSolveDecisionForUser,
+  type LegacyEngineDecision,
+} from '@/lib/engine';
 import { resolveScanCategory } from '@/lib/scan-helpers';
 import type { ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
@@ -7,6 +12,7 @@ import { ScanRequestSchema } from '@/lib/schemas/scan';
 import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { resolveUserContext } from '@/lib/user-context';
+import type { RewardCategory } from '@prisma/client';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -22,7 +28,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const category = await resolveScanCategory({
+    const category: RewardCategory = await resolveScanCategory({
       userId,
       merchantName: body.merchantName,
       mccCode: typeof body.mccCode === 'number' ? body.mccCode : null,
@@ -37,13 +43,50 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         : 0;
 
     try {
-      const decision = await runEngine({
-        userId,
-        amountCents,
-        category,
+      const ctx = buildEngineContext({
+        surface: 'web',
+        now: new Date(),
         merchantName: body.merchantName,
-        mccCode: typeof body.mccCode === 'number' ? body.mccCode : null,
+        merchantCategoryKey: category,
+        mcc: typeof body.mccCode === 'number' ? String(body.mccCode) : null,
+        amountCents,
       });
+
+      const engineResult = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
+
+      if (!engineResult.ok) {
+        return NextResponse.json(
+          {
+            error: {
+              code: engineResult.reason,
+              message: engineResult.message,
+            },
+            decision: null,
+          },
+          { status: 200 }
+        );
+      }
+
+      const topDecision = engineResult.decisions.at(0);
+      const mappedDecision: LegacyEngineDecision | null = mapSolverDecisionToLegacyDecision({
+        ...(topDecision ? { solverDecision: topDecision } : {}),
+        state: engineResult.state,
+        ctx,
+        category,
+        ...(engineResult.legacyDecision ? { fallback: engineResult.legacyDecision } : {}),
+      });
+
+      if (!mappedDecision) {
+        return NextResponse.json(
+          {
+            error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
+            decision: null,
+          },
+          { status: 200 }
+        );
+      }
+
+      const decision: LegacyEngineDecision = mappedDecision;
       validateEngineDecision(decision);
 
       const bucket = decision.budget;

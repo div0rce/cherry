@@ -140,6 +140,7 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Pipeline: `generateCandidateActions` → `simulateAction` → `scoreDecision` (`objective.ts`) → `evaluateConstraintsForDecision`/`enforceHardConstraints` → sorted output. Orchestrated by `solveDecision`; API-safe wrapper is `safeSolveDecisionForUser`.
 - Legacy compatibility (`runEngine`, card/bucket verdicts) is isolated in `lib/engine/legacy.ts` for now; new surfaces must consume `safeSolveDecisionForUser` and map `EngineDecision` to their payloads.
 - Add new action types or scoring tweaks in `lib/engine/objective.ts`, `lib/engine/candidates.ts`, `lib/engine/simulate.ts`, and keep `lib/engine-invariants.ts` updated when outputs change. Engine failures must degrade gracefully (structured errors/no recommendation) rather than crashing routes.
+- API usage: `/api/simulate`, `/api/scan`, and `/api/sessions` all route through `safeSolveDecisionForUser` with context builders; mapping back to legacy response shapes happens via helpers (e.g., `mapSolverDecisionToLegacyDecision`).
 
 ---
 

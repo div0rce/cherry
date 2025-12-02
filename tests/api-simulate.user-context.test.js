@@ -93,6 +93,7 @@ function setupSimulationMocks() {
 
   mockModule('../lib/engine', {
     buildEngineContext: (input) => input,
+    mapSolverDecisionToLegacyDecision: ({ fallback }) => fallback ?? legacyDecision,
     safeSolveDecisionForUser: async () => ({
       ok: true,
       decisions: [

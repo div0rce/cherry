@@ -5,3 +5,4 @@ export * from './guardrails';
 export * from './objective';
 export * from './candidates';
 export * from './simulate';
+export * from './legacy-mapper';
