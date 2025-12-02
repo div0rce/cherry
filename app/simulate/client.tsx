@@ -32,6 +32,7 @@ export function RunSimulationForm(): JSX.Element {
   const [category, setCategory] = useState('DINING');
   const [merchantName, setMerchantName] = useState('');
   const [mccCode, setMccCode] = useState('');
+  const [commit, setCommit] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [errors, setErrors] = useState<{
     amount?: string;
@@ -100,6 +101,7 @@ export function RunSimulationForm(): JSX.Element {
           category: normalizedCategory,
           merchantName: merchantName || undefined,
           mccCode: mcc,
+          ...(commit ? { commit: true } : {}),
         }),
       });
 
@@ -136,6 +138,7 @@ export function RunSimulationForm(): JSX.Element {
       setMerchantName('');
       setMccCode('');
       setAmountDollars('');
+      setCommit(false);
       router.refresh();
     } catch {
       setStatus('Network error: unable to run simulation.');
@@ -198,6 +201,17 @@ export function RunSimulationForm(): JSX.Element {
         </p>
         {errors.mcc && <p className="text-xs text-red-400">{errors.mcc}</p>}
       </div>
+      <label className="flex items-center gap-2 text-sm text-slate-300">
+        <input
+          type="checkbox"
+          checked={commit}
+          onChange={(e) => setCommit(e.target.checked)}
+          className="h-4 w-4 rounded border border-white/20 bg-slate-900 text-pink-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+        />
+        <span className="text-xs text-slate-400">
+          Apply to buckets (dev/local only). In production this is ignored.
+        </span>
+      </label>
       <button
         type="submit"
         className="w-full rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white hover:bg-pink-700 transition disabled:opacity-60 disabled:cursor-not-allowed"

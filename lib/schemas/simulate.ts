@@ -8,5 +8,6 @@ export const SimulateRequestSchema = z
     merchantName: z.string().min(1).optional(),
     simulationId: z.string().optional(),
     mccCode: z.number().int().optional().nullable(),
+    commit: z.boolean().optional(),
   })
   .strict();
