@@ -10,6 +10,12 @@ Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cher
 
 ---
 
+## Status (2025-12-02)
+- Lab-ready engine/UI/admin; productionization needs: (1) real bank ingest (dev endpoint exists), (2) automated verification/ledger posting, (3) enforced Vine signatures + observability/rate limiting.
+- Wallet pass stays gated at 501 until certs/flag are configured; Vine remains context-only.
+
+---
+
 ## Stack and Layout
 - Next.js 16 (App Router), React 19, Tailwind tokens in `app/globals.css`.
 - Server-first pages under `app/`; client components marked with `"use client"`.

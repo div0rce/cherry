@@ -25,6 +25,12 @@ Docs consulted:
 - `docs/legal-constraints.md`, `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `docs/buckets-rollover-plan.md`, `docs/master.md`, `docs/repo-structure.md`, `AGENTS.md`, `.github/copilot-instructions.md`.
 
 ## 1. Current Behavior (Verified)
+- Bank ingest (new):
+  - Dev-only endpoint `app/api/dev/bank/ingest/route.ts` validates `RawBankTransaction` payloads (`lib/schemas/bank-ingest.ts`) and upserts `BankTransaction` rows idempotently via `lib/bank/ingest.ts`, linking optional `MerchantObservation`.
+  - Unified activity and statements surface these rows; admin console includes a “Bank ingest debug” panel to paste payloads and dump recent rows.
+- Verification (wired):
+  - `lib/verification/verify-session.ts` implements `verifySessionFromSignal` with amount/time/merchant matching and bucket reversal on rejection; invoked by `/api/sessions/[id]/verify` and `/api/dev/verification/trigger`.
+  - `docs/verification-flow.md` documents signal shape; auto-trigger from ingest is still a follow-up (signals can be queued).
 - Advisory scan (`POST /api/scan`, `app/api/scan/route.ts`):
   - Auth via `withUser`; parses `ScanRequestSchema` (`lib/schemas/scan.ts`, non-negative `expectedAmountCents`).
   - Category resolution uses `resolveScanCategory` (`lib/scan-helpers.ts`) with precedence: explicit → MCC map → last simulated merchant category → heuristics → `OTHER`.
@@ -58,16 +64,15 @@ Docs consulted:
     - Writes `CherryPointLedger` row(s) with `status = PENDING`, anomaly mirrored to ledger code `SESSION_ANOMALOUS`.
     - Calls `autoVerifySession` (stub returns null).
   - Verify (`POST /api/sessions/[id]/verify`, `app/api/sessions/[id]/verify/route.ts`):
-    - Sets session to `VERIFIED` or `REJECTED`, `verificationStatus` accordingly; anomaly escalates to `VERIFICATION_CONFLICT` if rejecting a clean session.
-    - Updates PENDING ledger rows to `POSTED` (verified) or `REVOKED` (rejected); sets anomaly code if present.
-    - TODO noted to consider reversing bucket spend on rejection (code comment added).
+    - Delegates to `verifySessionFromSignal` (amount/time/merchant match with override), sets `status` and `verificationStatus`, and updates ledger PENDING → POSTED/REVOKED with anomaly propagation.
+    - Bucket reversal now handled when rejecting sessions that previously incremented `spentCents`.
   - Ledger model: `CherryPointLedger.status` default `PENDING` in schema; anomaly flags stored separately; linked to `sessionId`, `cardId`, `merchantObservationId`.
 
 - Vine ingest (`app/api/vine/order/route.ts`):
   - Auth via `withUser`; reads request body once.
   - Accepts either terminal-event form (`lib/schemas/vine-terminal.ts`) or `OrderContext` form (`lib/schemas/vine.ts`); MCC optional but validated by `isValidMcc` when present.
   - Rejects stale payloads older than ~3 minutes (`ageMs > maxAgeMs`).
-  - Maps to `OrderContext` (`lib/vine/order-context.ts`), runs engine via `runRecommendationFromOrderContext` → creates `RecommendationSession` with `source` set to `VINE_SIM` or `VINE_DEVICE`, `orderToken` from nonce or UUID, expiry ~15 minutes.
+  - Maps to `OrderContext` (`lib/vine/order-context.ts`), runs solver via `safeSolveDecisionForUser` inside `runRecommendationFromOrderContext` and maps to legacy shape, then creates `RecommendationSession` with `source` set to `VINE_SIM` or `VINE_DEVICE`, `orderToken` from nonce or UUID, expiry ~15 minutes.
   - Returns `{ sessionId, decision, orderToken }`. HMAC/nonce auth is TODO.
 
 - Wallet Pass (`app/api/wallet/cherry-pass/route.ts`):
@@ -83,36 +88,38 @@ Docs consulted:
   - Engine invariants, wallet-pass config, bucket periods, engine bucket remaining vs total limit, vine order mapping, and client API smoke tests in `tests/*.test.js`; all passing as of this audit.
 
 ## 2. Gaps vs Vision / Legal Constraints
-- Spend reversal on verification rejection is absent; rejected claims leave bucket `spentCents` incremented (vision expects advisory accuracy; legal OK but can mislead budgets).
-- Verification automation is stubbed (`lib/verification/verify-session.ts`); no real signals or auto-posting.
-- Vine security is minimal: no HMAC/nonce validation or device registry; freshness only. Needs future hardening to avoid spoofed context (legal constraint: context-only, but spoofing could degrade trust).
+- Verification is still manual/explicit: signals are processed, but ingest does not auto-queue verification; production flow needs webhook-driven or worker-triggered signals.
+- Bank ingest is dev-only: no provider auth/signature validation, and user mapping is limited to email/providerAccountId.
+- Vine security is minimal: signature enforcement remains optional/off by default; nonce cleanup and device lifecycle are missing.
 - Legacy/duplicate engine logic in `lib/simulation.ts` (archived) still exists; while balance math now reuses canonical helper, the separate category resolver risks drift if revived.
 - Wallet pass generation still reads certs when fully enabled; acceptable, but ensure feature flag stays off by default to avoid accidental filesystem access. Currently compliant.
 
 ## 3. Risks and Impact (Ranked)
-- High — Verification stub & spend permanence on rejection:
-  - Impact: budgets remain inflated after a rejected claim; user-facing advice could be off. Evidence: `app/api/sessions/[id]/confirm/route.ts` increments bucket; `app/api/sessions/[id]/verify/route.ts` has TODO and no reversal.
-- Medium — Vine lacks HMAC/nonce/device auth:
-  - Impact: spoofed Vine events could create sessions with misleading recommendations. Evidence: `app/api/vine/order/route.ts` TODO comment section, no auth beyond freshness.
+- High — Verification path needs automation:
+  - Impact: ledger posting relies on manual API calls; without webhook/worker wiring, PENDING rows can linger. Evidence: `verifySessionFromSignal` exists, but nothing enqueues signals from ingest yet.
+- Medium — Vine lacks enforced auth:
+  - Impact: spoofed Vine events could create sessions with misleading recommendations. Evidence: `app/api/vine/order/route.ts` signature mode defaults to off; no device lifecycle/nonce cleanup.
 - Medium — Legacy simulation engine drift:
   - Impact: future contributors might reuse `lib/simulation.ts` and diverge from canonical engine (rollover/incentive rules) even though balances now use the shared helper. Evidence: separate `resolveCategory`/card logic in `lib/simulation.ts` not used by main APIs.
 
 ## 4. Concrete Fixes / Migrations
-- Bucket spend reversal policy:
-  - Decide whether to reverse `spentCents` on verification rejection. If yes, adjust `app/api/sessions/[id]/verify/route.ts` to roll back `spentCents` for the relevant bucket (after `ensureBucketFresh`) when moving to `REJECTED`. Document in `docs/buckets-rollover-plan.md`.
 - Verification automation:
-  - Implement signals in `lib/verification/verify-session.ts` (bank/receipt/Vine) and trigger `/api/sessions/[id]/verify` with `verified: true/false` based on evidence. Add tests covering state transitions and anomalies.
+  - Enqueue verification signals from ingest (bank/Vine/receipts) and drain via worker calling `verifySessionFromSignal`. Add metrics on pending vs posted/revoked.
 - Vine hardening:
   - Add HMAC/nonce verification and device registry table; validate signatures in `app/api/vine/order/route.ts` before running the engine. Update `docs/cherry-vine.md` and `docs/api.md` with signature format and failure modes.
   - Add cleanup (cron/script) to mark expired Vine-created `RecommendationSession` rows as `EXPIRED` and invalidate tokens.
 - Engine/Simulation consolidation:
-  - Keep `lib/simulation.ts` marked legacy or refactor any future callers to use `runEngine`; ensure any remaining uses either import the canonical engine or are archived.
-- Schema hygiene:
+  - Keep `lib/simulation.ts` marked legacy or refactor any future callers to use `safeSolveDecisionForUser`; ensure any remaining uses either import the canonical engine or are archived.
+- Schema/ingest hygiene:
+  - Consider adding provider IDs/unique constraints to `BankTransaction` instead of overloading `id`, and wire webhook auth; keep ingest idempotent and auditable.
   - Keep `currentAmount` documented as legacy-only; rely on `lib/buckets-runtime.ts` for derived balances and avoid surfacing `currentAmount` in UI math.
 
 ## 5. Short-Term Plan (Implementation Checklist)
-1) Bucket verification alignment:
-   - Add rollback logic in `app/api/sessions/[id]/verify/route.ts` (guarded by TODO) and document in `docs/buckets-rollover-plan.md`.
-   - Add unit test covering confirm → reject → bucket spend reversal.
-2) Verification automation:
-   - Flesh out `lib/verification/verify-session.ts` to call `/api/sessions/[id]/verify` based on mock/fixture signals; add tests for posted/revoked ledger transitions and anomaly propagation.
+1) Verification automation:
+   - Queue verification signals from ingest (bank/Vine/receipts) and drain via worker calling `verifySessionFromSignal`; add metrics on pending vs posted/revoked.
+2) Bank ingest hardening:
+   - Add provider auth/signature and webhook handler; expand user mapping beyond email/providerAccountId; convert dev endpoint into an authenticated provider entrypoint.
+3) Vine security + cleanup:
+   - Enforce signature mode by default, add device lifecycle/nonce cleanup, and document failure modes in `docs/cherry-vine.md`/`docs/api.md`.
+4) Observability/rate limits:
+   - Instrument engine/sessions/ingest/verification paths with structured logs + basic rate limiting on public APIs.

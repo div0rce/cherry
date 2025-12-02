@@ -22,13 +22,13 @@ export function DevConsoleHeader({
       <div className="flex flex-wrap items-center gap-2 text-sm text-slate-200">
         <Link
           href="/scan"
-          className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-100 hover:border-pink-500/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+          className="rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-slate-100 hover:border-pink-500/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
         >
           Scan
         </Link>
         <Link
           href="/simulate"
-          className="rounded-md border border-pink-500/40 bg-pink-600/20 px-3 py-1.5 text-sm font-semibold text-pink-100 hover:bg-pink-600/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+          className="rounded-md border border-pink-500/40 bg-pink-600/20 px-3 py-1.5 text-sm font-semibold text-pink-100 hover:bg-pink-600/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
         >
           Simulate
         </Link>

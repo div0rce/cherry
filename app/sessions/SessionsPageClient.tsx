@@ -61,7 +61,7 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
         name="status"
         value={status}
         onChange={(e) => setStatus(e.target.value as Props['initialStatus'])}
-        className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+        className="rounded-lg border border-white/10 bg-slate-900/60 px-3 py-2 text-sm text-white outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
       >
         <option value="all">All</option>
         <option value="active">Open</option>
@@ -82,7 +82,7 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
             {statusSelect}
             <Link
               href="/activity"
-              className="rounded-lg border border-pink-500/30 bg-pink-500/10 px-3 py-2 text-sm font-semibold text-pink-100 hover:border-pink-400/50 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+              className="rounded-lg border border-pink-500/30 bg-pink-500/10 px-3 py-2 text-sm font-semibold text-pink-100 hover:border-pink-400/50 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
             >
               Activity
             </Link>
@@ -103,7 +103,7 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
         actions={
           <Link
             href="/scan"
-            className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+            className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-100 hover:border-pink-500/30 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
           >
             Run a scan
           </Link>
@@ -122,7 +122,7 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
               <li key={s.id}>
                 <Link
                   href={`/sessions/${s.id}`}
-                  className="block rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg transition hover:border-pink-500/30 hover:bg-slate-900/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
+                  className="block rounded-2xl border border-white/5 bg-slate-950/60 p-4 shadow-lg transition hover:border-pink-500/30 hover:bg-slate-900/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-300"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">

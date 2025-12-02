@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
+import zodPlugin from 'eslint-plugin-zod';
 
 export default defineConfig([
   ...nextVitals,
@@ -15,12 +16,16 @@ export default defineConfig([
   ]),
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.mts'],
+    plugins: { zod: zodPlugin },
     languageOptions: {
       parserOptions: {
         project: './tsconfig.json',
       },
     },
     rules: {
+      // Zod schema hygiene
+      'zod/prefer-enum': 'error',
+      'zod/require-strict': 'error',
       // Promise safety
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': [
@@ -41,6 +46,18 @@ export default defineConfig([
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       '@next/next/no-img-element': 'off',
+    },
+  },
+  {
+    files: ['app/api/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.property.name="json"][callee.object.name=/^(request|req)$/]',
+          message: 'Use parseJsonBody + Zod schema instead of calling request.json() directly.',
+        },
+      ],
     },
   },
   {

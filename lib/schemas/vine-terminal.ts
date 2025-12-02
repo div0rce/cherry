@@ -62,76 +62,84 @@ const txTypeValues: [VineTransactionType, ...VineTransactionType[]] = [
 
 const sourceValues: [VineSource, ...VineSource[]] = ['VINE_SIM', 'VINE_DEVICE', 'APP_SCAN'];
 
-export const vineTerminalEventSchema = z.object({
-  amount: z.number().positive(),
-  currency: z.string().length(3),
-  mcc: z.string(),
+export const vineTerminalEventSchema = z
+  .object({
+    amount: z.number().positive(),
+    currency: z.string().length(3),
+    mcc: z.string(),
 
-  timestampLocal: z.string().optional(),
-  timestampUtc: z.string().optional(),
-  sequenceNumber: z.number().int().nonnegative().optional(),
+    timestampLocal: z.string().optional(),
+    timestampUtc: z.string().optional(),
+    sequenceNumber: z.number().int().nonnegative().optional(),
 
-  merchant: z
-    .object({
-      merchantId: z.string().optional(),
-      merchantName: z.string().optional(),
-      mcc: z.string().optional(),
-      country: z.string().optional(),
-      state: z.string().optional(),
-      city: z.string().optional(),
-      postalCode: z.string().optional(),
-      storeId: z.string().optional(),
-    })
-    .optional(),
+    merchant: z
+      .object({
+        merchantId: z.string().optional(),
+        merchantName: z.string().optional(),
+        mcc: z.string().optional(),
+        country: z.string().optional(),
+        state: z.string().optional(),
+        city: z.string().optional(),
+        postalCode: z.string().optional(),
+        storeId: z.string().optional(),
+      })
+      .strict()
+      .optional(),
 
-  terminal: z
-    .object({
-      terminalId: z.string().optional(),
-      environment: z.enum(envValues).optional(),
-      hardwareModel: z.string().optional(),
-      softwareVersion: z.string().optional(),
-      entryMode: z.enum(entryModeValues).optional(),
-    })
-    .optional(),
+    terminal: z
+      .object({
+        terminalId: z.string().optional(),
+        environment: z.enum(envValues).optional(),
+        hardwareModel: z.string().optional(),
+        softwareVersion: z.string().optional(),
+        entryMode: z.enum(entryModeValues).optional(),
+      })
+      .strict()
+      .optional(),
 
-  card: z
-    .object({
-      brand: z.enum(brandValues).optional(),
-      productType: z.enum(productValues).optional(),
-      bin: z.string().optional(),
-      last4: z.string().optional(),
-      cardPresent: z.boolean().optional(),
-    })
-    .optional(),
+    card: z
+      .object({
+        brand: z.enum(brandValues).optional(),
+        productType: z.enum(productValues).optional(),
+        bin: z.string().optional(),
+        last4: z.string().optional(),
+        cardPresent: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
 
-  auth: z
-    .object({
-      network: z.string().optional(),
-      responseCode: z.string().optional(),
-      responseMessage: z.string().optional(),
-      approvalCode: z.string().optional(),
-      result: z.enum(authResultValues).optional(),
-      declineReason: z.enum(declineValues).optional(),
-      retries: z.number().int().nonnegative().optional(),
-    })
-    .optional(),
+    auth: z
+      .object({
+        network: z.string().optional(),
+        responseCode: z.string().optional(),
+        responseMessage: z.string().optional(),
+        approvalCode: z.string().optional(),
+        result: z.enum(authResultValues).optional(),
+        declineReason: z.enum(declineValues).optional(),
+        retries: z.number().int().nonnegative().optional(),
+      })
+      .strict()
+      .optional(),
 
-  transaction: z
-    .object({
-      type: z.enum(txTypeValues).optional(),
-      ecommerce: z.boolean().optional(),
-      recurring: z.boolean().optional(),
-      subscription: z.boolean().optional(),
-    })
-    .optional(),
+    transaction: z
+      .object({
+        type: z.enum(txTypeValues).optional(),
+        ecommerce: z.boolean().optional(),
+        recurring: z.boolean().optional(),
+        subscription: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
 
-  vine: z
-    .object({
-      sessionId: z.string().optional(),
-      source: z.enum(sourceValues).optional(),
-    })
-    .optional(),
-});
+    vine: z
+      .object({
+        sessionId: z.string().optional(),
+        source: z.enum(sourceValues).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 export type VineTerminalEventInput = z.infer<typeof vineTerminalEventSchema>;
 

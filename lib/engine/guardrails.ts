@@ -99,6 +99,13 @@ export function evaluateConstraintsForDecision(
     ) {
       breaches.push('HARD:ESSENTIAL_BUCKET_OVER_LIMIT');
     }
+    if (
+      bucket.strictMode &&
+      bucket.limitCents != null &&
+      proj.projectedCommittedCents > bucket.limitCents
+    ) {
+      breaches.push('HARD:STRICT_BUCKET_OVER_LIMIT');
+    }
   }
 
   if (state.constraints.hard.maxCardUtilization != null) {

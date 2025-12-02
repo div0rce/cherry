@@ -21,7 +21,7 @@ export function ErrorBanner({ message, actionLabel, onAction }: Props): JSX.Elem
           <button
             type="button"
             onClick={onAction}
-            className="inline-flex items-center rounded-md bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-200"
+            className="inline-flex items-center rounded-md bg-white/10 px-3 py-1 text-xs font-semibold text-white hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-200"
           >
             {actionLabel}
           </button>

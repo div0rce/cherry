@@ -10,58 +10,55 @@ import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
 import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
 import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '@/lib/user-context';
+import { parseJsonBody } from '@/lib/validation';
+import { z } from 'zod';
+
+const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/vine/order POST');
-    const raw: unknown = await request.json();
+    const parsedPayload = await parseJsonBody(request, VinePayloadSchema);
+    if (!parsedPayload.ok) return parsedPayload.response;
+
+    const body = parsedPayload.data;
 
     let orderContext: OrderContext;
-
-    const terminalParsed = vineTerminalEventSchema.safeParse(raw);
-    if (terminalParsed.success) {
-      const parsed = terminalParsed.data;
-      const parsedMcc = parsed.merchant?.mcc ?? parsed.mcc;
+    if ('amount' in body) {
+      const parsedMcc = body.merchant?.mcc ?? body.mcc;
       const parsedTimestamp =
-        (parsed.timestampUtc ? Date.parse(parsed.timestampUtc) : Number.NaN) ??
-        (parsed.timestampLocal ? Date.parse(parsed.timestampLocal) : Number.NaN);
+        (body.timestampUtc ? Date.parse(body.timestampUtc) : Number.NaN) ??
+        (body.timestampLocal ? Date.parse(body.timestampLocal) : Number.NaN);
       orderContext = mapTerminalEventToOrderContext({
-        amountCents: Math.round(parsed.amount),
-        currency: parsed.currency ?? 'USD',
-        merchantName: parsed.merchant?.merchantName ?? null,
-        storeId: parsed.merchant?.storeId ?? null,
-        terminalId: parsed.terminal?.terminalId ?? null,
+        amountCents: Math.round(body.amount),
+        currency: body.currency ?? 'USD',
+        merchantName: body.merchant?.merchantName ?? null,
+        storeId: body.merchant?.storeId ?? null,
+        terminalId: body.terminal?.terminalId ?? null,
         mccCode:
           parsedMcc != null && Number.isFinite(Number.parseInt(parsedMcc, 10))
             ? Number.parseInt(parsedMcc, 10)
             : null,
         timestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : Date.now(),
-        deviceId: parsed.terminal?.terminalId ?? 'VINE-SIM',
-        orderId: parsed.vine?.sessionId ?? null,
+        deviceId: body.terminal?.terminalId ?? 'VINE-SIM',
+        orderId: body.vine?.sessionId ?? null,
         nonce: null,
-        source: parsed.vine?.source ?? VineOrderSource.VINE_SIM,
+        source: body.vine?.source ?? VineOrderSource.VINE_SIM,
       });
     } else {
-      const parsed = OrderContextSchema.safeParse(raw);
-      if (!parsed.success) {
-        return NextResponse.json(
-          { error: 'invalid_payload', issues: parsed.error.issues },
-          { status: 400 }
-        );
-      }
       orderContext = {
-        deviceId: parsed.data.deviceId.trim(),
-        amountCents: Math.floor(parsed.data.amountCents as number),
+        deviceId: body.deviceId.trim(),
+        amountCents: Math.floor(body.amountCents as number),
         currency: 'USD',
-        timestamp: parsed.data.timestamp,
-        source: parsed.data.source ?? VineOrderSource.VINE_SIM,
-        ...(parsed.data.storeId ? { storeId: parsed.data.storeId.trim() } : {}),
-        ...(parsed.data.terminalId ? { terminalId: parsed.data.terminalId.trim() } : {}),
-        ...(parsed.data.orderId ? { orderId: parsed.data.orderId.trim() } : {}),
-        ...(parsed.data.merchantName ? { merchantName: parsed.data.merchantName.trim() } : {}),
-        ...(parsed.data.mccCode != null ? { mccCode: parsed.data.mccCode } : {}),
-        ...(parsed.data.nonce ? { nonce: parsed.data.nonce.trim() } : {}),
+        timestamp: body.timestamp,
+        source: body.source ?? VineOrderSource.VINE_SIM,
+        ...(body.storeId ? { storeId: body.storeId.trim() } : {}),
+        ...(body.terminalId ? { terminalId: body.terminalId.trim() } : {}),
+        ...(body.orderId ? { orderId: body.orderId.trim() } : {}),
+        ...(body.merchantName ? { merchantName: body.merchantName.trim() } : {}),
+        ...(body.mccCode != null ? { mccCode: body.mccCode } : {}),
+        ...(body.nonce ? { nonce: body.nonce.trim() } : {}),
       };
     }
 

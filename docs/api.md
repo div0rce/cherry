@@ -152,6 +152,8 @@ All use Zod validation in `lib/schemas/*` and `withUser` guard.
 - `/api/admin/health` and `/api/health` — health checks.
 - `/api/seed-demo` and `/api/seed-demo/cards-buckets` — seed demo data.
 - `/api/dev/pending-sessions` — list PENDING-ledger sessions for the user.
+- `/api/dev/bank/ingest` — dev-only bank ingest; `POST { transactions: RawBankTransaction[] }` upserts `BankTransaction` rows idempotently, `GET` dumps recent rows for the current user.
+- `/api/dev/verification/trigger` — dev-only manual verification trigger that forwards a `VerificationSignal` into `verifySessionFromSignal` (tests ledger POSTED/REVOKED without bank simulator UI).
 
 ---
 

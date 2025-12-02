@@ -28,6 +28,13 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 
 ---
 
+## Completion snapshot (2025-12-02)
+- Audit places the repo at ~66% of a v1-quality product. Lab flows are solid; production gaps remain.
+- Highest priorities: real bank ingest (now scaffolded via `/api/dev/bank/ingest`), automated verification/ledger posting, enforced Vine signatures/lifecycle, observability/rate limits.
+- Cherry Pass stays gated at 501; Vine remains context-only; never imply payment/processing.
+
+---
+
 ## Canonical Docs Index
 - Identity & legal: `docs/cherry-vision.md`, `docs/legal-constraints.md`
 - Hardware/context: `docs/cherry-vine.md`

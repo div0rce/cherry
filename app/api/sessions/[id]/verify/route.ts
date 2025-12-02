@@ -1,24 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import {
-  CherryPointLedgerStatus,
-  LedgerAnomalyCode,
-  RecommendationStatus,
-  SessionAnomalyCode,
-  VerificationStatus,
-} from '@prisma/client';
-import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
 import { VerifySessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { computeBucketReversal } from '@/lib/sessions/reversal';
 import {
   assertUserId,
-  isPrismaP2003,
   logInvariant,
   resolveUserContext,
 } from '@/lib/user-context';
+import { verifySessionFromSignal } from '@/lib/verification/verify-session';
 
 export async function POST(
   request: NextRequest,
@@ -54,131 +44,35 @@ export async function POST(
     if (!parsed.ok) return parsed.response;
     const body = parsed.data;
 
-    const session = await prisma.recommendationSession.findFirst({
-      where: { id, userId },
-    });
-
-    if (!session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
-    }
-
-    if (
-      session.status === RecommendationStatus.VERIFIED ||
-      session.status === RecommendationStatus.REJECTED
-    ) {
-      return NextResponse.json(
-        { error: 'Session already finalized', sessionStatus: session.status },
-        { status: 400 }
-      );
-    }
-
-    const now = new Date();
-    let sessionStatus: RecommendationStatus;
-    let ledgerStatus: CherryPointLedgerStatus;
-    let anomalyCode: SessionAnomalyCode = session.anomalyCode;
-
-    if (body.verified) {
-      sessionStatus = RecommendationStatus.VERIFIED;
-      ledgerStatus = CherryPointLedgerStatus.POSTED;
-    } else {
-      sessionStatus = RecommendationStatus.REJECTED;
-      ledgerStatus = CherryPointLedgerStatus.REVOKED;
-      if (anomalyCode === SessionAnomalyCode.NONE) {
-        anomalyCode = SessionAnomalyCode.VERIFICATION_CONFLICT;
-      }
-    }
-
-    const ledgerAnomaly =
-      anomalyCode === SessionAnomalyCode.NONE
-        ? LedgerAnomalyCode.NONE
-        : LedgerAnomalyCode.SESSION_ANOMALOUS;
-
-    let reversalBucketUpdate: { bucketId: string; newSpentCents: number } | null = null;
-    let freshBucketId: string | null = null;
-    let freshBucketSpent: number | null = null;
-    if (session.recommendedBucketId) {
-      const freshBucket = await ensureBucketFresh(session.recommendedBucketId, new Date());
-      if (freshBucket && freshBucket.userId !== userId) {
-        logInvariant('Bucket/user mismatch in api/sessions/[id]/verify POST', {
-          userId,
-          mode,
-          bucketId: session.recommendedBucketId,
-          bucketUserId: freshBucket.userId,
-        });
-        return NextResponse.json({ error: 'Bucket not found for user' }, { status: 404 });
-      }
-      if (freshBucket) {
-        freshBucketId = freshBucket.id;
-        freshBucketSpent = freshBucket.spentCents ?? 0;
-      }
-    }
-
-    reversalBucketUpdate = computeBucketReversal({
+    const result = await verifySessionFromSignal({
+      sessionId: id,
+      userId,
+      source: 'MANUAL',
       verified: body.verified,
-      confirmedAmountCents: session.confirmedAmountCents ?? null,
-      bucketSpendReversed: session.bucketSpendReversed ?? false,
-      bucketId: freshBucketId,
-      currentBucketSpentCents: freshBucketSpent,
+      occurredAt: new Date(),
     });
 
-    await prisma.$transaction(async (tx) => {
-      const updatedSession = await tx.recommendationSession.updateMany({
-        where: { id: session.id, userId },
-        data: {
-          status: sessionStatus,
-          verificationStatus: body.verified
-            ? VerificationStatus.VERIFIED
-            : VerificationStatus.FAILED,
-          anomalyCode,
-          verifiedAt: body.verified ? now : null,
-          rejectedAt: body.verified ? null : now,
-          ...(reversalBucketUpdate
-            ? {
-                bucketSpendReversed: true,
-              }
-            : {}),
-        },
-      });
-
-      if (updatedSession.count === 0) {
-        throw new Error('Session update failed due to user scoping');
+    if (!result.ok) {
+      if (result.reason === 'NOT_FOUND') {
+        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
-
-      await tx.cherryPointLedger.updateMany({
-        where: { sessionId: session.id, status: CherryPointLedgerStatus.PENDING, userId },
-        data: {
-          status: ledgerStatus,
-          postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? now : null,
-          revokedAt: ledgerStatus === CherryPointLedgerStatus.REVOKED ? now : null,
-          isAnomalous: anomalyCode !== SessionAnomalyCode.NONE,
-          anomalyCode: ledgerAnomaly,
-        },
-      });
-
-      if (reversalBucketUpdate) {
-        const bucketUpdate = await tx.bucket.updateMany({
-          where: { id: reversalBucketUpdate.bucketId, userId },
-          data: { spentCents: reversalBucketUpdate.newSpentCents },
-        });
-
-        if (bucketUpdate.count === 0) {
-          throw new Error('Bucket update failed due to user scoping');
-        }
+      if (result.reason === 'FINALIZED') {
+        return NextResponse.json(
+          { error: 'Session already finalized', sessionStatus: result.sessionStatus },
+          { status: 400 }
+        );
       }
-    });
+      return NextResponse.json({ error: result.message ?? result.reason }, { status: 400 });
+    }
 
     return NextResponse.json({
       ok: true,
-      sessionStatus,
-      ledgerStatus,
+      sessionStatus: result.sessionStatus,
+      ledgerStatus: result.ledgerStatus,
     });
   } catch (error) {
-    if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/sessions/[id]/verify POST', { userId, mode, meta: error.meta });
-    } else {
-      logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, error });
-      logError('Error in /api/sessions/[id]/verify', error);
-    }
+    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, error });
+    logError('Error in /api/sessions/[id]/verify', error);
     return NextResponse.json({ error: 'Failed to verify session' }, { status: 500 });
   }
 }

@@ -94,13 +94,17 @@ export type EngineState = {
   debts: DebtAccount[];
   constraints: UserConstraints;
   world: WorldParams;
-  cash: {
-    liquidCents: number | null;
-    nextPaycheckDate: Date | null;
-    nextPaycheckNetCents: number | null;
-  } | null;
+  cash: UserLiquidityState;
   preferences: EngineUserPreferences;
 };
+
+export type UserLiquidityState = {
+  liquidCents: number | null;
+  nextPaycheckDate: Date | null;
+  nextPaycheckNetCents: number | null;
+} | null;
+
+export type UserDebtState = DebtAccount[];
 
 export type EngineContext = {
   surface: EngineSurface;

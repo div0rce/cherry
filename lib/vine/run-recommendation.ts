@@ -7,12 +7,17 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { runEngine } from '@/lib/engine';
-import type { LegacyEngineDecision } from '@/lib/engine';
+import {
+  buildEngineContext,
+  mapSolverDecisionToLegacyDecision,
+  safeSolveDecisionForUser,
+  type LegacyEngineDecision,
+} from '@/lib/engine';
 import type { OrderContext } from './order-context';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { assertUserId } from '@/lib/invariants';
 import { isPrismaP2003, logInvariant } from '@/lib/user-context';
+import type { RewardCategory } from '@prisma/client';
 
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
@@ -27,15 +32,40 @@ export async function runRecommendationFromOrderContext(
     throw new Error('amountCents must be a positive integer');
   }
 
-  const decision = await runEngine({
-    userId,
-    amountCents,
-    merchantName: ctx.merchantName ?? null,
-    mccCode: ctx.mccCode ?? null,
-    category: null,
+  const engineCtx = buildEngineContext({
+    surface: 'vine',
     now: new Date(timestamp),
+    merchantName: ctx.merchantName ?? null,
+    merchantCategoryKey: null,
+    mcc: ctx.mccCode != null ? String(ctx.mccCode) : null,
+    amountCents,
   });
-  validateEngineDecision(decision);
+
+  const engineResult = await safeSolveDecisionForUser(userId, engineCtx, { maxCandidates: 64 });
+
+  if (!engineResult.ok || engineResult.decisions.length === 0) {
+    throw new Error(engineResult.ok ? 'No viable decisions' : engineResult.message);
+  }
+
+  const topDecision =
+    engineResult.decisions.find(
+      (d) => d.action.type === 'USE_CARD' || d.action.type === 'USE_CARD_WITH_PAYDOWN'
+    ) ?? engineResult.decisions.at(0);
+
+  const mappedDecision: LegacyEngineDecision | null = mapSolverDecisionToLegacyDecision({
+    ...(topDecision ? { solverDecision: topDecision } : {}),
+    state: engineResult.state,
+    ctx: engineCtx,
+    category: (engineResult.legacyDecision?.category as RewardCategory | undefined) ?? 'OTHER',
+    ...(engineResult.legacyDecision ? { fallback: engineResult.legacyDecision } : {}),
+  });
+
+  if (!mappedDecision) {
+    throw new Error('Unable to map solver decision');
+  }
+
+  validateEngineDecision(mappedDecision);
+  const decision: LegacyEngineDecision = mappedDecision;
 
   const expiresAt = new Date(Math.max(timestamp, Date.now()) + 15 * 60 * 1000);
   const orderToken = ctx.nonce ?? randomUUID();
