@@ -157,6 +157,18 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.
 - Engine: `lib/engine/*` (types/solver/context/guardrails/objective/simulate/candidates), legacy shim in `lib/engine/legacy.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
 - Simulations: `/api/simulate` must use the canonical engine (`safeSolveDecisionForUser` in `lib/engine/solver.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
+
+### Audit Behavior
+
+For all repository-wide completion audits written to `AUDIT.md`, follow the canonical schema and mindset in `docs/audit-format.md`:
+
+- JSON header schema and required sections.
+- Subsystem taxonomy and weights.
+- Audit mindset, longitudinal consistency rules, uncertainty handling.
+- Sprint-shaped “Highest-Leverage Next Steps”.
+- Cherry mental model and interaction style.
+
+Do not invent new audit formats or scoring schemes; extend `docs/audit-format.md` if the schema needs to evolve.
 - Category preferences: `CategoryPreference.category` is a `RewardCategory` enum; do not store free-form strings. Use Zod enum validation on write paths.
 - Buckets: balances are derived via `lib/buckets-runtime.ts` (`budgetAmount`, `spentCents` → `committedCents`/`remainingCents`); `currentAmount` is legacy-only.
 - Wallet pass scaffold: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/cherryPass.ts` (returns 501 without certs).
