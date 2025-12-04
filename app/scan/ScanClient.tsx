@@ -11,6 +11,9 @@ import { ScanResponseSchema } from '@/lib/schemas/scan';
 import { callApi } from '@/lib/client/api';
 import { useApiAction } from '@/lib/client/useApiAction';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { hasText } from '@/lib/text';
+import { isNonNegativeNumber, isPositiveNumber } from '@/lib/numbers';
+import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 
 type ScanPreview = {
   category: string | null;
@@ -82,12 +85,12 @@ export default function ScanClient(): JSX.Element {
   }, [countdownSeconds]);
 
   useEffect(() => {
-    if (!sessionState || countdownSeconds == null) return;
+    if (sessionState === null || countdownSeconds == null) return;
     const id = setInterval(() => {
       setCountdownSeconds((prev) => {
         if (prev == null) return prev;
         if (prev <= 1) {
-          setSessionState((s) => (s ? { ...s, status: 'EXPIRED' } : s));
+          setSessionState((s) => (s !== null ? { ...s, status: 'EXPIRED' } : s));
           return 0;
         }
         return prev - 1;
@@ -107,9 +110,10 @@ export default function ScanClient(): JSX.Element {
   };
 
   const focusMerchantField = () => {
-    if (merchantInputRef.current) {
-      merchantInputRef.current.focus();
-      merchantInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const inputEl = merchantInputRef.current;
+    if (inputEl !== null) {
+      inputEl.focus();
+      inputEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -120,17 +124,38 @@ export default function ScanClient(): JSX.Element {
     setSessionState(null);
     setCountdownSeconds(null);
 
-    const parsedAmount = Number.parseFloat(amount || '0');
-    if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
+    const merchantNameTrimmed = merchantName.trim();
+    if (!hasText(merchantNameTrimmed)) {
+      setError('Enter a merchant name.');
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'BLOCK',
+        reason: 'MISSING_MERCHANT',
+      });
+      return;
+    }
+
+    const amountInput = amount.trim();
+    const parsedAmount = Number.parseFloat(amountInput);
+    const hasValidAmount = Number.isFinite(parsedAmount) && isNonNegativeNumber(parsedAmount);
+    if (!hasValidAmount) {
       setError('Enter an amount of 0 or more.');
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'BLOCK',
+        reason: 'INVALID_AMOUNT',
+      });
       return;
     }
     const expectedAmountCents = Math.round(parsedAmount * 100);
 
+    const categoryTrimmed = category.trim();
     const payload = {
-      merchantName: merchantName.trim() || null,
+      merchantName: merchantNameTrimmed,
       expectedAmountCents,
-      category: category.trim() || null,
+      category: hasText(categoryTrimmed) ? categoryTrimmed : null,
     };
 
     const result = await runScan(() =>
@@ -143,6 +168,13 @@ export default function ScanClient(): JSX.Element {
 
     if (!result.ok) {
       setError(result.error);
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'FALLBACK',
+        reason: 'SCAN_API_ERROR',
+        detail: result.error,
+      });
       return;
     }
 
@@ -151,7 +183,25 @@ export default function ScanClient(): JSX.Element {
   }
 
   async function startSession() {
-    if (!scanPreview) return;
+    if (scanPreview === null) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'BLOCK',
+        reason: 'START_WITHOUT_PREVIEW',
+      });
+      return;
+    }
+    if (scanPreview.isSnapshot || !isPositiveNumber(scanPreview.amountCents)) {
+      setError('Set an amount above 0 to open a session.');
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'BLOCK',
+        reason: 'SNAPSHOT_SESSION_BLOCK',
+      });
+      return;
+    }
     setIsStartingSession(true);
     setError(null);
 
@@ -163,7 +213,9 @@ export default function ScanClient(): JSX.Element {
       }>('/api/sessions', {
         method: 'POST',
         body: JSON.stringify({
-          merchantName: scanPreview.merchantName ?? (merchantName.trim() || undefined),
+          merchantName:
+            scanPreview.merchantName ??
+            (hasText(merchantName) ? merchantName.trim() : undefined),
           amountCents: scanPreview.amountCents,
           category: scanPreview.category ?? undefined,
         }),
@@ -197,7 +249,43 @@ export default function ScanClient(): JSX.Element {
   }
 
   async function confirmSession() {
-    if (!sessionState || !scanPreview) return;
+    if (sessionState === null || scanPreview === null) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'BLOCK',
+        reason: 'CONFIRM_WITHOUT_SESSION',
+      });
+      return;
+    }
+    if (!hasText(scanPreview.decision.card.cardId)) {
+      logInvariantViolation({
+        surface: 'scan',
+        detail: 'Missing cardId when confirming session',
+        data: { decision: scanPreview.decision },
+      });
+      setError('Unable to confirm session');
+      return;
+    }
+    if (!isPositiveNumber(scanPreview.amountCents)) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'BLOCK',
+        reason: 'INVALID_SESSION_AMOUNT',
+      });
+      setError('Enter a positive amount to confirm the session.');
+      return;
+    }
+    if (sessionState.status !== 'OPEN') {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'WARN',
+        reason: 'CONFIRM_IN_NON_OPEN_STATE',
+      });
+      return;
+    }
     setIsConfirming(true);
     setError(null);
     try {
@@ -219,7 +307,7 @@ export default function ScanClient(): JSX.Element {
         return;
       }
 
-      setSessionState((prev) => (prev ? { ...prev, status: 'CLAIMED' } : prev));
+      setSessionState((prev) => (prev !== null ? { ...prev, status: 'CLAIMED' } : prev));
     } catch {
       setError('Failed to confirm session');
     } finally {
@@ -241,7 +329,7 @@ export default function ScanClient(): JSX.Element {
       );
     }
 
-    if (!scanPreview && !error) {
+    if (scanPreview === null && !hasText(error)) {
       return (
         <EmptyState
           title="No manual lookup yet"
@@ -252,7 +340,7 @@ export default function ScanClient(): JSX.Element {
       );
     }
 
-    if (!scanPreview && error) {
+    if (scanPreview === null && hasText(error)) {
       return (
         <EmptyState
           variant="error"
@@ -262,9 +350,9 @@ export default function ScanClient(): JSX.Element {
       );
     }
 
-    if (!scanPreview) return null;
+    if (scanPreview === null) return null;
 
-    const hasCard = Boolean(scanPreview.recommendedCardName);
+    const hasCard = hasText(scanPreview.recommendedCardName);
     const bucketLimit = scanPreview.bucketBudgetCents ?? null;
     const bucketSpent = scanPreview.bucketSpentCents ?? null;
     const bucketRemaining =
@@ -281,7 +369,7 @@ export default function ScanClient(): JSX.Element {
             <p className="text-xs uppercase tracking-label-tight text-slate-400">Advisory preview</p>
             <p className="text-lg font-semibold text-white">
               {scanPreview.category ?? 'UNCATEGORIZED'} · {formatCents(scanPreview.amountCents)} ·{' '}
-              {scanPreview.bucketName || 'No bucket'}
+              {hasText(scanPreview.bucketName) ? scanPreview.bucketName : 'No bucket'}
             </p>
             <p className="text-sm text-slate-300">
               Stateless preview. Start a session to track and earn points.
@@ -292,7 +380,7 @@ export default function ScanClient(): JSX.Element {
           </span>
         </div>
 
-        {error ? (
+        {hasText(error) ? (
           <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-200">
             <p className="text-xs font-semibold uppercase tracking-wide text-red-200/80">
               Lookup issue
@@ -339,7 +427,9 @@ export default function ScanClient(): JSX.Element {
           </div>
           <div className="space-y-1 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3">
             <p className="text-xs font-semibold text-slate-300">Bucket impact</p>
-            <p className="text-sm text-slate-200">{scanPreview.bucketName ?? 'No bucket matched'}</p>
+            <p className="text-sm text-slate-200">
+              {hasText(scanPreview.bucketName) ? scanPreview.bucketName : 'No bucket matched'}
+            </p>
             {bucketUsagePercent != null ? (
               <p className="text-xs text-slate-500">
                 Used {bucketUsagePercent.toFixed(0)}% ·{' '}
@@ -355,7 +445,7 @@ export default function ScanClient(): JSX.Element {
           </div>
         </div>
 
-        {!sessionState ? (
+        {sessionState === null ? (
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3">
             <button
               type="button"
@@ -385,7 +475,7 @@ export default function ScanClient(): JSX.Element {
                 Order token: {sessionState.orderToken}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
-                Expires in: {formattedCountdown || '—'}
+                Expires in: {formattedCountdown.length > 0 ? formattedCountdown : '—'}
               </span>
               <span className="rounded-full bg-white/10 px-2 py-1 font-semibold">
                 Status: {sessionState.status}

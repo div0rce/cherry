@@ -5,6 +5,7 @@ import { getCurrentUserId } from '@/lib/auth';
 import Link from 'next/link';
 import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';
 import { SimulationHistoryList } from '@/components/simulations/simulation-history-list';
+import { hasText } from '@/lib/text';
 
 export default async function SimulationsPage(): Promise<JSX.Element | null> {
   let userId: string;
@@ -28,7 +29,7 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
   const items: SimulationHistoryItem[] = simulations.map((sim) => ({
     id: sim.id,
     createdAt: sim.createdAt,
-    title: sim.name || 'Simulation',
+    title: hasText(sim.name) ? sim.name : 'Simulation',
     subtitle: `${sim.transactions.length} simulated ${
       sim.transactions.length === 1 ? 'transaction' : 'transactions'
     }`,

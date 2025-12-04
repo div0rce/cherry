@@ -4,6 +4,9 @@ import type { JSX } from 'react';
 import { FormEvent, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { hasText } from '@/lib/text';
+import { isPositiveNumber } from '@/lib/numbers';
+import { logGuardrailEvent } from '@/lib/log';
 
 function promptSignIn(setStatus: (message: string) => void) {
   setStatus('Sign in to continue.');
@@ -38,6 +41,7 @@ export function RunSimulationForm(): JSX.Element {
     amount?: string;
     category?: string;
     mcc?: string;
+    merchant?: string;
   }>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,26 +58,28 @@ export function RunSimulationForm(): JSX.Element {
 
     const fieldErrors: typeof errors = {};
 
-    if (!amountDollars.trim()) {
-      fieldErrors.amount = 'Amount is required.';
-    }
-
     const parsedAmount = Number.parseFloat(amountDollars);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || !isPositiveNumber(parsedAmount)) {
       fieldErrors.amount = 'Amount must be a number > 0.';
     }
 
     const normalizedCategory = category.trim().toUpperCase();
-    if (!normalizedCategory) {
+    const hasCategory = hasText(normalizedCategory);
+    if (!hasCategory) {
       fieldErrors.category = 'Category is required.';
     } else if (!VALID_CATEGORIES.includes(normalizedCategory)) {
       fieldErrors.category = `Category must be one of: ${categoriesLabel}`;
     }
 
+    const merchantNameTrimmed = merchantName.trim();
+    if (!hasText(merchantNameTrimmed)) {
+      fieldErrors.merchant = 'Enter a merchant name.';
+    }
+
     // mcc optional
     let mcc: number | undefined;
-    if (mccCode.trim()) {
-      const parsedMcc = Number.parseInt(mccCode, 10);
+    if (hasText(mccCode.trim())) {
+      const parsedMcc = Number.parseInt(mccCode.trim(), 10);
       if (!Number.isInteger(parsedMcc) || String(parsedMcc).length !== 4) {
         fieldErrors.mcc = 'MCC must be a 4-digit code present in the MCC mapping.';
       }
@@ -83,6 +89,13 @@ export function RunSimulationForm(): JSX.Element {
     if (Object.keys(fieldErrors).length > 0) {
       setErrors(fieldErrors);
       setStatus('Fix the errors above.');
+      logGuardrailEvent({
+        userId: null,
+        surface: 'simulate',
+        outcome: 'BLOCK',
+        reason: 'INVALID_FORM',
+        detail: fieldErrors,
+      });
       return;
     }
 
@@ -99,7 +112,7 @@ export function RunSimulationForm(): JSX.Element {
         body: JSON.stringify({
           amountCents,
           category: normalizedCategory,
-          merchantName: merchantName || undefined,
+          merchantName: merchantNameTrimmed,
           mccCode: mcc,
           ...(commit ? { commit: true } : {}),
         }),
@@ -111,11 +124,12 @@ export function RunSimulationForm(): JSX.Element {
       }
 
       if (!res.ok) {
-        const contentType = res.headers.get('content-type') || '';
+        const headerContentType = res.headers.get('content-type');
+        const contentType = hasText(headerContentType) ? headerContentType : '';
         let message = 'Simulation failed';
         if (contentType.includes('application/json')) {
           const data = (await res.json()) as unknown;
-          if (data && typeof data === 'object') {
+          if (data !== null && typeof data === 'object') {
             const maybeDetails = (data as { details?: unknown }).details;
             const details =
               Array.isArray(maybeDetails) && maybeDetails.every((d) => typeof d === 'string')
@@ -123,12 +137,12 @@ export function RunSimulationForm(): JSX.Element {
                 : null;
             const maybeError = (data as { error?: unknown }).error;
             if (typeof maybeError === 'string') {
-              message = details ? `${maybeError}: ${details}` : maybeError;
+              message = hasText(details) ? `${maybeError}: ${details}` : maybeError;
             }
           }
         } else {
           const text = await res.text();
-          if (text) message = text;
+          if (hasText(text)) message = text;
         }
         setStatus(`(${res.status}) ${message}`);
         return;
@@ -153,36 +167,38 @@ export function RunSimulationForm(): JSX.Element {
         <label className="block text-sm font-medium text-slate-300">Amount (USD)</label>
         <input
           type="number"
-          min="0"
+          min="0.01"
           step="0.01"
           value={amountDollars}
           onChange={(e) => setAmountDollars(e.target.value)}
-          className={`${inputClass} ${errors.amount ? 'border-red-500' : ''}`}
+          className={`${inputClass} ${hasText(errors.amount) ? 'border-red-500' : ''}`}
           placeholder="30.00"
           required
         />
-        {errors.amount && <p className="text-xs text-red-400">{errors.amount}</p>}
+        {hasText(errors.amount) ? <p className="text-xs text-red-400">{errors.amount}</p> : null}
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-slate-300">Category</label>
         <input
           value={category}
           onChange={(e) => setCategory(e.target.value.toUpperCase())}
-          className={`${inputClass} ${errors.category ? 'border-red-500' : ''}`}
+          className={`${inputClass} ${hasText(errors.category) ? 'border-red-500' : ''}`}
           placeholder="DINING"
           required
         />
         <p className="text-xs text-slate-500">Valid: {categoriesLabel}</p>
-        {errors.category && <p className="text-xs text-red-400">{errors.category}</p>}
+        {hasText(errors.category) ? <p className="text-xs text-red-400">{errors.category}</p> : null}
       </div>
       <div className="space-y-2">
-        <label className="block text-sm font-medium text-slate-300">Merchant (optional)</label>
+        <label className="block text-sm font-medium text-slate-300">Merchant</label>
         <input
           value={merchantName}
           onChange={(e) => setMerchantName(e.target.value)}
-          className={inputClass}
+          className={`${inputClass} ${hasText(errors.merchant) ? 'border-red-500' : ''}`}
           placeholder="Chipotle"
+          required
         />
+        {hasText(errors.merchant) ? <p className="text-xs text-red-400">{errors.merchant}</p> : null}
       </div>
       <div className="space-y-2">
         <label className="block text-sm font-medium text-slate-300">MCC (optional)</label>
@@ -190,7 +206,7 @@ export function RunSimulationForm(): JSX.Element {
           type="text"
           value={mccCode}
           onChange={(e) => handleMccInput(e.target.value)}
-          className={`${inputClass} ${errors.mcc ? 'border-red-500' : ''}`}
+          className={`${inputClass} ${hasText(errors.mcc) ? 'border-red-500' : ''}`}
           placeholder="5812"
           inputMode="numeric"
           maxLength={4}
@@ -199,7 +215,7 @@ export function RunSimulationForm(): JSX.Element {
         <p className="text-xs text-slate-500">
           Enter a 4-digit MCC from the mapping (leading zeros allowed).
         </p>
-        {errors.mcc && <p className="text-xs text-red-400">{errors.mcc}</p>}
+        {hasText(errors.mcc) ? <p className="text-xs text-red-400">{errors.mcc}</p> : null}
       </div>
       <label className="flex items-center gap-2 text-sm text-slate-300">
         <input
@@ -219,7 +235,7 @@ export function RunSimulationForm(): JSX.Element {
       >
         {submitting ? 'Simulating…' : 'Simulate'}
       </button>
-      {status && <p className="text-xs text-slate-400">{status}</p>}
+      {status !== null ? <p className="text-xs text-slate-400">{status}</p> : null}
     </form>
   );
 }
@@ -248,7 +264,7 @@ export function DeleteSimulationButton({
 
     if (!res.ok) {
       const message = await res.text();
-      setStatus(message || 'Failed to delete');
+      setStatus(hasText(message) ? message : 'Failed to delete');
       return;
     }
 
@@ -263,7 +279,7 @@ export function DeleteSimulationButton({
       type="button"
     >
       Delete
-      {status && <span className="ml-1 text-slate-500">{status}</span>}
+      {status !== null ? <span className="ml-1 text-slate-500">{status}</span> : null}
     </button>
   );
 }

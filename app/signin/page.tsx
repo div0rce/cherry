@@ -7,6 +7,9 @@ import { SignInCard } from './signin-card';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export default async function SignInPage({
   searchParams,
 }: {
@@ -28,7 +31,7 @@ export default async function SignInPage({
         <LeftPanel />
         <div className="mt-10 w-full lg:mt-0 lg:max-w-md">
           <SignInCard
-            {...(error ? { errorCode: error } : {})}
+            {...(hasText(error) ? { errorCode: error } : {})}
             callbackUrl={callbackUrl}
           />
         </div>

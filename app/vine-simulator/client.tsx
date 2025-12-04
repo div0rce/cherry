@@ -9,6 +9,9 @@ import type { LegacyEngineDecision } from '@/lib/engine';
 import type { z } from 'zod';
 import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import type { VineTerminalEventInput } from '@/lib/schemas/vine-terminal';
+import { hasText } from '@/lib/text';
+import { isPositiveNumber } from '@/lib/numbers';
+import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 
 type VineOrderResponse = {
   sessionId: string;
@@ -77,8 +80,14 @@ export function VineSimulatorClient(): JSX.Element {
     setTransientStatus({ type: 'submitting' });
 
     const parsedAmount = Number.parseFloat(amountDollars);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(parsedAmount) || !isPositiveNumber(parsedAmount)) {
       setTransientStatus({ type: 'error', message: 'Enter an amount greater than 0.' });
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'INVALID_AMOUNT',
+      });
       return;
     }
     const amountCents = Math.round(parsedAmount * 100);
@@ -89,42 +98,69 @@ export function VineSimulatorClient(): JSX.Element {
         type: 'error',
         message: 'MCC must be a 4-digit code present in the MCC mapping.',
       });
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'INVALID_MCC',
+      });
       return;
     }
     const mccString = trimmedMcc;
 
+    const currencyTrimmed = currency.trim().toUpperCase();
+    if (!hasText(currencyTrimmed)) {
+      setTransientStatus({ type: 'error', message: 'Currency is required.' });
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'MISSING_CURRENCY',
+      });
+      return;
+    }
+
     setTransientStatus({ type: 'submitting' });
-    const cardBrandValue = cardBrand.trim() || undefined;
+    const cardBrandTrimmed = cardBrand.trim().toUpperCase();
+    const cardBrandValue =
+      hasText(cardBrandTrimmed) && cardBrandTrimmed.length > 0
+        ? (cardBrandTrimmed as VineTerminalEventInput['card'] extends { brand?: infer B }
+            ? B
+            : never)
+        : undefined;
+    const cardBinTrimmed = cardBin.trim();
+    const cardLast4Trimmed = cardLast4.trim();
     const vineSourceValue =
       ('VINE_SIM' as VineTerminalPayload['vine'] extends { source?: infer S }
         ? S
         : never);
+    const hasCardDetails =
+      cardBrandValue !== undefined ||
+      hasText(cardBinTrimmed) ||
+      hasText(cardLast4Trimmed);
 
     const payload: VineTerminalPayload = {
       amount: amountCents,
-      currency: currency.trim().toUpperCase(),
+      currency: currencyTrimmed,
       mcc: mccString,
       vine: { source: vineSourceValue },
       ...(extendedMode
         ? {
             merchant: {
-              merchantName: merchantName.trim() || undefined,
-              storeId: storeId.trim() || undefined,
+              merchantName: hasText(merchantName.trim()) ? merchantName.trim() : undefined,
+              storeId: hasText(storeId.trim()) ? storeId.trim() : undefined,
               mcc: mccString,
             },
             terminal: {
-              terminalId: terminalId.trim() || undefined,
+              terminalId: hasText(terminalId.trim()) ? terminalId.trim() : undefined,
             },
-            card:
-              cardBrandValue || cardBin || cardLast4
-                ? {
-                    brand: cardBrandValue as VineTerminalEventInput['card'] extends { brand?: infer B }
-                      ? B
-                      : undefined,
-                    bin: cardBin.trim() || undefined,
-                    last4: cardLast4.trim() || undefined,
-                  }
-                : undefined,
+            card: hasCardDetails
+              ? {
+                  brand: cardBrandValue,
+                  bin: hasText(cardBinTrimmed) ? cardBinTrimmed : undefined,
+                  last4: hasText(cardLast4Trimmed) ? cardLast4Trimmed : undefined,
+                }
+              : undefined,
           }
         : {}),
     };
@@ -136,6 +172,13 @@ export function VineSimulatorClient(): JSX.Element {
         { type: 'error', message: firstIssue?.message ?? 'Invalid payload' },
         6000
       );
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'INVALID_VINE_SIGNAL',
+        detail: validation.error.flatten(),
+      });
       return;
     }
 
@@ -146,6 +189,12 @@ export function VineSimulatorClient(): JSX.Element {
     });
 
     if (res.status === 401) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'UNAUTHENTICATED',
+      });
       setTransientStatus({ type: 'error', message: 'Sign in to use the Vine simulator.' }, 6000);
       void signIn(undefined, { callbackUrl: window.location.href });
       return;
@@ -155,7 +204,7 @@ export function VineSimulatorClient(): JSX.Element {
       let friendly = 'Failed to create recommendation.';
       try {
         const json = (await res.json()) as unknown;
-        if (json && typeof json === 'object' && 'error' in (json as Record<string, unknown>)) {
+        if (json !== null && typeof json === 'object' && 'error' in (json as Record<string, unknown>)) {
           const maybeError = (json as { error?: unknown }).error;
           if (typeof maybeError === 'string') {
             friendly = maybeError;
@@ -165,6 +214,13 @@ export function VineSimulatorClient(): JSX.Element {
         // ignore parse errors; keep friendly default
       }
 
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'FALLBACK',
+        reason: 'VINE_ORDER_FAILED',
+        detail: { status: res.status },
+      });
       setTransientStatus({ type: 'error', message: friendly }, 6000);
       return;
     }
@@ -175,7 +231,34 @@ export function VineSimulatorClient(): JSX.Element {
   }
 
   async function handleConfirm() {
-    if (!orderResult) return;
+    if (orderResult === null) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'CONFIRM_WITHOUT_ORDER',
+      });
+      return;
+    }
+    if (!hasText(orderResult.decision.card.cardId)) {
+      logInvariantViolation({
+        surface: 'vine',
+        detail: 'Missing cardId when confirming Vine session',
+        data: orderResult,
+      });
+      setTransientStatus({ type: 'error', message: 'Invalid recommendation state.' }, 6000);
+      return;
+    }
+    if (!isPositiveNumber(orderResult.decision.amountCents)) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'INVALID_DECISION_AMOUNT',
+      });
+      setTransientStatus({ type: 'error', message: 'Invalid amount on recommendation.' }, 6000);
+      return;
+    }
     setTransientStatus({ type: 'submitting' });
 
     const res = await fetch(`/api/sessions/${orderResult.sessionId}/confirm`, {
@@ -189,6 +272,12 @@ export function VineSimulatorClient(): JSX.Element {
     });
 
     if (res.status === 401) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'BLOCK',
+        reason: 'UNAUTHENTICATED',
+      });
       setTransientStatus({ type: 'error', message: 'Sign in to confirm.' }, 6000);
       void signIn(undefined, { callbackUrl: window.location.href });
       return;
@@ -196,8 +285,16 @@ export function VineSimulatorClient(): JSX.Element {
 
     if (!res.ok) {
       const message = await res.text();
+      logGuardrailEvent({
+        userId: null,
+        surface: 'vine',
+        outcome: 'FALLBACK',
+        reason: 'SESSION_CONFIRM_FAILED',
+        detail: { status: res.status },
+      });
+      const friendlyMessage = hasText(message) ? message : 'Failed to confirm session';
       setTransientStatus(
-        { type: 'error', message: message || 'Failed to confirm session' },
+        { type: 'error', message: friendlyMessage },
         6000
       );
       return;
@@ -247,7 +344,7 @@ export function VineSimulatorClient(): JSX.Element {
               onChange={(e) => setAmountDollars(e.target.value)}
               placeholder="24.50"
               type="number"
-              min="0"
+              min="0.01"
               step="0.01"
               required
             />
@@ -363,28 +460,28 @@ export function VineSimulatorClient(): JSX.Element {
         </div>
       </form>
 
-      {orderResult && (
+      {orderResult !== null ? (
         <div className="rounded-2xl border border-white/5 bg-white/5 p-4 shadow-lg backdrop-blur space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-300">Session</p>
               <p className="text-lg font-semibold text-white">{orderResult.sessionId}</p>
-              {orderResult.orderToken && (
+              {hasText(orderResult.orderToken) && (
                 <p className="text-xs text-slate-400">Token: {orderResult.orderToken}</p>
               )}
-              {orderResult.expiresAt && (
+              {hasText(orderResult.expiresAt) && (
                 <p className="text-xs text-slate-400">
                   Expires at: {new Date(orderResult.expiresAt).toLocaleString()}
                 </p>
               )}
             </div>
-              <div className="text-right">
-                <p className="text-sm text-slate-300">Verdict</p>
-                <p className="text-lg font-semibold text-white">
-                  {orderResult.decision.overallVerdict}
-                </p>
-              </div>
+            <div className="text-right">
+              <p className="text-sm text-slate-300">Verdict</p>
+              <p className="text-lg font-semibold text-white">
+                {orderResult.decision.overallVerdict}
+              </p>
             </div>
+          </div>
 
           <div className="grid gap-3 md:grid-cols-3">
             <div className="rounded-lg border border-white/5 bg-slate-900/40 p-3">
@@ -448,17 +545,17 @@ export function VineSimulatorClient(): JSX.Element {
             <Link href="/sessions" className="text-sm text-pink-200 hover:text-pink-100">
               View sessions →
             </Link>
-            {confirmResult && (
+            {confirmResult !== null ? (
               <p className="text-sm text-slate-200">
                 Awarded {confirmResult.pointsAwarded} pts
                 {confirmResult.totalPoints != null
                   ? ` • Balance ${confirmResult.totalPoints} pts`
                   : ''}
               </p>
-            )}
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

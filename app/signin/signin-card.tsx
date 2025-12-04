@@ -4,6 +4,8 @@ import type { JSX } from 'react';
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { hasText } from '@/lib/text';
+import { logGuardrailEvent } from '@/lib/log';
 
 type SignInCardProps = {
   errorCode?: string;
@@ -25,15 +27,24 @@ export function SignInCard({
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const error =
-    errorCode && (errorMessages[errorCode] ?? 'Something went wrong while signing you in.');
+  const error = hasText(errorCode)
+    ? errorMessages[errorCode] ?? 'Something went wrong while signing you in.'
+    : null;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus(null);
 
-    if (!email.trim() || !password.trim()) {
+    const emailTrimmed = email.trim();
+    const passwordTrimmed = password.trim();
+    if (!hasText(emailTrimmed) || !hasText(passwordTrimmed)) {
       setStatus('Email and password are required.');
+      logGuardrailEvent({
+        userId: null,
+        surface: 'signin',
+        outcome: 'BLOCK',
+        reason: 'MISSING_CREDENTIALS',
+      });
       return;
     }
 
@@ -45,7 +56,13 @@ export function SignInCard({
       callbackUrl,
     });
 
-    if (result?.error) {
+    if (hasText(result?.error)) {
+      logGuardrailEvent({
+        userId: null,
+        surface: 'signin',
+        outcome: 'BLOCK',
+        reason: `AUTH_${result.error}`,
+      });
       setStatus(errorMessages[result.error] ?? 'Invalid email or password. Please try again.');
       setSubmitting(false);
       return;
@@ -60,9 +77,9 @@ export function SignInCard({
         <p className="text-sm text-slate-300">Continue to your cards and buckets.</p>
       </div>
 
-      {(error || status) && (
+      {(hasText(error) || hasText(status)) && (
         <div className="mt-4 rounded-lg border border-red-500/40 bg-red-900/30 px-3 py-2 text-sm text-red-100">
-          {error || status}
+          {hasText(error) ? error : status}
         </div>
       )}
 

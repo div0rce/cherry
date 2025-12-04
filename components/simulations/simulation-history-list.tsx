@@ -1,6 +1,7 @@
 import type { JSX, ReactNode } from 'react';
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/empty-state';
+import { hasText } from '@/lib/text';
 
 export type SimulationHistoryItem = {
   id: string;
@@ -43,7 +44,7 @@ function badgeToneToClass(tone: SimulationHistoryItem['statusTone']): string {
 }
 
 function deriveTone(status?: string): SimulationHistoryItem['statusTone'] {
-  if (!status) return 'neutral';
+  if (!hasText(status)) return 'neutral';
   const normalized = status.toUpperCase();
   if (normalized === 'APPROVED' || normalized === 'SUCCESS') return 'positive';
   if (normalized === 'DECLINED' || normalized === 'FAILED') return 'negative';
@@ -70,32 +71,31 @@ export function SimulationHistoryList({
   const containerClasses = [
     'rounded-2xl border border-white/5 bg-slate-950/60 shadow-lg backdrop-blur text-slate-100',
     className ?? '',
-  ]
-    .filter(Boolean)
-    .join(' ');
+  ].filter((cls): cls is string => hasText(cls)).join(' ');
 
   const emptyStateContent: EmptyState = emptyState ?? {
     title: 'No simulations yet',
     description: 'Run your first simulation to see how a purchase affects your buckets and card strategy.',
   };
 
-  const headerExists = Boolean(title || subtitle || headerAction);
+  const headerExists =
+    hasText(title) || hasText(subtitle) || headerAction !== undefined && headerAction !== null;
   const listHasContent = items.length > 0;
-  const hasError = Boolean(error);
+  const hasError = hasText(error);
 
   return (
     <div className={containerClasses}>
       {headerExists ? (
         <div className="flex items-start justify-between gap-3 border-b border-white/5 px-4 py-3">
           <div className="space-y-0.5">
-            {title ? <p className="text-sm font-semibold text-white">{title}</p> : null}
-            {subtitle ? <p className="text-xs text-slate-400">{subtitle}</p> : null}
+            {hasText(title) ? <p className="text-sm font-semibold text-white">{title}</p> : null}
+            {hasText(subtitle) ? <p className="text-xs text-slate-400">{subtitle}</p> : null}
           </div>
-          {headerAction ? <div className="text-sm text-pink-200">{headerAction}</div> : null}
+          {headerAction != null ? <div className="text-sm text-pink-200">{headerAction}</div> : null}
         </div>
       ) : null}
 
-      {toolbar ? <div className="border-b border-white/5 px-4 py-3">{toolbar}</div> : null}
+      {toolbar != null ? <div className="border-b border-white/5 px-4 py-3">{toolbar}</div> : null}
 
       {hasError ? (
         <div className="px-4 py-5 text-sm text-red-300">{error}</div>
@@ -111,10 +111,10 @@ export function SimulationHistoryList({
                       {formatTimestamp(item.createdAt)}
                     </p>
                     <p className="truncate text-lg font-semibold text-white">{item.title}</p>
-                    {item.subtitle ? (
+                    {hasText(item.subtitle) ? (
                       <p className="truncate text-sm text-slate-300">{item.subtitle}</p>
                     ) : null}
-                    {item.meta && item.meta.length > 0 ? (
+                    {Array.isArray(item.meta) && item.meta.length > 0 ? (
                       <div className="flex flex-wrap gap-2 pt-1">
                         {item.meta.map((meta) => (
                           <span
@@ -128,16 +128,16 @@ export function SimulationHistoryList({
                     ) : null}
                   </div>
                   <div className="flex flex-col items-end gap-2 text-sm">
-                    {item.status ? (
+                    {hasText(item.status) ? (
                       <span
                         className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${badgeToneToClass(tone)}`}
                       >
                         {item.status}
                       </span>
                     ) : null}
-                    {item.action ? (
+                    {item.action != null ? (
                       item.action
-                    ) : item.href ? (
+                    ) : hasText(item.href) ? (
                       <Link href={item.href} className="text-sm text-pink-200 hover:text-pink-100">
                         Open →
                       </Link>
@@ -145,9 +145,9 @@ export function SimulationHistoryList({
                   </div>
                 </div>
 
-                {item.body ? <div className="space-y-2 text-sm text-slate-200">{item.body}</div> : null}
+                {item.body != null ? <div className="space-y-2 text-sm text-slate-200">{item.body}</div> : null}
 
-                {item.footer ? (
+                {item.footer != null ? (
                   <div className="flex flex-col gap-1 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
                     {item.footer}
                   </div>
@@ -168,7 +168,7 @@ export function SimulationHistoryList({
         </div>
       )}
 
-      {footer && !hasError && listHasContent ? (
+      {footer != null && !hasError && listHasContent ? (
         <div className="border-t border-white/5 px-4 py-3">{footer}</div>
       ) : null}
     </div>

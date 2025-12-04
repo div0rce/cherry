@@ -7,6 +7,7 @@ import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
 import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';
 import { SimulationHistoryList } from '@/components/simulations/simulation-history-list';
+import { hasText } from '@/lib/text';
 
 type Simulation = {
   id: string;
@@ -63,9 +64,13 @@ function formatRewards(sim: Simulation) {
 
 function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
   return simulations.map((sim) => {
-    const cardDisplayName = sim.chosenCard
-      ? `${sim.chosenCard.nickname} (${sim.chosenCard.issuer} · ${sim.chosenCard.network})`
-      : sim.chosenCardName ?? null;
+    const chosenCard = sim.chosenCard;
+    const hasChosenCard = chosenCard !== null && chosenCard !== undefined;
+    const cardDisplayName = hasChosenCard
+      ? `${chosenCard.nickname} (${chosenCard.issuer} · ${chosenCard.network})`
+      : hasText(sim.chosenCardName)
+        ? sim.chosenCardName
+        : null;
     const bucketLabel = sim.bucketName ?? sim.bucket?.name ?? null;
     const bucketCategory = sim.bucket?.category ?? sim.resolvedCategory;
     const bucketLimit = sim.bucketLimitCents ?? sim.bucket?.budgetAmount ?? null;
@@ -81,20 +86,22 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
       bucketLimit != null ? `Limit ${formatCents(bucketLimit)}` : null,
       bucketRemainingBefore != null ? `Before ${formatCents(bucketRemainingBefore)}` : null,
       bucketRemainingAfter != null ? `After ${formatCents(bucketRemainingAfter)}` : null,
-    ].filter(Boolean);
+    ].filter((detail): detail is string => detail !== null);
     const bucketDisciplineLabel =
       bucketStrictFlag == null ? null : bucketStrictFlag ? '(strict)' : '(soft)';
-    const bucketMeta = [bucketCategory ? `Category ${bucketCategory}` : null, bucketLabel].filter(
-      Boolean
-    ) as string[];
+    const bucketMeta = [
+      hasText(bucketCategory) ? `Category ${bucketCategory}` : null,
+      hasText(bucketLabel) ? bucketLabel : null,
+    ].filter((item): item is string => item !== null);
+    const reasonLabel = hasText(sim.reason) ? sim.reason : '—';
 
     return {
       id: sim.id,
       createdAt: sim.createdAt,
       title: `${formatCents(sim.amount)} · ${sim.resolvedCategory}${
-        sim.mccCode ? ` · MCC ${sim.mccCode}` : ''
+        sim.mccCode !== null && sim.mccCode !== undefined ? ` · MCC ${sim.mccCode}` : ''
       }`,
-      subtitle: sim.merchantName || 'Merchant N/A',
+      subtitle: hasText(sim.merchantName) ? sim.merchantName : 'Merchant N/A',
       status: sim.status,
       statusTone: sim.status === 'APPROVED' ? 'positive' : 'negative',
       meta: bucketMeta,
@@ -102,7 +109,7 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
             <p className="text-[11px] uppercase tracking-label-tight text-slate-400">Card</p>
-            {cardDisplayName ? (
+            {hasText(cardDisplayName) ? (
               <p className="text-sm font-semibold text-white">{cardDisplayName}</p>
             ) : (
               <p className="text-sm text-slate-500">None (declined/no card)</p>
@@ -111,15 +118,15 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
 
           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
             <p className="text-[11px] uppercase tracking-label-tight text-slate-400">Bucket</p>
-            {bucketLabel ? (
+            {hasText(bucketLabel) ? (
               <div className="text-sm text-slate-200">
                 <p className="font-semibold text-white">
                   {bucketLabel}
-                  {bucketCategory ? ` · ${bucketCategory}` : ''}
+                  {hasText(bucketCategory) ? ` · ${bucketCategory}` : ''}
                 </p>
                 <p className="text-slate-400">
                   {bucketDetails.length > 0 ? bucketDetails.join(' · ') : 'No tracked balances'}
-                  {bucketDisciplineLabel ? ` ${bucketDisciplineLabel}` : ''}
+                  {bucketDisciplineLabel !== null ? ` ${bucketDisciplineLabel}` : ''}
                 </p>
               </div>
             ) : (
@@ -130,7 +137,7 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
       ),
       footer: (
         <>
-          <span>Reason: {sim.reason || '—'}</span>
+          <span>Reason: {reasonLabel}</span>
           <span>Rewards: {formatRewards(sim)}</span>
         </>
       ),
@@ -153,13 +160,17 @@ async function fetchSimulations(query: {
   pageSize?: number;
 }): Promise<SimulationResponse> {
   const params = new URLSearchParams();
-  if (query.status) params.set('status', query.status);
-  if (query.category) params.set('category', query.category);
-  if (query.page) params.set('page', String(query.page));
-  if (query.pageSize) params.set('pageSize', String(query.pageSize));
+  if (hasText(query.status)) params.set('status', query.status);
+  if (hasText(query.category)) params.set('category', query.category);
+  if (typeof query.page === 'number' && Number.isFinite(query.page)) {
+    params.set('page', String(query.page));
+  }
+  if (typeof query.pageSize === 'number' && Number.isFinite(query.pageSize)) {
+    params.set('pageSize', String(query.pageSize));
+  }
 
   const queryString = params.toString();
-  const url = queryString ? `/api/simulations?${queryString}` : '/api/simulations';
+  const url = queryString.length > 0 ? `/api/simulations?${queryString}` : '/api/simulations';
 
   const baseUrl = getBaseUrl();
   const cookieStore = await cookies();
@@ -168,14 +179,14 @@ async function fetchSimulations(query: {
     .map(({ name, value }) => `${name}=${value}`)
     .join('; ');
   const init: RequestInit = { cache: 'no-store' };
-  if (cookieHeader) {
+  if (hasText(cookieHeader)) {
     init.headers = { cookie: cookieHeader };
   }
   const res = await fetch(`${baseUrl}${url}`, init);
 
   if (!res.ok) {
     const message = await res.text();
-    throw new Error(message || 'Failed to load simulations');
+    throw new Error(hasText(message) ? message : 'Failed to load simulations');
   }
 
   const data = (await res.json()) as SimulationResponse;
@@ -187,7 +198,7 @@ export default async function SimulatePage({
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<JSX.Element> {
-  const resolvedParams = (await searchParams) || {};
+  const resolvedParams = (await searchParams) ?? {};
   try {
     await getCurrentUserId();
   } catch {
@@ -198,6 +209,8 @@ export default async function SimulatePage({
     typeof resolvedParams['status'] === 'string' ? resolvedParams['status'] : '';
   const categoryParam =
     typeof resolvedParams['category'] === 'string' ? resolvedParams['category'] : '';
+  const resolvedStatus = hasText(statusParam) ? statusParam : 'ALL';
+  const resolvedCategory = hasText(categoryParam) ? categoryParam : '';
   const pageParam = Number.parseInt(
     typeof resolvedParams['page'] === 'string' ? resolvedParams['page'] : '1',
     10
@@ -211,8 +224,8 @@ export default async function SimulatePage({
     const query = {
       page,
       pageSize: 10,
-      ...(statusParam ? { status: statusParam } : {}),
-      ...(categoryParam ? { category: categoryParam } : {}),
+      ...(hasText(statusParam) ? { status: statusParam } : {}),
+      ...(hasText(categoryParam) ? { category: categoryParam } : {}),
     };
     response = await fetchSimulations(query);
   } catch (err) {
@@ -248,8 +261,8 @@ export default async function SimulatePage({
             }
             toolbar={
               <SimulationFilters
-                status={statusParam || 'ALL'}
-                category={categoryParam || ''}
+                status={resolvedStatus}
+                category={resolvedCategory}
                 page={page}
               />
             }
@@ -258,8 +271,8 @@ export default async function SimulatePage({
                 total={total}
                 page={page}
                 pageSize={pageSize}
-                status={statusParam || 'ALL'}
-                category={categoryParam || ''}
+                status={resolvedStatus}
+                category={resolvedCategory}
                 totalPages={totalPages}
               />
             }
@@ -295,6 +308,8 @@ function SimulationFilters({
   category: string;
   page: number;
 }) {
+  const statusValue = hasText(status) ? status : 'ALL';
+  const categoryValue = hasText(category) ? category : '';
   return (
     <form method="get" className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
@@ -303,7 +318,7 @@ function SimulationFilters({
         </label>
         <select
           name="status"
-          defaultValue={status || 'ALL'}
+          defaultValue={statusValue}
           className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-pink-500 focus:outline-none"
         >
           <option value="ALL">All</option>
@@ -317,7 +332,7 @@ function SimulationFilters({
         </label>
         <input
           name="category"
-          defaultValue={category}
+          defaultValue={categoryValue}
           className="rounded-lg border border-white/10 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
           placeholder="DINING"
         />
@@ -349,8 +364,8 @@ function SimulationPagination({
   totalPages: number;
 }) {
   const params = new URLSearchParams();
-  if (status && status !== 'ALL') params.set('status', status);
-  if (category) params.set('category', category);
+  if (hasText(status) && status !== 'ALL') params.set('status', status);
+  if (hasText(category)) params.set('category', category);
   params.set('pageSize', String(pageSize));
 
   const prevPage = page > 1 ? page - 1 : 1;

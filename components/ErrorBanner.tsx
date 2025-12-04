@@ -8,8 +8,11 @@ type Props = {
   onAction?: () => void;
 };
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export function ErrorBanner({ message, actionLabel, onAction }: Props): JSX.Element | null {
-  if (!message) return null;
+  if (!hasText(message)) return null;
   return (
     <div className="rounded-lg border border-rose-500/40 bg-rose-950/50 px-3 py-2 text-sm text-rose-100">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -17,7 +20,7 @@ export function ErrorBanner({ message, actionLabel, onAction }: Props): JSX.Elem
           <p className="text-xs font-semibold uppercase tracking-wide text-rose-200/80">Error</p>
           <p className="text-sm">{message}</p>
         </div>
-        {actionLabel && onAction ? (
+        {hasText(actionLabel) && onAction ? (
           <button
             type="button"
             onClick={onAction}

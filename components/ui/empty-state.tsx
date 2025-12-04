@@ -14,6 +14,9 @@ type EmptyStateProps = {
   className?: string | undefined;
 };
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export function EmptyState({
   title,
   description,
@@ -30,10 +33,15 @@ export function EmptyState({
   const bg = isError ? 'bg-rose-950/50' : 'bg-slate-900/60';
   const text = isError ? 'text-rose-100' : 'text-slate-200';
 
+  const hasAction =
+    hasText(actionLabel) &&
+    ((actionNode !== undefined && actionNode !== null) ||
+      hasText(actionHref) ||
+      onAction !== undefined);
   const action =
     actionNode ??
-    (actionLabel && (onAction || actionHref)
-      ? actionHref
+    (hasAction
+      ? hasText(actionHref)
         ? (
           <a
             href={actionHref}
@@ -58,10 +66,10 @@ export function EmptyState({
       className={`flex flex-col items-start gap-3 rounded-2xl border ${border} ${bg} p-4 ${className}`}
     >
       <div className="flex items-center gap-3">
-        {icon ? <span className="text-lg text-pink-200" aria-hidden>{icon}</span> : null}
+        {icon != null ? <span className="text-lg text-pink-200" aria-hidden>{icon}</span> : null}
         <div>
           <p className={`text-base font-semibold ${text}`}>{title}</p>
-          {description ? <p className="text-sm text-slate-400">{description}</p> : null}
+          {hasText(description) ? <p className="text-sm text-slate-400">{description}</p> : null}
         </div>
       </div>
       {action}
