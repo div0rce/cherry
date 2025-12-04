@@ -116,4 +116,10 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ['scripts/check-guardrails.cjs', 'tests/api-rewards.validation.test.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 ]);
