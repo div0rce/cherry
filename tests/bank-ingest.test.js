@@ -17,14 +17,22 @@ async function testIdempotentUpsert() {
   mockModule('../lib/prisma', {
     prisma: {
       bankTransaction: {
-        findUnique: async ({ where }) => (bankRows.has(where.id) ? { id: where.id } : null),
-        upsert: async ({ where, create, update }) => {
-          if (bankRows.has(where.id)) {
-            bankRows.set(where.id, { ...bankRows.get(where.id), ...update });
-            return bankRows.get(where.id);
+        findUnique: async ({ where }) =>
+          bankRows.has(where.userId_externalId.externalId)
+            ? { id: bankRows.get(where.userId_externalId.externalId).id }
+            : null,
+        create: async ({ data }) => {
+          const id = `row-${bankRows.size + 1}`;
+          bankRows.set(data.externalId, { ...data, id });
+          return bankRows.get(data.externalId);
+        },
+        update: async ({ where, data }) => {
+          const key = where.userId_externalId.externalId;
+          if (bankRows.has(key)) {
+            bankRows.set(key, { ...bankRows.get(key), ...data });
+            return bankRows.get(key);
           }
-          bankRows.set(where.id, { ...create });
-          return bankRows.get(where.id);
+          throw new Error('missing row for update');
         },
       },
       merchantObservation: {
@@ -64,10 +72,12 @@ async function testIdempotentUpsert() {
   assert.equal(bankRows.size, 1);
   const stored = bankRows.get('tx-1');
   assert.equal(stored.direction, 'DEBIT');
+  const storedId = stored.id;
 
   const second = await ingestBankTransactions(payload);
   assert.deepEqual(second, { ingested: 0, duplicates: 1, skipped: 0 });
   assert.equal(bankRows.size, 1);
+  assert.equal(bankRows.get('tx-1').id, storedId);
 }
 
 async function testMissingUserSkips() {

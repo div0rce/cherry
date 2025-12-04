@@ -39,6 +39,25 @@ export default defineConfig([
       '@typescript-eslint/no-unsafe-call': 'error',
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/strict-boolean-expressions': [
+        'error',
+        {
+          allowString: false,
+          allowNumber: false,
+          allowNullableObject: true,
+          allowNullableBoolean: true,
+          allowNullableString: false,
+          allowNullableNumber: false,
+          allowAny: false,
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.object.name="JSON"][callee.property.name="parse"]',
+          message: 'Prefer schema-validated parsing (Zod) instead of raw JSON.parse.',
+        },
+      ],
       // Exhaustive switches
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
       // Cleanliness

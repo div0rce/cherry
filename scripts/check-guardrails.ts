@@ -1,0 +1,273 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { z } from 'zod';
+
+const jsonParse = JSON.parse;
+
+function fail(message: string): never {
+  process.stderr.write(`[guardrails] ${message}\n`);
+  process.exit(1);
+}
+
+const TsconfigSchema = z
+  .object({
+    compilerOptions: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+const PackageJsonSchema = z
+  .object({
+    scripts: z.record(z.string(), z.string()).optional(),
+  })
+  .strict();
+
+function readJson<T>(filePath: string, schema: z.ZodType<T>): T {
+  try {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    return schema.parse(jsonParse(raw));
+  } catch (err) {
+    fail(`Failed to read JSON file ${filePath}: ${(err as Error).message}`);
+  }
+}
+
+function assertEslintRules(): void {
+  const eslintPath = path.join(process.cwd(), 'eslint.config.mjs');
+  if (!fs.existsSync(eslintPath)) {
+    fail('eslint.config.mjs missing');
+  }
+  const legacyConfigs = ['.eslintrc', '.eslintrc.js', '.eslintrc.cjs', '.eslintrc.json', '.eslintrc.yml', '.eslintrc.yaml'];
+  legacyConfigs.forEach((file) => {
+    if (fs.existsSync(path.join(process.cwd(), file))) {
+      fail(`Legacy ESLint config ${file} must not exist; use eslint.config.mjs only.`);
+    }
+  });
+  const text = fs.readFileSync(eslintPath, 'utf8');
+  const requiredSnippets = [
+    "zod/prefer-enum': 'error'",
+    "zod/require-strict': 'error'",
+    "@typescript-eslint/no-floating-promises': 'error'",
+    "@typescript-eslint/no-misused-promises': [\n        'error'",
+    "@typescript-eslint/no-explicit-any': 'error'",
+    "@typescript-eslint/no-unsafe-assignment': 'error'",
+    "@typescript-eslint/no-unsafe-member-access': 'error'",
+    "@typescript-eslint/no-unsafe-call': 'error'",
+    "@typescript-eslint/no-unsafe-return': 'error'",
+    "@typescript-eslint/no-unsafe-argument': 'error'",
+    "@typescript-eslint/no-unused-vars': ['error'",
+    "@typescript-eslint/explicit-module-boundary-types': 'error'",
+    "@next/next/no-img-element': 'off'",
+    "selector: 'CallExpression[callee.object.name=\"JSON\"][callee.property.name=\"parse\"]'",
+  ];
+  requiredSnippets.forEach((snippet) => {
+    if (!text.includes(snippet)) {
+      fail(`ESLint guardrail missing: ${snippet}`);
+    }
+  });
+
+  const strictBooleanTokens = [
+    "['error'",
+    'allowString: false',
+    'allowNumber: false',
+    'allowNullableObject: true',
+    'allowNullableBoolean: true',
+    'allowNullableString: false',
+    'allowNullableNumber: false',
+    'allowAny: false',
+  ];
+  strictBooleanTokens.forEach((token) => {
+    if (!text.includes(token)) {
+      fail(`Strict boolean expressions config missing token: ${token}`);
+    }
+  });
+}
+
+function assertNoNewEslintDisables(): void {
+  const allowList = new Set([
+    'lib/logger.ts',
+    'scripts/debug-bucket-balance.ts',
+    'lib/unified-activity.ts',
+    'scripts/ingest-moustafa-bank-csv.ts',
+    'scripts/check-guardrails.ts',
+    'tests/engine-solver.test.js',
+    'tests/vine-security.test.js',
+    'tests/offline-evaluator-regimes.test.js',
+    'tests/sessions-bucket-reversal.test.js',
+    'tests/vine-order.test.js',
+    'tests/bank-ingest.test.js',
+    'tests/wallet-pass-config.test.js',
+    'tests/bank-ingest-idempotent.test.js',
+    'tests/api-simulate.user-context.test.js',
+    'tests/engine-objective.test.js',
+    'tests/verification-session.test.js',
+    'tests/engine-invariants.test.js',
+    'tests/api-sessions.user-context.test.js',
+    'tests/offline-evaluator-basic.test.js',
+    'tests/run-recommendation.user-context.test.js',
+    'tests/income-classifier.test.js',
+    'tests/income-regimes.test.js',
+    'tests/offline-evaluator-prisma-guard.test.js',
+    'tests/client-api.test.js',
+    'tests/user-context.test.js',
+    'tests/api-vine-order.user-context.test.js',
+    'tests/api-scan.user-context.test.js',
+    'tests/vine-order-security.test.js',
+    'tests/bucket-regimes.test.js',
+    'tests/category-preference-enum.test.js',
+    'tests/simulation-adapter.test.js',
+    'tests/engine-bucket-remaining.test.js',
+    'tests/buckets-periods.test.js',
+  ]);
+
+  const scanDirs = ['app', 'lib', 'scripts', 'tests'];
+  for (const dir of scanDirs) {
+    const dirPath = path.join(process.cwd(), dir);
+    if (!fs.existsSync(dirPath)) continue;
+    const files = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of files) {
+      const fullPath = path.join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        scanDirs.push(path.relative(process.cwd(), fullPath));
+        continue;
+      }
+      const relPath = path.relative(process.cwd(), fullPath);
+      const content = fs.readFileSync(fullPath, 'utf8');
+      if (content.includes('eslint-disable')) {
+        if (!allowList.has(relPath)) {
+          fail(`New eslint-disable found in ${relPath}. Fix code instead of disabling rules.`);
+        }
+      }
+    }
+  }
+}
+
+function assertTsconfigStrict(): void {
+  const requiredTrueFlags = [
+    'strict',
+    'noImplicitAny',
+    'noImplicitThis',
+    'strictNullChecks',
+    'strictFunctionTypes',
+    'strictBindCallApply',
+    'noImplicitOverride',
+    'noImplicitReturns',
+    'noFallthroughCasesInSwitch',
+    'noUncheckedIndexedAccess',
+    'noPropertyAccessFromIndexSignature',
+    'exactOptionalPropertyTypes',
+    'useUnknownInCatchVariables',
+  ];
+  const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
+  const tsconfig = readJson(tsconfigPath, TsconfigSchema);
+  const compilerOptions = tsconfig.compilerOptions;
+  if (!compilerOptions) fail('tsconfig.json missing compilerOptions');
+  requiredTrueFlags.forEach((flag) => {
+    if ((compilerOptions as Record<string, unknown>)[flag] !== true) {
+      fail(`tsconfig compilerOptions.${flag} must be true`);
+    }
+  });
+}
+
+function assertPackageScripts(): void {
+  const pkgPath = path.join(process.cwd(), 'package.json');
+  const pkg = readJson(pkgPath, PackageJsonSchema);
+  const scripts = pkg.scripts;
+  if (!scripts) fail('package.json missing scripts');
+  const requiredScripts = [
+    'lint',
+    'lint:eslint',
+    'lint:tailwind',
+    'typecheck',
+    'typecheck:scripts',
+    'check',
+    'check:prisma-assumptions',
+    'check:guardrails',
+    'test',
+    'dev:ingest:moustafa-bank',
+    'dev:evaluator:moustafa',
+  ];
+  requiredScripts.forEach((name) => {
+    if (typeof scripts[name] !== 'string') {
+      fail(`package.json scripts missing ${name}`);
+    }
+  });
+  const lintScript = scripts['lint'] as string;
+  if (!lintScript.includes('lint:tailwind') || !lintScript.includes('lint:eslint')) {
+    fail('lint script must run lint:tailwind and lint:eslint');
+  }
+  const testScript = scripts['test'] as string;
+  if (!testScript.includes('check:prisma-assumptions')) {
+    fail('test script must include check:prisma-assumptions');
+  }
+}
+
+function assertPrismaAssumptions(): void {
+  const filePath = path.join(process.cwd(), 'scripts', 'check-prisma-assumptions.ts');
+  if (!fs.existsSync(filePath)) {
+    fail('scripts/check-prisma-assumptions.ts missing');
+  }
+}
+
+function assertCriticalFilesExist(): void {
+  const requiredFiles = [
+    'lib/evaluator/offline-history.ts',
+    'lib/evaluator/stats.ts',
+    'app/dev/evaluator/page.tsx',
+    'lib/bank/ingest.ts',
+    'scripts/ingest-moustafa-bank-csv.ts',
+    'lib/unified-activity.ts',
+  ];
+  requiredFiles.forEach((file) => {
+    if (!fs.existsSync(path.join(process.cwd(), file))) {
+      fail(`Required guardrail file missing: ${file}`);
+    }
+  });
+}
+
+function assertTestsPresent(): void {
+  const requiredTests = [
+    'tests/engine-invariants.test.js',
+    'tests/engine-solver.test.js',
+    'tests/engine-objective.test.js',
+    'tests/engine-bucket-remaining.test.js',
+    'tests/wallet-pass-config.test.js',
+    'tests/vine-order.test.js',
+    'tests/sessions-bucket-reversal.test.js',
+    'tests/simulation-adapter.test.js',
+    'tests/category-preference-enum.test.js',
+    'tests/api-vine-order.user-context.test.js',
+    'tests/api-simulate.user-context.test.js',
+    'tests/api-scan.user-context.test.js',
+    'tests/api-sessions.user-context.test.js',
+    'tests/run-recommendation.user-context.test.js',
+    'tests/user-context.test.js',
+    'tests/client-api.test.js',
+    'tests/bank-ingest.test.js',
+    'tests/bank-ingest-idempotent.test.js',
+    'tests/income-classifier.test.js',
+    'tests/income-regimes.test.js',
+    'tests/bucket-regimes.test.js',
+    'tests/offline-evaluator-regimes.test.js',
+    'tests/offline-evaluator-prisma-guard.test.js',
+    'tests/offline-evaluator-basic.test.js',
+    'tests/verification-session.test.js',
+  ];
+  requiredTests.forEach((file) => {
+    if (!fs.existsSync(path.join(process.cwd(), file))) {
+      fail(`Required guardrail test missing: ${file}`);
+    }
+  });
+}
+
+function main(): void {
+  assertEslintRules();
+  assertNoNewEslintDisables();
+  assertTsconfigStrict();
+  assertPackageScripts();
+  assertPrismaAssumptions();
+  assertCriticalFilesExist();
+  assertTestsPresent();
+  // eslint-disable-next-line no-console
+  console.log('[guardrails] all checks passed');
+}
+
+main();

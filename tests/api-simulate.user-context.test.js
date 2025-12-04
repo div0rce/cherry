@@ -189,6 +189,42 @@ async function runSimulateDev() {
   assert.equal(res.status, 200);
 }
 
+async function runSimulateInvalidAmount() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { POST } = require('../app/api/simulate/route');
+  const res = await POST({
+    json: async () => ({
+      amountCents: -100,
+      category: 'DINING',
+      merchantName: 'Test',
+    }),
+  });
+  assert.equal(res.status, 400);
+}
+
+async function runSimulateMissingMerchant() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { POST } = require('../app/api/simulate/route');
+  const res = await POST({
+    json: async () => ({
+      amountCents: 1000,
+      category: 'DINING',
+      merchantName: '',
+    }),
+  });
+  assert.equal(res.status, 400);
+}
+
 async function runSimulateProdUnauthorized() {
   process.env.NODE_ENV = 'production';
   mockNextAuth(null);
@@ -221,6 +257,18 @@ async function runSimulationsGetDev() {
   assert.equal(res.status, 200);
 }
 
+async function runSimulationsInvalidStatus() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { GET } = require('../app/api/simulations/route');
+  const res = await GET({ url: 'http://localhost/api/simulations?status=BAD' });
+  assert.equal(res.status, 400);
+}
+
 async function runSimulationsGetProdUnauthorized() {
   process.env.NODE_ENV = 'production';
   mockNextAuth(null);
@@ -236,8 +284,11 @@ async function runSimulationsGetProdUnauthorized() {
 async function run() {
   const originalEnv = process.env.NODE_ENV;
   await runSimulateDev();
+  await runSimulateInvalidAmount();
+  await runSimulateMissingMerchant();
   await runSimulateProdUnauthorized();
   await runSimulationsGetDev();
+  await runSimulationsInvalidStatus();
   await runSimulationsGetProdUnauthorized();
   process.env.NODE_ENV = originalEnv;
   console.warn('api-simulate/simulations user-context: ok');
