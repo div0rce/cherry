@@ -1,23 +1,48 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma, isProduction } from '@/lib/prisma';
 import { logInfo, logWarn } from '@/lib/logger';
 import { resolveUserIdForExternalIds } from './user-link';
+
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function hasValidNumber(value?: number | null): value is number {
+  return value !== undefined && value !== null && !Number.isNaN(value);
+}
 
 export type RawBankTransaction = {
   externalId: string;
   accountExternalId: string;
-  userExternalId?: string | null;
+  userExternalId?: string | null | undefined;
   amountCents: number;
   currency: string;
   occurredAt: Date;
-  postedAt?: Date | null;
+  postedAt?: Date | null | undefined;
   description: string;
-  merchantName?: string | null;
-  mcc?: string | null;
-  merchantCity?: string | null;
-  merchantRegion?: string | null;
-  merchantCountry?: string | null;
+  merchantName?: string | null | undefined;
+  mcc?: string | number | null | undefined;
+  merchantCity?: string | null | undefined;
+  merchantRegion?: string | null | undefined;
+  merchantCountry?: string | null | undefined;
   raw?: unknown;
+};
+
+export type NormalizedBankTransactionInput = {
+  userId: string;
+  externalId: string;
+  postedAt: Date;
+  amountMinor: number;
+  direction: 'debit' | 'credit';
+  description: string;
+  rawDescription?: string | null;
+  accountLast4?: string | null;
+  source: 'csv_dev' | 'dev_simulator' | 'plaid' | 'teller' | string;
+  sourceStatement?: string | null;
+  statementStart?: string | null;
+  statementEnd?: string | null;
+  section?: string | null;
+  accountId?: string | null;
 };
 
 type IngestStats = {
@@ -26,15 +51,31 @@ type IngestStats = {
   skipped: number;
 };
 
-function normalizeAmount(amountCents: number): {
+type UpsertStats = {
+  created: number;
+  updated: number;
+  skipped: number;
+};
+
+function normalizeDirection(direction: string | null | undefined): 'CREDIT' | 'DEBIT' {
+  if (typeof direction !== 'string') return 'DEBIT';
+  return direction.toLowerCase() === 'credit' ? 'CREDIT' : 'DEBIT';
+}
+
+function normalizeAmount(
+  amountCents: number,
+  directionOverride?: 'CREDIT' | 'DEBIT',
+): {
   amount: Prisma.Decimal;
   direction: 'CREDIT' | 'DEBIT';
   absoluteCents: number;
 } {
-  const direction: 'CREDIT' | 'DEBIT' = amountCents < 0 ? 'CREDIT' : 'DEBIT';
-  const absoluteCents = Math.abs(Math.floor(amountCents));
+  const normalizedDirection: 'CREDIT' | 'DEBIT' =
+    directionOverride ?? (amountCents < 0 ? 'CREDIT' : 'DEBIT');
+  const normalizedCents = Math.trunc(amountCents);
+  const absoluteCents = Math.abs(normalizedCents);
   const amount = new Prisma.Decimal(absoluteCents).dividedBy(new Prisma.Decimal(100));
-  return { amount, direction, absoluteCents };
+  return { amount, direction: normalizedDirection, absoluteCents };
 }
 
 async function upsertMerchantObservation(
@@ -43,20 +84,24 @@ async function upsertMerchantObservation(
   mcc?: number | null,
   location?: { city?: string | null; region?: string | null; country?: string | null }
 ): Promise<string | null> {
-  if (!merchantName && !mcc) return null;
-  const safeName = merchantName ?? 'Unknown merchant';
+  const hasMerchantName = hasNonEmptyString(merchantName);
+  const hasMcc = hasValidNumber(mcc);
+  if (!hasMerchantName && !hasMcc) return null;
+  const safeName = hasMerchantName ? merchantName : 'Unknown merchant';
+  const normalizedMcc = typeof mcc === 'number' && Number.isInteger(mcc) ? mcc : null;
+  const where = normalizedMcc != null ? { userId, merchantName: safeName, mcc: normalizedMcc } : { userId, merchantName: safeName };
   try {
     const existing = await prisma.merchantObservation.findFirst({
-      where: { userId, merchantName: safeName, mcc: mcc ?? undefined },
+      where,
       select: { id: true },
     });
-    if (existing?.id) return existing.id;
+    if (existing !== null && existing.id !== '') return existing.id;
 
     const created = await prisma.merchantObservation.create({
       data: {
         userId,
         merchantName: safeName,
-        mcc: mcc ?? null,
+        mcc: normalizedMcc,
         city: location?.city ?? null,
         region: location?.region ?? null,
         country: location?.country ?? null,
@@ -80,12 +125,18 @@ export async function ingestBankTransactions(txs: RawBankTransaction[]): Promise
       continue;
     }
 
+    if (!hasNonEmptyString(tx.accountExternalId)) {
+      stats.skipped += 1;
+      logWarn('bank_ingest_missing_account', { externalId: tx.externalId });
+      continue;
+    }
+
     const userId = await resolveUserIdForExternalIds({
       accountExternalId: tx.accountExternalId,
-      userExternalId: tx.userExternalId ?? null,
+      userExternalId: hasNonEmptyString(tx.userExternalId) ? tx.userExternalId : null,
     });
 
-    if (!userId) {
+    if (userId === null || userId === '') {
       stats.skipped += 1;
       logWarn('bank_ingest_missing_user', {
         externalId: tx.externalId,
@@ -96,15 +147,19 @@ export async function ingestBankTransactions(txs: RawBankTransaction[]): Promise
     }
 
     const existing = await prisma.bankTransaction.findUnique({
-      where: { id: tx.externalId },
+      where: { userId_externalId: { userId, externalId: tx.externalId } },
       select: { id: true },
     });
 
     const { amount, direction, absoluteCents } = normalizeAmount(tx.amountCents);
-    const occurredAt = new Date(tx.occurredAt);
-    const postedAt = tx.postedAt ? new Date(tx.postedAt) : null;
-    const currency = tx.currency?.toUpperCase() ?? 'USD';
+    const amountMinor = Math.trunc(tx.amountCents);
+    const postedAtRaw = tx.postedAt ?? tx.occurredAt;
+    const postedAt = new Date(postedAtRaw ?? Date.now());
+    const occurredAt = tx.occurredAt != null ? new Date(tx.occurredAt) : postedAt;
+    const currency = hasNonEmptyString(tx.currency) ? tx.currency.toUpperCase() : 'USD';
     const mcc = tx.mcc != null ? Number.parseInt(String(tx.mcc), 10) : null;
+    const rawDescription = typeof tx.raw === 'string' ? tx.raw : tx.description;
+    const accountLast4 = hasNonEmptyString(tx.accountExternalId) ? tx.accountExternalId.slice(-4) : null;
 
     const merchantObservationId = await upsertMerchantObservation(
       userId,
@@ -117,56 +172,154 @@ export async function ingestBankTransactions(txs: RawBankTransaction[]): Promise
       }
     );
 
-    await prisma.bankTransaction.upsert({
-      where: { id: tx.externalId },
-      create: {
-        id: tx.externalId,
-        userId,
-        accountId: tx.accountExternalId,
-        cardBrand: null,
-        cardLast4: null,
-        merchantName: tx.merchantName ?? null,
-        merchantCity: tx.merchantCity ?? null,
-        merchantRegion: tx.merchantRegion ?? null,
-        merchantCountry: tx.merchantCountry ?? null,
-        mcc: Number.isInteger(mcc) ? (mcc as number) : null,
-        amount,
-        currency,
-        direction,
-        transactionType: null,
-        isRecurring: false,
-        occurredAt,
-        raw: tx.raw ?? { description: tx.description, amountCents: tx.amountCents },
-        ...(postedAt ? { postedAt } : {}),
-        ...(merchantObservationId ? { merchantObservationId } : {}),
-      },
-      update: {
-        userId,
-        accountId: tx.accountExternalId,
-        merchantName: tx.merchantName ?? null,
-        merchantCity: tx.merchantCity ?? null,
-        merchantRegion: tx.merchantRegion ?? null,
-        merchantCountry: tx.merchantCountry ?? null,
-        mcc: Number.isInteger(mcc) ? (mcc as number) : null,
-        amount,
-        currency,
-        direction,
-        occurredAt,
-        ...(postedAt ? { postedAt } : { postedAt: null }),
-        raw: tx.raw ?? { description: tx.description, amountCents: tx.amountCents },
-        ...(merchantObservationId ? { merchantObservationId } : {}),
-      },
-    });
+    const baseData = {
+      userId,
+      externalId: tx.externalId,
+      source: 'dev_simulator',
+      accountId: tx.accountExternalId,
+      accountLast4,
+      cardBrand: null,
+      cardLast4: null,
+      merchantName: tx.merchantName ?? tx.description ?? null,
+      merchantCity: tx.merchantCity ?? null,
+      merchantRegion: tx.merchantRegion ?? null,
+      merchantCountry: tx.merchantCountry ?? null,
+      mcc: Number.isInteger(mcc) ? (mcc as number) : null,
+      description: tx.description,
+      rawDescription,
+      amountMinor,
+      amount,
+      currency,
+      direction,
+      transactionType: null,
+      section: null,
+      sourceStatement: null,
+      statementStart: null,
+      statementEnd: null,
+      isRecurring: false,
+      occurredAt,
+      postedAt,
+      raw: tx.raw ?? { description: tx.description, amountCents: tx.amountCents, postedAt: tx.postedAt ?? null },
+      ...(hasNonEmptyString(merchantObservationId) ? { merchantObservationId } : {}),
+    };
 
-    if (existing) {
+    if (existing != null) {
+      await prisma.bankTransaction.update({
+        where: { userId_externalId: { userId, externalId: tx.externalId } },
+        data: baseData,
+      });
       stats.duplicates += 1;
     } else {
+      await prisma.bankTransaction.create({ data: baseData });
       stats.ingested += 1;
       logInfo('bank_ingest_created', {
         externalId: tx.externalId,
         userId,
         amountCents: absoluteCents,
         direction,
+      });
+    }
+  }
+
+  return stats;
+}
+
+function deriveAccountId(input: NormalizedBankTransactionInput): string {
+  if (hasNonEmptyString(input.accountId)) return input.accountId;
+  if (hasNonEmptyString(input.accountLast4)) return `${input.source}-acct-${input.accountLast4}`;
+  return `${input.source}-acct`;
+}
+
+export async function upsertBankTransactions(
+  txs: NormalizedBankTransactionInput[],
+): Promise<UpsertStats> {
+  const stats: UpsertStats = { created: 0, updated: 0, skipped: 0 };
+
+  for (const tx of txs) {
+    if (isProduction() && tx.source === 'csv_dev') {
+      stats.skipped += 1;
+      logWarn('bank_upsert_rejected_prod_csv', { externalId: tx.externalId, userId: tx.userId });
+      continue;
+    }
+
+    if (!Number.isFinite(tx.amountMinor)) {
+      stats.skipped += 1;
+      logWarn('bank_upsert_invalid_amount', { externalId: tx.externalId, userId: tx.userId });
+      continue;
+    }
+
+    if (!hasNonEmptyString(tx.externalId) || !hasNonEmptyString(tx.userId)) {
+      stats.skipped += 1;
+      logWarn('bank_upsert_missing_keys', { externalId: tx.externalId, userId: tx.userId });
+      continue;
+    }
+
+    const postedAt = new Date(tx.postedAt);
+    if (Number.isNaN(postedAt.getTime())) {
+      stats.skipped += 1;
+      logWarn('bank_upsert_invalid_posted_at', { externalId: tx.externalId, userId: tx.userId });
+      continue;
+    }
+
+    const normalizedDirection = normalizeDirection(tx.direction);
+    const amountMinor = Math.trunc(tx.amountMinor);
+    const { amount, direction, absoluteCents } = normalizeAmount(amountMinor, normalizedDirection);
+    const occurredAt = postedAt;
+    const accountId = deriveAccountId(tx);
+    const accountLast4 = hasNonEmptyString(tx.accountLast4) ? tx.accountLast4 : null;
+
+    const rawPayload = {
+      source: tx.source,
+      description: tx.description,
+      rawDescription: tx.rawDescription ?? null,
+      sourceStatement: tx.sourceStatement ?? null,
+      statementStart: tx.statementStart ?? null,
+      statementEnd: tx.statementEnd ?? null,
+      section: tx.section ?? null,
+    };
+
+    const where = { userId_externalId: { userId: tx.userId, externalId: tx.externalId } };
+    const existing = await prisma.bankTransaction.findUnique({ where, select: { id: true } });
+
+    const data = {
+      externalId: tx.externalId,
+      userId: tx.userId,
+      source: tx.source,
+      accountId,
+      accountLast4,
+      merchantName: tx.description,
+      description: tx.description,
+      rawDescription: tx.rawDescription ?? null,
+      amountMinor,
+      amount,
+      currency: 'USD',
+      direction,
+      transactionType: tx.section ?? null,
+      section: tx.section ?? null,
+      isRecurring: false,
+      occurredAt,
+      postedAt,
+      sourceStatement: tx.sourceStatement ?? null,
+      statementStart: tx.statementStart ?? null,
+      statementEnd: tx.statementEnd ?? null,
+      raw: rawPayload,
+    };
+
+    if (existing != null) {
+      await prisma.bankTransaction.update({
+        where,
+        data,
+      });
+      stats.updated += 1;
+    } else {
+      await prisma.bankTransaction.create({ data });
+      stats.created += 1;
+      logInfo('bank_upsert_created', {
+        externalId: tx.externalId,
+        userId: tx.userId,
+        amountCents: absoluteCents,
+        direction,
+        source: tx.source,
       });
     }
   }

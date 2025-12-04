@@ -48,7 +48,7 @@ export function validateEngineDecision(decision: LegacyEngineDecision): void {
   }
 
   if (card.verdict === 'NO_CARD_DATA') {
-    if (card.cardId) {
+    if (card.cardId !== null && card.cardId !== undefined && card.cardId !== '') {
       throw new Error('Engine invariant violated: NO_CARD_DATA but cardId set');
     }
     if (cherryIncentive.pointsIfFollowed > 0) {

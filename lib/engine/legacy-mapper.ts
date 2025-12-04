@@ -3,6 +3,10 @@ import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
 import type { EngineContext, EngineDecision, EngineState } from './types';
 import type { EngineDecision as LegacyEngineDecision } from './legacy';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 function deriveOverallVerdict(budgetVerdict: BudgetVerdict, cardVerdict: CardVerdict): OverallVerdict {
   if (budgetVerdict === 'UNCONFIGURED') return 'UNKNOWN';
   if (budgetVerdict === 'BREAKS_BUDGET') return 'RED';
@@ -80,7 +84,7 @@ export function mapSolverDecisionToLegacyDecision(input: {
   const card =
     (solverDecision.action.type === 'USE_CARD' ||
       solverDecision.action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    solverDecision.action.cardId
+    hasNonEmptyString(solverDecision.action.cardId)
       ? state.cards.find((c) => c.id === solverDecision.action.cardId)
       : undefined;
 
@@ -115,8 +119,12 @@ export function mapSolverDecisionToLegacyDecision(input: {
     strictMode: bucket?.strictMode ?? false,
     wouldExceed,
   };
-  if (bucket?.id) budget.bucketId = bucket.id;
-  if (bucket?.name) budget.name = bucket.name;
+  if (bucket?.id !== undefined && bucket.id !== null && bucket.id !== '') {
+    budget.bucketId = bucket.id;
+  }
+  if (bucket?.name !== undefined && bucket.name !== null && bucket.name !== '') {
+    budget.name = bucket.name;
+  }
   if (limitCents != null) budget.limitCents = limitCents;
   if (committedBeforeCents != null) budget.spentBeforeCents = committedBeforeCents;
   if (committedAfterCents != null) budget.spentAfterCents = committedAfterCents;
@@ -126,8 +134,10 @@ export function mapSolverDecisionToLegacyDecision(input: {
     verdict: cardVerdict,
     hasCardData: Boolean(card),
   };
-  if (card?.id) cardPayload.cardId = card.id;
-  if (card?.label) cardPayload.cardNickname = card.label;
+  if (card?.id !== undefined && card.id !== null && card.id !== '') cardPayload.cardId = card.id;
+  if (card?.label !== undefined && card.label !== null && card.label !== '') {
+    cardPayload.cardNickname = card.label;
+  }
   if (multiplier != null) cardPayload.multiplier = multiplier;
   if (estimatedRewards != null) cardPayload.estimatedRewards = estimatedRewards;
 

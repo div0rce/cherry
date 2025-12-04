@@ -6,16 +6,20 @@ import { BankIngestRequestSchema } from '@/lib/schemas/bank-ingest';
 import { ingestBankTransactions } from '@/lib/bank/ingest';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
+
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId, _req) => {
     const url = new URL(request.url);
     const limitParam = url.searchParams.get('limit');
-    const limit = limitParam ? Math.max(1, Math.min(Number.parseInt(limitParam, 10), 100)) : 10;
+    const limit = hasText(limitParam) ? Math.max(1, Math.min(Number.parseInt(limitParam, 10), 100)) : 10;
 
     const rows = await prisma.bankTransaction.findMany({
       where: { userId },
-      orderBy: { occurredAt: 'desc' },
+      orderBy: BANK_TX_DEFAULT_ORDER,
       take: limit,
     });
 

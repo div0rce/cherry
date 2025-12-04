@@ -9,6 +9,12 @@ type TypeFilter = 'REAL' | 'SIMULATED';
 
 type CardOption = { id: string; nickname: string; network: string };
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value.trim() !== '';
+
+const isValidNumber = (value?: number | null): value is number =>
+  value !== undefined && value !== null && !Number.isNaN(value);
+
 function coerceDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
@@ -32,27 +38,29 @@ export default function ActivityPageClient({
     () =>
       rows
         .filter((row) => {
-          if (!cardId) return true;
+          if (cardId === '') return true;
           return row.cardId === cardId;
         })
         .filter((row) => {
-          if (!merchantQuery.trim()) return true;
+          if (!hasText(merchantQuery)) return true;
           return (row.merchantName ?? '').toLowerCase().includes(merchantQuery.toLowerCase());
         })
         .filter((row) => {
-          if (!mccFilter.trim()) return true;
+          if (!hasText(mccFilter)) return true;
           const parsed = Number(mccFilter);
           if (Number.isNaN(parsed)) return true;
           return row.mcc === parsed;
         })
         .filter((row) => {
-          if (!startDate && !endDate) return true;
+          const hasStart = hasText(startDate);
+          const hasEnd = hasText(endDate);
+          if (!hasStart && !hasEnd) return true;
           const occurred = coerceDate(row.occurredAt);
-          if (startDate) {
+          if (hasStart) {
             const start = new Date(startDate);
             if (occurred < start) return false;
           }
-          if (endDate) {
+          if (hasEnd) {
             const end = new Date(endDate);
             // include end date full day
             end.setDate(end.getDate() + 1);
@@ -254,9 +262,9 @@ function ActivityTable({
                       {row.merchantName ?? 'Unknown merchant'}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {row.mcc ? `MCC ${row.mcc}` : 'MCC unknown'}
-                      {row.merchantLocation?.city ? ` · ${row.merchantLocation.city}` : ''}
-                      {row.merchantLocation?.region ? `, ${row.merchantLocation.region}` : ''}
+                      {isValidNumber(row.mcc) ? `MCC ${row.mcc}` : 'MCC unknown'}
+                      {hasText(row.merchantLocation?.city) ? ` · ${row.merchantLocation.city}` : ''}
+                      {hasText(row.merchantLocation?.region) ? `, ${row.merchantLocation.region}` : ''}
                     </span>
                     <span className="text-[10px] uppercase tracking-wide text-slate-500">
                       {row.kind === 'REAL_TRANSACTION'
@@ -268,10 +276,11 @@ function ActivityTable({
                   </div>
                 </td>
                 <td className="py-2 pr-4 text-xs text-slate-400">
-                  {row.cardName ??
-                    (row.cardBrand
-                      ? `${row.cardBrand}${row.cardLast4 ? ` •••• ${row.cardLast4}` : ''}`
-                      : '—')}
+                  {hasText(row.cardName)
+                    ? row.cardName
+                    : hasText(row.cardBrand)
+                      ? `${row.cardBrand}${hasText(row.cardLast4) ? ` •••• ${row.cardLast4}` : ''}`
+                      : '—'}
                 </td>
                 <td className="py-2 pr-4 text-right">
                   <AmountCell row={row} />
@@ -325,7 +334,7 @@ function ActivityDisclaimer(): JSX.Element {
 
 function AmountCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
   const cashDelta = row.cashDeltaCents ?? 0;
-  if (!cashDelta) {
+  if (!isValidNumber(cashDelta) || cashDelta === 0) {
     return <span className="text-xs text-slate-500">—</span>;
   }
 
@@ -343,7 +352,7 @@ function AmountCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
 
 function PointsCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
   const pts = row.pointsDelta ?? row.pointsEarned ?? 0;
-  if (!pts) {
+  if (!isValidNumber(pts) || pts === 0) {
     return <span className="text-xs text-slate-500">—</span>;
   }
   const sign = pts < 0 ? '-' : '+';

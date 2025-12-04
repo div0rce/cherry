@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 function promptSignIn(setStatus: (message: string) => void) {
   setStatus('Sign in to continue.');
   void signIn(undefined, { callbackUrl: window.location.href });
@@ -31,7 +34,11 @@ export function AddCardForm(): JSX.Element {
   async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
 
-    if (!nickname.trim() || !issuer.trim() || !network.trim()) {
+    const nicknameTrimmed = nickname.trim();
+    const issuerTrimmed = issuer.trim();
+    const networkTrimmed = network.trim();
+
+    if (!hasText(nicknameTrimmed) || !hasText(issuerTrimmed) || !hasText(networkTrimmed)) {
       setStatus('Please fill nickname, issuer, and network.');
       return;
     }
@@ -45,7 +52,8 @@ export function AddCardForm(): JSX.Element {
     }
 
     if (knowsRewards) {
-      if (!ruleCategory.trim()) {
+      const ruleCategoryTrimmed = ruleCategory.trim();
+      if (!hasText(ruleCategoryTrimmed)) {
         setStatus('Category is required for a reward rule.');
         return;
       }
@@ -74,9 +82,9 @@ export function AddCardForm(): JSX.Element {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nickname,
-        issuer,
-        network,
+        nickname: nicknameTrimmed,
+        issuer: issuerTrimmed,
+        network: networkTrimmed,
         isCredit,
         annualFee: annualFeeCents,
       }),
@@ -88,8 +96,8 @@ export function AddCardForm(): JSX.Element {
     }
 
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(message || 'Failed to create card');
+      const message = (await res.text()).trim();
+      setStatus(hasText(message) ? message : 'Failed to create card');
       return;
     }
 
@@ -120,8 +128,8 @@ export function AddCardForm(): JSX.Element {
       }
 
       if (!ruleRes.ok) {
-        const message = await ruleRes.text();
-        setStatus(message || 'Card created, but failed to add reward rule.');
+        const message = (await ruleRes.text()).trim();
+        setStatus(hasText(message) ? message : 'Card created, but failed to add reward rule.');
         router.refresh();
         return;
       }
@@ -305,7 +313,7 @@ export function AddCardForm(): JSX.Element {
       >
         Add card
       </button>
-      {status && <p className="text-xs text-slate-600">{status}</p>}
+      {hasText(status) ? <p className="text-xs text-slate-600">{status}</p> : null}
     </form>
   );
 }
@@ -321,7 +329,8 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!category.trim()) {
+    const trimmedCategory = category.trim();
+    if (!hasText(trimmedCategory)) {
       setStatus('Category is required.');
       return;
     }
@@ -360,7 +369,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        category,
+        category: trimmedCategory,
         multiplier: numericMultiplier,
         capAmountCents,
       }),
@@ -372,8 +381,8 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
     }
 
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(message || 'Failed to create reward rule');
+      const message = (await res.text()).trim();
+      setStatus(hasText(message) ? message : 'Failed to create reward rule');
       return;
     }
 
@@ -440,7 +449,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
       >
         Add rule
       </button>
-      {status && <span className="text-xs text-slate-500">{status}</span>}
+      {hasText(status) ? <span className="text-xs text-slate-500">{status}</span> : null}
     </form>
   );
 }
@@ -466,8 +475,8 @@ export function DeleteCardButton({ cardId }: { cardId: string }): JSX.Element {
     }
 
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(message || 'Failed to delete card');
+      const message = (await res.text()).trim();
+      setStatus(hasText(message) ? message : 'Failed to delete card');
       return;
     }
 
@@ -482,7 +491,7 @@ export function DeleteCardButton({ cardId }: { cardId: string }): JSX.Element {
       type="button"
     >
       Delete
-      {status && <span className="ml-2 text-xs text-slate-500">{status}</span>}
+      {hasText(status) ? <span className="ml-2 text-xs text-slate-500">{status}</span> : null}
     </button>
   );
 }
@@ -514,8 +523,8 @@ export function DeleteRewardRuleButton({
     }
 
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(message || 'Failed to delete');
+      const message = (await res.text()).trim();
+      setStatus(hasText(message) ? message : 'Failed to delete');
       return;
     }
 
@@ -530,7 +539,7 @@ export function DeleteRewardRuleButton({
       type="button"
     >
       Remove
-      {status && <span className="ml-1 text-slate-500">{status}</span>}
+      {hasText(status) ? <span className="ml-1 text-slate-500">{status}</span> : null}
     </button>
   );
 }

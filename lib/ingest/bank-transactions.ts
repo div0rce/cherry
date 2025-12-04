@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { assertUserId } from '@/lib/invariants';
 import { isPrismaP2003, logInvariant } from '@/lib/user-context';
+import { hasText } from '@/lib/text';
 
 export interface AggregatorTransaction {
   id: string;
@@ -31,19 +32,30 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
   assertUserId(tx.userId, 'ingestBankTransaction userId');
 
   try {
+    const amountDecimal = new Prisma.Decimal(tx.amount);
+    const centsFromAmount = Math.trunc(amountDecimal.mul(100).toNumber());
+    const absoluteCents = Math.abs(centsFromAmount);
+    const amount = new Prisma.Decimal(absoluteCents).dividedBy(new Prisma.Decimal(100));
+    const amountMinor = (tx.direction === 'CREDIT' ? 1 : -1) * absoluteCents;
+    const merchantName: string | null = hasText(tx.merchantName) ? tx.merchantName : null;
+    const mcc: number | null =
+      typeof tx.mcc === 'number' && !Number.isNaN(tx.mcc) ? tx.mcc : null;
+    const hasMerchantName = merchantName !== null;
+    const hasMcc = mcc !== null;
+
     const merchantObservation =
-      tx.merchantName || tx.mcc
+      hasMerchantName || hasMcc
         ? await prisma.merchantObservation.upsert({
             where: {
               userId_merchantName_mcc: {
                 userId: tx.userId,
-                merchantName: tx.merchantName ?? 'UNKNOWN',
-                mcc: tx.mcc ?? 0,
+                merchantName: merchantName ?? 'UNKNOWN',
+                mcc: mcc ?? 0,
               },
             },
             update: {
-              merchantName: tx.merchantName ?? null,
-              mcc: tx.mcc ?? null,
+              merchantName,
+              mcc,
               city: tx.merchantCity ?? null,
               region: tx.merchantRegion ?? null,
               country: tx.merchantCountry ?? null,
@@ -51,8 +63,8 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
             },
             create: {
               userId: tx.userId,
-              merchantName: tx.merchantName ?? 'UNKNOWN',
-              mcc: tx.mcc ?? null,
+              merchantName: merchantName ?? 'UNKNOWN',
+              mcc,
               city: tx.merchantCity ?? null,
               region: tx.merchantRegion ?? null,
               country: tx.merchantCountry ?? null,
@@ -60,46 +72,43 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
           })
         : null;
 
-    await prisma.bankTransaction.upsert({
-      where: { id: tx.id },
-      update: {
-        merchantName: tx.merchantName ?? null,
-        merchantCity: tx.merchantCity ?? null,
-        merchantRegion: tx.merchantRegion ?? null,
-        merchantCountry: tx.merchantCountry ?? null,
-        mcc: tx.mcc ?? null,
-        amount: tx.amount,
-        currency: tx.currency,
-        direction: tx.direction,
-        transactionType: tx.transactionType ?? null,
-        isRecurring: tx.isRecurring ?? null,
-        occurredAt: tx.occurredAt,
-        raw: tx.raw == null ? Prisma.JsonNull : (tx.raw as Prisma.InputJsonValue),
-        merchantObservationId: merchantObservation?.id ?? null,
-        cardBrand: tx.cardBrand ?? null,
-        cardLast4: tx.cardLast4 ?? null,
-      },
-      create: {
-        id: tx.id,
-        userId: tx.userId,
-        accountId: tx.accountId,
-        merchantName: tx.merchantName ?? null,
-        merchantCity: tx.merchantCity ?? null,
-        merchantRegion: tx.merchantRegion ?? null,
-        merchantCountry: tx.merchantCountry ?? null,
-        mcc: tx.mcc ?? null,
-        amount: tx.amount,
-        currency: tx.currency,
-        direction: tx.direction,
-        transactionType: tx.transactionType ?? null,
-        isRecurring: tx.isRecurring ?? null,
-        occurredAt: tx.occurredAt,
-        raw: tx.raw == null ? Prisma.JsonNull : (tx.raw as Prisma.InputJsonValue),
-        merchantObservationId: merchantObservation?.id ?? null,
-        cardBrand: tx.cardBrand ?? null,
-        cardLast4: tx.cardLast4 ?? null,
-      },
-    });
+    const where = { userId_externalId: { userId: tx.userId, externalId: tx.id } };
+    const data = {
+      externalId: tx.id,
+      userId: tx.userId,
+      accountId: tx.accountId,
+      source: 'aggregator',
+      merchantName,
+      merchantCity: tx.merchantCity ?? null,
+      merchantRegion: tx.merchantRegion ?? null,
+      merchantCountry: tx.merchantCountry ?? null,
+      mcc,
+      description: merchantName ?? null,
+      amount,
+      amountMinor,
+      currency: tx.currency,
+      direction: tx.direction,
+      transactionType: tx.transactionType ?? null,
+      section: tx.transactionType ?? null,
+      isRecurring: tx.isRecurring ?? null,
+      occurredAt: tx.occurredAt,
+      postedAt: tx.occurredAt,
+      sourceStatement: null,
+      statementStart: null,
+      statementEnd: null,
+      raw: tx.raw == null ? Prisma.JsonNull : (tx.raw as Prisma.InputJsonValue),
+      merchantObservationId: merchantObservation?.id ?? null,
+      cardBrand: tx.cardBrand ?? null,
+      cardLast4: tx.cardLast4 ?? null,
+    };
+
+    const existing = await prisma.bankTransaction.findUnique({ where, select: { id: true } });
+
+    if (existing) {
+      await prisma.bankTransaction.update({ where, data });
+    } else {
+      await prisma.bankTransaction.create({ data });
+    }
   } catch (err: unknown) {
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in ingestBankTransaction', {

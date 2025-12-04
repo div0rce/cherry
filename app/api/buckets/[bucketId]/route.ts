@@ -38,7 +38,12 @@ export async function DELETE(
 
   const { bucketId } = await params;
 
-  if (!bucketId || typeof bucketId !== 'string') {
+  if (
+    bucketId === undefined ||
+    bucketId === null ||
+    typeof bucketId !== 'string' ||
+    bucketId === ''
+  ) {
     return new NextResponse('bucketId is required', { status: 400 });
   }
 

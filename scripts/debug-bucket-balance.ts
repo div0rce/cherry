@@ -1,9 +1,12 @@
 import { prisma } from '../lib/prisma';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '../lib/buckets-runtime';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 async function main() {
   const bucketId = process.env['DEBUG_BUCKET_ID'];
-  if (!bucketId) {
+  if (!hasText(bucketId)) {
     throw new Error('Set DEBUG_BUCKET_ID to the bucket you want to debug.');
   }
 
@@ -21,21 +24,22 @@ async function main() {
     },
   });
 
-  // eslint-disable-next-line no-console
-  console.log('Debug bucket state:', {
-    id: bucket.id,
-    budgetAmount: bucket.budgetAmount,
-    spentCents: bucket.spentCents,
-    currentAmount: bucket.currentAmount,
-    pendingSpendCents,
-    committedCents: balance.committedCents,
-    remainingCents: balance.remainingCents,
-  });
+  process.stdout.write(
+    `${JSON.stringify({
+      id: bucket.id,
+      budgetAmount: bucket.budgetAmount,
+      spentCents: bucket.spentCents,
+      currentAmount: bucket.currentAmount,
+      pendingSpendCents,
+      committedCents: balance.committedCents,
+      remainingCents: balance.remainingCents,
+    })}\n`
+  );
 }
 
 main()
   .catch((err) => {
-    console.error(err);
+    process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
   })
   .finally(async () => {

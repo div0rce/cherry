@@ -17,6 +17,12 @@ type StatementRollup = {
   categoryBreakdown: { category: string; totalCents: number }[];
 };
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
+const isValidNumber = (value?: number | null): value is number =>
+  value !== undefined && value !== null && !Number.isNaN(value);
+
 function formatCurrency(value: number): string {
   return `$${value.toFixed(2)}`;
 }
@@ -101,15 +107,16 @@ function StatementTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
                         {row.merchantName ?? 'Unknown merchant'}
                       </span>
                       <span className="text-xs text-slate-500">
-                        {row.mcc ? `MCC ${row.mcc}` : 'MCC unknown'}
+                        {isValidNumber(row.mcc) ? `MCC ${row.mcc}` : 'MCC unknown'}
                       </span>
                     </div>
                   </td>
                   <td className="py-2 pr-4 text-xs text-slate-400">
-                    {row.cardName ??
-                      (row.cardBrand
-                        ? `${row.cardBrand}${row.cardLast4 ? ` •••• ${row.cardLast4}` : ''}`
-                        : '—')}
+                    {hasText(row.cardName)
+                      ? row.cardName
+                      : hasText(row.cardBrand)
+                        ? `${row.cardBrand}${hasText(row.cardLast4) ? ` •••• ${row.cardLast4}` : ''}`
+                        : '—'}
                   </td>
                   <td className="py-2 pr-4 text-right">
                     <AmountCell row={row} />
@@ -118,7 +125,7 @@ function StatementTable({ rows }: { rows: UnifiedActivityRow[] }): JSX.Element {
                     <PointsCell row={row} />
                   </td>
                   <td className="py-2 text-right">
-                    <UserSourceBadge source={row.source} />
+                    <UserSourceBadge source={row.source} provider={row.providerSource} />
                   </td>
                 </tr>
               );
@@ -144,7 +151,7 @@ export default async function StatementsPage({
   const now = new Date();
   const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   const selectedMonth =
-    params.month && /^\d{4}-\d{2}$/.test(params.month) ? params.month : defaultMonth;
+    hasText(params.month) && /^\d{4}-\d{2}$/.test(params.month) ? params.month : defaultMonth;
   const [yearPart, monthPart] = selectedMonth.split('-');
   const year = Number(yearPart);
   const month = Number(monthPart);
@@ -217,7 +224,7 @@ export default async function StatementsPage({
 
 function AmountCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
   const cashDelta = row.cashDeltaCents ?? 0;
-  if (!cashDelta) {
+  if (!isValidNumber(cashDelta) || cashDelta === 0) {
     return <span className="text-xs text-slate-500">—</span>;
   }
 
@@ -235,7 +242,7 @@ function AmountCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
 
 function PointsCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
   const pts = row.pointsDelta ?? row.pointsEarned ?? 0;
-  if (!pts) {
+  if (!isValidNumber(pts) || pts === 0) {
     return <span className="text-xs text-slate-500">—</span>;
   }
 
@@ -250,7 +257,13 @@ function PointsCell({ row }: { row: UnifiedActivityRow }): JSX.Element {
   );
 }
 
-function UserSourceBadge({ source }: { source: string }): JSX.Element {
+function UserSourceBadge({
+  source,
+  provider,
+}: {
+  source: string;
+  provider?: string | null | undefined;
+}): JSX.Element {
   let label = 'Activity';
   switch (source) {
     case 'BANK_FEED':
@@ -261,8 +274,15 @@ function UserSourceBadge({ source }: { source: string }): JSX.Element {
       label = 'Activity';
   }
   return (
-    <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
-      {label}
-    </span>
+    <div className="flex justify-end gap-1">
+      <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
+        {label}
+      </span>
+      {process.env.NODE_ENV !== 'production' && hasText(provider) ? (
+        <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-indigo-100">
+          {provider}
+        </span>
+      ) : null}
+    </div>
   );
 }

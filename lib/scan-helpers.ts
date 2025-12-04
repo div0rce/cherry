@@ -2,6 +2,10 @@ import { RewardCategory } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { resolveCategory } from '@/lib/engine';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 export async function inferCategoryForMerchant(
   userId: string,
   merchantName: string
@@ -12,7 +16,14 @@ export async function inferCategoryForMerchant(
     select: { resolvedCategory: true },
   });
 
-  if (lastTx?.resolvedCategory) return lastTx.resolvedCategory;
+  if (
+    lastTx !== null &&
+    lastTx !== undefined &&
+    lastTx.resolvedCategory !== null &&
+    lastTx.resolvedCategory !== undefined
+  ) {
+    return lastTx.resolvedCategory;
+  }
 
   return RewardCategory.OTHER;
 }
@@ -27,7 +38,9 @@ export async function resolveScanCategory(params: {
   const mccCode = params.mccCode ?? null;
   const explicitCategory = params.explicitCategory ?? null;
 
-  if (explicitCategory) {
+  const hasExplicitCategory =
+    explicitCategory !== null && explicitCategory !== undefined && explicitCategory !== '';
+  if (hasExplicitCategory) {
     return resolveCategory({
       mccCode,
       category: explicitCategory,
@@ -35,7 +48,8 @@ export async function resolveScanCategory(params: {
     });
   }
 
-  if (mccCode != null) {
+  const hasMccCode = mccCode !== null && mccCode !== undefined && !Number.isNaN(mccCode);
+  if (hasMccCode) {
     return resolveCategory({
       mccCode,
       category: null,
@@ -43,9 +57,9 @@ export async function resolveScanCategory(params: {
     });
   }
 
-  if (merchantName) {
+  if (hasNonEmptyString(merchantName)) {
     const inferred = await inferCategoryForMerchant(params.userId, merchantName);
-    if (inferred && inferred !== RewardCategory.OTHER) {
+    if (inferred !== RewardCategory.OTHER) {
       return inferred;
     }
   }

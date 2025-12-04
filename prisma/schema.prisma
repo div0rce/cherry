@@ -170,28 +170,50 @@ enum MerchantLifeCategory {
   OTHER
 }
 
+enum BankTransactionIncomeKind {
+  NONE
+  PAYROLL
+  ALLOWANCE
+  SIDE_GIG
+  REFUND
+  INTERNAL_TRANSFER
+  OTHER
+}
+
+enum BankTransactionP2PKind {
+  NONE
+  P2P_ALLOWANCE
+  P2P_REPAYMENT_IN
+  P2P_REPAYMENT_OUT
+  P2P_PSEUDO_MERCHANT_IN
+  P2P_PSEUDO_MERCHANT_OUT
+}
+
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  engineObjectiveProfile String? @default("BALANCED")
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  name                   String?
+  emailVerified          DateTime?
+  image                  String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  engineObjectiveProfile String?   @default("BALANCED")
   engineObjectiveWeights Json?
 
-  cards               Card[]
-  buckets             Bucket[]
-  simulationSessions  Simulation[]
-  simulations         SimulatedTransaction[]
-  accounts            Account[]
-  sessions            Session[]
-  recommendationSessions RecommendationSession[]
-  cherryPointLedgerEntries CherryPointLedger[]
-  categoryPreferences CategoryPreference[]
-  bankTransactions        BankTransaction[]
-  merchantObservations    MerchantObservation[]
+  cards                       Card[]
+  buckets                     Bucket[]
+  simulationSessions          Simulation[]
+  simulations                 SimulatedTransaction[]
+  accounts                    Account[]
+  sessions                    Session[]
+  recommendationSessions      RecommendationSession[]
+  cherryPointLedgerEntries    CherryPointLedger[]
+  categoryPreferences         CategoryPreference[]
+  bankTransactions            BankTransaction[]
+  merchantObservations        MerchantObservation[]
+  historicalEngineEvaluations HistoricalEngineEvaluation[]
+  historicalIncomeRegimes     HistoricalIncomeRegime[]
+  historicalBucketTemplates   HistoricalBucketTemplate[]
 }
 
 model Card {
@@ -205,8 +227,8 @@ model Card {
   isCredit  Boolean
   annualFee Int? // cents
 
-  rewardRules RewardRule[]
-  simulations SimulatedTransaction[]
+  rewardRules            RewardRule[]
+  simulations            SimulatedTransaction[]
   recommendationSessions RecommendationSession[]
   ledgerEntries          CherryPointLedger[]
 
@@ -219,12 +241,12 @@ model RewardRule {
   card   Card   @relation(fields: [cardId], references: [id], onDelete: Cascade)
   cardId String
 
-  category         RewardCategory
-  multiplier       Float?         // points multiplier (e.g., 4.0 = 4x)
-  cashbackPercent  Float?         // e.g., 2.0 = 2%
-  capAmount        Int?           // optional cap in cents
-  promoStart       DateTime?
-  promoEnd         DateTime?
+  category        RewardCategory
+  multiplier      Float? // points multiplier (e.g., 4.0 = 4x)
+  cashbackPercent Float? // e.g., 2.0 = 2%
+  capAmount       Int? // optional cap in cents
+  promoStart      DateTime?
+  promoEnd        DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -246,46 +268,46 @@ model Bucket {
   period        BucketPeriod
   budgetAmount  Int // total budget for the period (cents)
   currentAmount Int // legacy remaining at write time (cents); derive from budgetAmount/spentCents
-  spentCents    Int      @default(0) // settled/posted spend for this period (cents)
-  strictMode    Boolean      @default(true) // decline if over
+  spentCents    Int            @default(0) // settled/posted spend for this period (cents)
+  strictMode    Boolean        @default(true) // decline if over
   category      RewardCategory
-  periodStart   DateTime @default(now())
-  periodEnd     DateTime @default(now())
+  periodStart   DateTime       @default(now())
+  periodEnd     DateTime       @default(now())
   lastResetAt   DateTime?
 
-  simulations SimulatedTransaction[]
+  simulations            SimulatedTransaction[]
   recommendationSessions RecommendationSession[]
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
 }
 
 model MerchantCategory {
-  id                String   @id @default(cuid())
-  mccCode           Int      @unique
+  id                String  @id @default(cuid())
+  mccCode           Int     @unique
   description       String
-  networkVisa       Boolean  @default(false)
-  networkMastercard Boolean  @default(false)
-  networkTsys       Boolean  @default(false)
+  networkVisa       Boolean @default(false)
+  networkMastercard Boolean @default(false)
+  networkTsys       Boolean @default(false)
   notes             String?
 
   // Internal tagging metadata (nullable to allow progressive backfill)
-  vertical      MerchantVertical?
-  channel       MerchantChannel?
-  spendDomain   SpendDomain?
-  riskProfile   MerchantRiskProfile?
-  lifeCategory  MerchantLifeCategory?
+  vertical     MerchantVertical?
+  channel      MerchantChannel?
+  spendDomain  SpendDomain?
+  riskProfile  MerchantRiskProfile?
+  lifeCategory MerchantLifeCategory?
 
   mappings MccToRewardCategory[]
 }
 
 model MccToRewardCategory {
-  id             String           @id @default(cuid())
-  mcc            MerchantCategory @relation(fields: [mccCode], references: [mccCode], onDelete: Cascade)
-  mccCode        Int
-  category       RewardCategory
-  isDefault      Boolean          @default(true)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id        String           @id @default(cuid())
+  mcc       MerchantCategory @relation(fields: [mccCode], references: [mccCode], onDelete: Cascade)
+  mccCode   Int
+  category  RewardCategory
+  isDefault Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   @@unique([mccCode, isDefault])
   @@index([mccCode])
@@ -302,14 +324,14 @@ model Simulation {
 }
 
 model SimulatedTransaction {
-  id     String @id @default(cuid())
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
+  id           String      @id @default(cuid())
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
   simulation   Simulation? @relation(fields: [simulationId], references: [id], onDelete: Cascade)
   simulationId String?
 
   amount              Int // cents
-  currency            String  @default("USD")
+  currency            String          @default("USD")
   merchantName        String?
   mccCode             Int?
   resolvedCategory    RewardCategory
@@ -326,15 +348,15 @@ model SimulatedTransaction {
   bucketName          String?
   bucketPeriod        BucketPeriod?
 
-  chosenCard   Card?   @relation(fields: [chosenCardId], references: [id])
-  chosenCardId String?
+  chosenCard     Card?   @relation(fields: [chosenCardId], references: [id])
+  chosenCardId   String?
   chosenCardName String?
-  bucket       Bucket? @relation(fields: [bucketId], references: [id])
-  bucketId     String?
+  bucket         Bucket? @relation(fields: [bucketId], references: [id])
+  bucketId       String?
 
   status        TransactionStatus
   reason        String?
-  strictDecline Boolean @default(false)
+  strictDecline Boolean           @default(false)
 
   createdAt DateTime @default(now())
 
@@ -347,48 +369,48 @@ model RecommendationSession {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
-  merchantName  String?
-  mccCode       Int?
-  category      RewardCategory
-  amountCents   Int
-  currency      String @default("USD")
-  deviceId      String?
-  storeId       String?
-  terminalId    String?
-  orderId       String?
-  orderToken    String  @unique
-  source        RecommendationSource @default(APP_SCAN)
+  merchantName String?
+  mccCode      Int?
+  category     RewardCategory
+  amountCents  Int
+  currency     String               @default("USD")
+  deviceId     String?
+  storeId      String?
+  terminalId   String?
+  orderId      String?
+  orderToken   String               @unique
+  source       RecommendationSource @default(APP_SCAN)
 
-  recommendedCard   Card?   @relation(fields: [recommendedCardId], references: [id], onDelete: SetNull)
-  recommendedCardId String?
-  recommendedBucket Bucket? @relation(fields: [recommendedBucketId], references: [id], onDelete: SetNull)
-  recommendedBucketId String?
+  recommendedCard      Card?   @relation(fields: [recommendedCardId], references: [id], onDelete: SetNull)
+  recommendedCardId    String?
+  recommendedBucket    Bucket? @relation(fields: [recommendedBucketId], references: [id], onDelete: SetNull)
+  recommendedBucketId  String?
   confirmedAmountCents Int?
   bucketSpendReversed  Boolean @default(false)
 
-  verdict              RecommendationVerdict
-  cherryPointsOffered  Int     @default(0)
-  status               RecommendationStatus
-  expiresAt            DateTime
-  verifiedAt           DateTime?
-  rejectedAt           DateTime?
-  budgetVerdict        BudgetVerdict
-  cardVerdict          CardVerdict
-  overallVerdict       OverallVerdict
-  coverageMode         CategoryCoverageModeDb
-  verificationStatus   VerificationStatus @default(UNVERIFIED)
-  anomalyCode          SessionAnomalyCode @default(NONE)
-  anomalyDetails       String?            @db.Text
+  verdict             RecommendationVerdict
+  cherryPointsOffered Int                    @default(0)
+  status              RecommendationStatus
+  expiresAt           DateTime
+  verifiedAt          DateTime?
+  rejectedAt          DateTime?
+  budgetVerdict       BudgetVerdict
+  cardVerdict         CardVerdict
+  overallVerdict      OverallVerdict
+  coverageMode        CategoryCoverageModeDb
+  verificationStatus  VerificationStatus     @default(UNVERIFIED)
+  anomalyCode         SessionAnomalyCode     @default(NONE)
+  anomalyDetails      String?                @db.Text
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  ledgerEntries CherryPointLedger[]
+
+  @@unique([userId, orderToken], map: "user_order_token_unique")
   @@index([userId])
   @@index([recommendedCardId])
   @@index([recommendedBucketId])
-  @@unique([userId, orderToken], map: "user_order_token_unique")
-
-  ledgerEntries CherryPointLedger[]
 }
 
 model VineDevice {
@@ -410,18 +432,18 @@ model CherryPointLedger {
   session   RecommendationSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   sessionId String?
 
-  points    Int
-  reason    String
-  awardedAt DateTime               @default(now())
-  expiresAt DateTime?
-  status    CherryPointLedgerStatus @default(PENDING)
-  postedAt  DateTime?
-  revokedAt DateTime?
-  isAnomalous Boolean          @default(false)
-  anomalyCode LedgerAnomalyCode @default(NONE)
-  merchantObservation   MerchantObservation? @relation(fields: [merchantObservationId], references: [id], onDelete: SetNull)
+  points                Int
+  reason                String
+  awardedAt             DateTime                @default(now())
+  expiresAt             DateTime?
+  status                CherryPointLedgerStatus @default(PENDING)
+  postedAt              DateTime?
+  revokedAt             DateTime?
+  isAnomalous           Boolean                 @default(false)
+  anomalyCode           LedgerAnomalyCode       @default(NONE)
+  merchantObservation   MerchantObservation?    @relation(fields: [merchantObservationId], references: [id], onDelete: SetNull)
   merchantObservationId String?
-  card                  Card? @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  card                  Card?                   @relation(fields: [cardId], references: [id], onDelete: SetNull)
   cardId                String?
 
   createdAt DateTime @default(now())
@@ -434,12 +456,12 @@ model CherryPointLedger {
 }
 
 model CategoryPreference {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
 
-  category  RewardCategory
-  mode      CategoryBudgetMode
+  category RewardCategory
+  mode     CategoryBudgetMode
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -448,52 +470,132 @@ model CategoryPreference {
 }
 
 model MerchantObservation {
-  id               String   @id @default(cuid())
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String
-  merchantName     String?
-  mcc              Int?
-  city             String?
-  region           String?
-  country          String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  merchantName String?
+  mcc          Int?
+  city         String?
+  region       String?
+  country      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   bankTx     BankTransaction[]
   ledgerRows CherryPointLedger[]
 
+  @@unique([userId, merchantName, mcc], map: "user_merchant_mcc_unique")
   @@index([userId, merchantName])
   @@index([userId, merchantName, city, region])
-  @@unique([userId, merchantName, mcc], map: "user_merchant_mcc_unique")
 }
 
 model BankTransaction {
-  id               String   @id @default(cuid())
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId           String
-  accountId        String
-  cardBrand        String?
-  cardLast4        String?
-  merchantName     String?
-  merchantCity     String?
-  merchantRegion   String?
-  merchantCountry  String?
-  mcc              Int?
-  amount           Decimal
-  currency         String
-  direction        String
-  transactionType  String?
-  isRecurring      Boolean? @default(false)
-  occurredAt       DateTime
-  raw              Json?
-  merchantObservation   MerchantObservation? @relation(fields: [merchantObservationId], references: [id], onDelete: SetNull)
+  id                    String                       @id @default(cuid())
+  externalId            String
+  user                  User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  source                String                       @default("legacy")
+  accountId             String
+  accountLast4          String?
+  cardBrand             String?
+  cardLast4             String?
+  description           String?
+  rawDescription        String?
+  merchantName          String?
+  merchantCity          String?
+  merchantRegion        String?
+  merchantCountry       String?
+  mcc                   Int?
+  amount                Decimal
+  amountMinor           Int
+  currency              String
+  direction             String
+  transactionType       String?
+  isRecurring           Boolean?                     @default(false)
+  occurredAt            DateTime?
+  postedAt              DateTime
+  raw                   Json?
+  sourceStatement       String?
+  statementStart        String?
+  statementEnd          String?
+  section               String?
+  merchantObservation   MerchantObservation?         @relation(fields: [merchantObservationId], references: [id], onDelete: SetNull)
   merchantObservationId String?
+  historicalEvaluations HistoricalEngineEvaluation[]
+  incomeKind            BankTransactionIncomeKind    @default(NONE)
+  p2pKind               BankTransactionP2PKind       @default(NONE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, externalId], map: "BankTransaction_userId_externalId")
   @@index([userId])
   @@index([userId, merchantName])
+}
+
+model HistoricalEngineEvaluation {
+  id                   String                  @id @default(cuid())
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String
+  bankTransaction      BankTransaction         @relation(fields: [bankTransactionId], references: [id], onDelete: Cascade)
+  bankTransactionId    String
+  runId                String
+  decisionType         String
+  cardId               String?
+  bucketId             String?
+  rawDecision          Json
+  scores               Json?
+  regimeId             String?
+  bucketKey            String?
+  bucketUsageBeforeBps Int?
+  bucketUsageAfterBps  Int?
+  createdAt            DateTime                @default(now())
+  regime               HistoricalIncomeRegime? @relation(fields: [regimeId], references: [id], onDelete: SetNull)
+
+  @@unique([runId, bankTransactionId])
+  @@index([userId, bankTransactionId])
+}
+
+model HistoricalIncomeRegime {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  startMonth DateTime
+  endMonth   DateTime
+
+  avgNetIncomeCents  Int @default(0)
+  avgFixedCostsCents Int @default(0)
+  avgFreeCashCents   Int @default(0)
+
+  regimeLabel String?
+
+  bucketTemplates HistoricalBucketTemplate[]
+  evaluations     HistoricalEngineEvaluation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, startMonth])
+}
+
+model HistoricalBucketTemplate {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  regime   HistoricalIncomeRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
+  regimeId String
+
+  bucketKey         String
+  monthlyLimitCents Int
+  avgSpendCents     Int    @default(0)
+  targetShareBps    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, regimeId])
 }
 
 model Account {

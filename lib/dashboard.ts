@@ -71,9 +71,10 @@ function summarizeBucketHealth(
 }
 
 function normalizeActivityRow(item: UnifiedActivityRow): DashboardStats['recentUnifiedActivity'][number] {
+  const hasMcc = item.mcc !== null && item.mcc !== undefined;
   const label =
     item.merchantName ??
-    (item.mcc ? `MCC ${item.mcc}` : item.kind === 'POINTS_EVENT' ? 'Points event' : 'Activity');
+    (hasMcc ? `MCC ${item.mcc}` : item.kind === 'POINTS_EVENT' ? 'Points event' : 'Activity');
   const amountCents =
     item.cashDeltaCents != null
       ? Math.abs(item.cashDeltaCents)
@@ -132,7 +133,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     prisma.bankTransaction.count({
       where: {
         userId,
-        occurredAt: { gte: monthStart, lt: monthEnd },
+        postedAt: { gte: monthStart, lt: monthEnd },
       },
     }),
     prisma.simulatedTransaction.count({
@@ -183,7 +184,9 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     occurredAt: sim.createdAt,
     merchantLabel:
       sim.merchantName ??
-      (sim.mccCode ? `MCC ${sim.mccCode}` : sim.resolvedCategory ?? 'Simulation'),
+      (sim.mccCode !== null && sim.mccCode !== undefined
+        ? `MCC ${sim.mccCode}`
+        : sim.resolvedCategory ?? 'Simulation'),
     amountCents: sim.amount,
     currency: sim.currency ?? 'USD',
     verdict: deriveSimulationVerdict({

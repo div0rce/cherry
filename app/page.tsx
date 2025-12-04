@@ -7,6 +7,9 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getDashboardStats } from '@/lib/dashboard';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 function formatMoney(amountCents: number | null | undefined, currency = 'USD'): string {
   if (amountCents == null) return '—';
   return new Intl.NumberFormat('en-US', {
@@ -221,7 +224,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
                   <p className="mt-0.5 text-xs text-slate-500">{formatTimestamp(sim.occurredAt)}</p>
                 </div>
                 <div className="ml-3 flex flex-col items-end gap-1">
-                  {sim.recommendedCardName && (
+                  {hasText(sim.recommendedCardName) && (
                     <p className="text-xs text-slate-400">{sim.recommendedCardName}</p>
                   )}
                   <span className="inline-flex items-center rounded-full bg-slate-900 px-2 py-0.5 text-xs">

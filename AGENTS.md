@@ -123,6 +123,39 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - **Testing mindset**: prefer focused unit tests for engine invariants, session/ledger lifecycle, and MCC mapping. Keep lint/typecheck green.
 - **Banned changes**: do not turn Cherry into a payment card/terminal; do not bypass the Wallet 501 gate; do not store or process sensitive card data.
 
+### Offline Evaluator Behavior
+- Offline historical evaluation must run through `lib/evaluator/offline-history.ts` and write only to `HistoricalEngineEvaluation`.
+- It is read-only with respect to Sessions, CherryPointLedger, and Buckets; do not wire evaluator outputs into user-facing flows without updating legal/guardrail docs.
+- For usage and invariants see `docs/offline-evaluator.md`.
+- Do not hard-code runIds; derive with `defaultRunIdForUser(userId)` and align script/user with the bank ingest user.
+- Income regime and bucket synthesis is heuristic, dev-only, and diagnostic; do not use it for credit decisions or live surfaces.
+- P2P allowance/repayment classification is approximate; default to conservative mappings and never promise outcomes to users based on it.
+- `/dev/evaluator` must call `assertOfflineEvaluatorModelsReady()` before touching evaluator tables; if you add/rename models, run `npx prisma migrate deploy` + `npx prisma generate` and restart dev before loading the page.
+- Gate the offline evaluator with `CHERRY_OFFLINE_EVALUATOR_ENABLED` when an environment is not ready; do not rely on runtime errors.
+
+## CI gatekeeping and guardrails
+- CI runs on every push/PR via `.github/workflows/ci.yml` and must not be bypassed. Steps: `check:guardrails` → `lint` → `typecheck` → `typecheck:scripts` → `test` (includes `check:prisma-assumptions`) → `build`.
+- `check:guardrails` enforces ESLint rule presence/severity, TypeScript strict flags, package scripts, no new `eslint-disable`, guardrail files/tests existence. Any deviation is a hard error; fix code/tests, not the guardrails.
+- Agents may not relax lint rules, TS strictness, or remove guardrail tests to “fix” CI. Any change to guardrails must be explicitly documented and reviewed; weakening is prohibited.
+- Do not add new `eslint-disable` comments outside the allowlist encoded in `scripts/check-guardrails.ts`; fix the underlying code instead.
+
+### Bank ingest invariants (MUST follow)
+- `BankTransaction.id` is internal (`@id @default(cuid())`) and must never be set from provider/CSV data.
+- Idempotency is enforced on `(userId, externalId)` only: schema `@@unique([userId, externalId], name: "BankTransaction_userId_externalId")`; code queries via `where: { userId_externalId: { userId, externalId } }`.
+- `upsertBankTransactions` is the only entrypoint for ingest writes; it must not accept or pass an `id` field and must upsert strictly on `(userId, externalId)`.
+- New providers (csv_dev, Plaid, Teller, etc.) must emit stable `externalId` values and call `upsertBankTransactions` instead of direct `create`/`update`.
+- Keep `scripts/check-prisma-assumptions.ts` and `tests/bank-ingest-idempotent.test.js` green when touching `BankTransaction`.
+
+### Prisma change workflow (required)
+- When editing `prisma/schema.prisma`, run `npx prisma format`, create a migration (`npx prisma migrate dev --name <desc>`), and regenerate the client (`npx prisma generate`).
+- Run `npm run lint`, `npm run typecheck`, `npm run check:prisma-assumptions`, and `npm test` before depending on new/renamed fields.
+- Do not reference new Prisma fields in queries/orderBy until migration + generate are complete and checks are green.
+
+### SSR/hydration guardrails (dev surfaces)
+- Do not use `window`, `Date.now()`, `Math.random()`, or locale-dependent formatting inside server component JSX. Compute deterministic values on the server and pass as props.
+- Empty/data states must share a stable wrapper; only swap inner content (e.g., table vs. empty message), not the outer container.
+- Server pages must render from a single data snapshot; avoid first-render client refetches that change structure without seeding initial data.
+
 ## Bucket Model & Invariants
 - Canonical balance fields: `budgetAmount` (limit), `spentCents` (posted), optional `pendingSpendCents` (not stored yet), `committedCents = posted + pending`, `remainingCents = max(0, limit - committed)`.
 - Single source of truth: `lib/buckets-runtime.ts`. Engine, seeds/admin scripts, and UI/API surfaces must use this helper (or wrappers around it) instead of ad hoc math.

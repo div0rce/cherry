@@ -12,6 +12,14 @@ import type {
   ObjectiveWeights,
 } from './types';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function hasNonZeroNumber(value?: number | null): value is number {
+  return value !== undefined && value !== null && !Number.isNaN(value) && value !== 0;
+}
+
 export const OBJECTIVE_PROFILES: Record<EngineObjectiveProfileId, EngineObjectiveProfile> = {
   MAX_REWARDS: {
     id: 'MAX_REWARDS',
@@ -94,8 +102,8 @@ export function normalizeObjectiveWeights(weights: ObjectiveWeights): ObjectiveW
 }
 
 export function getObjectiveProfileById(id: EngineObjectiveProfileId): EngineObjectiveProfile {
-  const profile = OBJECTIVE_PROFILES[id];
-  if (!profile) {
+  const profile = OBJECTIVE_PROFILES[id] ?? null;
+  if (profile == null) {
     logObjectiveWarning('Unknown objective profile; using BALANCED', { id });
     return OBJECTIVE_PROFILES.BALANCED;
   }
@@ -146,11 +154,11 @@ function scoreComponents(
   let rewards = 0;
   if (
     (action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    action.cardId &&
-    ctx.amountCents
+    hasNonEmptyString(action.cardId) &&
+    hasNonZeroNumber(ctx.amountCents)
   ) {
     const card = state.cards.find((c) => c.id === action.cardId);
-    if (card) {
+    if (card !== undefined) {
       const categoryKey = ctx.merchantCategoryKey ?? 'ALL';
       const rule =
         card.rewardRules.find((r) => r.categoryKey === categoryKey) ??
@@ -185,7 +193,9 @@ function scoreComponents(
     const debt = state.debts.find((d) => d.id === proj.debtId);
     if (!debt) continue;
     const currentUtil =
-      debt.creditLimitCents && debt.creditLimitCents > 0
+      debt.creditLimitCents !== null &&
+      debt.creditLimitCents !== undefined &&
+      debt.creditLimitCents > 0
         ? debt.balanceCents / debt.creditLimitCents
         : null;
 
@@ -199,7 +209,10 @@ function scoreComponents(
 
   if (
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    action.paydownAmountCents
+    action.paydownAmountCents !== null &&
+    action.paydownAmountCents !== undefined &&
+    !Number.isNaN(action.paydownAmountCents) &&
+    action.paydownAmountCents !== 0
   ) {
     debtRelief += 1;
   }
@@ -208,11 +221,11 @@ function scoreComponents(
   const volatility = 0;
   const ruleViolations = 0;
 
-  if (action.type === 'DELAY_PURCHASE' && ctx.amountCents) {
+  if (action.type === 'DELAY_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
     runway -= 0.01 * ctx.amountCents;
   }
 
-  if (action.type === 'REJECT_PURCHASE' && ctx.amountCents) {
+  if (action.type === 'REJECT_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
     runway -= 0.05 * ctx.amountCents;
   }
 
@@ -270,14 +283,17 @@ export function scoreDecision(
 
   if (
     (action.type === 'USE_CARD_WITH_PAYDOWN' || action.type === 'PAY_DOWN_DEBT') &&
-    action.paydownAmountCents
+    action.paydownAmountCents !== null &&
+    action.paydownAmountCents !== undefined &&
+    !Number.isNaN(action.paydownAmountCents) &&
+    action.paydownAmountCents !== 0
   ) {
     reasons.push(
       `Includes a paydown of ${(action.paydownAmountCents / 100).toFixed(2)} toward debt.`
     );
   }
 
-  if (action.type === 'DELAY_PURCHASE' && action.delayDays) {
+  if (action.type === 'DELAY_PURCHASE' && hasNonZeroNumber(action.delayDays)) {
     reasons.push(`Delays purchase by ${action.delayDays} day(s) to reduce near-term risk.`);
   }
 

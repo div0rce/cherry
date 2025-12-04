@@ -27,6 +27,10 @@ import {
 } from '@prisma/client';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 export interface SimulationInput {
   amountCents: number;
   category?: string; // optional legacy category string
@@ -50,14 +54,14 @@ export async function resolveCategory(
 ): Promise<RewardCategory> {
   const { mccCode, category, merchantName } = input;
 
-  if (mccCode && Number.isInteger(mccCode)) {
+  if (mccCode !== null && mccCode !== undefined && Number.isInteger(mccCode)) {
     const mapping = await prisma.mccToRewardCategory.findFirst({
       where: { mccCode, isDefault: true },
     });
     if (mapping) return mapping.category;
   }
 
-  if (category) {
+  if (hasNonEmptyString(category)) {
     const upper = category.toUpperCase();
     if ((Object.values(RewardCategory) as string[]).includes(upper)) {
       return upper as RewardCategory;
@@ -97,7 +101,7 @@ async function pickBestCardForCategory(
     where: { userId },
     include: { rewardRules: true },
   });
-  if (!cards.length) return { card: null, rule: null };
+  if (cards.length === 0) return { card: null, rule: null };
 
   let best: CardWithRules | null = null;
   let bestRule: RewardRule | null = null;
@@ -151,14 +155,14 @@ export async function runSimulation(
 ): Promise<SimulationResult> {
   const { amountCents, category, merchantName, mccCode } = input;
 
-  if (amountCents == null || amountCents <= 0) {
+  if (amountCents === null || amountCents === undefined || Number.isNaN(amountCents) || amountCents <= 0) {
     throw new Error('amountCents must be > 0');
   }
 
   const resolvedCategory = await resolveCategory(prisma, {
     mccCode: mccCode ?? null,
-    ...(category ? { category } : {}),
-    ...(merchantName ? { merchantName } : {}),
+    ...(hasNonEmptyString(category) ? { category } : {}),
+    ...(hasNonEmptyString(merchantName) ? { merchantName } : {}),
   });
 
   const { card, rule } = await pickBestCardForCategory(prisma, userId, resolvedCategory);

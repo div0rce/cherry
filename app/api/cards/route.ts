@@ -11,6 +11,9 @@ import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 type IncomingRewardRule = {
   category?: string;
   multiplier?: number;
@@ -24,7 +27,7 @@ function parseRewardRules(rawRules: unknown): {
   ok: true;
   rules: ParsedRule[];
 } | { ok: false; message: string } {
-  if (!rawRules) {
+  if (rawRules == null) {
     return { ok: true, rules: [] };
   }
 
@@ -35,8 +38,10 @@ function parseRewardRules(rawRules: unknown): {
   const parsed: ParsedRule[] = [];
 
   for (const rule of rawRules) {
-    const { category, multiplier, cashbackPercent, capAmountCents } =
-      (rule as IncomingRewardRule) ?? {};
+    if (typeof rule !== 'object' || rule === null) {
+      return { ok: false, message: 'Each reward rule must be an object' };
+    }
+    const { category, multiplier, cashbackPercent, capAmountCents } = rule as IncomingRewardRule;
     // Accept both camel variants for percent.
     const percent =
       cashbackPercent ??
@@ -44,7 +49,7 @@ function parseRewardRules(rawRules: unknown): {
         ? (rule as { cashBackPercent?: number }).cashBackPercent
         : undefined);
 
-    if (!category || typeof category !== 'string') {
+    if (!hasText(category)) {
       return { ok: false, message: 'Each reward rule needs a category string' };
     }
     const normalizedCategory = category.toUpperCase();
@@ -173,7 +178,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     if (!parsed.ok) return parsed.response;
     const { cardId } = parsed.data;
 
-    if (!cardId || typeof cardId !== 'string') {
+    if (!hasText(cardId)) {
       return new NextResponse('cardId is required', { status: 400 });
     }
 

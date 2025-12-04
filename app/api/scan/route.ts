@@ -14,6 +14,9 @@ import { validateEngineDecision } from '@/lib/engine-invariants';
 import { resolveUserContext } from '@/lib/user-context';
 import type { RewardCategory } from '@prisma/client';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!parsed.ok) return parsed.response;
     const body = parsed.data;
 
-    if (!body.merchantName || typeof body.merchantName !== 'string') {
+    if (!hasText(body.merchantName)) {
       return NextResponse.json(
         { error: 'merchantName is required and must be a string' },
         { status: 400 }

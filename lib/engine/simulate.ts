@@ -9,8 +9,16 @@ import type {
   NormalizedCardId,
 } from './types';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function hasPositiveNumber(value?: number | null): value is number {
+  return value !== undefined && value !== null && !Number.isNaN(value) && value > 0;
+}
+
 function pickBucketForContext(state: EngineState, ctx: EngineContext): BucketId | null {
-  if (!ctx.merchantCategoryKey) return null;
+  if (!hasNonEmptyString(ctx.merchantCategoryKey)) return null;
   const candidate = state.buckets.find((b) => b.categoryKey === ctx.merchantCategoryKey);
   return candidate ? candidate.id : null;
 }
@@ -39,10 +47,10 @@ function applyUseCard(
   action: EngineAction,
   amount: number
 ): void {
-  if (!action.cardId || amount <= 0) return;
+  if (!hasNonEmptyString(action.cardId) || !hasPositiveNumber(amount)) return;
 
   const bucketId = pickBucketForContext(state, ctx);
-  if (bucketId) {
+  if (hasNonEmptyString(bucketId)) {
     const bucket = buckets.find((b) => b.id === bucketId);
     if (bucket) {
       bucket.postedSpendCents += amount;
@@ -63,7 +71,12 @@ function applyPaydown(
   debts: EngineState['debts'],
   action: EngineAction
 ): void {
-  if (!action.debtId || !action.paydownAmountCents || action.paydownAmountCents <= 0) return;
+  if (
+    !hasNonEmptyString(action.debtId) ||
+    !hasPositiveNumber(action.paydownAmountCents)
+  ) {
+    return;
+  }
   const debt = debts.find((d) => d.id === action.debtId);
   if (!debt) return;
   const delta = Math.min(debt.balanceCents, action.paydownAmountCents);
@@ -109,7 +122,7 @@ export function simulateAction(
     case 'SWITCH_MERCHANT': {
       if (action.type === 'SWITCH_MERCHANT') {
         const syntheticCardId = pickBestCashOrDebitCard(state);
-        const syntheticAction: EngineAction = syntheticCardId
+        const syntheticAction: EngineAction = hasNonEmptyString(syntheticCardId)
           ? { type: 'USE_CARD', cardId: syntheticCardId }
           : { type: 'USE_CARD' };
         applyUseCard(clonedBuckets, clonedDebts, state, ctx, syntheticAction, amount);
@@ -150,7 +163,7 @@ export function simulateAction(
   if (
     projectedLiquid != null &&
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    action.paydownAmountCents
+    hasPositiveNumber(action.paydownAmountCents)
   ) {
     projectedLiquid = Math.max(0, projectedLiquid - action.paydownAmountCents);
   }

@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 function promptSignIn(setStatus: (message: string) => void): void {
   setStatus('Sign in to continue.');
   void signIn(undefined, { callbackUrl: window.location.href });
@@ -29,8 +32,8 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }): JSX.Elem
     }
 
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(message || 'Failed to delete bucket');
+      const message = (await res.text()).trim();
+      setStatus(hasText(message) ? message : 'Failed to delete bucket');
       return;
     }
 
@@ -45,7 +48,7 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }): JSX.Elem
       type="button"
     >
       Delete
-      {status && <span className="ml-2 text-xs text-slate-400">{status}</span>}
+      {hasText(status) ? <span className="ml-2 text-xs text-slate-400">{status}</span> : null}
     </button>
   );
 }
@@ -67,11 +70,13 @@ export function AddBucketForm(): JSX.Element {
   async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
 
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!hasText(trimmedName)) {
       setStatus('Name is required.');
       return;
     }
-    if (!category.trim()) {
+    const trimmedCategory = category.trim();
+    if (!hasText(trimmedCategory)) {
       setStatus('Category is required.');
       return;
     }
@@ -98,12 +103,12 @@ export function AddBucketForm(): JSX.Element {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name,
+        name: trimmedName,
         period,
         budgetAmountCents: budgetCents,
         currentAmountCents: currentCents,
         strictMode,
-        category: category.toUpperCase(),
+        category: trimmedCategory.toUpperCase(),
       }),
     });
 
@@ -113,8 +118,8 @@ export function AddBucketForm(): JSX.Element {
     }
 
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(message || 'Failed to create bucket');
+      const message = (await res.text()).trim();
+      setStatus(hasText(message) ? message : 'Failed to create bucket');
       return;
     }
 
@@ -211,7 +216,7 @@ export function AddBucketForm(): JSX.Element {
       >
         Create bucket
       </button>
-      {status && <p className="text-xs text-slate-400">{status}</p>}
+      {hasText(status) ? <p className="text-xs text-slate-400">{status}</p> : null}
     </form>
   );
 }

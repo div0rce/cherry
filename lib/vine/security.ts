@@ -46,7 +46,7 @@ export async function verifyVineSignature(
   const mode = getVineSignatureMode();
   if (mode === 'off') return { ok: true, mode };
 
-  if (!providedSignature) {
+  if (providedSignature === null || providedSignature === undefined || providedSignature === '') {
     const reason = 'missing_signature';
     if (mode === 'warn') {
       console.warn('[Vine] signature missing', { ctx, reason });

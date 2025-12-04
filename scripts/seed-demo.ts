@@ -13,6 +13,9 @@ import { logError, logInfo } from '../lib/logger';
 import { seedDemoForUser } from '../lib/demo-seeder';
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 async function resolveTargetUser() {
   const cliArg = process.argv[2];
   const envEmail = process.env['SEED_USER_EMAIL'];
@@ -37,7 +40,7 @@ async function resolveTargetUser() {
     });
   };
 
-  if (cliArg) {
+  if (hasText(cliArg)) {
     const selectorLabel = cliArg.includes('@') ? `email "${cliArg}"` : `id "${cliArg}"`;
     if (cliArg.includes('@')) {
       return ensureByEmail(cliArg);
@@ -49,11 +52,11 @@ async function resolveTargetUser() {
     );
   }
 
-  if (envEmail) {
+  if (hasText(envEmail)) {
     return ensureByEmail(envEmail);
   }
 
-  if (envUserId) {
+  if (hasText(envUserId)) {
     const user = await findById(envUserId);
     if (!user) {
       throw new Error(

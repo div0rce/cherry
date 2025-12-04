@@ -24,6 +24,9 @@ const MIN_AMOUNT_RATIO = 0.85;
 const MAX_AMOUNT_RATIO = 1.15;
 const MAX_CLAIM_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,7 +53,7 @@ export async function POST(
     assertUserId(userId, 'api/sessions/[id]/confirm POST');
 
     const { id } = await params;
-    if (!id || typeof id !== 'string') {
+    if (!hasText(id)) {
       return NextResponse.json({ error: 'session id is required' }, { status: 400 });
     }
 
@@ -102,10 +105,7 @@ export async function POST(
       typeof body.actualAmountCents === 'number' && Number.isFinite(body.actualAmountCents)
         ? Math.max(Math.floor(body.actualAmountCents), 0)
         : null;
-    const usedCardId =
-      typeof body.usedCardId === 'string' && body.usedCardId.trim().length > 0
-        ? body.usedCardId.trim()
-        : null;
+    const usedCardId = hasText(body.usedCardId?.trim()) ? body.usedCardId.trim() : null;
 
     const pointsClaimed = Math.max(session.cherryPointsOffered ?? 0, 0);
     const spendAmount = actualAmountCents ?? session.amountCents;
@@ -116,7 +116,7 @@ export async function POST(
     const reasonBase = followedRecommendation
       ? 'CLAIM_FOLLOWED_RECOMMENDATION'
       : 'CLAIM_IGNORED_RECOMMENDATION';
-    const reason = usedCardId ? `${reasonBase}:${usedCardId}` : reasonBase;
+    const reason = hasText(usedCardId) ? `${reasonBase}:${usedCardId}` : reasonBase;
 
     const recommendedAmount = session.amountCents;
     const claimedAmount = actualAmountCents ?? recommendedAmount;
@@ -130,8 +130,8 @@ export async function POST(
     } else if (deltaTimeMs > MAX_CLAIM_WINDOW_MS) {
       anomalyCode = SessionAnomalyCode.TIME_WINDOW_VIOLATION;
     } else if (
-      session.recommendedCardId &&
-      usedCardId &&
+      hasText(session.recommendedCardId) &&
+      hasText(usedCardId) &&
       session.recommendedCardId !== usedCardId
     ) {
       anomalyCode = SessionAnomalyCode.CARD_MISMATCH;
@@ -151,9 +151,9 @@ export async function POST(
 
     // Freshen bucket before transactional updates to avoid stale periods.
     let freshBucket = null;
-    if (session.recommendedBucketId) {
+    if (hasText(session.recommendedBucketId)) {
       freshBucket = await ensureBucketFresh(session.recommendedBucketId, new Date());
-      if (freshBucket && freshBucket.userId !== userId) {
+      if (freshBucket !== null && freshBucket.userId !== userId) {
         logInvariant('Bucket/user mismatch in api/sessions/[id]/confirm POST', {
           userId,
           mode,
@@ -184,7 +184,7 @@ export async function POST(
         throw new Error('Session update failed due to user scoping');
       }
 
-      if (freshBucket && session.recommendedBucketId) {
+      if (freshBucket !== null && hasText(session.recommendedBucketId)) {
         const bucketUpdate = await tx.bucket.updateMany({
           where: { id: freshBucket.id, userId },
           data: {

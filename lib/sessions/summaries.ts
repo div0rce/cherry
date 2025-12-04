@@ -60,7 +60,7 @@ export function deriveDisplayStatus(
   now: Date
 ): SessionDisplayStatus {
   const { pending, posted } = computePoints(ledgerEntries);
-  const isExpired = session.expiresAt ? session.expiresAt <= now : false;
+  const isExpired = session.expiresAt != null ? session.expiresAt <= now : false;
 
   if (posted > 0) return 'CONFIRMED_POSTED';
   if (pending > 0) return 'CONFIRMED_PENDING';
@@ -83,8 +83,8 @@ export async function fetchSessionSummaries(
   const where: Prisma.RecommendationSessionWhereInput = {
     userId,
     ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {}),
-    ...(filters.source && filters.source.length > 0 ? { source: { in: filters.source } } : {}),
-    ...(filters.verdict && filters.verdict.length > 0 ? { verdict: { in: filters.verdict } } : {}),
+    ...(Array.isArray(filters.source) && filters.source.length > 0 ? { source: { in: filters.source } } : {}),
+    ...(Array.isArray(filters.verdict) && filters.verdict.length > 0 ? { verdict: { in: filters.verdict } } : {}),
   };
 
   const sessions = (await prisma.recommendationSession.findMany({

@@ -197,7 +197,7 @@ function logPreferencesWarning(message: string, meta?: unknown) {
 }
 
 function coerceObjectiveWeights(raw: unknown): Partial<ObjectiveWeights> | undefined {
-  if (!raw || typeof raw !== 'object' || raw == null) {
+  if (raw === null || typeof raw !== 'object') {
     return undefined;
   }
 

@@ -14,6 +14,8 @@ import { parseJsonBody } from '@/lib/validation';
 import { z } from 'zod';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -27,9 +29,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let orderContext: OrderContext;
     if ('amount' in body) {
       const parsedMcc = body.merchant?.mcc ?? body.mcc;
-      const parsedTimestamp =
-        (body.timestampUtc ? Date.parse(body.timestampUtc) : Number.NaN) ??
-        (body.timestampLocal ? Date.parse(body.timestampLocal) : Number.NaN);
+      const parsedTimestampUtc = hasText(body.timestampUtc) ? Date.parse(body.timestampUtc) : Number.NaN;
+      const parsedTimestampLocal = hasText(body.timestampLocal) ? Date.parse(body.timestampLocal) : Number.NaN;
+      const parsedTimestamp = Number.isFinite(parsedTimestampUtc)
+        ? parsedTimestampUtc
+        : parsedTimestampLocal;
       orderContext = mapTerminalEventToOrderContext({
         amountCents: Math.round(body.amount),
         currency: body.currency ?? 'USD',
@@ -48,17 +52,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     } else {
       orderContext = {
-        deviceId: body.deviceId.trim(),
+        deviceId: hasText(body.deviceId) ? body.deviceId.trim() : 'VINE-SIM',
         amountCents: Math.floor(body.amountCents as number),
         currency: 'USD',
         timestamp: body.timestamp,
         source: body.source ?? VineOrderSource.VINE_SIM,
-        ...(body.storeId ? { storeId: body.storeId.trim() } : {}),
-        ...(body.terminalId ? { terminalId: body.terminalId.trim() } : {}),
-        ...(body.orderId ? { orderId: body.orderId.trim() } : {}),
-        ...(body.merchantName ? { merchantName: body.merchantName.trim() } : {}),
+        ...(hasText(body.storeId) ? { storeId: body.storeId.trim() } : {}),
+        ...(hasText(body.terminalId) ? { terminalId: body.terminalId.trim() } : {}),
+        ...(hasText(body.orderId) ? { orderId: body.orderId.trim() } : {}),
+        ...(hasText(body.merchantName) ? { merchantName: body.merchantName.trim() } : {}),
         ...(body.mccCode != null ? { mccCode: body.mccCode } : {}),
-        ...(body.nonce ? { nonce: body.nonce.trim() } : {}),
+        ...(hasText(body.nonce) ? { nonce: body.nonce.trim() } : {}),
       };
     }
 

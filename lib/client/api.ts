@@ -27,7 +27,7 @@ export async function callApi<TResponse>(
     let msg = `request_failed_${res.status}`;
     try {
       const body: unknown = await res.json();
-      if (body && typeof body === 'object') {
+      if (body !== null && typeof body === 'object') {
         const maybeError = (body as Record<string, unknown>)['error'];
         const maybeMessage = (body as Record<string, unknown>)['message'];
         if (typeof maybeError === 'string') msg = maybeError;

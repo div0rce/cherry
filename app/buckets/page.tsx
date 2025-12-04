@@ -11,6 +11,8 @@ import { getCurrentUserId } from '@/lib/auth';
 import { DeleteBucketButton, AddBucketForm } from './client';
 import { getBaseUrl } from '@/lib/base-url';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
 
 type Bucket = {
   id: string;
@@ -42,13 +44,13 @@ async function fetchBuckets(): Promise<Bucket[]> {
   const init: RequestInit = {
     cache: 'no-store',
   };
-  if (cookieHeader) {
+  if (hasText(cookieHeader)) {
     init.headers = { cookie: cookieHeader };
   }
   const res = await fetch(`${baseUrl}/api/buckets`, init);
   if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || 'Failed to load buckets');
+    const message = (await res.text()).trim();
+    throw new Error(hasText(message) ? message : 'Failed to load buckets');
   }
   const data = (await res.json()) as Bucket[];
   return data;
@@ -103,7 +105,7 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
 
       <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
         <Panel title="Your buckets" description="Budgets applied during engine evaluation.">
-          {error ? (
+          {hasText(error) ? (
             <ErrorBanner message="Failed to load buckets." />
           ) : buckets.length === 0 ? (
             <EmptyState

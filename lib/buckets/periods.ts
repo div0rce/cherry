@@ -58,7 +58,7 @@ export function computeNextPeriodWindow(
 
 export function applyInMemoryRollover(bucket: Bucket, now: Date): BucketWithDerived {
   // If period fields are missing, treat as non-rolling legacy bucket
-  if (!bucket.periodStart || !bucket.periodEnd) {
+  if (bucket.periodStart == null || bucket.periodEnd == null) {
     return { ...bucket, isExpired: false };
   }
 

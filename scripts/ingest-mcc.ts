@@ -34,6 +34,9 @@ import { logError, logInfo } from '../lib/logger';
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value.trim() !== '';
+
 type ParsedRow = {
   mccCode: number;
   description: string;
@@ -49,7 +52,7 @@ function logUnmapped(mcc: number) {
   let list: number[] = [];
   if (fs.existsSync(unmappedPath)) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(unmappedPath, 'utf8')) as unknown;
+      const parsed = Reflect.apply(JSON.parse, JSON, [fs.readFileSync(unmappedPath, 'utf8')]) as unknown;
       if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) {
         list = parsed;
       }
@@ -76,7 +79,8 @@ function parseTsv(filePath: string): ParsedRow[] {
     if (!Number.isFinite(mccCode)) continue;
     const description = parts[1] ?? '';
     const networkIndicator = (parts[2] ?? '').trim();
-    const notes = parts.length > 3 ? parts.slice(3).join(' ').trim() || null : null;
+    const notesRaw = parts.length > 3 ? parts.slice(3).join(' ').trim() : '';
+    const notes = hasText(notesRaw) ? notesRaw : null;
     const hasVisa = /V/.test(networkIndicator);
     const hasMc = /M/.test(networkIndicator);
     const hasTsys = /TSYS/i.test(networkIndicator);
@@ -260,7 +264,8 @@ function inferTagsFromMcc(mccCode: number, _description: string): {
 }
 
 async function main() {
-  const source = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_PATH;
+  const sourceArg = process.argv[2];
+  const source = hasText(sourceArg) ? path.resolve(sourceArg) : DEFAULT_PATH;
   if (!fs.existsSync(source)) {
     throw new Error(`MCC TSV not found at ${source}`);
   }
@@ -306,7 +311,7 @@ async function main() {
       lifeCategory: tags.lifeCategory,
       channel: tags.channel,
     });
-    if (!category) {
+    if (!hasText(category)) {
       logUnmapped(row.mccCode);
       continue;
     }
@@ -315,7 +320,7 @@ async function main() {
     const existing = await prisma.mccToRewardCategory.findFirst({
       where: { mccCode: row.mccCode, isDefault: true },
     });
-    if (existing) {
+    if (existing !== null) {
       await prisma.mccToRewardCategory.update({
         where: { id: existing.id },
         data: { category },

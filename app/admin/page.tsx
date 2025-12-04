@@ -9,12 +9,15 @@ import { prisma } from '@/lib/prisma';
 import { PageHeader } from '@/components/ui/page-header';
 import AdminClient from './AdminClient';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 async function getHealth() {
   const base =
     process.env['NEXT_PUBLIC_BASE_URL'] ??
     process.env.NEXTAUTH_URL ??
     '';
-  const url = base ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
+  const url = hasText(base) ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return { ok: false };

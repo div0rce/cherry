@@ -8,8 +8,12 @@ import type {
   EngineValidationIssue,
 } from './types';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 export class EngineError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  constructor(message: string, public override readonly cause?: unknown) {
     super(message);
     this.name = 'EngineError';
   }
@@ -18,7 +22,7 @@ export class EngineError extends Error {
 export function validateEngineState(state: EngineState): EngineValidationIssue[] {
   const issues: EngineValidationIssue[] = [];
 
-  if (!state.userId) {
+  if (!hasNonEmptyString(state.userId)) {
     issues.push({ field: 'userId', message: 'Missing userId in EngineState' });
   }
 
@@ -44,7 +48,7 @@ export function validateEngineState(state: EngineState): EngineValidationIssue[]
   }
 
   for (const card of state.cards) {
-    if (!card.id) {
+    if (!hasNonEmptyString(card.id)) {
       issues.push({ field: 'card.id', message: 'Card is missing id' });
     }
     for (const rule of card.rewardRules) {
@@ -123,7 +127,10 @@ export function evaluateConstraintsForDecision(
 
   if (
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    action.paydownAmountCents
+    action.paydownAmountCents !== null &&
+    action.paydownAmountCents !== undefined &&
+    !Number.isNaN(action.paydownAmountCents) &&
+    action.paydownAmountCents !== 0
   ) {
     const liquid = state.cash?.liquidCents ?? null;
     if (liquid != null && liquid < action.paydownAmountCents) {
@@ -133,7 +140,7 @@ export function evaluateConstraintsForDecision(
 
   if (
     (action.type === 'DELAY_PURCHASE' || action.type === 'REJECT_PURCHASE') &&
-    ctx.merchantCategoryKey
+    hasNonEmptyString(ctx.merchantCategoryKey)
   ) {
     const essentialBucket = state.buckets.find(
       (bucket) => bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential

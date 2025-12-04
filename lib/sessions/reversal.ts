@@ -17,13 +17,25 @@ export function computeBucketReversal(input: ReversalComputationInput): Reversal
     currentBucketSpentCents,
   } = input;
 
-  if (verified) return null;
-  if (!bucketId) return null;
-  if (bucketSpendReversed) return null;
-  if (confirmedAmountCents == null || confirmedAmountCents <= 0) return null;
-  if (currentBucketSpentCents == null) return null;
+  if (verified === true) return null;
+  if (bucketId === null || bucketId === '') return null;
+  if (bucketSpendReversed === true) return null;
+  if (
+    confirmedAmountCents === null ||
+    confirmedAmountCents === undefined ||
+    Number.isNaN(confirmedAmountCents) ||
+    confirmedAmountCents <= 0
+  ) {
+    return null;
+  }
+  if (
+    currentBucketSpentCents === null ||
+    currentBucketSpentCents === undefined ||
+    Number.isNaN(currentBucketSpentCents)
+  ) {
+    return null;
+  }
 
   const newSpentCents = Math.max(0, currentBucketSpentCents - confirmedAmountCents);
   return { bucketId, newSpentCents };
 }
-

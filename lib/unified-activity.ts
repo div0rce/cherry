@@ -1,4 +1,9 @@
 import { prisma } from '@/lib/prisma';
+import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
+
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
 
 export type ActivitySource =
   | 'BANK_FEED'
@@ -13,9 +18,11 @@ export type ActivityOrigin = 'REAL' | 'SIMULATED';
 export interface UnifiedActivityRow {
   id: string;
   source: ActivitySource;
+  providerSource?: string | null;
   kind: ActivityKind;
   origin: ActivityOrigin;
   occurredAt: Date;
+  postedAt?: Date | null;
   cashDeltaCents?: number | null;
   amount: number;
   currency: string;
@@ -80,7 +87,7 @@ export async function getUnifiedActivityForUser(
     includeBankSources && periodRange
       ? {
           userId,
-          occurredAt: {
+          postedAt: {
             gte: periodRange.start,
             lt: periodRange.end,
           },
@@ -91,7 +98,7 @@ export async function getUnifiedActivityForUser(
     includeBankSources
       ? prisma.bankTransaction.findMany({
           where: bankWhere,
-          orderBy: { occurredAt: 'desc' },
+          orderBy: BANK_TX_DEFAULT_ORDER,
           take: limit,
           include: { merchantObservation: true },
         })
@@ -162,43 +169,54 @@ export async function getUnifiedActivityForUser(
   ]);
 
   const sourceFilter = options?.sourceFilter ?? null;
+  const hasSourceFilter = Array.isArray(sourceFilter) && sourceFilter.length > 0;
   const shouldTagAsStatement =
-    !!sourceFilter &&
+    hasSourceFilter &&
     sourceFilter.includes('STATEMENT_VIEW') &&
     !sourceFilter.includes('BANK_FEED');
 
   const bankRows: UnifiedActivityRow[] = bankTx.map((tx) => {
     const rawAmount = Number(tx.amount);
-    const amountCents = Math.round(rawAmount * 100);
-    const cashDeltaCents =
-      tx.direction === 'CREDIT' ? amountCents : amountCents * -1;
+    const amountMinor =
+      typeof tx.amountMinor === 'number'
+        ? tx.amountMinor
+        : Math.round(rawAmount * 100) * (tx.direction === 'CREDIT' ? 1 : -1);
+    const amountCents = Math.abs(amountMinor);
+    const cashDeltaCents = tx.direction === 'CREDIT' ? amountCents : amountCents * -1;
 
     let merchantLocation: UnifiedActivityRow['merchantLocation'];
-    if (tx.merchantCity || tx.merchantRegion || tx.merchantCountry || tx.merchantObservation) {
+    const hasMerchantLocation =
+      hasNonEmptyString(tx.merchantCity) ||
+      hasNonEmptyString(tx.merchantRegion) ||
+      hasNonEmptyString(tx.merchantCountry) ||
+      (tx.merchantObservation !== null && tx.merchantObservation !== undefined);
+    if (hasMerchantLocation) {
       const location: NonNullable<UnifiedActivityRow['merchantLocation']> = {};
       const city = tx.merchantCity ?? tx.merchantObservation?.city;
       const region = tx.merchantRegion ?? tx.merchantObservation?.region;
       const country = tx.merchantCountry ?? tx.merchantObservation?.country;
-      if (city) location.city = city;
-      if (region) location.region = region;
-      if (country) location.country = country;
+      if (hasNonEmptyString(city)) location.city = city;
+      if (hasNonEmptyString(region)) location.region = region;
+      if (hasNonEmptyString(country)) location.country = country;
       merchantLocation = location;
     }
 
-    const occurredAt = tx.occurredAt;
+    const occurredAt = tx.postedAt;
     const statementPeriod = deriveStatementPeriod(occurredAt);
 
     const base: UnifiedActivityRow = {
       id: `bank-${tx.id}`,
       source: shouldTagAsStatement ? 'STATEMENT_VIEW' : 'BANK_FEED',
+      providerSource: tx.source ?? null,
       kind: 'REAL_TRANSACTION',
       origin: 'REAL',
       occurredAt,
+      postedAt: tx.postedAt ?? null,
       cashDeltaCents,
       amount: Number(tx.amount),
       currency: tx.currency,
       direction: tx.direction === 'CREDIT' ? 'CREDIT' : 'DEBIT',
-      merchantName: tx.merchantName ?? tx.merchantObservation?.merchantName ?? null,
+      merchantName: tx.merchantName ?? tx.description ?? tx.rawDescription ?? tx.merchantObservation?.merchantName ?? null,
       mcc: tx.mcc ?? tx.merchantObservation?.mcc ?? null,
       cardBrand: tx.cardBrand ?? null,
       cardLast4: tx.cardLast4 ?? null,
@@ -215,24 +233,28 @@ export async function getUnifiedActivityForUser(
   const ledgerRows: UnifiedActivityRow[] = ledger.map((row) => {
     const session = row.session;
     const source: ActivitySource =
-      session?.deviceId && session.deviceId.length > 0
+      hasNonEmptyString(session?.deviceId)
         ? 'VINE_SIM'
-        : session
+        : session !== null && session !== undefined
           ? 'MANUAL_LOOKUP'
           : 'OTHER_SIM';
 
     let merchantLocation: UnifiedActivityRow['merchantLocation'];
     if (row.merchantObservation) {
       const location: NonNullable<UnifiedActivityRow['merchantLocation']> = {};
-      if (row.merchantObservation.city) location.city = row.merchantObservation.city;
-      if (row.merchantObservation.region) location.region = row.merchantObservation.region;
-      if (row.merchantObservation.country) location.country = row.merchantObservation.country;
+      if (hasNonEmptyString(row.merchantObservation.city)) location.city = row.merchantObservation.city;
+      if (hasNonEmptyString(row.merchantObservation.region)) location.region = row.merchantObservation.region;
+      if (hasNonEmptyString(row.merchantObservation.country)) location.country = row.merchantObservation.country;
       merchantLocation = location;
     }
 
     const occurredAt = row.awardedAt ?? row.createdAt;
     const statementPeriod = deriveStatementPeriod(occurredAt);
     const sessionAmountCents = session?.amountCents ?? 0;
+    const hasSessionAmount =
+      sessionAmountCents !== null &&
+      sessionAmountCents !== undefined &&
+      !Number.isNaN(sessionAmountCents);
 
     const base: UnifiedActivityRow = {
       id: `ledger-${row.id}`,
@@ -240,8 +262,8 @@ export async function getUnifiedActivityForUser(
       kind: 'POINTS_EVENT',
       origin: 'SIMULATED',
       occurredAt,
-      cashDeltaCents: sessionAmountCents ? sessionAmountCents * -1 : 0,
-      amount: sessionAmountCents ? sessionAmountCents / 100 : 0,
+      cashDeltaCents: hasSessionAmount ? sessionAmountCents * -1 : 0,
+      amount: hasSessionAmount ? sessionAmountCents / 100 : 0,
       currency: session?.currency ?? 'USD',
       direction: row.points >= 0 ? 'CREDIT' : 'DEBIT',
       merchantName: session?.merchantName ?? row.merchantObservation?.merchantName ?? 'Points event',
@@ -293,11 +315,16 @@ export async function getUnifiedActivityForUser(
 
   const recommendationRows: UnifiedActivityRow[] = sessions.map((session) => {
     const source: ActivitySource =
-      session.deviceId && session.deviceId.length > 0 ? 'VINE_SIM' : 'MANUAL_LOOKUP';
+      hasNonEmptyString(session.deviceId) ? 'VINE_SIM' : 'MANUAL_LOOKUP';
     const kind: ActivityKind = 'SIMULATED_TRANSACTION';
     const occurredAt = session.createdAt;
     const statementPeriod = deriveStatementPeriod(occurredAt);
-    const cashDeltaCents = session.amountCents ? session.amountCents * -1 : null;
+    const hasSessionAmount =
+      session.amountCents !== null &&
+      session.amountCents !== undefined &&
+      !Number.isNaN(session.amountCents) &&
+      session.amountCents !== 0;
+    const cashDeltaCents = hasSessionAmount ? session.amountCents * -1 : null;
 
     return {
       id: `session-${session.id}`,
@@ -324,7 +351,12 @@ export async function getUnifiedActivityForUser(
 
   const combined = [...bankRows, ...simulatedRows, ...ledgerRows, ...recommendationRows];
   const filtered = combined.filter((row) => {
-    if (options?.sourceFilter?.length && !options.sourceFilter.includes(row.source)) {
+    if (
+      options?.sourceFilter !== undefined &&
+      options.sourceFilter !== null &&
+      options.sourceFilter.length > 0 &&
+      !options.sourceFilter.includes(row.source)
+    ) {
       return false;
     }
     if (periodRange) {

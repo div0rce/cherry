@@ -3,20 +3,26 @@ import { NextResponse } from 'next/server';
 import { withUser } from '@/lib/with-user';
 import { fetchActivityFeed, type ActivityItemType } from '@/lib/activity/feed';
 
+function hasNonEmptyString(value: string | null): value is string {
+  return value !== null && value !== '';
+}
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const params = request.nextUrl.searchParams;
-    const limit = Math.min(Number(params.get('limit')) || 50, 200);
-    const offset = Math.max(Number(params.get('offset')) || 0, 0);
+    const limitRaw = Number(params.get('limit'));
+    const limit = Number.isFinite(limitRaw) ? Math.min(limitRaw, 200) : 50;
+    const offsetRaw = Number(params.get('offset'));
+    const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
     const fromParam = params.get('from');
     const toParam = params.get('to');
     const typeParam = params.get('type');
 
-    const from = fromParam ? new Date(fromParam) : null;
-    const to = toParam ? new Date(toParam) : null;
-    const types = typeParam?.split(',').map((t) => t.trim()).filter(Boolean) as
-      | ActivityItemType[]
-      | undefined;
+    const from = hasNonEmptyString(fromParam) ? new Date(fromParam) : null;
+    const to = hasNonEmptyString(toParam) ? new Date(toParam) : null;
+    const types = hasNonEmptyString(typeParam)
+      ? (typeParam.split(',').map((t) => t.trim()).filter((t) => t !== '') as ActivityItemType[])
+      : undefined;
 
     const feed = await fetchActivityFeed(userId, {
       limit,

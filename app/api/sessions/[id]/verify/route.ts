@@ -10,6 +10,9 @@ import {
 } from '@/lib/user-context';
 import { verifySessionFromSignal } from '@/lib/verification/verify-session';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -36,7 +39,7 @@ export async function POST(
     assertUserId(userId, 'api/sessions/[id]/verify POST');
 
     const { id } = await params;
-    if (!id || typeof id !== 'string') {
+    if (!hasText(id)) {
       return NextResponse.json({ error: 'session id is required' }, { status: 400 });
     }
 

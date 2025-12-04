@@ -15,6 +15,10 @@ const AMOUNT_TOLERANCE_RATIO = 0.05;
 const AMOUNT_TOLERANCE_MIN_CENTS = 100;
 const TIME_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 function amountsMatch(signalAmount: number, targetAmount: number): boolean {
   const delta = Math.abs(signalAmount - targetAmount);
   const tolerance = Math.max(AMOUNT_TOLERANCE_MIN_CENTS, Math.floor(targetAmount * AMOUNT_TOLERANCE_RATIO));
@@ -22,7 +26,7 @@ function amountsMatch(signalAmount: number, targetAmount: number): boolean {
 }
 
 function merchantsMatch(signalMerchant?: string | null, targetMerchant?: string | null): boolean {
-  if (!signalMerchant || !targetMerchant) return true;
+  if (!hasNonEmptyString(signalMerchant) || !hasNonEmptyString(targetMerchant)) return true;
   return signalMerchant.trim().toLowerCase() === targetMerchant.trim().toLowerCase();
 }
 
@@ -31,12 +35,14 @@ function isFinalStatus(status: RecommendationStatus): boolean {
 }
 
 export async function verifySessionFromSignal(signal: VerificationSignal): Promise<VerificationResult> {
-  if (!signal.sessionId || !signal.userId) {
+  const sessionId = hasNonEmptyString(signal.sessionId) ? signal.sessionId : null;
+  const userId = hasNonEmptyString(signal.userId) ? signal.userId : null;
+  if (sessionId === null || userId === null) {
     return { ok: false, reason: 'INVALID', message: 'sessionId and userId are required' };
   }
 
   const session = await prisma.recommendationSession.findFirst({
-    where: { id: signal.sessionId, userId: signal.userId },
+    where: { id: sessionId, userId },
   });
 
   if (!session) {
@@ -69,9 +75,11 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
       : SessionAnomalyCode.VERIFICATION_CONFLICT;
 
   let reversalBucketUpdate: { bucketId: string; newSpentCents: number } | null = null;
-  if (!verified && session.recommendedBucketId) {
-    const freshBucket = await ensureBucketFresh(session.recommendedBucketId, new Date());
-    if (freshBucket && freshBucket.userId !== signal.userId) {
+  const hasRecommendedBucketId = hasNonEmptyString(session.recommendedBucketId);
+  if (!verified && hasRecommendedBucketId) {
+    const recommendedBucketId = session.recommendedBucketId as string;
+    const freshBucket = await ensureBucketFresh(recommendedBucketId, new Date());
+    if (freshBucket !== null && freshBucket !== undefined && freshBucket.userId !== userId) {
       return { ok: false, reason: 'INVALID', message: 'Bucket/user mismatch' };
     }
     reversalBucketUpdate = computeBucketReversal({
@@ -86,7 +94,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
   try {
     await prisma.$transaction(async (tx) => {
       const updatedSession = await tx.recommendationSession.updateMany({
-        where: { id: session.id, userId: signal.userId },
+        where: { id: session.id, userId },
         data: {
           status: sessionStatus,
           verificationStatus: verified ? VerificationStatus.VERIFIED : VerificationStatus.FAILED,
@@ -102,7 +110,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
       }
 
       await tx.cherryPointLedger.updateMany({
-        where: { sessionId: session.id, userId: signal.userId, status: CherryPointLedgerStatus.PENDING },
+        where: { sessionId: session.id, userId, status: CherryPointLedgerStatus.PENDING },
         data: {
           status: ledgerStatus,
           postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? occurredAt : null,
@@ -117,7 +125,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
 
       if (reversalBucketUpdate) {
         const bucketUpdate = await tx.bucket.updateMany({
-          where: { id: reversalBucketUpdate.bucketId, userId: signal.userId },
+          where: { id: reversalBucketUpdate.bucketId, userId },
           data: { spentCents: reversalBucketUpdate.newSpentCents },
         });
         if (bucketUpdate.count === 0) {
@@ -126,7 +134,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
       }
     });
   } catch (err) {
-    logError('verify_session_failed', { err, sessionId: session.id, userId: signal.userId });
+    logError('verify_session_failed', { err, sessionId: session.id, userId });
     return { ok: false, reason: 'INVALID', message: 'Failed to verify session' };
   }
 

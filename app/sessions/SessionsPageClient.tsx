@@ -8,6 +8,9 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import type { SessionSummary } from '@/lib/sessions/summaries';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 type Props = {
   initialSummaries: SessionSummary[];
   initialStatus: 'all' | 'active' | 'expired' | 'confirmed';
@@ -145,7 +148,7 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
                         {new Date(s.createdAt).toLocaleString()} · {s.category} ·{' '}
                         {formatCents(s.amountCents)}
                       </p>
-                      {s.bucketName ? (
+                      {hasText(s.bucketName) ? (
                         <p className="text-xs text-slate-400">Bucket: {s.bucketName}</p>
                       ) : null}
                     </div>

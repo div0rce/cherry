@@ -19,15 +19,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parsed = await parseJsonBody(req, TriggerVerificationSchema);
     if (!parsed.ok) return parsed.response;
 
-    const result = await verifySessionFromSignal({
+    const verificationInput = {
       sessionId: parsed.data.sessionId,
       userId,
-      amountCents: parsed.data.amountCents,
+      amountCents: parsed.data.amountCents ?? null,
       merchantFingerprint: parsed.data.merchantFingerprint ?? null,
-      verified: parsed.data.verified,
       occurredAt: new Date(),
-      source: 'MANUAL',
-    });
+      source: 'MANUAL' as const,
+      ...(parsed.data.verified !== undefined ? { verified: parsed.data.verified } : {}),
+    };
+
+    const result = await verifySessionFromSignal(verificationInput);
 
     if (!result.ok) {
       return NextResponse.json({ ok: false, reason: result.reason, message: result.message }, { status: 400 });

@@ -54,14 +54,14 @@ export async function resolveCategory(input: {
 }): Promise<RewardCategory> {
   const { mccCode, category, merchantName } = input;
 
-  if (mccCode && Number.isInteger(mccCode)) {
+  if (mccCode !== null && mccCode !== undefined && Number.isInteger(mccCode)) {
     const mapping = await prisma.mccToRewardCategory.findFirst({
       where: { mccCode, isDefault: true },
     });
     if (mapping) return mapping.category;
   }
 
-  if (category) {
+  if (category !== null && category !== undefined && category !== '') {
     const upper = String(category).trim().toUpperCase();
     if ((Object.values(RewardCategory) as string[]).includes(upper)) {
       return upper as RewardCategory;
@@ -142,7 +142,7 @@ async function resolveBestCardForTransaction(input: {
     },
   });
 
-  if (!cards.length) {
+  if (cards.length === 0) {
     return {
       verdict: 'NO_CARD_DATA' as CardVerdict,
       hasCardData: false,

@@ -3,6 +3,9 @@
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 type PendingSession = {
   id: string;
   merchantName: string | null;
@@ -52,8 +55,8 @@ export default function BankSimulatorClient(): JSX.Element {
         body: JSON.stringify({ verified }),
       });
       if (!res.ok) {
-        const message = await res.text();
-        throw new Error(message || 'Failed to verify session');
+        const message = (await res.text()).trim();
+        throw new Error(hasText(message) ? message : 'Failed to verify session');
       }
       await loadSessions();
     } catch (err) {
@@ -93,7 +96,7 @@ export default function BankSimulatorClient(): JSX.Element {
             {loading ? 'Refreshing…' : 'Refresh'}
           </button>
         </div>
-        {error && <p className="text-xs text-pink-300">{error}</p>}
+        {hasText(error) ? <p className="text-xs text-pink-300">{error}</p> : null}
         {sessions.length === 0 ? (
           <p className="text-xs text-slate-400">
             No claimed sessions with pending points. Trigger a recommendation and claim it first.

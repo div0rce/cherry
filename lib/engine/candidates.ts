@@ -1,5 +1,9 @@
 import type { EngineAction, EngineContext, EngineState } from './types';
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 function surfaceSupportsAdvancedActions(ctx: EngineContext): boolean {
   return ctx.surface === 'web' || ctx.surface === 'extension';
 }
@@ -56,7 +60,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
 
   if (advanced && state.debts.length > 0 && (state.cash?.liquidCents ?? 0) > 0) {
     const paydownAmount = computePaydownAmountCents(state, ctx);
-    if (paydownAmount && paydownAmount > 0) {
+    if (paydownAmount !== null && !Number.isNaN(paydownAmount) && paydownAmount > 0) {
       const debtIds = pickTopDebtAccounts(state, 2);
       for (const card of state.cards) {
         if (!card.isActive || !card.isCredit) continue;
@@ -84,7 +88,8 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
     }
   }
 
-  const isEssentialCategory = ctx.merchantCategoryKey
+  const hasMerchantCategoryKey = hasNonEmptyString(ctx.merchantCategoryKey);
+  const isEssentialCategory = hasMerchantCategoryKey
     ? state.buckets.some(
         (bucket) =>
           bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential
@@ -96,11 +101,11 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
     actions.push({ type: 'DELAY_PURCHASE', delayDays: 7 });
   }
 
-  if (advanced && ctx.merchantCategoryKey) {
+  if (advanced && hasMerchantCategoryKey) {
     actions.push({
       type: 'SWITCH_MERCHANT',
       altMerchantName: 'cheaper alternative',
-      altMerchantCategoryKey: ctx.merchantCategoryKey,
+      altMerchantCategoryKey: ctx.merchantCategoryKey ?? null,
       meta: { reasonHint: 'ALT_MERCHANT_SAME_CATEGORY' },
     });
   }

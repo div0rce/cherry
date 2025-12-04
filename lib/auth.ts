@@ -11,7 +11,7 @@ export async function getUserIdFromSession(): Promise<string | null> {
 // Convenience alias used by server components.
 export async function getCurrentUserId(): Promise<string> {
   const userId = await getUserIdFromSession();
-  if (!userId) {
+  if (userId === null || userId === '') {
     throw new Error('User not authenticated');
   }
   return userId;

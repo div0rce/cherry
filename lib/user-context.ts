@@ -49,23 +49,31 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
   const session =
     sessionOverride ??
     (await (async () => {
-      if (getSession) return getSession();
+      if (getSession !== undefined) return getSession();
       const mod = await import('../app/api/auth/[...nextauth]/route');
       return getServerSession((mod as { authOptions: unknown }).authOptions as never);
     })());
 
-  if (session?.user?.id) {
+  const sessionUser = session?.user;
+  const sessionUserId = sessionUser?.id;
+  const hasSessionUserId = typeof sessionUserId === 'string' && sessionUserId !== '';
+  if (hasSessionUserId) {
+    const sessionEmail =
+      sessionUser !== undefined && typeof sessionUser.email === 'string'
+        ? sessionUser.email
+        : null;
     return {
-      userId: session.user.id,
+      userId: sessionUserId,
       mode: 'AUTHENTICATED',
-      email: session.user.email ?? null,
+      email: sessionEmail,
     };
   }
 
-  if (!session && allowLabDemo) {
+  const hasNoSession = session === null || session === undefined;
+  if (hasNoSession && allowLabDemo === true) {
     const user = await findOrCreateLabUser(labUserFactory);
 
-    if (!user.id) {
+    if (user.id === '') {
       throw new Error('Invariant: lab user upsert did not return an id');
     }
 
@@ -76,7 +84,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
     };
   }
 
-  if (requireAuth && !session) {
+  if (requireAuth === true && hasNoSession) {
     throw new Error('Unauthorized: no active session and lab demo not allowed');
   }
 

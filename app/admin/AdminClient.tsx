@@ -3,6 +3,10 @@
 import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { z } from 'zod';
+
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
 
 export default function AdminClient(): JSX.Element {
   const router = useRouter();
@@ -99,8 +103,9 @@ export default function AdminClient(): JSX.Element {
     try {
       const res = await fetch(url, { method: 'POST' });
       if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Request failed');
+        const err = (await res.text()).trim();
+        const message = hasText(err) ? err : 'Request failed';
+        throw new Error(message);
       }
       setFeedback({ type: 'success', text: successText });
       router.refresh();
@@ -118,16 +123,20 @@ export default function AdminClient(): JSX.Element {
     setIsPostingBank(true);
     setBankFeedback(null);
     try {
-      const parsed: unknown = JSON.parse(bankPayload);
-      const transactions =
-        Array.isArray(parsed)
-          ? parsed
-          : parsed && typeof parsed === 'object' && Array.isArray((parsed as { transactions?: unknown }).transactions)
-            ? (parsed as { transactions: unknown[] }).transactions
-            : null;
-      if (!transactions || transactions.length === 0) {
+      const transactionsSchema = z
+        .array(z.unknown())
+        .or(
+          z
+            .object({ transactions: z.array(z.unknown()) })
+            .strict()
+            .transform((val) => val.transactions)
+        );
+      const parsedPayload: unknown = await new Response(bankPayload).json();
+      const transactionsResult = transactionsSchema.safeParse(parsedPayload);
+      if (!transactionsResult.success || transactionsResult.data.length === 0) {
         throw new Error('Provide a non-empty array of transactions.');
       }
+      const transactions = transactionsResult.data;
       const res = await fetch('/api/dev/bank/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,11 +146,16 @@ export default function AdminClient(): JSX.Element {
       if (!res.ok) {
         throw new Error('Ingest failed');
       }
-      const ok = data && typeof data === 'object' ? (data as { ok?: boolean }).ok === true : false;
+      const isObject = data !== null && typeof data === 'object';
+      const ok = isObject && (data as { ok?: boolean }).ok === true;
       const ingested =
-        data && typeof data === 'object' ? (data as { ingested?: number }).ingested ?? 0 : 0;
+        isObject && typeof (data as { ingested?: number }).ingested === 'number'
+          ? (data as { ingested?: number }).ingested ?? 0
+          : 0;
       const error =
-        data && typeof data === 'object' ? (data as { error?: string }).error ?? null : null;
+        isObject && typeof (data as { error?: string }).error === 'string'
+          ? (data as { error?: string }).error
+          : null;
       if (!ok) {
         throw new Error(error ?? 'Ingest failed');
       }
@@ -408,7 +422,7 @@ export default function AdminClient(): JSX.Element {
               {bankFeedback?.text ?? ' '}
             </p>
           </div>
-          {bankDump && (
+          {hasText(bankDump) && (
             <pre className="max-h-48 overflow-auto rounded-md border border-white/10 bg-black/30 px-3 py-2 text-[11px] leading-relaxed text-slate-200">
 {bankDump}
             </pre>

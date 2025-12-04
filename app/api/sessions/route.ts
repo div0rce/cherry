@@ -26,6 +26,9 @@ import { assertUserId } from '@/lib/invariants';
 import { logInvariant } from '@/lib/logging';
 import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let userId: string | null = null;
   let mode: string | null = null;
@@ -201,26 +204,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     assertUserId(userId, 'api/sessions GET');
     const params = request.nextUrl.searchParams;
-    const limit = Math.min(Number(params.get('limit')) || 20, 100);
-    const offset = Math.max(Number(params.get('offset')) || 0, 0);
+    const limitRaw = Number(params.get('limit'));
+    const limit = Number.isFinite(limitRaw) ? Math.min(limitRaw, 100) : 20;
+    const offsetRaw = Number(params.get('offset'));
+    const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
 
-    const statusParam = params.get('status') ?? 'all';
+    const statusParamRaw = params.get('status');
+    const statusParam = hasText(statusParamRaw) ? statusParamRaw : 'all';
     const verdictParam = params.get('verdict');
     const fromParam = params.get('from');
     const toParam = params.get('to');
     const sourceParam = params.get('source');
 
-    const verdicts =
-      verdictParam?.split(',').map((v) => v.trim()).filter(Boolean) ?? [];
+    const verdicts = hasText(verdictParam)
+      ? verdictParam.split(',').map((v) => v.trim()).filter((v) => v !== '')
+      : [];
 
     const sources =
-      sourceParam
-        ?.split(',')
-        .map((s) => s.trim())
-        .filter(Boolean) as RecommendationSource[] | undefined;
+      hasText(sourceParam)
+        ? (sourceParam
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '') as RecommendationSource[])
+        : undefined;
 
-    const fromDate = fromParam ? new Date(fromParam) : null;
-    const toDate = toParam ? new Date(toParam) : null;
+    const fromDate = hasText(fromParam) ? new Date(fromParam) : null;
+    const toDate = hasText(toParam) ? new Date(toParam) : null;
 
     const { items, hasMore } = await fetchSessionSummaries(userId, {
       limit,

@@ -4,6 +4,9 @@ import type { JSX } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export function AdminActionButton({
   href,
   method,
@@ -30,14 +33,15 @@ export function AdminActionButton({
 
       if (!res.ok) {
         const errorText = await res.text();
-        throw new Error(errorText || 'Request failed');
+        const message = hasText(errorText) ? errorText : 'Request failed';
+        throw new Error(message);
       }
 
       setStatus('success');
       const parsed = (await res.json().catch(() => null)) as unknown;
       let nextMessage = 'Completed';
       if (
-        parsed &&
+        parsed !== null &&
         typeof parsed === 'object' &&
         'message' in parsed &&
         typeof (parsed as { message: unknown }).message === 'string'
@@ -54,6 +58,7 @@ export function AdminActionButton({
 
   const isLoading = status === 'loading';
   const feedbackClass = status === 'error' ? 'text-red-300' : 'text-green-300';
+  const hasMessage = hasText(message);
 
   return (
     <div className="space-y-1">
@@ -65,7 +70,7 @@ export function AdminActionButton({
       >
         {isLoading ? 'Working…' : cta}
       </button>
-      {message && <p className={`text-xs ${feedbackClass}`}>{message}</p>}
+      {hasMessage ? <p className={`text-xs ${feedbackClass}`}>{message}</p> : null}
     </div>
   );
 }

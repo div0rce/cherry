@@ -20,7 +20,7 @@ export default function MonthPicker({ initialMonth }: { initialMonth: string }):
           value={currentValue}
           onChange={(e) =>
             startTransition(() => {
-              const next = e.target.value || initialMonth;
+              const next = e.target.value !== '' ? e.target.value : initialMonth;
               router.replace(`/statements?month=${next}`);
             })
           }

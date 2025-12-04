@@ -4,6 +4,9 @@ import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,7 +14,7 @@ export async function GET(
   return withUser(request, async (userId) => {
     try {
       const { id } = await params;
-      if (!id || typeof id !== 'string') {
+      if (!hasText(id)) {
         return NextResponse.json({ error: 'session id is required' }, { status: 400 });
       }
 

@@ -12,6 +12,10 @@ import {
   resolveUserContext,
 } from '@/lib/user-context';
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
   const end = new Date(now);
@@ -98,12 +102,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       category,
     } = parsed.data;
 
-    if (
-      typeof name !== 'string' ||
-      typeof period !== 'string' ||
-      budgetAmountCents == null ||
-      typeof category !== 'string'
-    ) {
+    const hasBudgetAmount =
+      budgetAmountCents !== null && budgetAmountCents !== undefined && !Number.isNaN(budgetAmountCents);
+    if (!isNonEmptyString(name) || !isNonEmptyString(period) || !hasBudgetAmount || !isNonEmptyString(category)) {
       return new NextResponse(
         'Missing required fields: name, period, budgetAmountCents, category',
         { status: 400 }
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const normalizedName = name.trim();
     const normalizedCategory = category.trim().toUpperCase();
 
-    if (!normalizedName) {
+    if (normalizedName === '') {
       return new NextResponse('name is required', { status: 400 });
     }
 

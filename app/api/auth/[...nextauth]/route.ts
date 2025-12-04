@@ -7,6 +7,10 @@ import { prisma } from '@/lib/prisma';
 
 type AuthProvider = NextAuthOptions['providers'][number];
 
+function hasNonEmptyString(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
 const providers: AuthProvider[] = [
   EmailProvider({
     server: process.env['EMAIL_SERVER'] ?? '',
@@ -27,11 +31,12 @@ if (process.env.NODE_ENV !== 'production') {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email) {
+        const emailInput = credentials?.email ?? null;
+        if (!hasNonEmptyString(emailInput)) {
           return null;
         }
 
-        const email = credentials.email.toLowerCase().trim();
+        const email = emailInput.toLowerCase().trim();
 
         const existingUser = await prisma.user.findUnique({
           where: { email },
@@ -64,7 +69,11 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async session({ session, token }) {
-      if (session.user && token.sub) {
+      if (
+        session.user !== undefined &&
+        session.user !== null &&
+        hasNonEmptyString(token.sub)
+      ) {
         // expose user id to the client + server helpers
         (session.user as { id?: string }).id = token.sub;
       }

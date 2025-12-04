@@ -54,6 +54,8 @@ npm run check    # composite (lint + typecheck)
 - Data:
   - `npm run ingest:mcc [path]` — populate MCC → RewardCategory mapping
   - `npm run seed:demo` — seed demo cards/buckets/sessions/ledger rows
+  - `npm run dev:ingest:moustafa-bank [userEmail|userId]` — DEV ONLY; ingest moustafa SafeBalance CSV into `BankTransaction` with `source="csv_dev"` (blocked in production)
+  - `npm run dev:evaluator:moustafa [userEmail|userId]` — DEV ONLY; offline engine replay of csv_dev `BankTransaction` rows into `HistoricalEngineEvaluation`
 - Integrity: `npx ts-node --project tsconfig.scripts.json scripts/audit-integrity.ts`
 - Dev login (cookies): `./scripts/dev-login.sh [email]` → writes `cookies.txt`
 

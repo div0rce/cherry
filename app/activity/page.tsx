@@ -8,6 +8,12 @@ import { ErrorBanner } from '@/components/ErrorBanner';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { fetchActivityFeed } from '@/lib/activity/feed';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
+const isValidNumber = (value?: number | null): value is number =>
+  value !== undefined && value !== null && !Number.isNaN(value);
+
 function formatPoints(points: number | undefined | null): string {
   return `${points ?? 0} pts`;
 }
@@ -53,7 +59,7 @@ export default async function ActivityPage(): Promise<JSX.Element> {
         </section>
 
         <Panel title="Recent activity" description="Latest engine and ledger events.">
-          {error ? (
+          {hasText(error) ? (
             <ErrorBanner message="Failed to load activity." />
           ) : hasRows ? (
             <div className="space-y-3">
@@ -66,7 +72,7 @@ export default async function ActivityPage(): Promise<JSX.Element> {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-pink-200">
                         <span>{item.type.replace(/_/g, ' ')}</span>
-                        {item.sessionId && (
+                        {hasText(item.sessionId) && (
                           <Link
                             href={`/sessions/${item.sessionId}`}
                             className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold text-slate-100"
@@ -83,14 +89,14 @@ export default async function ActivityPage(): Promise<JSX.Element> {
                           </>
                         )}
                         {item.type === 'SESSION_CONFIRMED' && (
-                          <>Session confirmed · {item.points ? formatPoints(item.points) : ''}</>
+                          <>Session confirmed · {isValidNumber(item.points) ? formatPoints(item.points) : ''}</>
                         )}
                         {item.type === 'LEDGER_POSTED' && <>Points posted · {formatPoints(item.points)}</>}
                         {item.type === 'LEDGER_REVOKED' && (
                           <>Points revoked · {formatPoints(item.points)}</>
                         )}
                       </p>
-                      {item.verdict && (
+                      {hasText(item.verdict) && (
                         <p className="text-xs text-slate-400">Verdict: {item.verdict}</p>
                       )}
                     </div>

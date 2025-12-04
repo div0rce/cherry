@@ -18,6 +18,9 @@ import {
 import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
 type RewardRule = {
   id: string;
   category: string;
@@ -76,14 +79,14 @@ async function fetchCards(): Promise<Card[]> {
     .map(({ name, value }) => `${name}=${value}`)
     .join('; ');
   const init: RequestInit = { cache: 'no-store' };
-  if (cookieHeader) {
+  if (hasText(cookieHeader)) {
     init.headers = { cookie: cookieHeader };
   }
   const res = await fetch(`${baseUrl}/api/cards`, init);
 
   if (!res.ok) {
-    const message = await res.text();
-    throw new Error(message || 'Failed to load cards');
+    const message = (await res.text()).trim();
+    throw new Error(hasText(message) ? message : 'Failed to load cards');
   }
 
   const data = (await res.json()) as Card[];
@@ -141,7 +144,7 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
           title="Your cards"
           description="Cards and reward rules used by the engine and simulations."
         >
-          {error ? (
+          {hasText(error) ? (
             <ErrorBanner message="Failed to load cards." />
           ) : (
             <Suspense
@@ -168,7 +171,7 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
 }
 
 function CardList({ cards }: { cards: Card[] }) {
-  if (!cards.length) {
+  if (cards.length === 0) {
     return (
       <div className="p-4">
         <EmptyState

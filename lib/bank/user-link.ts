@@ -6,20 +6,24 @@ export async function resolveUserIdForExternalIds(opts: {
 }): Promise<string | null> {
   const { accountExternalId, userExternalId } = opts;
 
-  if (userExternalId) {
+  const hasUserExternalId =
+    userExternalId !== undefined && userExternalId !== null && userExternalId !== '';
+  if (hasUserExternalId) {
     const user = await prisma.user.findUnique({
       where: { email: userExternalId },
       select: { id: true },
     });
-    if (user?.id) return user.id;
+    if (user !== null && user.id !== '') return user.id;
   }
 
-  if (accountExternalId) {
+  const hasAccountExternalId =
+    accountExternalId !== undefined && accountExternalId !== null && accountExternalId !== '';
+  if (hasAccountExternalId) {
     const account = await prisma.account.findFirst({
       where: { providerAccountId: accountExternalId },
       select: { userId: true },
     });
-    if (account?.userId) return account.userId;
+    if (account !== null && account.userId !== '') return account.userId;
   }
 
   return null;

@@ -78,9 +78,15 @@ export async function solveDecision(
   }
 
   const candidateActions = generateCandidateActions(state, ctx);
+  const maxCandidates: number | null =
+    options.maxCandidates !== null &&
+    options.maxCandidates !== undefined &&
+    !Number.isNaN(options.maxCandidates)
+      ? options.maxCandidates
+      : null;
   const constrainedCandidates =
-    options.maxCandidates && candidateActions.length > options.maxCandidates
-      ? candidateActions.slice(0, options.maxCandidates)
+    maxCandidates !== null && candidateActions.length > maxCandidates
+      ? candidateActions.slice(0, maxCandidates)
       : candidateActions;
 
   const decisions: EngineDecision[] = [];

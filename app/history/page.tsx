@@ -7,6 +7,12 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ErrorBanner';
 
+const hasText = (value?: string | null): value is string =>
+  value !== undefined && value !== null && value !== '';
+
+const isValidNumber = (value?: number | null): value is number =>
+  value !== undefined && value !== null && !Number.isNaN(value);
+
 function formatCurrency(cents: number, currency = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -58,7 +64,7 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
       </section>
 
       <Panel title="Spend timeline" description="Chronological spend with merchant, card, and amount.">
-        {error ? (
+        {hasText(error) ? (
           <ErrorBanner message="Unable to load spend history." />
         ) : rows.length === 0 ? (
           <EmptyState
@@ -91,15 +97,16 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
                         <div className="flex flex-col">
                           <span className="font-medium">{row.merchantName ?? 'Unknown merchant'}</span>
                           <span className="text-xs text-slate-500">
-                            {row.mcc ? `MCC ${row.mcc}` : 'MCC unknown'}
+                            {isValidNumber(row.mcc) ? `MCC ${row.mcc}` : 'MCC unknown'}
                           </span>
                         </div>
                       </td>
                       <td className="py-2 pr-4 text-xs text-slate-400">
-                        {row.cardName ??
-                          (row.cardBrand
-                            ? `${row.cardBrand}${row.cardLast4 ? ` •••• ${row.cardLast4}` : ''}`
-                            : '—')}
+                        {hasText(row.cardName)
+                          ? row.cardName
+                          : hasText(row.cardBrand)
+                            ? `${row.cardBrand}${hasText(row.cardLast4) ? ` •••• ${row.cardLast4}` : ''}`
+                            : '—'}
                       </td>
                       <td className="py-2 pr-4 text-right">
                         <span className={amountCents < 0 ? 'text-rose-300 font-semibold' : 'text-emerald-300 font-semibold'}>
@@ -111,9 +118,16 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
                         <span className="text-xs text-slate-400">{direction}</span>
                       </td>
                   <td className="py-2 text-right">
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
-                      {(row.source ?? 'unknown').replace('_', ' ').toLowerCase()}
-                    </span>
+                    <div className="flex items-center justify-end gap-1">
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-200">
+                        {(row.source ?? 'unknown').replace('_', ' ').toLowerCase()}
+                      </span>
+                      {process.env.NODE_ENV !== 'production' && hasText(row.providerSource) ? (
+                        <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-indigo-100">
+                          {row.providerSource}
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               );

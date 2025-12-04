@@ -100,7 +100,7 @@ export async function fetchActivityFeed(
       merchantName: session.merchantName,
     });
 
-    if (session.ledgerEntries && session.ledgerEntries.length > 0) {
+    if (Array.isArray(session.ledgerEntries) && session.ledgerEntries.length > 0) {
       const firstLedger = [...session.ledgerEntries].sort(
         (a, b) => (a.awardedAt?.getTime() ?? a.createdAt.getTime()) - (b.awardedAt?.getTime() ?? b.createdAt.getTime())
       )[0];
