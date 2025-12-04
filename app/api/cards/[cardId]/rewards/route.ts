@@ -7,6 +7,9 @@ import { prisma } from '@/lib/prisma';
 import { RewardCategory } from '@prisma/client';
 import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '@/lib/user-context';
 import { RewardRuleCreateSchema, RewardRuleDeleteSchema } from '@/lib/schemas/cards';
+import { hasText } from '@/lib/text';
+import { isPositiveNumber } from '@/lib/numbers';
+import { logGuardrailEvent } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
 
 /**
@@ -38,8 +41,24 @@ export async function GET(
   assertUserId(userId, 'api/cards/[cardId]/rewards GET');
   const { cardId } = await params;
 
+  if (!hasText(cardId)) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'MISSING_CARD_ID',
+    });
+    return new NextResponse('Invalid request', { status: 400 });
+  }
+
   const card = await assertCardForUser(cardId, userId);
   if (!card) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'CARD_NOT_FOUND',
+    });
     return new NextResponse('Card not found for user', { status: 404 });
   }
 
@@ -70,42 +89,54 @@ export async function POST(
   const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
   assertUserId(userId, 'api/cards/[cardId]/rewards POST');
   const { cardId } = await params;
-    const parsed = await parseJsonBody(request, RewardRuleCreateSchema);
-    if (!parsed.ok) return parsed.response;
-    const { category, multiplier, capAmountCents } = parsed.data;
 
-    if (!category || typeof category !== 'string') {
-      return new NextResponse('category is required and must be a string', {
-        status: 400,
-      });
-    }
-    const normalizedCategory = category.toUpperCase();
-    const allowed = Object.values(RewardCategory);
-    if (!allowed.includes(normalizedCategory as RewardCategory)) {
-      return new NextResponse(
-        `Invalid category. Allowed: ${allowed.join(', ')}`,
-        { status: 400 }
-      );
-    }
+  if (!hasText(cardId)) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'MISSING_CARD_ID',
+    });
+    return new NextResponse('Invalid request', { status: 400 });
+  }
 
-    if (multiplier == null || typeof multiplier !== 'number' || multiplier <= 0) {
-      return new NextResponse('multiplier is required and must be > 0', {
-        status: 400,
-      });
-    }
+  const parsed = await parseJsonBody(request, RewardRuleCreateSchema);
+  if (!parsed.ok) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'INVALID_PAYLOAD',
+    });
+    return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
+  }
+  const { category, multiplier, capAmountCents } = parsed.data;
+  const normalizedCategory = category.toUpperCase();
+  const allowed = Object.values(RewardCategory);
+  const hasValidCategory = allowed.includes(normalizedCategory as RewardCategory);
+  const hasValidMultiplier = isPositiveNumber(multiplier);
+  const hasValidCap =
+    capAmountCents === undefined || capAmountCents === null || isPositiveNumber(capAmountCents);
 
-    if (
-      capAmountCents != null &&
-      (typeof capAmountCents !== 'number' || capAmountCents <= 0)
-    ) {
-      return new NextResponse(
-        'capAmountCents must be a positive number when provided',
-        { status: 400 }
-      );
-    }
+  if (!hasValidCategory || !hasValidMultiplier || !hasValidCap) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'INVALID_FIELDS',
+      detail: { hasValidCategory, hasValidMultiplier, hasValidCap },
+    });
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
 
   const card = await assertCardForUser(cardId, userId);
   if (!card) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'CARD_NOT_FOUND',
+    });
     return new NextResponse('Card not found for user', { status: 404 });
   }
 
@@ -145,16 +176,46 @@ export async function DELETE(
   const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
   assertUserId(userId, 'api/cards/[cardId]/rewards DELETE');
   const { cardId } = await params;
-    const parsed = await parseJsonBody(request, RewardRuleDeleteSchema);
-    if (!parsed.ok) return parsed.response;
-    const { rewardRuleId } = parsed.data;
 
-    if (!rewardRuleId || typeof rewardRuleId !== 'string') {
-      return new NextResponse('rewardRuleId is required', { status: 400 });
-    }
+  if (!hasText(cardId)) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'MISSING_CARD_ID',
+    });
+    return new NextResponse('Invalid request', { status: 400 });
+  }
+
+  const parsed = await parseJsonBody(request, RewardRuleDeleteSchema);
+  if (!parsed.ok) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'INVALID_PAYLOAD',
+    });
+    return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
+  }
+  const { rewardRuleId } = parsed.data;
+  if (!hasText(rewardRuleId)) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'MISSING_REWARD_RULE_ID',
+    });
+    return new NextResponse('Invalid request', { status: 400 });
+  }
 
   const card = await assertCardForUser(cardId, userId);
   if (!card) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'CARD_NOT_FOUND',
+    });
     return new NextResponse('Card not found for user', { status: 404 });
   }
 
@@ -163,6 +224,12 @@ export async function DELETE(
   });
 
   if (!rule) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'BLOCK',
+      reason: 'REWARD_RULE_NOT_FOUND',
+    });
     return new NextResponse('Reward rule not found for card', { status: 404 });
   }
 

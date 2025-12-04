@@ -8,6 +8,8 @@ import { prisma } from '@/lib/prisma';
 import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
 import { logError } from '@/lib/logger';
 import { resolveUserContext, assertUserId } from '@/lib/user-context';
+import { hasText } from '@/lib/text';
+import { logGuardrailEvent } from '@/lib/log';
 
 /**
  * GET /api/simulations
@@ -25,24 +27,73 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/simulations GET');
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const category = searchParams.get('category');
-    const pageParam = Number.parseInt(searchParams.get('page') || '1', 10);
-    const pageSizeParam = Number.parseInt(searchParams.get('pageSize') || '10', 10);
+    const statusRaw = searchParams.get('status');
+    const categoryRaw = searchParams.get('category');
+    const pageParamRaw = searchParams.get('page');
+    const pageSizeRaw = searchParams.get('pageSize');
 
-    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+    const hasStatus = hasText(statusRaw);
+    const hasCategory = hasText(categoryRaw);
+    const parsedPage = Number.parseInt(hasText(pageParamRaw) ? pageParamRaw : '1', 10);
+    const parsedPageSize = Number.parseInt(hasText(pageSizeRaw) ? pageSizeRaw : '10', 10);
+
+    const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
     const pageSize =
-      Number.isFinite(pageSizeParam) && pageSizeParam > 0 ? Math.min(pageSizeParam, 50) : 10;
+      Number.isInteger(parsedPageSize) && parsedPageSize > 0
+        ? Math.min(parsedPageSize, 50)
+        : 10;
+
+    if (hasText(pageParamRaw) && (Number.isNaN(parsedPage) || parsedPage <= 0)) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulations',
+        outcome: 'WARN',
+        reason: 'INVALID_PAGE_FALLBACK',
+      });
+    }
+
+    if (hasText(pageSizeRaw) && (Number.isNaN(parsedPageSize) || parsedPageSize <= 0)) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulations',
+        outcome: 'WARN',
+        reason: 'INVALID_PAGE_SIZE_FALLBACK',
+      });
+    }
 
     const where: Prisma.SimulatedTransactionWhereInput = { userId };
-    if (status === TransactionStatus.APPROVED || status === TransactionStatus.DECLINED) {
-      where.status = status;
-    }
-    if (category) {
-      const normalizedCategory = category.toUpperCase();
-      if ((Object.values(RewardCategory) as string[]).includes(normalizedCategory)) {
-        where.resolvedCategory = normalizedCategory as RewardCategory;
+    if (hasStatus) {
+      const normalizedStatus = statusRaw?.toUpperCase();
+      const statusValid =
+        normalizedStatus === TransactionStatus.APPROVED ||
+        normalizedStatus === TransactionStatus.DECLINED;
+      if (!statusValid) {
+        logGuardrailEvent({
+          userId,
+          surface: 'simulations',
+          outcome: 'BLOCK',
+          reason: 'INVALID_STATUS',
+        });
+        return new NextResponse('Invalid request', { status: 400 });
       }
+      where.status = normalizedStatus as TransactionStatus;
+    }
+
+    if (hasCategory) {
+      const normalizedCategory = categoryRaw?.toUpperCase() ?? '';
+      const categoryValid = (Object.values(RewardCategory) as string[]).includes(
+        normalizedCategory
+      );
+      if (!categoryValid) {
+        logGuardrailEvent({
+          userId,
+          surface: 'simulations',
+          outcome: 'BLOCK',
+          reason: 'INVALID_CATEGORY',
+        });
+        return new NextResponse('Invalid request', { status: 400 });
+      }
+      where.resolvedCategory = normalizedCategory as RewardCategory;
     }
 
     const [total, data] = await prisma.$transaction([

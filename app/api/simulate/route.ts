@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { logError, logWarn } from '@/lib/logger';
-import { parseJsonBody } from '@/lib/validation';
 import { SimulateRequestSchema } from '@/lib/schemas/simulate';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import {
@@ -19,6 +18,11 @@ import {
   type LegacyEngineDecision,
 } from '@/lib/engine';
 import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
+import { hasText } from '@/lib/text';
+import { isPositiveNumber } from '@/lib/numbers';
+import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
+import { buildSwipeIdempotencyKey } from '@/lib/ids';
+import { parseJsonBody } from '@/lib/validation';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
@@ -27,51 +31,63 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/simulate POST');
 
-    const parsed = await parseJsonBody(request, SimulateRequestSchema);
-    if (!parsed.ok) return parsed.response;
-    const body = parsed.data;
+    const parsedBody = await parseJsonBody(request, SimulateRequestSchema);
+    if (!parsedBody.ok) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'BLOCK',
+        reason: 'INVALID_PAYLOAD',
+      });
+      return NextResponse.json(
+        { error: 'Invalid request' },
+        { status: parsedBody.response.status }
+      );
+    }
+    const body = parsedBody.data;
 
-    const errors: string[] = [];
-    const normalizedCategory =
-      typeof body?.category === 'string' ? body.category.trim().toUpperCase() : '';
+    const normalizedCategory = body.category.toUpperCase();
+    const merchantName = hasText(body.merchantName) ? body.merchantName.trim() : '';
+    const validationErrors: string[] = [];
 
-    if (typeof body?.amountCents !== 'number' || Number.isNaN(body.amountCents)) {
-      errors.push('amountCents must be a number');
-    } else if (body.amountCents <= 0) {
-      errors.push('amountCents must be greater than 0');
+    if (!isPositiveNumber(body.amountCents)) {
+      validationErrors.push('amountCents');
     }
 
-    if (!normalizedCategory || !validCategories.includes(normalizedCategory)) {
-      errors.push('category must be a valid RewardCategory');
+    if (!hasText(normalizedCategory) || !validCategories.includes(normalizedCategory)) {
+      validationErrors.push('category');
     }
 
-    if (body?.merchantName != null && typeof body.merchantName !== 'string') {
-      errors.push('merchantName must be a string');
+    if (!hasText(merchantName)) {
+      validationErrors.push('merchantName');
     }
 
-    if (body?.mccCode != null) {
+    let mccCode: number | null = null;
+    if (body.mccCode !== null && body.mccCode !== undefined) {
       const asInt = Number.parseInt(String(body.mccCode), 10);
-      if (!Number.isInteger(asInt) || String(asInt).length !== 4) {
-        errors.push('mccCode must be a 4-digit integer if provided');
+      const hasValidMcc = Number.isInteger(asInt) && String(asInt).length === 4;
+      if (!hasValidMcc) {
+        validationErrors.push('mccCode');
+      } else {
+        mccCode = asInt;
       }
     }
 
-    if (errors.length > 0) {
-      logWarn('Validation failed in /api/simulate', { userId, errors, body });
-      return NextResponse.json({ error: 'Validation failed', details: errors }, { status: 400 });
+    if (validationErrors.length > 0) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'BLOCK',
+        reason: 'INVALID_FIELDS',
+        detail: { fields: validationErrors },
+      });
+      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
 
-    const merchantName =
-      typeof body?.merchantName === 'string' && body.merchantName.trim().length > 0
-        ? body.merchantName.trim()
-        : '';
-    const mccCode =
-      body?.mccCode != null && !Number.isNaN(Number(body.mccCode))
-        ? Number.parseInt(String(body.mccCode), 10)
-        : null;
-
-    let simulationId = body.simulationId;
-    if (!simulationId) {
+    let simulationId: string;
+    if (hasText(body.simulationId)) {
+      simulationId = body.simulationId;
+    } else {
       simulationId = (
         await prisma.simulation.create({
           data: { userId },
@@ -80,18 +96,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ).id;
     }
 
+    const now = new Date();
     const ctx = buildEngineContext({
       surface: 'web',
-      now: new Date(),
-      merchantName: merchantName || null,
+      now,
+      merchantName,
       merchantCategoryKey: normalizedCategory,
       mcc: mccCode != null ? String(mccCode) : null,
-      amountCents: body.amountCents as number,
+      amountCents: body.amountCents,
     });
 
     const engineResult = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
     if (!engineResult.ok) {
       logWarn('Engine failed in /api/simulate', { userId, mode, reason: engineResult.reason });
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'FALLBACK',
+        reason: `ENGINE_${engineResult.reason}`,
+      });
       return NextResponse.json(
         {
           simulationId,
@@ -121,6 +144,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!mappedDecision) {
       logWarn('Engine mapping failed in /api/simulate', { userId, mode });
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'FALLBACK',
+        reason: 'ENGINE_MAPPING_FAILED',
+      });
       return NextResponse.json(
         {
           simulationId,
@@ -135,6 +164,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const decision: LegacyEngineDecision = mappedDecision;
     validateEngineDecision(decision);
 
+    if (!isPositiveNumber(decision.amountCents)) {
+      logInvariantViolation({
+        surface: 'simulate',
+        detail: 'Decision amount missing',
+        data: { decision },
+      });
+      return NextResponse.json(
+        { error: 'Unable to process decision' },
+        {
+          status: 500,
+        }
+      );
+    }
+
+    const hasCardId = hasText(decision.card.cardId);
+    if (!hasCardId) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'BLOCK',
+        reason: 'MISSING_CARD',
+      });
+      return NextResponse.json(
+        {
+          simulationId,
+          transaction: null,
+          decision: null,
+          error: { code: 'INCOMPLETE_DECISION', message: 'No card available for simulation' },
+        },
+        { status: 200 }
+      );
+    }
+
+    if (!hasText(decision.budget.bucketId)) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'WARN',
+        reason: 'MISSING_BUCKET',
+      });
+    }
+
     const strictDecline =
       (decision.budget.wouldExceed ?? false) && (decision.budget.strictMode ?? false);
     const bucketBeforeCents =
@@ -148,13 +219,49 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const rewardMultiplier = decision.card.multiplier ?? null;
     const rewardsEarnedPoints = decision.card.estimatedRewards ?? null;
     const shouldCommit = body.commit === true;
+    const canCommit =
+      shouldCommit &&
+      !strictDecline &&
+      process.env.NODE_ENV !== 'production' &&
+      hasText(decision.budget.bucketId) &&
+      hasCardId &&
+      isPositiveNumber(body.amountCents) &&
+      hasText(merchantName);
+    let swipeIdempotencyKey: string | null = null;
+    if (canCommit) {
+      swipeIdempotencyKey = buildSwipeIdempotencyKey({
+        userId,
+        merchant: merchantName,
+        amountCents: body.amountCents,
+        occurredAt: now,
+      });
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'OK',
+        reason: 'COMMIT_READY',
+        detail: { swipeIdempotencyKey },
+      });
+    } else if (shouldCommit) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: 'BLOCK',
+        reason: 'COMMIT_PRECONDITION_FAILED',
+        detail: {
+          strictDecline,
+          bucketId: decision.budget.bucketId ?? null,
+          cardId: decision.card.cardId ?? null,
+        },
+      });
+    }
 
     const tx = await prisma.$transaction(async (db) => {
       const simTx = await db.simulatedTransaction.create({
         data: {
           simulationId,
           userId,
-          amount: body.amountCents as number,
+          amount: body.amountCents,
           merchantName,
           resolvedCategory: decision.category,
           mccCode,
@@ -182,17 +289,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       });
 
-      if (
-        shouldCommit &&
-        !strictDecline &&
-        decision.budget.bucketId &&
-        process.env.NODE_ENV !== 'production'
-      ) {
-        const freshBucket = await ensureBucketFresh(decision.budget.bucketId, new Date());
-        if (freshBucket && freshBucket.userId === userId) {
+      if (canCommit && hasText(decision.budget.bucketId)) {
+        const freshBucket = await ensureBucketFresh(decision.budget.bucketId, now);
+        if (freshBucket !== null && freshBucket.userId === userId) {
           await db.bucket.updateMany({
             where: { id: freshBucket.id, userId },
             data: { spentCents: (freshBucket.spentCents ?? 0) + body.amountCents },
+          });
+        } else {
+          logGuardrailEvent({
+            userId,
+            surface: 'simulate',
+            outcome: 'BLOCK',
+            reason: 'BUCKET_STALE_OR_MISMATCH',
+            detail: { bucketId: decision.budget.bucketId },
           });
         }
       }
@@ -204,7 +314,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       simulationId,
       transaction: tx,
       decision,
-      committed: shouldCommit && !strictDecline && process.env.NODE_ENV !== 'production',
+      committed: canCommit && !strictDecline,
     });
   } catch (err: unknown) {
     if (isPrismaP2003(err)) {
