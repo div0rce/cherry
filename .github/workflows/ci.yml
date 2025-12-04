@@ -53,6 +53,9 @@ jobs:
       - name: Typecheck scripts
         run: npm run typecheck:scripts
 
+      - name: Apply Prisma migrations to test DB
+        run: npx prisma migrate deploy
+
       - name: Test
         run: npm test
 
