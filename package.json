@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "typecheck:scripts": "tsc --project tsconfig.scripts.json --noEmit",
     "check": "npm run lint && npm run typecheck && npm run typecheck:scripts",
-    "check:guardrails": "node -r ts-node/register/transpile-only -r tsconfig-paths/register scripts/check-guardrails.ts",
+    "check:guardrails": "node scripts/check-guardrails.cjs",
     "ingest:mcc": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/ingest-mcc.ts",
     "dev:ingest:moustafa-bank": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/ingest-moustafa-bank-csv.ts",
     "dev:evaluator:moustafa": "ts-node --project tsconfig.scripts.json -r tsconfig-paths/register scripts/run-offline-evaluator-moustafa.ts",

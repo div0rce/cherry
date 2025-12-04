@@ -12,6 +12,8 @@ function fail(message: string): never {
 const TsconfigSchema = z
   .object({
     compilerOptions: z.record(z.string(), z.unknown()).optional(),
+    include: z.array(z.string()).optional(),
+    exclude: z.array(z.string()).optional(),
   })
   .strict();
 
@@ -19,7 +21,7 @@ const PackageJsonSchema = z
   .object({
     scripts: z.record(z.string(), z.string()).optional(),
   })
-  .strict();
+  .passthrough();
 
 function readJson<T>(filePath: string, schema: z.ZodType<T>): T {
   try {

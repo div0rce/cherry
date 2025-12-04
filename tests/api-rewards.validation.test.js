@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
 
 process.env.NODE_OPTIONS = '--experimental-specifier-resolution=node';
