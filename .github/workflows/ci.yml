@@ -32,11 +32,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check clean working tree
+        run: npm run check:clean
 
       - name: Generate Prisma client
         run: npx prisma generate
@@ -44,20 +47,11 @@ jobs:
       - name: Check guardrails
         run: npm run check:guardrails
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Typecheck scripts
-        run: npm run typecheck:scripts
-
       - name: Apply Prisma migrations to test DB
         run: npx prisma migrate deploy
 
-      - name: Test
-        run: npm test
+      - name: Lint, typecheck, test
+        run: npm run lint && npm run typecheck:scripts && npm run typecheck && npm run test
 
       - name: Build
         run: npm run build

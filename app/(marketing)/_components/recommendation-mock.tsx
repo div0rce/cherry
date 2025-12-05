@@ -73,7 +73,15 @@ export function RecommendationMock(): JSX.Element {
     return () => clearInterval(id);
   }, []);
 
-  const scenario = useMemo(() => scenarios[index], [index]);
+  const scenario = useMemo(() => {
+    const defaultScenario = scenarios[0];
+    if (!defaultScenario) {
+      throw new Error('No scenarios configured for RecommendationMock');
+    }
+
+    const safeIndex = index % scenarios.length;
+    return scenarios[safeIndex] ?? defaultScenario;
+  }, [index]);
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm backdrop-blur">
