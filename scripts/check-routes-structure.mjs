@@ -17,25 +17,30 @@ function stripGroup(segment) {
   return segment.slice(1, -1);
 }
 
-function computeResolvedPath(filePath) {
+function computeResolvedPath(filePath, groupStack) {
   const relativePath = path.relative(APP_DIR, filePath);
   const segments = relativePath.split(path.sep);
   segments.pop(); // drop filename
 
   const normalized = segments
     .filter(Boolean)
-    .map((seg) => (isGroupSegment(seg) ? stripGroup(seg) : seg))
+    .filter((seg) => !isGroupSegment(seg))
     .filter(Boolean);
 
-  const joined = `/${normalized.join('/')}`;
+  const effectiveSegments =
+    normalized.length > 0 ? normalized : [...groupStack].filter(Boolean);
+
+  const joined = `/${effectiveSegments.join('/')}`;
   return joined === '/' || joined === '//' ? '/' : joined.replace(/\/+/g, '/');
 }
 
-function recordRoute(filePath, kind) {
-  const resolvedPath = computeResolvedPath(filePath);
+function recordRoute(filePath, kind, groupStack) {
+  const resolvedPath = computeResolvedPath(filePath, groupStack);
   const entry =
-    routeMap.get(resolvedPath) ?? { page: [], layout: [], route: [] };
-  entry[kind].push(filePath);
+    routeMap.get(resolvedPath) ?? { pages: [], layouts: [], routes: [] };
+  const key =
+    kind === 'page' ? 'pages' : kind === 'layout' ? 'layouts' : 'routes';
+  entry[key].push(filePath);
   routeMap.set(resolvedPath, entry);
 }
 
@@ -53,10 +58,10 @@ function walk(dir, groupStack) {
         nextGroupStack.push(groupName);
 
         if (groupName === 'dev' && groupStack.includes('user')) {
-          errors.push(`Invalid nesting: (dev) under (user): ${fullPath}`);
+          errors.push(`Invalid nesting: (dev) under (user) at ${fullPath}`);
         }
         if (groupName === 'user' && groupStack.includes('dev')) {
-          errors.push(`Invalid nesting: (user) under (dev): ${fullPath}`);
+          errors.push(`Invalid nesting: (user) under (dev) at ${fullPath}`);
         }
       }
 
@@ -72,21 +77,25 @@ function walk(dir, groupStack) {
         errors.push(`Route file outside allowed segment groups: ${fullPath}`);
       }
 
-      recordRoute(fullPath, base);
+      recordRoute(fullPath, base, groupStack);
     }
   }
 }
 
 function checkDuplicates() {
   for (const [resolvedPath, entry] of routeMap.entries()) {
-    for (const kind of ROUTE_KINDS) {
-      if (entry[kind].length > 1) {
-        const files = [...entry[kind]].sort();
+    [
+      { key: 'pages', label: 'page' },
+      { key: 'layouts', label: 'layout' },
+      { key: 'routes', label: 'route' },
+    ].forEach(({ key, label }) => {
+      if (entry[key].length > 1) {
+        const files = [...entry[key]].sort();
         errors.push(
-          `Multiple files resolve to the same route path: ${resolvedPath} -> ${files.join(', ')}`,
+          `Multiple ${label} files resolve to the same path: ${resolvedPath} -> ${files.join(', ')}`,
         );
       }
-    }
+    });
   }
 }
 
@@ -95,7 +104,7 @@ function main() {
   checkDuplicates();
 
   if (errors.length > 0) {
-    errors.forEach((message) => {
+    errors.sort().forEach((message) => {
       console.error(message);
     });
     process.exitCode = 1;
