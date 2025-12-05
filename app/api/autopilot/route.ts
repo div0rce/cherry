@@ -1,0 +1,104 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+import { getAutopilotDecisionForUserSwipe } from '@/lib/engine';
+import { resolveUserContext } from '@/lib/user-context';
+import { logGuardrailEvent } from '@/lib/log';
+import { parseJsonBody } from '@/lib/validation';
+
+const AutopilotRequestSchema = z
+  .object({
+    merchant: z.string().trim().min(1),
+    amount: z.number().positive(),
+  })
+  .strict();
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  let userId: string | null = null;
+  try {
+    const context = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+    userId = context.userId;
+
+    const parsed = await parseJsonBody(request, AutopilotRequestSchema);
+    if (!parsed.ok) {
+      logGuardrailEvent({
+        surface: 'autopilot',
+        userId,
+        kind: 'INPUT_INVALID',
+        severity: 'soft',
+      });
+      return NextResponse.json({ message: 'Invalid request' }, { status: parsed.response.status });
+    }
+
+    const { merchant, amount } = parsed.data;
+    const amountCents = Math.round(amount * 100);
+    if (!Number.isFinite(amountCents) || amountCents <= 0) {
+      logGuardrailEvent({
+        surface: 'autopilot',
+        userId,
+        kind: 'INPUT_INVALID',
+        severity: 'soft',
+        detail: { field: 'amount' },
+      });
+      return NextResponse.json({ message: 'Amount must be positive.' }, { status: 400 });
+    }
+
+    const cards = await prisma.card.findMany({
+      where: { userId },
+      select: { id: true, nickname: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const cardUniverseIds = cards.map((card) => card.id);
+
+    const decision = await getAutopilotDecisionForUserSwipe({
+      userId,
+      merchant: merchant.trim(),
+      amountCents,
+      cardUniverseIds,
+    });
+
+    const cardName =
+      decision.cardId !== null
+        ? cards.find((card) => card.id === decision.cardId)?.nickname ?? null
+        : null;
+
+    const rationale =
+      decision.kind === 'OK'
+        ? decision.userFacingMessage
+        : 'No specific recommendation available. You can still choose any card.';
+
+    let bucketDelta: { name: string | null; limitCents: number | null; remainingCents: number | null } | null =
+      null;
+    if (decision.bucketDelta) {
+      const bucket = await prisma.bucket.findUnique({
+        where: { id: decision.bucketDelta.bucketId, userId },
+        select: { name: true, budgetAmount: true },
+      });
+      bucketDelta = {
+        name: bucket?.name ?? null,
+        limitCents: bucket?.budgetAmount ?? null,
+        remainingCents: decision.bucketDelta.newRemainingCents ?? null,
+      };
+    }
+
+    return NextResponse.json({
+      cardName,
+      cardId: decision.cardId,
+      rationale,
+      savingsDollars: (decision.expectedMonetaryBenefitCents ?? 0) / 100,
+      bucketDelta,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('Unauthorized')) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+    logGuardrailEvent({
+      surface: 'autopilot',
+      userId,
+      kind: 'ENGINE_ERROR',
+      severity: 'hard',
+      detail: { message: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
+    });
+    return NextResponse.json({ message: 'Failed to fetch recommendation' }, { status: 500 });
+  }
+}

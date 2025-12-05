@@ -16,37 +16,37 @@ type NavSection = {
 
 const SECTIONS: NavSection[] = [
   {
-    label: 'Spend & data',
+    label: 'Money (Real)',
     items: [
-      { href: '/', label: 'Dashboard' },
-      { href: '/history', label: 'Spend history' },
-      { href: '/statements', label: 'Statements' },
+      { href: '/dev', label: 'Dashboard' },
+      { href: '/dev/buckets', label: 'Buckets' },
+      { href: '/dev/history', label: 'Spend history' },
+      { href: '/dev/statements', label: 'Statements' },
+      { href: '/dev/cards', label: 'Cards' },
     ],
   },
   {
-    label: 'Setup',
-    items: [
-      { href: '/cards', label: 'Cards' },
-      { href: '/buckets', label: 'Buckets' },
-    ],
-  },
-  {
-    label: 'Engine',
+    label: 'Engine / Lab',
     items: [
       { href: '/activity', label: 'Engine activity' },
       { href: '/scan', label: 'Scan' },
-      { href: '/sessions', label: 'Sessions' },
       { href: '/simulate', label: 'Simulate swipe' },
+      { href: '/dev/engine/inspector', label: 'Engine inspector' },
+      { href: '/dev/engine/guardrails', label: 'Guardrails' },
       { href: '/simulations', label: 'Simulations' },
+      { href: '/sessions', label: 'Sessions' },
+      { href: '/dev/evaluator', label: 'Dev evaluator' },
       { href: '/dev/activity', label: 'Activity inspector' },
+      { href: '/vine-simulator', label: 'Vine simulator' },
     ],
   },
   {
-    label: 'Hardware & tools',
+    label: 'Admin',
     items: [
-      { href: '/vine-simulator', label: 'Vine simulator' },
-      { href: '/bank-simulator', label: 'Bank / Plaid simulator' },
       { href: '/admin', label: 'Admin & tools' },
+      { href: '/dev/ingest', label: 'Ingest dashboard' },
+      { href: '/dev/bank', label: 'Bank ingest' },
+      { href: '/bank-simulator', label: 'Bank / Plaid simulator' },
     ],
   },
 ];
@@ -60,25 +60,27 @@ export function SidebarNav(): JSX.Element {
   const pathname = usePathname() ?? '/';
 
   return (
-    <aside className="hidden md:sticky md:top-0 md:h-screen md:overflow-y-auto w-64 shrink-0 border-r border-white/5 bg-slate-950/60 px-4 py-6 text-slate-100 md:block">
+    <aside className="hidden w-64 shrink-0 border-r border-ink-800/70 bg-ink-950/80 px-4 py-6 text-cloud-100 shadow-faint md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto">
       <div className="mb-8 px-2">
-        <div className="text-xs uppercase tracking-label text-pink-200">Cherry</div>
-        <div className="text-lg font-semibold text-white">Dev Console</div>
+        <div className="text-[11px] uppercase tracking-label text-cherry-100">Cherry</div>
+        <div className="text-lg font-semibold text-cloud-50">Dev Console</div>
       </div>
 
       <nav className="space-y-6">
         {SECTIONS.map((section) => (
           <div key={section.label} className="space-y-2">
-            <p className="px-2 text-xs uppercase tracking-label text-slate-500">
+            <p className="px-2 text-xs uppercase tracking-label text-cloud-400">
               {section.label}
             </p>
             <ul className="space-y-1">
               {section.items.map((item) => {
                 const active = isActive(pathname, item.href);
                 const baseClasses =
-                  'flex items-center gap-2 rounded-md px-2 py-2 text-sm transition border';
-                const activeClasses = 'bg-pink-600/20 text-white border-pink-500/40';
-                const inactiveClasses = 'text-slate-200 border-transparent hover:bg-white/5';
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition border';
+                const activeClasses =
+                  'bg-ink-800/80 text-cloud-50 border-cherry-500/50 shadow-soft';
+                const inactiveClasses =
+                  'text-cloud-200 border-transparent hover:border-ink-700/60 hover:bg-ink-800/50';
 
                 return (
                   <li key={item.href}>

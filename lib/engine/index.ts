@@ -6,3 +6,5 @@ export * from './objective';
 export * from './candidates';
 export * from './simulate';
 export * from './legacy-mapper';
+export * from './public-types';
+export * from './public';

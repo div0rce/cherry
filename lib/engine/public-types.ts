@@ -13,9 +13,9 @@ export interface AutopilotDecision {
   } | null;
 }
 
-export type SwipeInput = {
+export interface SwipeInput {
   userId: string;
   merchant: string;
   amountCents: number;
   cardUniverseIds: string[];
-};
+}

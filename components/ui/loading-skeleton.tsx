@@ -1,6 +1,7 @@
 'use client';
 
 import type { JSX } from 'react';
+import { Skeleton } from './skeleton';
 
 export function LoadingRows({
   rows = 3,
@@ -10,15 +11,15 @@ export function LoadingRows({
   columns?: number;
 }): JSX.Element {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {Array.from({ length: rows }).map((_, rowIndex) => (
-        <div key={rowIndex} className="grid gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        <div
+          key={rowIndex}
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: columns }).map((__, colIndex) => (
-            <div
-              key={colIndex}
-              className="h-10 animate-pulse rounded-lg bg-slate-800/60"
-              aria-hidden
-            />
+            <Skeleton key={colIndex} className="h-10 w-full rounded-xl" />
           ))}
         </div>
       ))}
@@ -34,11 +35,7 @@ export function LoadingMetricGrid({
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, idx) => (
-        <div
-          key={idx}
-          className="h-24 animate-pulse rounded-2xl border border-white/5 bg-slate-800/60"
-          aria-hidden
-        />
+        <Skeleton key={idx} className="h-24 w-full rounded-2xl border border-ink-700/50" />
       ))}
     </div>
   );

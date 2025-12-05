@@ -3,8 +3,14 @@ import { prisma } from '@/lib/prisma';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '../buckets-runtime';
 import { applyInMemoryRollover } from './periods';
 
-export async function ensureBucketFresh(bucketId: string, now: Date): Promise<Bucket | null> {
-  const bucket = await prisma.bucket.findUnique({ where: { id: bucketId } });
+type BucketClient = { bucket: typeof prisma.bucket };
+
+export async function ensureBucketFresh(
+  bucketId: string,
+  now: Date,
+  db: BucketClient = prisma
+): Promise<Bucket | null> {
+  const bucket = await db.bucket.findUnique({ where: { id: bucketId } });
   if (!bucket) return null;
 
   const rolled = applyInMemoryRollover(bucket, now);
@@ -17,7 +23,7 @@ export async function ensureBucketFresh(bucketId: string, now: Date): Promise<Bu
 
   const balance = computeBucketBalanceFromNumbers(rolled.budgetAmount, rolled.spentCents, 0);
 
-  const updated = await prisma.bucket.update({
+  const updated = await db.bucket.update({
     where: { id: bucketId },
     data: {
       periodStart: rolled.periodStart,

@@ -6,17 +6,53 @@ export type GuardrailSurface =
   | 'vine'
   | 'simulations'
   | 'signin'
-  | 'rewards';
+  | 'rewards'
+  | 'autopilot';
 
 export type GuardrailOutcome = 'OK' | 'WARN' | 'BLOCK' | 'FALLBACK';
 
-export function logGuardrailEvent(event: {
+export type AutopilotGuardrailKind = 'INPUT_INVALID' | 'DECISION_BLOCKED' | 'ENGINE_ERROR';
+
+type LegacyGuardrailEvent = {
   userId: string | null;
-  surface: GuardrailSurface;
+  surface: Exclude<GuardrailSurface, 'autopilot'>;
   outcome: GuardrailOutcome;
   reason: string;
   detail?: unknown;
-}): void {
+};
+
+type AutopilotGuardrailEvent = {
+  userId: string | null;
+  surface: 'autopilot';
+  kind: AutopilotGuardrailKind;
+  severity: 'soft' | 'hard';
+  reason?: string;
+  detail?: unknown;
+};
+
+type GuardrailEvent = LegacyGuardrailEvent | AutopilotGuardrailEvent;
+
+function mapKindToOutcome(kind: AutopilotGuardrailKind): GuardrailOutcome {
+  if (kind === 'DECISION_BLOCKED') return 'BLOCK';
+  if (kind === 'ENGINE_ERROR') return 'FALLBACK';
+  return 'WARN';
+}
+
+export function logGuardrailEvent(event: GuardrailEvent): void {
+  if (event.surface === 'autopilot') {
+    const normalized = {
+      userId: event.userId,
+      surface: event.surface,
+      kind: event.kind,
+      severity: event.severity,
+      outcome: mapKindToOutcome(event.kind),
+      reason: event.reason ?? event.kind,
+      detail: event.detail,
+    };
+    logWarn('Guardrail event', { ...normalized, timestamp: new Date().toISOString() });
+    return;
+  }
+
   logWarn('Guardrail event', { ...event, timestamp: new Date().toISOString() });
 }
 

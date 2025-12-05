@@ -49,6 +49,7 @@
     "components",
     "lib",
     "scripts",
+    "middleware.ts",
     "prisma",
     "tests",
     "types",
