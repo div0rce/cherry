@@ -3,6 +3,11 @@ Last updated: 2025-12-02
 
 # Contributing to Cherry
 
+## Information Architecture (source of truth)
+
+- Surface placement is defined in `docs/information-architecture.md` and the canonical route list in `docs/routes-map.md`.
+- Add or move routes only after updating those docs, and keep marketing, user, and dev console pages under their respective `(marketing)`, `(user)`, or `(dev)` route groups.
+
 ## Workflow and Branch Policy
 
 ### Actors
