@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 import { UserMenu } from './user-menu';
-import { ButtonLink } from '@/components/ui/button';
+import { ButtonLink } from '@/components/ui/Button';
 import { cherryBadgeClasses } from '@/lib/ui/theme';
 import { cn } from '@/lib/ui/cn';
 

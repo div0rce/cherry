@@ -5,7 +5,7 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { Card } from '@/components/ui/card';
-import { ButtonLink } from '@/components/ui/button';
+import { ButtonLink } from '@/components/ui/Button';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { fetchActivityFeed } from '@/lib/activity/feed';
 

@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
-import { ButtonLink } from '@/components/ui/button';
+import { ButtonLink } from '@/components/ui/Button';
 import AdminClient from './AdminClient';
 import { Alert } from '@/components/ui/alert';
 

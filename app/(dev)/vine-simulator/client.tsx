@@ -12,7 +12,7 @@ import { hasText } from '@/lib/text';
 import { isPositiveNumber } from '@/lib/numbers';
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { Card } from '@/components/ui/card';
-import { Button, ButtonLink } from '@/components/ui/button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/alert';
 
 type VineOrderResponse = {

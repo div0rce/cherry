@@ -1,22 +1,23 @@
 import { cn } from '@/lib/ui/cn';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'border border-cherry-500/60 bg-cherry-500 text-ink-950 shadow-card hover:bg-cherry-400 hover:text-ink-950',
+    'border border-cherry-red/80 bg-cherry-red text-cherry-bg shadow-soft hover:bg-cherry-red/90',
   secondary:
-    'border border-ink-700/70 bg-ink-900/70 text-cloud-50 shadow-soft hover:border-cherry-500/50 hover:text-cloud-50',
+    'border border-cherry-border bg-cherry-surface text-cherry-text shadow-soft hover:border-cherry-red/60',
   ghost:
-    'border border-transparent bg-transparent text-cloud-200 hover:border-ink-700/60 hover:bg-ink-800/40 hover:text-cloud-50',
+    'border border-transparent bg-transparent text-cherry-text hover:border-cherry-border hover:bg-cherry-surface/70',
   danger:
-    'border border-rose-500/60 bg-rose-500/15 text-rose-50 shadow-soft hover:bg-rose-500/25',
+    'border border-cherry-red bg-cherry-red/10 text-cherry-red shadow-soft hover:bg-cherry-red/20',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-8 rounded-lg px-3 text-sm',
-  md: 'h-10 rounded-lg px-4 text-sm',
+  sm: 'h-8 rounded-md px-3 text-sm',
+  md: 'h-10 rounded-md px-4 text-base',
+  lg: 'h-12 rounded-lg px-5 text-lg',
 };
 
 export function buttonClasses(
@@ -25,7 +26,7 @@ export function buttonClasses(
   extra?: string
 ): string {
   return cn(
-    'inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cherry-400',
+    'inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cherry-red',
     sizeClasses[size],
     variantClasses[variant],
     extra

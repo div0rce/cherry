@@ -11,7 +11,7 @@ import { hasText } from '@/lib/text';
 import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
-import { Button, ButtonLink } from '@/components/ui/button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 
 type Simulation = {
   id: string;

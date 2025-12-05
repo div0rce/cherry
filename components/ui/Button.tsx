@@ -3,13 +3,15 @@
 import type { ButtonHTMLAttributes, JSX, ReactNode } from 'react';
 import Link from 'next/link';
 import type { LinkProps } from 'next/link';
-import { buttonClasses as baseButtonClasses, type ButtonSize, type ButtonVariant } from './button-classes';
+import { buttonClasses, type ButtonSize, type ButtonVariant } from './button-classes';
+import { cn } from '@/lib/ui/cn';
 
 type CommonProps = {
   children: ReactNode;
   variant?: ButtonVariant;
   size?: ButtonSize;
   className?: string;
+  fullWidth?: boolean;
 };
 
 type ButtonProps = CommonProps & ButtonHTMLAttributes<HTMLButtonElement>;
@@ -20,13 +22,14 @@ export function Button({
   variant = 'primary',
   size = 'md',
   className,
+  fullWidth = false,
   type,
   ...rest
 }: ButtonProps): JSX.Element {
   return (
     <button
       type={type ?? 'button'}
-      className={baseButtonClasses(variant, size, className)}
+      className={cn(buttonClasses(variant, size), fullWidth ? 'w-full' : undefined, className)}
       {...rest}
     >
       {children}
@@ -39,13 +42,14 @@ export function ButtonLink({
   variant = 'primary',
   size = 'md',
   className,
+  fullWidth = false,
   href,
   ...rest
 }: ButtonLinkProps): JSX.Element {
   return (
     <Link
       href={href}
-      className={baseButtonClasses(variant, size, className)}
+      className={cn(buttonClasses(variant, size), fullWidth ? 'w-full' : undefined, className)}
       {...rest}
     >
       {children}
@@ -53,10 +57,4 @@ export function ButtonLink({
   );
 }
 
-export function buttonClasses(
-  variant: ButtonVariant = 'primary',
-  size: ButtonSize = 'md',
-  extra?: string
-): string {
-  return baseButtonClasses(variant, size, extra);
-}
+export { buttonClasses };

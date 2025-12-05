@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from '
 import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
-import { Button, ButtonLink } from '@/components/ui/button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/alert';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';

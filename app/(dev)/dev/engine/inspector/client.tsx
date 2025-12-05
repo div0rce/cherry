@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRows } from '@/components/ui/loading-skeleton';

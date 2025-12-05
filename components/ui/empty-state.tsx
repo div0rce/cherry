@@ -2,7 +2,7 @@
 
 import type { JSX, ReactNode } from 'react';
 import { Card } from './card';
-import { Button, ButtonLink } from './button';
+import { Button, ButtonLink } from './Button';
 import { cherryTextClasses } from '@/lib/ui/theme';
 import { cn } from '@/lib/ui/cn';
 

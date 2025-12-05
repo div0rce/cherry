@@ -6,7 +6,7 @@ import { deriveDisplayStatus } from '@/lib/sessions/summaries';
 import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
-import { ButtonLink } from '@/components/ui/button';
+import { ButtonLink } from '@/components/ui/Button';
 
 function formatCents(amount: number | null | undefined) {
   if (amount == null) return '—';

@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { ButtonLink } from '@/components/ui/button';
+import { ButtonLink } from '@/components/ui/Button';
 import { Card } from '@/components/ui/card';
 import { Alert } from '@/components/ui/alert';
 import { PageHeader } from '@/components/ui/page-header';
