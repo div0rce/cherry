@@ -25,5 +25,6 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: [`${ROUTES.dev.root}/:path*`, `/api${ROUTES.dev.root}/:path*`],
+  // NOTE: matcher must be static literals; keep in sync with ROUTES.dev.root === '/dev'.
+  matcher: ['/dev/:path*', '/api/dev/:path*'],
 };
