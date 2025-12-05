@@ -8,7 +8,7 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Use 
 | Path | Surface | Purpose | Owner | Notes |
 | --- | --- | --- | --- | --- |
 | / | Marketing | Marketing landing/hero | Growth/Product | CTA to `/signin`. |
-| /signin | User | Auth entry for user + dev shells | Auth/Product | Shared sign-in; do not bypass NextAuth. |
+| /signin | User | Auth entry for user + dev shells | Auth/Product | Shared sign-in at root; do not bypass NextAuth. |
 | /app | User | Autopilot home (manual advisory) | Product | Primary user shell. |
 | /autopilot | User | Alias redirect to `/app` | Product | Legacy compatibility. |
 | /buckets | User | Buckets overview and controls | Product | Equivalent to `/app/buckets`. |
@@ -19,13 +19,17 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Use 
 | /dev | Dev | Dev console dashboard | Devtools/Infra | Dev-only shell. |
 | /dev/buckets | Dev | Buckets management with diagnostics | Devtools/Infra | Dev-only. |
 | /dev/history | Dev | Spend history inspector | Devtools/Infra | Dev-only. |
-| /dev/statements | Dev | Statement rollups | Devtools/Infra | Detail at `/dev/statements/[statementId]`. |
-| /dev/cards | Dev | Card management and reward rules | Devtools/Infra | Detail at `/dev/cards/[cardId]`. |
+| /dev/statements | Dev | Statement rollups | Devtools/Infra |  |
+| /dev/statements/[statementId] | Dev | Statement detail | Devtools/Infra |  |
+| /dev/cards | Dev | Card management and reward rules | Devtools/Infra |  |
+| /dev/cards/[cardId] | Dev | Card detail and reward rules | Devtools/Infra |  |
 | /activity | Dev | Engine/ledger activity timeline | Devtools/Infra | Dev-only path (lives under `(dev)`). |
 | /scan | Dev | Manual advisory session runner | Devtools/Infra | Dev-only path (lives under `(dev)`). |
 | /simulate | Dev | Simulation runner | Devtools/Infra | Dev-only path (lives under `(dev)`). |
-| /simulations | Dev | Simulation history list | Devtools/Infra | Detail at `/simulations/[simulationId]`. |
-| /sessions | Dev | Recommendation sessions list | Devtools/Infra | Detail at `/sessions/[id]`. |
+| /simulations | Dev | Simulation history list | Devtools/Infra |  |
+| /simulations/[simulationId] | Dev | Simulation detail | Devtools/Infra |  |
+| /sessions | Dev | Recommendation sessions list | Devtools/Infra |  |
+| /sessions/[id] | Dev | Session detail with verdicts | Devtools/Infra |  |
 | /vine-simulator | Dev | Vine context simulator | Devtools/Infra | Hardware mock; dev-only. |
 | /bank-simulator | Dev | Bank/Plaid simulator | Devtools/Infra | Dev-only ingest helper. |
 | /dev/ingest | Dev | Ingest dashboard | Devtools/Infra | Dev-only. |

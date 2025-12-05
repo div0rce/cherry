@@ -6,6 +6,8 @@ Last updated: 2025-12-05
 ## Overview
 Cherry’s surfaces are intentionally split into three buckets so marketing, product, and dev work do not collide. This file is the source of truth for what lives where and must stay aligned with `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/repo-structure.md`, and `docs/routes-map.md`.
 
+**Audit status:** As of 2025-12-05, all routes under `app/` have been audited and placed under `(marketing)`, `(user)`, or `(dev)` according to this IA (with `/signin` kept at the root as a shared auth entry).
+
 ## Surfaces
 
 ### Marketing (app/(marketing)/*)
