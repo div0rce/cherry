@@ -17,6 +17,7 @@ import {
 } from './client';
 import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
+import { ROUTES } from '@/lib/routes';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -97,7 +98,7 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
   } catch {
-    redirect(`/signin?callbackUrl=${encodeURIComponent('/dev/cards')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
   }
 
   let cards: Card[] = [];
@@ -119,7 +120,7 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
         description="View and manage cards Cherry can recommend and simulate against."
         actions={
           <div className="flex items-center gap-3 text-sm">
-            <Link href="/dev/buckets" className="text-pink-200 hover:text-pink-100">
+            <Link href={ROUTES.dev.buckets} className="text-pink-200 hover:text-pink-100">
               Buckets →
             </Link>
             <Link href="/simulate" className="text-pink-200 hover:text-pink-100">

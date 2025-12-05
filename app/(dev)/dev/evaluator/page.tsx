@@ -13,6 +13,7 @@ import {
   type EvaluationWithTx,
 } from '@/lib/evaluator/stats';
 import { defaultRunIdForUser } from '@/lib/evaluator/offline-history';
+import { ROUTES } from '@/lib/routes';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -56,7 +57,7 @@ export default async function OfflineEvaluatorPage(): Promise<JSX.Element> {
   }
 
   await assertOfflineEvaluatorModelsReady();
-  const userId = await getCurrentUserIdOrRedirect('/dev/evaluator');
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.evaluator);
   const defaultRunId = defaultRunIdForUser(userId);
 
   let evaluations = (await prisma.historicalEngineEvaluation.findMany({

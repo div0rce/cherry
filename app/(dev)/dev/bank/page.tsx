@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
+import { ROUTES } from '@/lib/routes';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -21,7 +22,7 @@ export default async function DevBankPage(): Promise<JSX.Element> {
   if (process.env.NODE_ENV === 'production') {
     notFound();
   }
-  const userId = await getCurrentUserIdOrRedirect('/dev/bank');
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.bank);
   let rows: Awaited<ReturnType<typeof prisma.bankTransaction.findMany>> = [];
   let loadError: string | null = null;
 

@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getUnifiedActivityForUser, type UnifiedActivityRow } from '@/lib/unified-activity';
+import { ROUTES } from '@/lib/routes';
 import { PageHeader } from '@/components/ui/page-header';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
@@ -31,7 +32,7 @@ function formatTimestamp(date: Date): string {
 }
 
 export default async function SpendHistoryPage(): Promise<JSX.Element> {
-  const userId = await getCurrentUserIdOrRedirect('/dev/history');
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.history);
 
   let rows: UnifiedActivityRow[] = [];
   let error: string | null = null;

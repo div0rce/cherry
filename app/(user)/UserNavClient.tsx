@@ -4,16 +4,17 @@ import type { JSX } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { buttonClasses } from '@/components/ui/button-classes';
+import { ROUTES } from '@/lib/routes';
 import { cn } from '@/lib/ui/cn';
 
 const NAV_ITEMS = [
-  { href: '/app', label: 'Autopilot' },
+  { href: ROUTES.user.app, label: 'Autopilot' },
   { href: '/buckets', label: 'Buckets' },
   { href: '/cards', label: 'Cards' },
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === '/app') return pathname === '/app';
+  if (href === ROUTES.user.app) return pathname === ROUTES.user.app;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

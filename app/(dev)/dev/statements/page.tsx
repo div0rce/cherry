@@ -5,6 +5,7 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
+import { ROUTES } from '@/lib/routes';
 import MonthPicker from './client';
 
 type SearchParams = Promise<{ month?: string }>;
@@ -156,7 +157,7 @@ export default async function StatementsPage({
   const year = Number(yearPart);
   const month = Number(monthPart);
 
-  const userId = await getCurrentUserIdOrRedirect('/dev/statements');
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.statements);
   const rows = await getUserRealActivityForPeriod(userId, { year, month });
   const stats = summarize(rows);
 

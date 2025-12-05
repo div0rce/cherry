@@ -1,8 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { ROUTES } from '@/lib/routes';
 
-const DEV_PATH_REGEX = /^\/dev(\/.*)?$/;
-const DEV_API_REGEX = /^\/api\/dev(\/.*)?$/;
+const DEV_PATH_REGEX = new RegExp(`^${ROUTES.dev.root}(\\/.*)?$`);
+const DEV_API_REGEX = new RegExp(`^/api${ROUTES.dev.root}(\\/.*)?$`);
 
 export function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
@@ -24,5 +25,5 @@ export function middleware(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ['/dev/:path*', '/api/dev/:path*'],
+  matcher: [`${ROUTES.dev.root}/:path*`, `/api${ROUTES.dev.root}/:path*`],
 };

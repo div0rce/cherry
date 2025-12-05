@@ -3,6 +3,7 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 
 type NavItem = {
   href: string;
@@ -18,11 +19,11 @@ const SECTIONS: NavSection[] = [
   {
     label: 'Money (Real)',
     items: [
-      { href: '/dev', label: 'Dashboard' },
-      { href: '/dev/buckets', label: 'Buckets' },
-      { href: '/dev/history', label: 'Spend history' },
-      { href: '/dev/statements', label: 'Statements' },
-      { href: '/dev/cards', label: 'Cards' },
+      { href: ROUTES.dev.root, label: 'Dashboard' },
+      { href: ROUTES.dev.buckets, label: 'Buckets' },
+      { href: ROUTES.dev.history, label: 'Spend history' },
+      { href: ROUTES.dev.statements, label: 'Statements' },
+      { href: ROUTES.dev.cards, label: 'Cards' },
     ],
   },
   {
@@ -31,12 +32,12 @@ const SECTIONS: NavSection[] = [
       { href: '/activity', label: 'Engine activity' },
       { href: '/scan', label: 'Scan' },
       { href: '/simulate', label: 'Simulate swipe' },
-      { href: '/dev/engine/inspector', label: 'Engine inspector' },
-      { href: '/dev/engine/guardrails', label: 'Guardrails' },
+      { href: ROUTES.dev.engine.inspector, label: 'Engine inspector' },
+      { href: ROUTES.dev.engine.guardrails, label: 'Guardrails' },
       { href: '/simulations', label: 'Simulations' },
       { href: '/sessions', label: 'Sessions' },
-      { href: '/dev/evaluator', label: 'Dev evaluator' },
-      { href: '/dev/activity', label: 'Activity inspector' },
+      { href: ROUTES.dev.evaluator, label: 'Dev evaluator' },
+      { href: ROUTES.dev.activity, label: 'Activity inspector' },
       { href: '/vine-simulator', label: 'Vine simulator' },
     ],
   },
@@ -44,8 +45,8 @@ const SECTIONS: NavSection[] = [
     label: 'Admin',
     items: [
       { href: '/admin', label: 'Admin & tools' },
-      { href: '/dev/ingest', label: 'Ingest dashboard' },
-      { href: '/dev/bank', label: 'Bank ingest' },
+      { href: ROUTES.dev.ingest, label: 'Ingest dashboard' },
+      { href: ROUTES.dev.bank, label: 'Bank ingest' },
       { href: '/bank-simulator', label: 'Bank / Plaid simulator' },
     ],
   },

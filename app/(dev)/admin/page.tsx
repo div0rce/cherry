@@ -5,6 +5,7 @@ import { getCherryPointsBalance } from '@/lib/points';
 import { getSessionStats } from '@/lib/admin/getSessionStats';
 import { getLedgerStats } from '@/lib/admin/getLedgerStats';
 import { prisma } from '@/lib/prisma';
+import { ROUTES } from '@/lib/routes';
 import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
@@ -178,10 +179,10 @@ export default async function AdminPage(): Promise<JSX.Element> {
         <ButtonLink href="/simulate" variant="ghost" size="sm" className="text-cherry-100">
           Run simulation →
         </ButtonLink>
-        <ButtonLink href="/dev/cards" variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="sm" className="text-cherry-100">
           Manage cards →
         </ButtonLink>
-        <ButtonLink href="/dev/buckets" variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href={ROUTES.dev.buckets} variant="ghost" size="sm" className="text-cherry-100">
           Manage buckets →
         </ButtonLink>
       </Card>

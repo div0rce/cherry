@@ -2,6 +2,7 @@ import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { ROUTES } from '@/lib/routes';
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/empty-state';
 import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client';
@@ -27,7 +28,7 @@ export default async function CardDetailPage({
   try {
     userId = await getCurrentUserId();
   } catch {
-    redirect(`/signin?callbackUrl=${encodeURIComponent(`/dev/cards/${cardId}`)}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(`${ROUTES.dev.cards}/${cardId}`)}`);
     return null;
   }
 
@@ -82,7 +83,7 @@ export default async function CardDetailPage({
       </section>
 
       <div className="flex items-center gap-3 text-sm text-pink-200">
-        <Link href="/dev/cards" className="hover:text-white">
+        <Link href={ROUTES.dev.cards} className="hover:text-white">
           ← Back to cards
         </Link>
         <Link href="/simulate" className="hover:text-white">

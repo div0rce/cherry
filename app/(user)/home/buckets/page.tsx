@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
+import { ROUTES } from '@/lib/routes';
 import Card from '@/components/user/ui/Card';
 
 const primaryLinkClasses =
@@ -28,7 +29,7 @@ export default function UserBucketsOverview(): JSX.Element {
             out risky swipes.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link href="/app" className={primaryLinkClasses}>
+            <Link href={ROUTES.user.app} className={primaryLinkClasses}>
               Open Autopilot
             </Link>
             <Link href="/home/history" className={secondaryLinkClasses}>

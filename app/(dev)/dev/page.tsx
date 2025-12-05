@@ -7,6 +7,7 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getDashboardStats } from '@/lib/dashboard';
+import { ROUTES } from '@/lib/routes';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -78,7 +79,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
             <ButtonLink href="/simulate" variant="primary" size="md">
               Simulate
             </ButtonLink>
-            <ButtonLink href="/dev/cards" variant="ghost" size="md" className="text-cherry-100">
+            <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="md" className="text-cherry-100">
               Cards
             </ButtonLink>
           </div>
@@ -129,10 +130,10 @@ export default async function DashboardPage(): Promise<JSX.Element> {
                 : 'All active buckets are currently within budget.'}
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
-            <ButtonLink href="/dev/buckets" variant="secondary" size="sm">
+            <ButtonLink href={ROUTES.dev.buckets} variant="secondary" size="sm">
               Manage buckets
             </ButtonLink>
-            <ButtonLink href="/dev/cards" variant="ghost" size="sm" className="text-cloud-200">
+            <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="sm" className="text-cloud-200">
               Manage cards
             </ButtonLink>
           </div>
@@ -143,7 +144,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           title="Recent activity"
           description="What the engine has seen lately: real swipes, simulations, points events."
           actions={
-          <ButtonLink href="/dev/activity" variant="ghost" size="sm" className="text-cherry-100">
+          <ButtonLink href={ROUTES.dev.activity} variant="ghost" size="sm" className="text-cherry-100">
             View all →
           </ButtonLink>
           }
@@ -247,7 +248,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
           description="Seed bank-like events for ledger verification."
         />
         <DevShortcut
-          href="/dev/activity"
+          href={ROUTES.dev.activity}
           title="Activity inspector"
           description="Raw engine activity feed for debugging."
         />

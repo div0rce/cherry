@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
+import { ROUTES } from '@/lib/routes';
 import { PageHeader } from '@/components/ui/page-header';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
@@ -30,7 +31,7 @@ async function loadSourceSummaries(userId: string): Promise<SourceSummary[]> {
 }
 
 export default async function IngestDashboardPage(): Promise<JSX.Element> {
-  const userId = await getCurrentUserIdOrRedirect('/dev/ingest');
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.ingest);
 
   let summaries: SourceSummary[] = [];
   let error: string | null = null;

@@ -9,6 +9,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserId } from '@/lib/auth';
+import { ROUTES } from '@/lib/routes';
 import { DeleteBucketButton, AddBucketForm } from './client';
 import { getBaseUrl } from '@/lib/base-url';
 
@@ -61,7 +62,7 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
   } catch {
-    redirect(`/signin?callbackUrl=${encodeURIComponent('/dev/buckets')}`);
+    redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
   }
 
   let buckets: Bucket[] = [];
@@ -85,7 +86,7 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
           description="Budgets that shape Cherry guardrails. Dev-only surface; advisory sandbox, not user-facing."
           actions={
             <div className="flex items-center gap-2">
-              <ButtonLink href="/dev/cards" variant="secondary" size="sm">
+              <ButtonLink href={ROUTES.dev.cards} variant="secondary" size="sm">
                 Manage cards
               </ButtonLink>
               <ButtonLink href="/simulate" variant="ghost" size="sm" className="text-cherry-100">

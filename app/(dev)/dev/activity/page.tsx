@@ -2,10 +2,11 @@ import type { JSX } from 'react';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getDevActivityEvents } from '@/lib/unified-activity';
+import { ROUTES } from '@/lib/routes';
 import ActivityPageClient from '@/app/(dev)/activity/client';
 
 export default async function DevActivityPage(): Promise<JSX.Element> {
-  const userId = await getCurrentUserIdOrRedirect('/dev/activity');
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.activity);
   const [initialRows, cards] = await Promise.all([
     getDevActivityEvents(userId),
     prisma.card.findMany({

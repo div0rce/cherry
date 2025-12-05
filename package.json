@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "check:clean": "node ./scripts/assert-clean-tree.mjs",
+    "check:routes": "node ./scripts/check-routes-structure.mjs",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
     "lint:eslint": "eslint .",
     "lint:tailwind": "node ./scripts/check-tailwind-conflicts.mjs",

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { RunSimulationForm, DeleteSimulationButton } from './client';
 import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
+import { ROUTES } from '@/lib/routes';
 import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';
 import { SimulationHistoryList } from '@/components/simulations/simulation-history-list';
 import { hasText } from '@/lib/text';
@@ -249,7 +250,7 @@ export default async function SimulatePage({
         title="Simulate spend"
         description="Post simulated transactions and see the engine decision history (card, bucket, rewards). Dev-only advisory surface."
         actions={
-          <ButtonLink href="/dev/cards" variant="secondary" size="sm">
+          <ButtonLink href={ROUTES.dev.cards} variant="secondary" size="sm">
             Manage cards
           </ButtonLink>
         }

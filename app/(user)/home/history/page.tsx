@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
+import { ROUTES } from '@/lib/routes';
 import Card from '@/components/user/ui/Card';
 
 const primaryLinkClasses =
@@ -24,7 +25,7 @@ export default function UserHistoryPage(): JSX.Element {
             bucket movements into this view so you can audit your own spend without digging into dev
             tools.
           </p>
-          <Link href="/app" className={primaryLinkClasses}>
+          <Link href={ROUTES.user.app} className={primaryLinkClasses}>
             Get a new recommendation
           </Link>
         </div>
