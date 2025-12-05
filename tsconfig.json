@@ -55,6 +55,7 @@
     "types",
     "next-env.d.ts",
     "next.config.ts",
+    "tailwind.config.ts",
     "eslint.config.mjs",
     "postcss.config.mjs",
     ".next/types/**/*.ts",
