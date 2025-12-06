@@ -51,3 +51,14 @@ Before any AI agent runs on this repository:
 - The agent must run `npm run check:clean` before any mutating operation.
 
 If any of these conditions are not met, the agent must not proceed and must report a failed precondition instead of modifying the repository.
+
+## Engine Changes and Freeze Policy
+
+See `docs/engine-roadmap.md` for current engine freeze status.
+
+While the freeze is active:
+- PRs that change engine semantics under `lib/engine/**`, `lib/engine.ts`, `lib/engine/legacy.ts`, `lib/vine/**`, `lib/scan-types.ts`, `lib/engine-invariants.ts`, or engine APIs in `app/api/simulate/**`, `app/api/simulations/**`, `app/api/vine/**`, and `app/api/autopilot/**` are forbidden except documented emergency bugfix exceptions listed in `docs/engine-roadmap.md`.
+
+Any PR that touches engine code:
+- Must apply the `engine-change` label.
+- Must include a link to the corresponding exception entry in `docs/engine-roadmap.md` when opened during a freeze.
