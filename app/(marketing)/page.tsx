@@ -235,7 +235,10 @@ export default function MarketingPage(): JSX.Element {
                   Watch how Cherry chooses a card in 20 seconds, then decide if you want to sign in.
                 </p>
               </div>
-              <Link href={primaryCtaHref} className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+              <Link
+                href={primaryCtaHref}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
                 Start free
                 <span aria-hidden>→</span>
               </Link>
@@ -311,7 +314,7 @@ export default function MarketingPage(): JSX.Element {
               </div>
               <Link
                 href={primaryCtaHref}
-                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Stop my leak
                 <span aria-hidden>→</span>
