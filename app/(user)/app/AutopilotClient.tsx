@@ -64,6 +64,12 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
   const [isCommitLoading, setIsCommitLoading] = useState(false);
   const [recentDecisions, setRecentDecisions] = useState<StoredAutopilotDecision[]>([]);
   const [lastPreviewCategory, setLastPreviewCategory] = useState<string | null>(null);
+  const [flowStep, setFlowStep] = useState<'intent' | 'confirm'>('intent');
+  const [intentSnapshot, setIntentSnapshot] = useState<{
+    merchant: string;
+    amountCents: number;
+    category: string | null;
+  } | null>(null);
 
   useEffect(() => {
     void loadRecentAutopilotDecisions(userId).then((decisions) => {
@@ -79,16 +85,30 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
 
   const isFormValid = merchant.trim().length > 0 && amountCents !== null;
 
-  async function handlePreview(event: FormEvent): Promise<void> {
-    event.preventDefault();
+  useEffect(() => {
+    if (!intentSnapshot) return;
+    const alignedCategory = category !== '' ? category : null;
+    if (
+      merchant.trim() !== intentSnapshot.merchant ||
+      amountCents !== intentSnapshot.amountCents ||
+      alignedCategory !== intentSnapshot.category
+    ) {
+      setFlowStep('intent');
+    }
+  }, [merchant, amountCents, category, intentSnapshot]);
+
+  async function handlePreview(event?: FormEvent): Promise<void> {
+    event?.preventDefault();
     setPreviewError(null);
     setCommitError(null);
     setCommitMessage(null);
     setPreview(null);
     setIsPreviewLoading(true);
 
-    if (!isFormValid || amountCents === null) {
-      setPreviewError('Enter a merchant and a positive amount.');
+    const snapshot = intentSnapshot;
+
+    if (!snapshot) {
+      setPreviewError('Confirm the intent first.');
       setIsPreviewLoading(false);
       return;
     }
@@ -98,9 +118,9 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          merchant: merchant.trim(),
-          amountCents,
-          ...(category !== '' ? { category } : {}),
+          merchant: snapshot.merchant,
+          amountCents: snapshot.amountCents,
+          ...(snapshot.category ? { category: snapshot.category } : {}),
           occurredAt: new Date().toISOString(),
         }),
       });
@@ -110,7 +130,7 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
         throw new Error(payload.error ?? 'Unable to fetch a recommendation right now.');
       }
       setPreview(payload);
-      setLastPreviewCategory(category !== '' ? category : null);
+      setLastPreviewCategory(snapshot.category);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unable to fetch a recommendation right now.';
@@ -119,6 +139,87 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
     } finally {
       setIsPreviewLoading(false);
     }
+  }
+
+  function handleIntentSubmit(event: FormEvent): void {
+    event.preventDefault();
+    setPreviewError(null);
+    setCommitError(null);
+    setCommitMessage(null);
+    setPreview(null);
+
+    if (!isFormValid || amountCents === null) {
+      setPreviewError('Enter a merchant and a positive amount.');
+      return;
+    }
+
+    setIntentSnapshot({
+      merchant: merchant.trim(),
+      amountCents,
+      category: category !== '' ? category : null,
+    });
+    setFlowStep('confirm');
+  }
+
+  function formattedGuardrail(reasonCode: string): string {
+    if (!reasonCode) return 'Guardrail applied';
+    return reasonCode
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/(^\w|\s\w)/g, (segment) => segment.toUpperCase());
+  }
+
+  function renderBudgetMeter(): JSX.Element | null {
+    if (!preview?.bucketImpact || preview.bucketImpact.remainingCents === null) return null;
+
+    const remainingAfter = preview.bucketImpact.remainingCents;
+    const spentAfter = preview.bucketImpact.spentCents ?? 0;
+    const total = remainingAfter + spentAfter;
+    if (total <= 0) return null;
+
+    const spentBefore = Math.max(spentAfter - preview.amountCents, 0);
+
+    const beforeSpentPct = Math.min((spentBefore / total) * 100, 100);
+    const afterSpentPct = Math.min((spentAfter / total) * 100, 100);
+
+    return (
+      <div className="space-y-2 rounded-md border border-ink-700/60 bg-ink-900/60 p-3">
+        <div className="flex items-center justify-between text-sm text-cloud-200">
+          <span className="font-semibold">{preview.bucketImpact.name ?? 'Budget impact'}</span>
+          <span className="text-cloud-300">Remaining after: {formatCurrency(remainingAfter)}</span>
+        </div>
+        <div className="space-y-1 text-xs text-cloud-300">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span>Before</span>
+              <span>
+                Spent {formatCurrency(spentBefore)} / {formatCurrency(total - spentBefore)} left
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-ink-800">
+              <div
+                className="h-2 rounded-full bg-amber-400/80"
+                style={{ width: `${beforeSpentPct}%` }}
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span>After</span>
+              <span>
+                Spent {formatCurrency(spentAfter)} / {formatCurrency(remainingAfter)} left
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-ink-800">
+              <div
+                className="h-2 rounded-full bg-mint-400/80"
+                style={{ width: `${afterSpentPct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   async function handleCommit(): Promise<void> {
@@ -173,7 +274,7 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
         description="Share the merchant and amount. Cherry will run the engine and tee up the best card."
         padded
       >
-        <form className="space-y-3" onSubmit={handlePreview}>
+        <form className="space-y-3" onSubmit={handleIntentSubmit}>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-cloud-200" htmlFor="merchant">
@@ -228,15 +329,69 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
             <Alert title="Could not run Autopilot" description={previewError} variant="danger" />
           ) : null}
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-cloud-300">
-              Autopilot stays advisory: we recommend, you decide, and we log the impact.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-cloud-300">
+              <Badge className="border-ink-700/60 bg-ink-900/60 text-cloud-200">Step 1 · Intent</Badge>
+              <Badge
+                className={
+                  flowStep === 'confirm'
+                    ? 'border-mint-400/60 bg-mint-400/15 text-mint-100'
+                    : 'border-ink-700/60 bg-ink-900/60 text-cloud-300'
+                }
+              >
+                {flowStep === 'confirm' ? 'Intent captured' : 'Share merchant + amount'}
+              </Badge>
+              <span className="text-cloud-300">Advisory only — you stay in control.</span>
+            </div>
             <Button type="submit" disabled={!isFormValid || isPreviewLoading} aria-live="polite">
-              {isPreviewLoading ? 'Running...' : 'Run Autopilot'}
+              {flowStep === 'confirm' ? 'Update intent' : 'Continue to confirm'}
             </Button>
           </div>
         </form>
       </Panel>
+
+      {flowStep === 'confirm' && intentSnapshot ? (
+        <Panel
+          tone="base"
+          title="Confirm and run Autopilot"
+          description="Review your intent, acknowledge the guardrails, then fire the engine."
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <Badge className="border-mint-400/60 bg-mint-400/15 text-mint-100">Step 2 · Confirm</Badge>
+              <Badge className="border-sky-400/60 bg-sky-400/15 text-sky-100">Advisory only</Badge>
+              <Badge className="border-amber-400/60 bg-amber-400/15 text-amber-50">Safety-first</Badge>
+            </div>
+          }
+        >
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2 text-sm text-cloud-300">
+              <span className="rounded-md border border-ink-700/60 bg-ink-900/60 px-2 py-1">
+                Merchant: {intentSnapshot.merchant}
+              </span>
+              <span className="rounded-md border border-ink-700/60 bg-ink-900/60 px-2 py-1">
+                Amount: {formatCurrency(intentSnapshot.amountCents)}
+              </span>
+              {intentSnapshot.category ? (
+                <span className="rounded-md border border-ink-700/60 bg-ink-900/60 px-2 py-1">
+                  Category: {formatCategoryLabel(intentSnapshot.category)}
+                </span>
+              ) : null}
+            </div>
+            <p className="text-sm text-cloud-300">
+              Cherry stays advisory and transparent. You trigger the engine, review the card, and log the swipe when it feels
+              right.
+            </p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-cloud-200">
+                <Badge className="border-mint-400/60 bg-mint-400/15 text-mint-100">Intent locked in</Badge>
+                <Badge className="border-amber-400/60 bg-amber-400/15 text-amber-50">Guardrails on</Badge>
+              </div>
+              <Button onClick={handlePreview} disabled={isPreviewLoading} aria-live="polite">
+                {isPreviewLoading ? 'Running...' : 'Run Autopilot'}
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      ) : null}
 
       {preview ? (
         <Panel
@@ -282,28 +437,18 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
                 ))}
               </ul>
             ) : null}
-            {preview.explanation.warnings.length > 0 ? (
+            {preview.explanation.warnings.length > 0 || preview.reasonCode ? (
               <Alert
                 variant={preview.status === 'blocked' ? 'danger' : 'warning'}
-                title="Warnings"
-                description={preview.explanation.warnings.join(' ')}
+                title="Guardrails"
+                description={`${formattedGuardrail(preview.reasonCode)}${preview.explanation.warnings.length > 0 ? `. ${preview.explanation.warnings.join(' ')}` : ''}`}
               />
             ) : null}
-            <div className="rounded-md border border-ink-700/60 bg-ink-900/60 p-3">
-              {preview.bucketImpact ? (
-                <div className="text-sm text-cloud-200">
-                  <p className="font-semibold">
-                    Bucket: {preview.bucketImpact.name ?? 'Unspecified bucket'}
-                  </p>
-                  <p className="text-cloud-300">
-                    Remaining after swipe: {formatCurrency(preview.bucketImpact.remainingCents)} · Spent:{' '}
-                    {formatCurrency(preview.bucketImpact.spentCents)}
-                  </p>
-                </div>
-              ) : (
+            {renderBudgetMeter() ?? (
+              <div className="rounded-md border border-ink-700/60 bg-ink-900/60 p-3">
                 <p className="text-sm text-cloud-300">No bucket impact detected for this swipe.</p>
-              )}
-            </div>
+              </div>
+            )}
             {commitMessage !== null ? (
               <Alert title={commitMessage} variant="success" />
             ) : null}
@@ -322,6 +467,9 @@ export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.E
             >
               {isCommitLoading ? 'Logging...' : 'Commit / Log this'}
             </Button>
+            <p className="text-xs text-cloud-300 sm:text-sm">
+              People like you saved {formatCurrency(preview.expectedBenefitCents)} by following this lane last week.
+            </p>
           </div>
         </Panel>
       ) : null}
