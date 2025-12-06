@@ -9,8 +9,9 @@ import { cn } from '@/lib/ui/cn';
 
 const NAV_ITEMS = [
   { href: ROUTES.user.app, label: 'Autopilot' },
-  { href: '/buckets', label: 'Buckets' },
-  { href: '/cards', label: 'Cards' },
+  { href: ROUTES.user.buckets, label: 'Buckets' },
+  { href: ROUTES.user.cards, label: 'Cards' },
+  { href: ROUTES.user.history, label: 'History' },
 ];
 
 function isActive(pathname: string, href: string): boolean {

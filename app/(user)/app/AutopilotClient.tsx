@@ -1,253 +1,364 @@
 "use client";
 
-import { useMemo, useState } from 'react';
-import type { JSX } from 'react';
-import Button from '@/components/user/ui/Button';
-import Card from '@/components/user/ui/Card';
-import Input from '@/components/user/ui/Input';
-import Label from '@/components/user/ui/Label';
-import type { AutopilotDecision } from '@/lib/engine/public-types';
-import { hasText } from '@/lib/text';
+import type { FormEvent, JSX } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/Badge';
+import { Button, ButtonLink } from '@/components/ui/Button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Input } from '@/components/ui/Input';
+import { Panel } from '@/components/ui/panel';
+import { Select } from '@/components/ui/Select';
+import { ROUTES } from '@/lib/routes';
+import {
+  AUTOPILOT_REWARD_CATEGORIES,
+  type AutopilotCommitResult,
+  type AutopilotPreviewOutput,
+} from '@/lib/autopilot/types';
+import {
+  appendRecentAutopilotDecision,
+  loadRecentAutopilotDecisions,
+  type StoredAutopilotDecision,
+} from '@/lib/autopilot/recent-decisions';
 
-type FormError = {
-  field: 'merchant' | 'amount' | 'form';
-  message: string;
+type AutopilotClientProps = {
+  userId: string;
 };
 
-function centsToDollars(cents: number | null | undefined): string {
-  if (!Number.isFinite(cents ?? NaN)) return '—';
-  return `$${((cents as number) / 100).toFixed(2)}`;
+function formatCurrency(cents: number | null | undefined): string {
+  if (typeof cents !== 'number' || Number.isNaN(cents)) return '—';
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
-function parseAmountCents(input: string): number | null {
-  const parsed = Number(input);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return Math.round(parsed * 100);
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return '—';
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-export default function AutopilotClient(): JSX.Element {
+function formatCategoryLabel(value: string): string {
+  return value.replace(/_/g, ' ').toLowerCase().replace(/(^\w|\s\w)/g, (m) => m.toUpperCase());
+}
+
+function statusBadgeClass(status: AutopilotPreviewOutput['status']): string {
+  if (status === 'ok') return 'border-mint-400/60 bg-mint-400/15 text-mint-100';
+  if (status === 'blocked') return 'border-rose-500/60 bg-rose-500/15 text-rose-100';
+  return 'border-amber-400/60 bg-amber-400/15 text-amber-50';
+}
+
+export default function AutopilotClient({ userId }: AutopilotClientProps): JSX.Element {
   const [merchant, setMerchant] = useState('');
   const [amountInput, setAmountInput] = useState('');
-  const [decision, setDecision] = useState<AutopilotDecision | null>(null);
-  const [formError, setFormError] = useState<FormError | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCommitting, setIsCommitting] = useState(false);
+  const [category, setCategory] = useState<string>('');
+  const [preview, setPreview] = useState<AutopilotPreviewOutput | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [commitError, setCommitError] = useState<string | null>(null);
   const [commitMessage, setCommitMessage] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isCommitLoading, setIsCommitLoading] = useState(false);
+  const [recentDecisions, setRecentDecisions] = useState<StoredAutopilotDecision[]>([]);
+  const [lastPreviewCategory, setLastPreviewCategory] = useState<string | null>(null);
 
-  const parsedAmountCents = useMemo(() => parseAmountCents(amountInput), [amountInput]);
-  const isFormValid = hasText(merchant) && parsedAmountCents !== null;
-  const showPreviewDisabled = !isFormValid || isSubmitting || isCommitting;
+  useEffect(() => {
+    void loadRecentAutopilotDecisions(userId).then((decisions) => {
+      setRecentDecisions(decisions);
+    });
+  }, [userId]);
 
-  async function handlePreview(): Promise<void> {
-    setFormError(null);
+  const amountCents = useMemo(() => {
+    const parsed = Number(amountInput);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.round(parsed * 100);
+  }, [amountInput]);
+
+  const isFormValid = merchant.trim().length > 0 && amountCents !== null;
+
+  async function handlePreview(event: FormEvent): Promise<void> {
+    event.preventDefault();
+    setPreviewError(null);
+    setCommitError(null);
     setCommitMessage(null);
-    const normalizedMerchant = merchant.trim();
-    const amountCents = parsedAmountCents;
-    if (!hasText(normalizedMerchant)) {
-      setFormError({ field: 'merchant', message: 'Merchant is required.' });
-      return;
-    }
-    if (amountCents === null) {
-      setFormError({ field: 'amount', message: 'Enter a positive amount.' });
+    setPreview(null);
+    setIsPreviewLoading(true);
+
+    if (!isFormValid || amountCents === null) {
+      setPreviewError('Enter a merchant and a positive amount.');
+      setIsPreviewLoading(false);
       return;
     }
 
-    setIsSubmitting(true);
     try {
       const response = await fetch('/api/autopilot/preview', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ merchant: normalizedMerchant, amountCents }),
+        body: JSON.stringify({
+          merchant: merchant.trim(),
+          amountCents,
+          ...(category !== '' ? { category } : {}),
+          occurredAt: new Date().toISOString(),
+        }),
       });
 
-      const payload = (await response.json()) as AutopilotDecision & { error?: string };
+      const payload = (await response.json()) as AutopilotPreviewOutput & { error?: string };
       if (!response.ok) {
-        throw new Error(payload.error ?? 'Unable to fetch recommendation.');
+        throw new Error(payload.error ?? 'Unable to fetch a recommendation right now.');
       }
-      setDecision(payload);
-    } catch (err) {
+      setPreview(payload);
+      setLastPreviewCategory(category !== '' ? category : null);
+    } catch (error) {
       const message =
-        err instanceof Error ? err.message : 'Unable to fetch a recommendation right now.';
-      setFormError({ field: 'form', message });
-      setDecision(null);
+        error instanceof Error ? error.message : 'Unable to fetch a recommendation right now.';
+      setPreviewError(message);
+      setPreview(null);
     } finally {
-      setIsSubmitting(false);
+      setIsPreviewLoading(false);
     }
   }
 
   async function handleCommit(): Promise<void> {
-    if (!decision || decision.kind !== 'OK' || !hasText(decision.cardId)) return;
-    const normalizedMerchant = merchant.trim();
-    const amountCents = parsedAmountCents;
-    if (!hasText(normalizedMerchant) || amountCents === null) return;
-
-    setIsCommitting(true);
+    if (!preview || preview.status !== 'ok' || !preview.recommendedCard) return;
+    setCommitError(null);
     setCommitMessage(null);
-    setFormError(null);
+    setIsCommitLoading(true);
+
     try {
       const response = await fetch('/api/autopilot/commit', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          merchant: normalizedMerchant,
-          amountCents,
-          cardId: decision.cardId,
-          occurredAt: new Date().toISOString(),
+          decisionId: preview.decisionId,
+          merchant: preview.merchant,
+          amountCents: preview.amountCents,
+          cardId: preview.recommendedCard.id,
+          occurredAt: preview.occurredAt,
+          ...(lastPreviewCategory !== null ? { category: lastPreviewCategory } : {}),
         }),
       });
 
+      const payload = (await response.json()) as AutopilotCommitResult & { error?: string };
       if (!response.ok) {
-        throw new Error('Unable to save this swipe.');
+        throw new Error(payload.error ?? 'Unable to log this swipe.');
       }
 
-      setCommitMessage('Saved. We noted this swipe for your budgets.');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to save this swipe.';
-      setFormError({ field: 'form', message });
+      setCommitMessage(payload.status === 'already_exists' ? 'Already logged.' : 'Logged.');
+
+      const next = await appendRecentAutopilotDecision(userId, {
+        decisionId: preview.decisionId,
+        merchant: preview.merchant,
+        amountCents: preview.amountCents,
+        cardLabel: preview.recommendedCard.label,
+        occurredAt: preview.occurredAt,
+        status: preview.status,
+      });
+      setRecentDecisions(next);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to log this swipe.';
+      setCommitError(message);
     } finally {
-      setIsCommitting(false);
+      setIsCommitLoading(false);
     }
   }
 
-  const benefitText =
-    decision && decision.expectedMonetaryBenefitCents > 0
-      ? `About $${(decision.expectedMonetaryBenefitCents / 100).toFixed(2)} better than your next best card.`
-      : 'No expected savings difference versus your other cards.';
-
   return (
-    <div className="space-y-4">
-      <Card className="p-4">
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#ef4444]">
-              Cherry Autopilot
-            </p>
-            <p className="text-sm text-[#4b5563]">
-              Tell us where you’re about to swipe. We’ll suggest a card and record the impact.
-            </p>
-          </div>
-          <div className="space-y-3">
+    <div className="space-y-5">
+      <Panel
+        tone="muted"
+        title="Set up your swipe"
+        description="Share the merchant and amount. Cherry will run the engine and tee up the best card."
+        padded
+      >
+        <form className="space-y-3" onSubmit={handlePreview}>
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                name="amount"
-                value={amountInput}
-                placeholder="42.50"
-                inputMode="decimal"
-                onChange={(event) => setAmountInput(event.target.value)}
-                disabled={isSubmitting || isCommitting}
-                hasError={formError?.field === 'amount'}
-              />
-              {formError?.field === 'amount' ? (
-                <p className="text-sm text-[#b91c1c]">{formError.message}</p>
-              ) : null}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="merchant">Merchant</Label>
+              <label className="text-sm font-semibold text-cloud-200" htmlFor="merchant">
+                Merchant
+              </label>
               <Input
                 id="merchant"
                 name="merchant"
-                value={merchant}
                 placeholder="Coffee Bar"
+                value={merchant}
                 onChange={(event) => setMerchant(event.target.value)}
-                disabled={isSubmitting || isCommitting}
-                hasError={formError?.field === 'merchant'}
+                disabled={isPreviewLoading || isCommitLoading}
+                required
               />
-              {formError?.field === 'merchant' ? (
-                <p className="text-sm text-[#b91c1c]">{formError.message}</p>
-              ) : null}
             </div>
-            <Button
-              type="button"
-              onClick={handlePreview}
-              loading={isSubmitting}
-              disabled={showPreviewDisabled}
-              className="w-full"
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-cloud-200" htmlFor="amount">
+                Amount
+              </label>
+              <Input
+                id="amount"
+                name="amount"
+                inputMode="decimal"
+                placeholder="42.50"
+                value={amountInput}
+                onChange={(event) => setAmountInput(event.target.value)}
+                disabled={isPreviewLoading || isCommitLoading}
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-cloud-200" htmlFor="category">
+              Category (optional)
+            </label>
+            <Select
+              id="category"
+              name="category"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              disabled={isPreviewLoading || isCommitLoading}
             >
-              Get recommendation
+              <option value="">Let Cherry infer it</option>
+              {AUTOPILOT_REWARD_CATEGORIES.map((value) => (
+                <option key={value} value={value}>
+                  {formatCategoryLabel(value)}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {previewError !== null ? (
+            <Alert title="Could not run Autopilot" description={previewError} variant="danger" />
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-cloud-300">
+              Autopilot stays advisory: we recommend, you decide, and we log the impact.
+            </p>
+            <Button type="submit" disabled={!isFormValid || isPreviewLoading} aria-live="polite">
+              {isPreviewLoading ? 'Running...' : 'Run Autopilot'}
             </Button>
-            {formError?.field === 'form' ? (
-              <p className="text-sm text-[#b91c1c]">{formError.message}</p>
+          </div>
+        </form>
+      </Panel>
+
+      {preview ? (
+        <Panel
+          tone="base"
+          title="Recommendation"
+          description="Cherry picks from your saved cards. Commit it to keep your budgets aligned."
+          actions={
+            <Badge className={statusBadgeClass(preview.status)}>
+              {preview.status === 'ok'
+                ? 'Ready'
+                : preview.status === 'blocked'
+                  ? 'Blocked by guardrails'
+                  : 'Fallback'}
+            </Badge>
+          }
+        >
+          <div className="space-y-2">
+            <p className="text-base font-semibold text-cloud-50">{preview.explanation.primary}</p>
+            {preview.recommendedCard ? (
+              <p className="text-sm text-cloud-300">
+                Recommended card: <span className="font-semibold">{preview.recommendedCard.label}</span>{' '}
+                · {preview.recommendedCard.network ?? 'Network unknown'} ·{' '}
+                {preview.recommendedCard.issuer ?? 'Issuer unknown'}
+              </p>
+            ) : (
+              <p className="text-sm text-cloud-300">No specific card recommended for this swipe.</p>
+            )}
+            <div className="flex flex-wrap gap-2 text-sm text-cloud-300">
+              <span className="rounded-md border border-ink-700/60 bg-ink-900/60 px-2 py-1">
+                Merchant: {preview.merchant}
+              </span>
+              <span className="rounded-md border border-ink-700/60 bg-ink-900/60 px-2 py-1">
+                Amount: {formatCurrency(preview.amountCents)}
+              </span>
+              <span className="rounded-md border border-ink-700/60 bg-ink-900/60 px-2 py-1">
+                Expected benefit: {formatCurrency(preview.expectedBenefitCents)}
+              </span>
+            </div>
+            {preview.explanation.secondary.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-5 text-sm text-cloud-200">
+                {preview.explanation.secondary.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            ) : null}
+            {preview.explanation.warnings.length > 0 ? (
+              <Alert
+                variant={preview.status === 'blocked' ? 'danger' : 'warning'}
+                title="Warnings"
+                description={preview.explanation.warnings.join(' ')}
+              />
+            ) : null}
+            <div className="rounded-md border border-ink-700/60 bg-ink-900/60 p-3">
+              {preview.bucketImpact ? (
+                <div className="text-sm text-cloud-200">
+                  <p className="font-semibold">
+                    Bucket: {preview.bucketImpact.name ?? 'Unspecified bucket'}
+                  </p>
+                  <p className="text-cloud-300">
+                    Remaining after swipe: {formatCurrency(preview.bucketImpact.remainingCents)} · Spent:{' '}
+                    {formatCurrency(preview.bucketImpact.spentCents)}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-sm text-cloud-300">No bucket impact detected for this swipe.</p>
+              )}
+            </div>
+            {commitMessage !== null ? (
+              <Alert title={commitMessage} variant="success" />
+            ) : null}
+            {commitError !== null ? (
+              <Alert title="Could not log this swipe" description={commitError} variant="danger" />
             ) : null}
           </div>
-        </div>
-      </Card>
-
-      {decision ? (
-        <Card
-          className="space-y-3 p-4"
-          aria-live="polite"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">
-                Recommendation
-              </p>
-              <p className="text-lg font-semibold text-[#111827]">
-                {decision.kind === 'OK'
-                  ? 'Use this card'
-                  : decision.kind === 'BLOCKED'
-                    ? 'Guardrails block this swipe'
-                    : 'No clear choice'}
-              </p>
-            </div>
-            <span
-              className={
-                decision.kind === 'OK'
-                  ? 'rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-semibold text-[#166534]'
-                  : decision.kind === 'BLOCKED'
-                    ? 'rounded-full bg-[#fee2e2] px-3 py-1 text-xs font-semibold text-[#b91c1c]'
-                    : 'rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-semibold text-[#6b7280]'
-              }
+          <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-cloud-300">
+              Decision ID: <span className="font-mono text-cloud-100">{preview.decisionId}</span>
+            </p>
+            <Button
+              onClick={handleCommit}
+              disabled={preview.status !== 'ok' || isCommitLoading}
+              aria-live="polite"
             >
-              {decision.kind}
-            </span>
+              {isCommitLoading ? 'Logging...' : 'Commit / Log this'}
+            </Button>
           </div>
-
-          <p className="text-sm text-[#1f2937]">{decision.userFacingMessage}</p>
-
-          {decision.kind === 'OK' ? (
-            <div className="space-y-2">
-              <p className="text-sm text-[#b91c1c]">{benefitText}</p>
-              {decision.bucketDelta ? (
-                <p className="text-sm text-[#4b5563]">
-                  Bucket impact: spent {centsToDollars(decision.bucketDelta.newSpentCents)} • remaining{' '}
-                  {centsToDollars(decision.bucketDelta.newRemainingCents)}.
-                </p>
-              ) : (
-                <p className="text-sm text-[#4b5563]">We did not detect a bucket change here.</p>
-              )}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  onClick={handleCommit}
-                  loading={isCommitting}
-                  disabled={isCommitting}
-                  className="w-full sm:w-auto"
-                >
-                  I used this
-                </Button>
-              </div>
-              {commitMessage !== null ? (
-                <p className="text-sm text-[#16a34a]">{commitMessage}</p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {decision.kind === 'BLOCKED' ? (
-            <p className="text-sm font-semibold text-[#b91c1c]">
-              This would break a guardrail. Skip or adjust the purchase.
-            </p>
-          ) : null}
-
-          {decision.kind === 'FALLBACK' ? (
-            <p className="text-sm text-[#6b7280]">
-              We could not compute a safe recommendation. Use your usual card this time.
-            </p>
-          ) : null}
-        </Card>
+        </Panel>
       ) : null}
+
+      <Panel
+        tone="muted"
+        title="Recent decisions"
+        description="Local-only history to remind you what you committed. Full history lives in the History tab."
+        actions={<ButtonLink variant="secondary" href={ROUTES.user.history}>View history</ButtonLink>}
+      >
+        {recentDecisions.length === 0 ? (
+          <EmptyState
+            title="No recent Autopilot commits"
+            description="Run Autopilot and commit a swipe to see it here."
+          />
+        ) : (
+          <div className="space-y-3">
+            {recentDecisions.map((entry) => (
+              <Card
+                key={entry.decisionId}
+                tone="base"
+                padding="md"
+                className="flex flex-col gap-2 border border-ink-700/60 md:flex-row md:items-center md:justify-between"
+              >
+                <div className="space-y-1">
+                  <p className="text-sm text-cloud-300">{formatDate(entry.occurredAt)}</p>
+                  <p className="text-base font-semibold text-cloud-50">{entry.merchant}</p>
+                  <p className="text-sm text-cloud-300">
+                    {formatCurrency(entry.amountCents)} · {entry.cardLabel}
+                  </p>
+                </div>
+                <Badge className={statusBadgeClass(entry.status)}>{entry.status}</Badge>
+              </Card>
+            ))}
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

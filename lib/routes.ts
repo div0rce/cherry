@@ -4,6 +4,9 @@ export const ROUTES = {
   },
   user: {
     app: '/app',
+    buckets: '/buckets',
+    cards: '/cards',
+    history: '/history',
   },
   dev: {
     root: '/dev',

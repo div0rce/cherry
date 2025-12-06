@@ -42,12 +42,8 @@ function resetModules() {
     '../app/api/autopilot/commit/route',
     'next/server',
     '@/lib/log',
-    '@/lib/prisma',
-    '@/lib/engine',
+    '@/lib/autopilot/service',
     '@/lib/user-context',
-    '@/lib/ids',
-    '@/lib/buckets/ensure-fresh',
-    '@/lib/scan-helpers',
   ];
   for (const target of targets) {
     try {
@@ -59,87 +55,28 @@ function resetModules() {
   }
 }
 
-function buildBucket() {
-  return {
-    id: 'bucket-1',
-    userId: 'user-1',
-    name: 'Dining',
-    period: 'MONTHLY',
-    budgetAmount: 10_000,
-    currentAmount: 9_000,
-    spentCents: 1_000,
-    strictMode: false,
-    category: 'DINING',
-    periodStart: new Date('2024-01-01T00:00:00.000Z'),
-    periodEnd: new Date('2024-01-31T00:00:00.000Z'),
-    lastResetAt: null,
-    createdAt: new Date('2024-01-01T00:00:00.000Z'),
-    updatedAt: new Date('2024-01-01T00:00:00.000Z'),
-  };
-}
-
 async function runCommitValidAndIdempotent() {
   resetModules();
   mockNextServer();
   const logEvents = [];
-  const bucketStore = buildBucket();
-  const transactions = {};
-
+  let calls = 0;
   mockModule(requireModule.resolve('@/lib/log'), {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
-    prisma: {
-      card: {
-        findMany: async () => [{ id: 'card-1', nickname: 'Alpha' }],
-      },
-      $transaction: async (cb) => {
-        const tx = {
-          bucket: {
-            findUnique: async ({ where }) => (where.id === bucketStore.id ? bucketStore : null),
-            update: async ({ data }) => {
-              Object.assign(bucketStore, data);
-              return bucketStore;
-            },
-          },
-          simulatedTransaction: {
-            findUnique: async ({ where }) => transactions[where.id] ?? null,
-            create: async ({ data }) => {
-              transactions[data.id] = { id: data.id, bucketId: data.bucketId ?? null };
-              return transactions[data.id];
-            },
-          },
-        };
-        return cb(tx);
-      },
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+    commitAutopilotDecision: async () => {
+      calls += 1;
+      return {
+        decisionId: 'decision-1',
+        transactionId: 'txn-1',
+        bucket: null,
+        status: calls === 1 ? 'created' : 'already_exists',
+      };
     },
-  });
-  mockModule(requireModule.resolve('@/lib/engine'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
-      kind: 'OK',
-      cardId: 'card-1',
-      reasonCode: 'MAX_REWARDS',
-      userFacingMessage: 'ok',
-      expectedMonetaryBenefitCents: 50,
-      bucketDelta: {
-        bucketId: 'bucket-1',
-        newSpentCents: 2_000,
-        newRemainingCents: 8_000,
-      },
-    }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED', email: null }),
-  });
-  mockModule(requireModule.resolve('@/lib/ids'), {
-    buildSwipeIdempotencyKey: () => 'swipe-key-1',
-  });
-  mockModule(requireModule.resolve('@/lib/buckets/ensure-fresh'), {
-    ensureBucketFresh: async (_id, _now, db) => db.bucket.findUnique({ where: { id: 'bucket-1' } }),
-  });
-  mockModule(requireModule.resolve('@/lib/scan-helpers'), {
-    resolveScanCategory: async () => 'DINING',
   });
 
   const { POST } =
@@ -147,6 +84,7 @@ async function runCommitValidAndIdempotent() {
 
   const firstResponse = await POST({
     json: async () => ({
+      decisionId: 'decision-1',
       merchant: 'Cafe',
       amountCents: 1_000,
       cardId: 'card-1',
@@ -156,11 +94,11 @@ async function runCommitValidAndIdempotent() {
   const firstBody = await firstResponse.json();
 
   assert.equal(firstResponse.status, 200);
-  assert.ok(firstBody.bucket);
-  assert.equal(firstBody.bucket.spentCents, 2_000);
+  assert.equal(firstBody.status, 'created');
 
   const secondResponse = await POST({
     json: async () => ({
+      decisionId: 'decision-1',
       merchant: 'Cafe',
       amountCents: 1_000,
       cardId: 'card-1',
@@ -170,8 +108,7 @@ async function runCommitValidAndIdempotent() {
   const secondBody = await secondResponse.json();
 
   assert.equal(secondResponse.status, 200);
-  assert.ok(secondBody.bucket);
-  assert.equal(secondBody.bucket.spentCents, 2_000);
+  assert.equal(secondBody.status, 'already_exists');
   assert.equal(logEvents.filter((e) => e?.kind === 'DECISION_BLOCKED').length, 0);
 }
 
@@ -183,35 +120,16 @@ async function runCommitInvalid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
-    prisma: {
-      card: {
-        findMany: async () => [],
-      },
-      $transaction: async (cb) => cb({}),
-    },
-  });
-  mockModule(requireModule.resolve('@/lib/engine'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
-      kind: 'OK',
-      cardId: 'card-1',
-      reasonCode: 'OK',
-      userFacingMessage: 'ok',
-      expectedMonetaryBenefitCents: 0,
-      bucketDelta: null,
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+    commitAutopilotDecision: async () => ({
+      decisionId: 'decision-1',
+      transactionId: 'txn-1',
+      bucket: null,
+      status: 'created',
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED', email: null }),
-  });
-  mockModule(requireModule.resolve('@/lib/ids'), {
-    buildSwipeIdempotencyKey: () => 'swipe-key-invalid',
-  });
-  mockModule(requireModule.resolve('@/lib/buckets/ensure-fresh'), {
-    ensureBucketFresh: async () => null,
-  });
-  mockModule(requireModule.resolve('@/lib/scan-helpers'), {
-    resolveScanCategory: async () => 'DINING',
   });
 
   const { POST } =
@@ -221,8 +139,9 @@ async function runCommitInvalid() {
     json: async () => ({
       merchant: '',
       amountCents: -10,
-      cardId: 'card-unknown',
+      cardId: '',
       occurredAt: 'not-a-date',
+      decisionId: '',
     }),
   });
   await res.json();
@@ -239,22 +158,12 @@ async function runCommitUnauthorized() {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
-    prisma: {
-      card: {
-        findMany: async () => [],
-      },
-      $transaction: async (cb) => cb({}),
-    },
-  });
-  mockModule(requireModule.resolve('@/lib/engine'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
-      kind: 'BLOCKED',
-      cardId: null,
-      reasonCode: 'NO_USER',
-      userFacingMessage: 'blocked',
-      expectedMonetaryBenefitCents: 0,
-      bucketDelta: null,
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+    commitAutopilotDecision: async () => ({
+      decisionId: 'decision-unauth',
+      transactionId: 'txn-unauth',
+      bucket: null,
+      status: 'created',
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
@@ -262,21 +171,13 @@ async function runCommitUnauthorized() {
       throw new Error('Unauthorized');
     },
   });
-  mockModule(requireModule.resolve('@/lib/ids'), {
-    buildSwipeIdempotencyKey: () => 'unauth',
-  });
-  mockModule(requireModule.resolve('@/lib/buckets/ensure-fresh'), {
-    ensureBucketFresh: async () => null,
-  });
-  mockModule(requireModule.resolve('@/lib/scan-helpers'), {
-    resolveScanCategory: async () => 'DINING',
-  });
 
   const { POST } =
     requireModule('../app/api/autopilot/commit/route');
 
   const res = await POST({
     json: async () => ({
+      decisionId: 'decision-unauth',
       merchant: 'Cafe',
       amountCents: 1_000,
       cardId: 'card-1',

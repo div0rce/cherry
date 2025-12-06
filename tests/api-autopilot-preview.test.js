@@ -42,8 +42,7 @@ function resetModules() {
     '../app/api/autopilot/preview/route',
     'next/server',
     '@/lib/log',
-    '@/lib/prisma',
-    '@/lib/engine',
+    '@/lib/autopilot/service',
     '@/lib/user-context',
   ];
   for (const target of targets) {
@@ -64,21 +63,18 @@ async function runPreviewValid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
-    prisma: {
-      card: {
-        findMany: async () => [{ id: 'card-1' }],
-      },
-    },
-  });
-  mockModule(requireModule.resolve('@/lib/engine'), {
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
     getAutopilotDecisionForUserSwipe: async () => ({
-      kind: 'OK',
-      cardId: 'card-1',
+      decisionId: 'decision-1',
+      merchant: 'Test Shop',
+      amountCents: 5_000,
+      occurredAt: '2024-01-01T00:00:00.000Z',
+      status: 'ok',
+      recommendedCard: { id: 'card-1', label: 'Alpha', issuer: 'Issuer', network: 'VISA' },
+      expectedBenefitCents: 100,
+      explanation: { primary: 'Use Alpha', secondary: [], warnings: [] },
+      bucketImpact: null,
       reasonCode: 'MAX_REWARDS',
-      userFacingMessage: 'Use card',
-      expectedMonetaryBenefitCents: 100,
-      bucketDelta: null,
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
@@ -93,8 +89,8 @@ async function runPreviewValid() {
   const body = await res.json();
 
   assert.equal(res.status, 200);
-  assert.equal(body.kind, 'OK');
-  assert.equal(body.cardId, 'card-1');
+  assert.equal(body.decisionId, 'decision-1');
+  assert.equal(body.recommendedCard.id, 'card-1');
   assert.equal(logEvents.length, 0);
 }
 
@@ -106,21 +102,18 @@ async function runPreviewInvalid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
-    prisma: {
-      card: {
-        findMany: async () => [],
-      },
-    },
-  });
-  mockModule(requireModule.resolve('@/lib/engine'), {
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
     getAutopilotDecisionForUserSwipe: async () => ({
-      kind: 'FALLBACK',
-      cardId: null,
-      reasonCode: 'NO_CARDS',
-      userFacingMessage: 'fallback',
-      expectedMonetaryBenefitCents: 0,
-      bucketDelta: null,
+      decisionId: 'decision-1',
+      merchant: 'Test Shop',
+      amountCents: 5_000,
+      occurredAt: '2024-01-01T00:00:00.000Z',
+      status: 'ok',
+      recommendedCard: null,
+      expectedBenefitCents: 0,
+      explanation: { primary: 'fallback', secondary: [], warnings: [] },
+      bucketImpact: null,
+      reasonCode: 'FALLBACK',
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
@@ -146,21 +139,18 @@ async function runPreviewUnauthorized() {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
-    prisma: {
-      card: {
-        findMany: async () => [],
-      },
-    },
-  });
-  mockModule(requireModule.resolve('@/lib/engine'), {
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
     getAutopilotDecisionForUserSwipe: async () => ({
-      kind: 'BLOCKED',
-      cardId: null,
+      decisionId: 'decision-1',
+      merchant: 'Test Shop',
+      amountCents: 5_000,
+      occurredAt: '2024-01-01T00:00:00.000Z',
+      status: 'blocked',
+      recommendedCard: null,
+      expectedBenefitCents: 0,
+      explanation: { primary: 'blocked', secondary: [], warnings: [] },
+      bucketImpact: null,
       reasonCode: 'NO_USER',
-      userFacingMessage: 'blocked',
-      expectedMonetaryBenefitCents: 0,
-      bucketDelta: null,
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {

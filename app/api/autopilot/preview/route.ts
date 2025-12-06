@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getAutopilotDecisionForUserSwipe } from '@/lib/engine';
-import { AutopilotDecisionSchema, AutopilotPreviewRequest } from '@/lib/schemas/autopilot';
+import { getAutopilotDecisionForUserSwipe } from '@/lib/autopilot/service';
+import { AutopilotPreviewInputSchema, AutopilotServiceError } from '@/lib/autopilot/types';
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
 import { resolveUserContext } from '@/lib/user-context';
@@ -11,9 +10,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
     userId = userContext.userId;
-    const currentUserId = userContext.userId;
 
-    const parsed = await parseJsonBody(request, AutopilotPreviewRequest);
+    const parsed = await parseJsonBody(request, AutopilotPreviewInputSchema);
     if (!parsed.ok) {
       logGuardrailEvent({
         surface: 'autopilot',
@@ -22,56 +20,43 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'hard',
         reason: 'INVALID_PAYLOAD',
       });
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+      return parsed.response;
     }
 
-    const body = parsed.data;
-    const cardUniverseIds = (
-      await prisma.card.findMany({
-        where: { userId: currentUserId },
-        select: { id: true },
-        orderBy: { createdAt: 'asc' },
-      })
-    ).map((card) => card.id);
+    const preview = await getAutopilotDecisionForUserSwipe(userContext.userId, parsed.data);
 
-    const decision = await getAutopilotDecisionForUserSwipe({
-      userId: currentUserId,
-      merchant: body.merchant,
-      amountCents: body.amountCents,
-      cardUniverseIds,
-    });
-
-    if (decision.kind === 'BLOCKED') {
+    if (preview.status === 'blocked') {
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
         kind: 'DECISION_BLOCKED',
         severity: 'hard',
-        detail: { reasonCode: decision.reasonCode },
+        reason: preview.reasonCode,
       });
     }
-    if (decision.kind === 'FALLBACK') {
+    if (preview.status === 'fallback') {
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
         kind: 'ENGINE_ERROR',
         severity: 'soft',
-        reason: decision.reasonCode,
+        reason: preview.reasonCode,
       });
     }
 
-    const validatedDecision = AutopilotDecisionSchema.safeParse(decision);
-    if (!validatedDecision.success) {
-      logInvariantViolation({
-        surface: 'autopilot',
-        detail: 'Autopilot decision validation failed in preview',
-        data: validatedDecision.error.format(),
-      });
-      return NextResponse.json({ error: 'Failed to evaluate autopilot' }, { status: 500 });
-    }
-
-    return NextResponse.json(validatedDecision.data);
+    return NextResponse.json(preview, { status: 200 });
   } catch (err) {
+    if (err instanceof AutopilotServiceError) {
+      logGuardrailEvent({
+        surface: 'autopilot',
+        userId,
+        kind: err.status >= 500 ? 'ENGINE_ERROR' : 'INPUT_INVALID',
+        severity: err.status >= 500 ? 'soft' : 'hard',
+        reason: err.code,
+      });
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+    }
+
     if (err instanceof Error && err.message.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
