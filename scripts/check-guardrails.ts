@@ -213,7 +213,6 @@ function assertCriticalFilesExist(): void {
   const requiredFiles = [
     'lib/evaluator/offline-history.ts',
     'lib/evaluator/stats.ts',
-    'app/dev/evaluator/page.tsx',
     'lib/bank/ingest.ts',
     'scripts/ingest-moustafa-bank-csv.ts',
     'lib/unified-activity.ts',
@@ -223,6 +222,14 @@ function assertCriticalFilesExist(): void {
       fail(`Required guardrail file missing: ${file}`);
     }
   });
+
+  const evaluatorPaths = ['app/(dev)/dev/evaluator/page.tsx', 'app/dev/evaluator/page.tsx'];
+  const hasEvaluatorPage = evaluatorPaths.some((file) =>
+    fs.existsSync(path.join(process.cwd(), file))
+  );
+  if (!hasEvaluatorPage) {
+    fail(`Required guardrail file missing: one of ${evaluatorPaths.join(', ')}`);
+  }
 }
 
 function assertTestsPresent(): void {
