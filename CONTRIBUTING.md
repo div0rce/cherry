@@ -35,8 +35,8 @@ Last updated: 2025-12-02
 
 ### Main Branch and CI Rules
 
-- `main` must always pass:
-  - `npm run lint && npm run typecheck:scripts && npm run typecheck && npm run test`
+- `main` must always pass the full gate:
+  - `npm run check:clean && npm run check:routes && npm run lint && npm run typecheck:scripts && npm run typecheck && npm test`
 - Pull requests into `main` may only be merged after CI passes.
 - If CI is red on `main`, no new feature work is allowed until `main` is green again.
 - Fixes to restore green must be done in focused changes that only repair CI, not introduce new features.

@@ -14,8 +14,6 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Use 
 | /buckets | User | Buckets overview and controls | Product | Equivalent to `/app/buckets`. |
 | /cards | User | Card reference list | Product | Equivalent to `/app/cards`; chosen by Autopilot. |
 | /history | User | Spend history timeline | Product | Covers `/app/history`; legacy `/home/history` exists. |
-| /home/buckets | User | Legacy buckets preview | Product | Keep until fully removed from UX. |
-| /home/history | User | Legacy history preview | Product | Keep until fully removed from UX. |
 | /dev | Dev | Dev console dashboard | Devtools/Infra | Dev-only shell. |
 | /dev/buckets | Dev | Buckets management with diagnostics | Devtools/Infra | Dev-only. |
 | /dev/history | Dev | Spend history inspector | Devtools/Infra | Dev-only. |
@@ -39,3 +37,10 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Use 
 | /dev/engine/guardrails | Dev | Engine guardrails view | Devtools/Infra | Dev-only. |
 | /dev/activity | Dev | Unified activity inspector | Devtools/Infra | Dev-only. |
 | /admin | Dev | Admin and tooling | Devtools/Infra | Dev-only resets/seeds. |
+
+## Legacy / Compatibility Routes
+
+| Path | Surface | Purpose | Owner | Notes |
+| --- | --- | --- | --- | --- |
+| /home/buckets | User | Legacy buckets preview | Product | Kept for backward links; prefer `/buckets`. |
+| /home/history | User | Legacy history preview | Product | Kept for backward links; prefer `/history`. |

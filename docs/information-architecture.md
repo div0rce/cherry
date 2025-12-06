@@ -17,7 +17,8 @@ Cherry’s surfaces are intentionally split into three buckets so marketing, pro
 
 ### User App (app/(user)/*)
 - **Purpose:** End-user advisory surfaces: Autopilot, spend history, buckets, and card context.
-- **Example routes:** `/app` (Autopilot home), `/autopilot` (redirect to `/app`), `/buckets`, `/cards`, `/history`, legacy previews at `/home/buckets` and `/home/history`, and the shared auth entry at `/signin`.
+- **Example routes:** `/app` (Autopilot home), `/autopilot` (redirect to `/app`), `/buckets`, `/cards`, `/history`, and the shared auth entry at `/signin`.
+- **Legacy compatibility:** `/home/buckets` and `/home/history` remain for backward links; prefer `/buckets` and `/history`.
 - **Owner:** Product.
 
 ### Dev Console / Lab (app/(dev)/*)
