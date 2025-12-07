@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-02
+Last updated: 2025-12-05
 
 # Bucket Rollover & Spend Semantics
 
@@ -39,6 +39,7 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
   - Ensures the recommended bucket is fresh via `ensureBucketFresh` before updates.
   - Increments `spentCents` by the claimed amount (or recommended amount when `actualAmountCents` is absent). Happens once per session because status checks block double-claims.
   - Does not currently decrement on verification failure; spend remains even if ledger rows are later revoked.
+  - Cadence today: bucket spend only changes on session confirm (and optional reversal on verify-reject); bank ingest, scans, and simulations do not mutate bucket balances.
 
 - **Other paths**
   - `/api/scan`, `/api/sessions`, `/api/vine/order`, `/api/simulate` do **not** mutate buckets.
@@ -56,6 +57,7 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - Bucket selection is naive (first created for a category) and ignores multiple buckets for the same category.
 - No background job to pre-roll buckets; freshness relies on engine reads and confirm-time `ensureBucketFresh`.
 - `lastResetAt` is only set when rollover occurs via `ensureBucketFresh`; initial creation leaves it null.
+- Cadence is confirm-only: there is no per-transaction bucket ledger, no per-purchase balance updates, and no daily reconciliation sweep; Autopilot can operate on stale spend if ingests lag.
 
 ### Verification rejection semantics
 - Current behavior: when a session is confirmed, `Bucket.spentCents` increments by the confirmed amount (`confirmedAmountCents` on `RecommendationSession`). On `verify(verified: true)`, the increment remains. On `verify(verified: false)`, if the session was confirmed and not yet reversed, the bucket spend is decremented by `confirmedAmountCents` (bounded at 0) and `bucketSpendReversed` is set on the session to avoid double reversal. Reversal uses `ensureBucketFresh` so the active period window is respected.
@@ -70,3 +72,9 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - Add optional reversal or adjustment when verification fails, or mark rejected sessions for audit before reversing spend.
 - Add periodic freshness sweeps or on-read hooks for other bucket consumers if more surfaces start relying on bucket windows.
 - Expand tests around weekly/monthly rollover, gap handling, and strict-mode overspend enforcement.
+- Cadence (v1 spec):
+  - Balances: update per purchase/authorization and again on posting or reclassification. Each transaction writes an immutable bucket ledger row `(tx_id, bucket_id, amount, period_id)`; settlement edits adjust the ledger entry and recompute `spentCents`, `remainingCents`, and `percent_used`.
+  - Targets/allocations: recompute on pay-period boundaries or when income events/plan edits happen (monthly/biweekly or explicit paycheck); persist `bucket_target_amount` per `(bucket_id, period_id)`. No daily recompute needed.
+  - Engine policy: per swipe, pull the freshest bucket balance, compute `remaining = target - spent`, and route accordingly (`remaining <= 0` → warn/avoid; soft threshold → nudge; else optimize rewards). If data is stale (e.g., last ingest > 12h), fall back to the safe default card and log “data stale.”
+  - Reconciliation: run daily to re-sync feeds, ensure all transactions are bucketed, recompute derived metrics, and verify invariants (`sum(bucket_spent) ≈ total_spend`, period boundaries intact). If reconciliation fails, mark Autopilot as degraded until corrected.
+  - Cadence stance: weekly-only updates are insufficient; balances must be event-driven, with daily sweeps for safety and pay-period recomputes for targets.

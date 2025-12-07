@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-02
+Last updated: 2025-12-05
 
 # Cherry Core Loop / Engine / Vine / Wallet Pass Audit (Verified)
 
@@ -93,6 +93,7 @@ Docs consulted:
 - Vine security is minimal: signature enforcement remains optional/off by default; nonce cleanup and device lifecycle are missing.
 - Legacy/duplicate engine logic in `lib/simulation.ts` (archived) still exists; while balance math now reuses canonical helper, the separate category resolver risks drift if revived.
 - Wallet pass generation still reads certs when fully enabled; acceptable, but ensure feature flag stays off by default to avoid accidental filesystem access. Currently compliant.
+- Bucket cadence is confirm-only: bucket spend changes only when sessions are confirmed (and optionally reversed on reject); there is no per-transaction ledger, no per-swipe balance update, no stale-data fallback, and no daily reconciliation sweep. Autopilot can therefore operate on stale budgets.
 
 ## 3. Risks and Impact (Ranked)
 - High — Verification path needs automation:
@@ -113,6 +114,10 @@ Docs consulted:
 - Schema/ingest hygiene:
   - Consider adding provider IDs/unique constraints to `BankTransaction` instead of overloading `id`, and wire webhook auth; keep ingest idempotent and auditable.
   - Keep `currentAmount` documented as legacy-only; rely on `lib/buckets-runtime.ts` for derived balances and avoid surfacing `currentAmount` in UI math.
+- Bucket cadence:
+  - Add a bucket ledger keyed by `(tx_id, bucket_id, period_id)`; update balances on every authorization/posting or reclassification.
+  - Recompute targets on pay-period start/paycheck/plan edits; keep engine decisions per swipe and add a stale-data fallback (safe default card + log).
+  - Run a daily reconciliation sweep to re-sync feeds, recompute spent/remaining/derived metrics, and mark Autopilot degraded on failure.
 
 ## 5. Short-Term Plan (Implementation Checklist)
 1) Verification automation:
