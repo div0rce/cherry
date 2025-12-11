@@ -1,34 +1,35 @@
-import { cn } from '@/lib/ui/cn';
+import { cva, type VariantProps } from 'class-variance-authority';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export const buttonVariants = cva(
+  'inline-flex items-center justify-center gap-2 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C21733] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        primary:
+          'rounded-full bg-[#C21733] text-white hover:bg-[#E53E5A] active:bg-[#8B1020]',
+        secondary:
+          'rounded-full border border-[#E2E8F0] bg-white text-[#0F172A] hover:bg-[#F8FAFC] hover:border-[#C21733] active:bg-[#F1F5F9]',
+        subtle:
+          'rounded-full bg-[#F8FAFC] text-[#0F172A] hover:bg-[#F1F5F9] active:bg-[#E2E8F0]',
+        ghost:
+          'rounded-full text-[#475569] hover:bg-[#F8FAFC] hover:text-[#0F172A] active:bg-[#F1F5F9]',
+        destructive:
+          'rounded-full bg-[#DC2626] text-white hover:bg-[#EF4444] active:bg-[#B91C1C]',
+        link: 'text-[#C21733] underline-offset-4 hover:underline hover:text-[#E53E5A]',
+      },
+      size: {
+        sm: 'h-8 px-4 text-sm',
+        md: 'h-10 px-5 text-base',
+        lg: 'h-12 px-6 text-lg',
+        icon: 'h-10 w-10',
+      },
+    },
+    defaultVariants: {
+      variant: 'primary',
+      size: 'md',
+    },
+  }
+);
 
-const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    'border border-cherry-red/80 bg-cherry-red text-cherry-bg shadow-soft hover:bg-cherry-red/90',
-  secondary:
-    'border border-cherry-border bg-cherry-surface text-cherry-text shadow-soft hover:border-cherry-red/60',
-  ghost:
-    'border border-transparent bg-transparent text-cherry-text hover:border-cherry-border hover:bg-cherry-surface/70',
-  danger:
-    'border border-cherry-red bg-cherry-red/10 text-cherry-red shadow-soft hover:bg-cherry-red/20',
-};
-
-const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'h-8 rounded-md px-3 text-sm',
-  md: 'h-10 rounded-md px-4 text-base',
-  lg: 'h-12 rounded-lg px-5 text-lg',
-};
-
-export function buttonClasses(
-  variant: ButtonVariant = 'primary',
-  size: ButtonSize = 'md',
-  extra?: string
-): string {
-  return cn(
-    'inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cherry-red',
-    sizeClasses[size],
-    variantClasses[variant],
-    extra
-  );
-}
+export type ButtonVariant = VariantProps<typeof buttonVariants>['variant'];
+export type ButtonSize = VariantProps<typeof buttonVariants>['size'];

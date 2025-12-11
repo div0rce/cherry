@@ -1,60 +1,68 @@
 'use client';
 
-import type { ButtonHTMLAttributes, JSX, ReactNode } from 'react';
+import * as React from 'react';
 import Link from 'next/link';
 import type { LinkProps } from 'next/link';
-import { buttonClasses, type ButtonSize, type ButtonVariant } from './button-classes';
+import { Slot } from '@radix-ui/react-slot';
+import { type VariantProps } from 'class-variance-authority';
+import { buttonVariants, type ButtonVariant, type ButtonSize } from './button-classes';
 import { cn } from '@/lib/ui/cn';
 
-type CommonProps = {
-  children: ReactNode;
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
+}
+
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
+    return (
+      <Comp
+        className={cn(buttonVariants({ variant, size }), className)}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Button.displayName = 'Button';
+
+export interface ButtonLinkProps
+  extends Omit<LinkProps, 'disabled'>,
+    VariantProps<typeof buttonVariants> {
   className?: string;
-  fullWidth?: boolean;
-};
-
-type ButtonProps = CommonProps & ButtonHTMLAttributes<HTMLButtonElement>;
-type ButtonLinkProps = CommonProps & LinkProps;
-
-export function Button({
-  children,
-  variant = 'primary',
-  size = 'md',
-  className,
-  fullWidth = false,
-  type,
-  ...rest
-}: ButtonProps): JSX.Element {
-  return (
-    <button
-      type={type ?? 'button'}
-      className={cn(buttonClasses(variant, size), fullWidth ? 'w-full' : undefined, className)}
-      {...rest}
-    >
-      {children}
-    </button>
-  );
+  children: React.ReactNode;
+  disabled?: boolean;
 }
 
-export function ButtonLink({
-  children,
-  variant = 'primary',
-  size = 'md',
+function ButtonLink({
   className,
-  fullWidth = false,
+  variant,
+  size,
   href,
-  ...rest
-}: ButtonLinkProps): JSX.Element {
+  children,
+  disabled = false,
+  ...props
+}: ButtonLinkProps) {
   return (
-    <Link
-      href={href}
-      className={cn(buttonClasses(variant, size), fullWidth ? 'w-full' : undefined, className)}
-      {...rest}
+    <Button
+      asChild
+      variant={variant}
+      size={size}
+      className={cn(className, disabled && 'pointer-events-none opacity-50')}
     >
-      {children}
-    </Link>
+      <Link
+        href={disabled ? '#' : href}
+        aria-disabled={disabled}
+        {...(disabled && { onClick: (e) => e.preventDefault() })}
+        {...props}
+      >
+        {children}
+      </Link>
+    </Button>
   );
 }
 
-export { buttonClasses };
+export { Button, ButtonLink, buttonVariants };
+export type { ButtonVariant, ButtonSize };
