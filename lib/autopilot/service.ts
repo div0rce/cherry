@@ -13,7 +13,6 @@ import {
 } from '@prisma/client';
 import type { AutopilotDecision } from '@/lib/engine/public-types';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '@/lib/engine/public';
-import { buildSwipeIdempotencyKey } from '@/lib/ids';
 import { logInvariantViolation } from '@/lib/log';
 import { prisma } from '@/lib/prisma';
 import { resolveScanCategory } from '@/lib/scan-helpers';
@@ -38,6 +37,11 @@ import type { AutopilotPreviewOutput } from '@/lib/validation/autopilot/preview'
 import { AutopilotPreviewOutputSchema } from '@/lib/validation/autopilot/preview';
 import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
 import { confirmRecommendationSession, SessionConfirmError } from '@/lib/sessions/confirm-service';
+import {
+  buildAutopilotStateSnapshot,
+  buildAutopilotStateSnapshotHash,
+  computeEngineDecisionIdV1,
+} from '@/lib/autopilot/engineDecisionId';
 
 export type AutopilotPreviewEngineContext = {
   merchant: string;
@@ -51,6 +55,7 @@ type CardSummary = {
   nickname: string;
   issuer: string | null;
   network: string | null;
+  isCredit: boolean;
 };
 
 type EvaluatedAutopilotContext = {
@@ -58,14 +63,17 @@ type EvaluatedAutopilotContext = {
   amountCents: number;
   occurredAt: Date;
   category: AutopilotRewardCategory;
+  resolvedCategory: RewardCategory;
   decision: AutopilotDecision;
   decisionId: string;
+  engineDecisionId: string;
   status: AutopilotDecisionStatus;
   expectedBenefitCents: number;
   bucketImpact: AutopilotPreviewOutput['bucketImpact'];
   bucketName: string | null;
   recommendedCard: CardSummary | null;
   cards: CardSummary[];
+  stateSnapshotHash: string;
 };
 
 const ENGINE_TIMEOUT_MS = 1500;
@@ -112,34 +120,6 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, onTimeoutCode: st
   ]);
 }
 
-function buildDecisionId({
-  userId,
-  merchant,
-  amountCents,
-  occurredAt,
-}: {
-  userId: string;
-  merchant: string;
-  amountCents: number;
-  occurredAt: Date;
-}): string {
-  try {
-    return buildSwipeIdempotencyKey({
-      userId,
-      merchant,
-      amountCents,
-      occurredAt,
-    });
-  } catch (error) {
-    throw new AutopilotServiceError(
-      'Unable to build decision fingerprint',
-      400,
-      'INVALID_IDEMPOTENCY',
-      error instanceof Error ? error.message : 'INVALID_ID'
-    );
-  }
-}
-
 async function buildBucketImpact(
   bucketDelta: AutopilotDecision['bucketDelta'],
   userId: string
@@ -173,6 +153,13 @@ async function evaluateAutopilot(
     throw new AutopilotServiceError('Merchant is required', 400, 'INVALID_MERCHANT');
   }
 
+  const resolvedCategory: RewardCategory = await resolveScanCategory({
+    userId,
+    merchantName: merchant,
+    mccCode: null,
+    explicitCategory: input.category ?? null,
+  });
+
   const amountCents = Math.round(input.amountCents);
   if (!Number.isFinite(amountCents) || amountCents <= 0) {
     throw new AutopilotServiceError('Amount must be positive', 400, 'INVALID_AMOUNT');
@@ -182,7 +169,7 @@ async function evaluateAutopilot(
 
   const cards = await prisma.card.findMany({
     where: { userId },
-    select: { id: true, nickname: true, issuer: true, network: true },
+    select: { id: true, nickname: true, issuer: true, network: true, isCredit: true },
     orderBy: { createdAt: 'asc' },
   });
   const cardUniverseIds = cards.map((card) => card.id);
@@ -217,21 +204,50 @@ async function evaluateAutopilot(
 
   const bucketImpact = await buildBucketImpact(decision.bucketDelta, userId);
   const expectedBenefitCents = Math.max(0, decision.expectedMonetaryBenefitCents ?? 0);
-  const decisionId = buildDecisionId({ userId, merchant, amountCents, occurredAt });
+  const stateSnapshot = await buildAutopilotStateSnapshot({
+    userId,
+    category: resolvedCategory,
+    effectiveAt: occurredAt,
+    cards,
+  });
+  const stateSnapshotHash = buildAutopilotStateSnapshotHash(stateSnapshot);
+  let engineDecisionId: string;
+  try {
+    engineDecisionId = computeEngineDecisionIdV1({
+      userId,
+      source: RecommendationSource.AUTOPILOT,
+      amountCents,
+      currency: 'USD',
+      merchantName: merchant,
+      category: resolvedCategory,
+      effectiveAt: occurredAt,
+      stateSnapshotHash,
+    });
+  } catch (error) {
+    throw new AutopilotServiceError(
+      'Unable to build decision fingerprint',
+      400,
+      'INVALID_IDEMPOTENCY',
+      error instanceof Error ? error.message : 'INVALID_ID'
+    );
+  }
 
   return {
     merchant,
     amountCents,
     occurredAt,
     category: input.category,
+    resolvedCategory,
     decision,
-    decisionId,
+    decisionId: engineDecisionId,
+    engineDecisionId,
     status,
     expectedBenefitCents,
     bucketImpact,
     bucketName: bucketImpact?.name ?? null,
     recommendedCard,
     cards,
+    stateSnapshotHash,
   };
 }
 
@@ -265,11 +281,16 @@ async function findOrCreateAutopilotSession(options: {
   const cardVerdict =
     evaluation.recommendedCard === null ? CardVerdict.NO_CARD_DATA : CardVerdict.OPTIMAL;
 
+  if (!hasText(evaluation.engineDecisionId)) {
+    throw new AutopilotServiceError('Invariant: missing engineDecisionId for AUTOPILOT', 500, 'MISSING_ENGINE_DECISION_ID');
+  }
+
   const session = await prisma.recommendationSession.upsert({
     where: {
-      userId_orderToken: {
+      userId_source_engineDecisionId: {
         userId,
-        orderToken: evaluation.decisionId,
+        source: RecommendationSource.AUTOPILOT,
+        engineDecisionId: evaluation.engineDecisionId,
       },
     },
     update: {
@@ -291,9 +312,9 @@ async function findOrCreateAutopilotSession(options: {
       storeId: null,
       terminalId: null,
       orderId: null,
-      orderToken: evaluation.decisionId,
+      orderToken: evaluation.engineDecisionId,
       source: RecommendationSource.AUTOPILOT,
-      engineDecisionId: evaluation.decisionId,
+      engineDecisionId: evaluation.engineDecisionId,
       recommendedCardId: evaluation.recommendedCard?.id ?? null,
       recommendedBucketId: evaluation.decision.bucketDelta?.bucketId ?? null,
       confirmedAmountCents: null,
@@ -444,13 +465,6 @@ export async function commitAutopilotDecisionV2(
     );
   }
 
-  const resolvedCategory: RewardCategory = await resolveScanCategory({
-    userId,
-    merchantName: evaluation.merchant,
-    mccCode: null,
-    explicitCategory: input.category ?? null,
-  });
-
   const existingCommit = await prisma.autopilotCommit.findUnique({
     where: { userId_decisionId: { userId, decisionId: evaluation.decisionId } },
     include: { session: { select: { recommendedBucketId: true } } },
@@ -473,7 +487,7 @@ export async function commitAutopilotDecisionV2(
   const session = await findOrCreateAutopilotSession({
     evaluation,
     userId,
-    resolvedCategory,
+    resolvedCategory: evaluation.resolvedCategory,
   });
 
   try {
@@ -558,13 +572,6 @@ export async function commitAutopilotDecision(
     );
   }
 
-  const resolvedCategory: RewardCategory = await resolveScanCategory({
-    userId,
-    merchantName: evaluation.merchant,
-    mccCode: null,
-    explicitCategory: input.category ?? null,
-  });
-
   const cardLabel = hasText(recommendedCard.nickname)
     ? recommendedCard.nickname
     : recommendedCard.id ?? input.cardId;
@@ -632,7 +639,7 @@ export async function commitAutopilotDecision(
         userId,
         amount: evaluation.amountCents,
         merchantName: evaluation.merchant,
-        resolvedCategory,
+        resolvedCategory: evaluation.resolvedCategory,
         bucketId: runtimeBucket?.id ?? evaluation.decision.bucketDelta?.bucketId ?? null,
         bucketName: runtimeBucket?.name ?? evaluation.bucketName ?? null,
         bucketPeriod: runtimeBucket?.period ?? null,

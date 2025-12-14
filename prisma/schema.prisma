@@ -412,6 +412,7 @@ model RecommendationSession {
   autopilotCommits AutopilotCommit[]
 
   @@unique([userId, orderToken], name: "userId_orderToken", map: "user_order_token_unique")
+  @@unique([userId, source, engineDecisionId], map: "RecommendationSession_userId_source_engineDecisionId_key")
   @@index([userId, engineDecisionId])
   @@index([userId])
   @@index([recommendedCardId])
