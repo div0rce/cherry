@@ -31,12 +31,13 @@ function mockModule(modulePath: string, exports: unknown) {
 
 function resetModules() {
   const targets = [
-    '@/lib/autopilot/service',
-    '@/lib/engine/public',
-    '@/lib/prisma',
-    '@/lib/scan-helpers',
-    '@/lib/log',
-    '@/lib/metrics/autopilot',
+  '@/lib/autopilot/service',
+  '@/lib/autopilot/engineDecisionId',
+  '@/lib/engine/public',
+  '@/lib/prisma',
+  '@/lib/scan-helpers',
+  '@/lib/log',
+  '@/lib/metrics/autopilot',
     '@/lib/sessions/confirm-service',
     '@/lib/buckets/ensure-fresh',
   ];
@@ -162,6 +163,113 @@ async function runDeterminismSuite() {
 
   const currencyNormalized = computeId({ currency: 'usd' });
   assert.equal(currencyNormalized, id1, 'Currency casing should normalize');
+}
+
+async function runSemanticStabilityAcrossRowIds() {
+  resetModules();
+  let bucketCall = 0;
+
+  mockModule(requireModule.resolve('@/lib/prisma'), {
+    prisma: {
+      rewardRule: {
+        findMany: async (args: { where: { cardId: { in: string[] } } }) =>
+          args.where.cardId.in.flatMap((cardId) => [
+            {
+              cardId,
+              category: RewardCategory.DINING,
+              multiplier: 3,
+              cashbackPercent: null,
+              capAmount: null,
+            },
+            {
+              cardId,
+              category: RewardCategory.OTHER,
+              multiplier: 1,
+              cashbackPercent: null,
+              capAmount: null,
+            },
+          ]),
+      },
+      bucket: {
+        findMany: async () => {
+          bucketCall += 1;
+          return [
+            {
+              id: `bucket-${bucketCall}`,
+              userId: 'user-1',
+              name: 'Dining',
+              period: BucketPeriod.MONTHLY,
+              budgetAmount: 100_000,
+              currentAmount: 80_000,
+              spentCents: 20_000,
+              strictMode: true,
+              category: RewardCategory.DINING,
+              periodStart: new Date('2024-01-01T00:00:00.000Z'),
+              periodEnd: new Date('2024-02-01T00:00:00.000Z'),
+              lastResetAt: null,
+              createdAt: new Date('2023-12-01T00:00:00.000Z'),
+              updatedAt: new Date('2023-12-01T00:00:00.000Z'),
+            },
+          ];
+        },
+      },
+      user: {
+        findUnique: async () => ({
+          engineObjectiveProfile: 'BALANCED',
+          engineObjectiveWeights: null,
+        }),
+      },
+      card: {
+        findMany: async () => [],
+      },
+    },
+  });
+
+  const {
+    buildAutopilotStateSnapshot,
+    buildAutopilotStateSnapshotHash: buildHash,
+    computeEngineDecisionIdV1: computeIdV1,
+  } = requireModule('@/lib/autopilot/engineDecisionId') as typeof import('@/lib/autopilot/engineDecisionId');
+
+  const baseParams = {
+    userId: 'user-1',
+    category: RewardCategory.DINING,
+    effectiveAt: new Date('2024-01-01T12:00:30.000Z'),
+  };
+
+  const cardsA = [
+    { id: 'card-old', nickname: 'Alpha', issuer: 'Issuer A', network: 'VISA', isCredit: true },
+  ];
+  const cardsB = [
+    { id: 'card-new', nickname: 'Alpha', issuer: 'Issuer A', network: 'VISA', isCredit: true },
+  ];
+
+  const snapshotA = await buildAutopilotStateSnapshot({ ...baseParams, cards: cardsA });
+  const snapshotB = await buildAutopilotStateSnapshot({ ...baseParams, cards: cardsB });
+
+  const idA = computeIdV1({
+    userId: 'user-1',
+    source: RecommendationSource.AUTOPILOT,
+    amountCents: 25_00,
+    currency: 'usd',
+    merchantName: 'Test Shop',
+    category: RewardCategory.DINING,
+    effectiveAt: baseParams.effectiveAt,
+    stateSnapshotHash: buildHash(snapshotA),
+  });
+
+  const idB = computeIdV1({
+    userId: 'user-1',
+    source: RecommendationSource.AUTOPILOT,
+    amountCents: 25_00,
+    currency: 'USD',
+    merchantName: 'Test Shop',
+    category: RewardCategory.DINING,
+    effectiveAt: baseParams.effectiveAt,
+    stateSnapshotHash: buildHash(snapshotB),
+  });
+
+  assert.equal(idA, idB, 'Semantic equivalence across row-id changes should not change the id');
 }
 
 async function runUpsertIdempotencySuite() {
@@ -357,6 +465,7 @@ async function runUpsertIdempotencySuite() {
 
 async function run() {
   await runDeterminismSuite();
+  await runSemanticStabilityAcrossRowIds();
   await runUpsertIdempotencySuite();
   process.stdout.write('autopilot-idempotency-key: ok\n');
 }

@@ -232,6 +232,14 @@ async function evaluateAutopilot(
     );
   }
 
+  if (!engineDecisionId.startsWith('edid_v1_')) {
+    logInvariantViolation({
+      surface: 'autopilot',
+      detail: 'Unexpected engineDecisionId prefix',
+      data: { engineDecisionId },
+    });
+  }
+
   return {
     merchant,
     amountCents,
