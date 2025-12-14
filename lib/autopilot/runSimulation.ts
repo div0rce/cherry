@@ -1,19 +1,15 @@
 import type { AutopilotPurchaseSummary } from '@/components/autopilot/AutopilotShell';
-import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 import type { AutopilotRewardCategory } from '@/lib/autopilot/types';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
 } from '@/lib/validation/autopilot/preview';
-import { formatCurrency } from '@/lib/formatCurrency';
-
-const AUTOPILOT_UI_SPEC = getAutopilotUiSpec();
 
 export type SimulationCardChoice = {
   id: string;
   name: string;
   sentence: string;
-  label: 'Recommended' | 'Alternate card' | 'Use caution';
+  label: string;
   labelTone: 'positive' | 'neutral' | 'negative';
 };
 
@@ -60,8 +56,6 @@ export type AutopilotSimulationResult = {
     errorTimestampFallback: string;
     sectionSimulationEyebrow: string;
     unnamedMerchantFallback: string;
-    recommendationSectionTitle: string;
-    alternativeSectionTitle: string;
     actionComingSoonNote: string;
     simulationIssueTitle: string;
     showingPreviousResultNote: string;
@@ -69,19 +63,13 @@ export type AutopilotSimulationResult = {
   };
 };
 
-const categoryLabelMap: Record<AutopilotPurchaseSummary['category'], string> =
-  AUTOPILOT_UI_SPEC.form.categoryOptions.reduce(
-    (acc, option) => ({ ...acc, [option.value]: option.label }),
-    {} as Record<AutopilotPurchaseSummary['category'], string>
-  );
-
-const categoryRewardMap: Record<
-  AutopilotPurchaseSummary['category'],
-  AutopilotRewardCategory
-> = AUTOPILOT_UI_SPEC.form.categoryOptions.reduce(
-  (acc, option) => ({ ...acc, [option.value]: option.rewardCategory }),
-  {} as Record<AutopilotPurchaseSummary['category'], AutopilotRewardCategory>
-);
+const CATEGORY_REWARD_MAP: Record<AutopilotPurchaseSummary['category'], AutopilotRewardCategory> = {
+  dining: 'DINING',
+  groceries: 'GROCERIES',
+  travel: 'TRAVEL',
+  gas: 'GAS',
+  other: 'OTHER',
+};
 
 function dollarsToCents(amount: number): number {
   return Math.round(amount * 100);
@@ -96,10 +84,7 @@ function clampPercentage(value: number): number {
   return Math.max(0, Math.min(100, Number(value.toFixed(1))));
 }
 
-function computeRewardStrength(
-  benefitCents: number,
-  amountCents: number
-): 1 | 2 | 3 | 4 {
+function computeRewardStrength(benefitCents: number, amountCents: number): 1 | 2 | 3 | 4 {
   if (!Number.isFinite(amountCents) || amountCents <= 0) return 1;
   const ratio = benefitCents / amountCents;
   if (ratio > 0.03) return 4;
@@ -108,26 +93,15 @@ function computeRewardStrength(
   return 1;
 }
 
-function rewardStrengthLabelFor(strength: 1 | 2 | 3 | 4): string {
-  if (strength === 4) return 'Strong rewards';
-  if (strength === 3) return 'Good rewards';
-  if (strength === 2) return 'Moderate rewards';
-  return 'Low rewards';
-}
-
-function timingLabelFor(value: AutopilotPurchaseSummary['timing']): string {
-  const option = AUTOPILOT_UI_SPEC.form.timingOptions.find((entry) => entry.value === value);
-  return option?.label ?? AUTOPILOT_UI_SPEC.form.timingOptions[0]?.label ?? 'Now';
-}
-
 function ensureImpactSegments(
-  input: AutopilotSimulationResult['impactSegments']
+  input: AutopilotSimulationResult['impactSegments'],
+  fallbackSegments: AutopilotPreviewOutput['ui']['impact']['fallbackSegments']
 ): AutopilotSimulationResult['impactSegments'] {
   if (input.length === 3) return input;
   const fallback: AutopilotSimulationResult['impactSegments'] = [
-    { label: 'Bucket used', percentage: 30, color: 'bg-[#FECACA]' },
-    { label: 'Bucket remaining', percentage: 50, color: 'bg-[#DCFCE7]' },
-    { label: 'Everything else', percentage: 20, color: 'bg-[#E2E8F0]' },
+    { label: fallbackSegments.usedLabel, percentage: 30, color: 'bg-[#FECACA]' },
+    { label: fallbackSegments.remainingLabel, percentage: 50, color: 'bg-[#DCFCE7]' },
+    { label: fallbackSegments.otherLabel, percentage: 20, color: 'bg-[#E2E8F0]' },
   ];
   const padded = [...input];
   while (padded.length < 3) {
@@ -140,31 +114,41 @@ function ensureImpactSegments(
   return padded.slice(0, 3);
 }
 
-function buildImpactSegments(
-  preview: AutopilotPreviewOutput,
-  fallbackBucketName: string
-): AutopilotSimulationResult['impactSegments'] {
-  const bucketName = preview.bucketImpact?.name ?? fallbackBucketName;
+function buildImpactSegments(preview: AutopilotPreviewOutput): AutopilotSimulationResult['impactSegments'] {
+  const bucketName = preview.bucketImpact?.name ?? null;
   const usedCents = Math.max(preview.bucketImpact?.spentCents ?? 0, 0);
   const remainingCents = Math.max(preview.bucketImpact?.remainingCents ?? 0, 0);
   const total = usedCents + remainingCents;
+  const bucketUsedLabel = bucketName
+    ? preview.ui.impact.bucketUsedTemplate.replace('${bucketName}', bucketName)
+    : preview.ui.impact.fallbackSegments.usedLabel;
+  const bucketRemainingLabel = bucketName
+    ? preview.ui.impact.bucketRemainingTemplate.replace('${bucketName}', bucketName)
+    : preview.ui.impact.fallbackSegments.remainingLabel;
+  const otherLabel = preview.ui.impact.fallbackSegments.otherLabel;
 
   if (total > 0) {
     const usedPct = clampPercentage((usedCents / total) * 100);
     const remainingPct = clampPercentage((remainingCents / total) * 100);
     const otherPct = clampPercentage(100 - usedPct - remainingPct);
-    return ensureImpactSegments([
-      { label: `${bucketName} used`, percentage: usedPct, color: 'bg-[#FECACA]' },
-      { label: `${bucketName} remaining`, percentage: remainingPct, color: 'bg-[#DCFCE7]' },
-      { label: 'Everything else', percentage: otherPct, color: 'bg-[#E2E8F0]' },
-    ]);
+    return ensureImpactSegments(
+      [
+        { label: bucketUsedLabel, percentage: usedPct, color: 'bg-[#FECACA]' },
+        { label: bucketRemainingLabel, percentage: remainingPct, color: 'bg-[#DCFCE7]' },
+        { label: otherLabel, percentage: otherPct, color: 'bg-[#E2E8F0]' },
+      ],
+      preview.ui.impact.fallbackSegments
+    );
   }
 
-  return ensureImpactSegments([
-    { label: `${bucketName} used`, percentage: 30, color: 'bg-[#FECACA]' },
-    { label: `${bucketName} remaining`, percentage: 50, color: 'bg-[#DCFCE7]' },
-    { label: 'Everything else', percentage: 20, color: 'bg-[#E2E8F0]' },
-  ]);
+  return ensureImpactSegments(
+    [
+      { label: bucketUsedLabel, percentage: 30, color: 'bg-[#FECACA]' },
+      { label: bucketRemainingLabel, percentage: 50, color: 'bg-[#DCFCE7]' },
+      { label: otherLabel, percentage: 20, color: 'bg-[#E2E8F0]' },
+    ],
+    preview.ui.impact.fallbackSegments
+  );
 }
 
 function mapStatusToState(preview: AutopilotPreviewOutput): 'recommended' | 'warning' {
@@ -174,16 +158,8 @@ function mapStatusToState(preview: AutopilotPreviewOutput): 'recommended' | 'war
   return preview.status === 'ok' && !hasBudgetPressure && !hasWarnings ? 'recommended' : 'warning';
 }
 
-function buildImpactNotes(
-  preview: AutopilotPreviewOutput,
-  bucketLabel: string
-): string[] {
+function buildImpactNotes(preview: AutopilotPreviewOutput): string[] {
   const impactNotes: string[] = [];
-  if (preview.bucketImpact?.remainingCents != null) {
-    impactNotes.push(
-      `Remaining after swipe: ${formatCurrency(preview.bucketImpact.remainingCents / 100)} in ${bucketLabel}.`
-    );
-  }
   impactNotes.push(...preview.explanation.secondary);
   impactNotes.push(...preview.explanation.warnings);
   return impactNotes;
@@ -194,52 +170,62 @@ function buildSimulationCards(
   state: AutopilotSimulationResult['state']
 ): SimulationCardChoice[] {
   const recommendedCard = preview.recommendedCard;
-  const primaryName = recommendedCard?.label ?? 'Your usual card';
+  const primaryName = recommendedCard?.label ?? preview.ui.cardLabels.usualCardFallback;
   const primarySentence =
     preview.explanation.primary?.trim().length > 0
       ? preview.explanation.primary
-      : `Use ${primaryName} for this purchase.`;
+      : preview.ui.ctas.primaryTemplate.replace('${cardName}', primaryName);
 
   const cards: SimulationCardChoice[] = [
     {
       id: recommendedCard?.id ?? 'autopilot-recommendation',
       name: primaryName,
       sentence: primarySentence,
-      label: state === 'recommended' ? 'Recommended' : 'Use caution',
+      label: state === 'recommended' ? preview.ui.cardLabels.recommended : preview.ui.cardLabels.caution,
       labelTone: state === 'recommended' ? 'positive' : 'negative',
     },
   ];
 
-  const secondarySentence =
-    preview.explanation.secondary[0] ?? 'Any alternate card keeps your month similar.';
+  const secondarySentence = preview.explanation.secondary[0] ?? '';
   cards.push({
     id: 'alternate-card',
-    name: 'Alternate card',
+    name: preview.ui.cardLabels.alternate,
     sentence: secondarySentence,
-    label: 'Alternate card',
+    label: preview.ui.cardLabels.alternate,
     labelTone: 'neutral',
   });
 
   return cards;
 }
 
-function buildSafetyBadge(state: AutopilotSimulationResult['state']): {
+function buildSafetyBadge(
+  tone: AutopilotPreviewOutput['ui']['badge']['tone'],
+  label: string
+): {
   safetyBadgeClass: string;
   safetyBadgeDotClass: string;
   safetyBadgeLabel: string;
 } {
-  if (state === 'warning') {
+  if (tone === 'negative') {
     return {
       safetyBadgeClass: 'bg-[#FEF3C7] text-[#92400E]',
       safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#F59E0B]',
-      safetyBadgeLabel: 'Check bucket pressure before swiping.',
+      safetyBadgeLabel: label,
+    };
+  }
+
+  if (tone === 'neutral') {
+    return {
+      safetyBadgeClass: 'bg-[#E2E8F0] text-[#0F172A]',
+      safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#64748B]',
+      safetyBadgeLabel: label,
     };
   }
 
   return {
     safetyBadgeClass: 'bg-[#F0FDF4] text-[#15803D]',
     safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#22C55E]',
-    safetyBadgeLabel: 'Safe, simulated only — no charges are made.',
+    safetyBadgeLabel: label,
   };
 }
 
@@ -247,41 +233,27 @@ function mapPreviewToSimulationResult(
   preview: AutopilotPreviewOutput,
   summary: AutopilotPurchaseSummary
 ): AutopilotSimulationResult {
-  const categoryName = categoryLabelMap[summary.category];
-  const bucketLabel = preview.bucketImpact?.name ?? `${categoryName} bucket`;
+  const categoryLabel = String(summary.category);
   const state = mapStatusToState(preview);
   const rewardStrength = computeRewardStrength(preview.expectedBenefitCents, preview.amountCents);
-  const rewardStrengthLabel = rewardStrengthLabelFor(rewardStrength);
-  const impactSegments = buildImpactSegments(preview, bucketLabel);
-  const impactNotes = buildImpactNotes(preview, bucketLabel);
+  const rewardStrengthLabel = preview.ui.rewardStrength.label;
+  const impactSegments = buildImpactSegments(preview);
+  const impactNotes = buildImpactNotes(preview);
   const cards = buildSimulationCards(preview, state);
 
-  const monthImpactSummaryParts: string[] = [];
-  if (preview.bucketImpact?.remainingCents != null) {
-    monthImpactSummaryParts.push(
-      `Remaining after swipe: ${formatCurrency(preview.bucketImpact.remainingCents / 100)} in ${bucketLabel}.`
-    );
-  } else {
-    monthImpactSummaryParts.push('No bucket impact reported for this simulation.');
-  }
-  if (preview.expectedBenefitCents > 0) {
-    monthImpactSummaryParts.push(
-      `Estimated +${formatCurrency(preview.expectedBenefitCents / 100)} vs next best card.`
-    );
-  }
-
-  const safetyBadge = buildSafetyBadge(state);
+  const safetyBadge = buildSafetyBadge(preview.ui.badge.tone, preview.ui.badge.label);
   const recommendationSummary =
     preview.explanation.primary?.trim().length > 0
       ? preview.explanation.primary
-      : `Use ${cards[0]?.name ?? 'your usual card'} for this purchase.`;
+      : preview.ui.ctas.primaryTemplate.replace(
+          '${cardName}',
+          cards[0]?.name ?? preview.ui.cardLabels.usualCardFallback
+        );
 
-  const warningNote = preview.explanation.warnings.join(' ');
+  const warningNote = preview.explanation.warnings.join(' ').trim();
 
   const riskBanner =
-    state === 'warning'
-      ? preview.explanation.warnings[0] ?? 'This purchase may stress at least one bucket.'
-      : null;
+    state === 'warning' ? (preview.explanation.warnings[0] ?? null) : null;
 
   return {
     state,
@@ -289,43 +261,29 @@ function mapPreviewToSimulationResult(
     monthImpact: {
       extraCash: Number((preview.expectedBenefitCents / 100).toFixed(2)),
       feesAvoided: 0,
-      riskNote: warningNote !== '' ? warningNote : 'Buckets stay balanced for this simulated swipe.',
+      riskNote: warningNote,
     },
-    impactSegments: ensureImpactSegments(impactSegments),
+    impactSegments: ensureImpactSegments(impactSegments, preview.ui.impact.fallbackSegments),
     impactNotes,
     rewardStrength,
-    categoryLabel: `${categoryName} bucket`,
-    timingLabel: timingLabelFor(summary.timing),
-    recommendationSectionLabel: 'Autopilot recommendation',
+    categoryLabel,
+    timingLabel: String(summary.timing),
+    recommendationSectionLabel: preview.ui.sections.recommendation,
     recommendationSummary,
     rewardStrengthLabel,
-    alternativeSectionLabel: 'Other ways to pay',
-    monthImpactTitle: 'Month impact',
-    monthImpactSummary: monthImpactSummaryParts.join(' '),
+    alternativeSectionLabel: preview.ui.sections.alternatives,
+    monthImpactTitle: preview.ui.sections.monthImpactTitle,
+    monthImpactSummary: preview.explanation.secondary.join(' ').trim(),
     safetyBadgeClass: safetyBadge.safetyBadgeClass,
     safetyBadgeDotClass: safetyBadge.safetyBadgeDotClass,
     safetyBadgeLabel: safetyBadge.safetyBadgeLabel,
-    ctaPrimary: `Use ${cards[0]?.name ?? 'your usual card'} for this purchase`,
-    ctaSecondary: 'View bucket impact',
+    ctaPrimary: preview.ui.ctas.primaryTemplate.replace(
+      '${cardName}',
+      cards[0]?.name ?? preview.ui.cardLabels.usualCardFallback
+    ),
+    ctaSecondary: preview.ui.ctas.secondary,
     ...(riskBanner !== null ? { riskBanner } : {}),
-    ui: {
-      idleTitle: AUTOPILOT_UI_SPEC.panel.idleTitle,
-      idleBody: AUTOPILOT_UI_SPEC.panel.idleBody,
-      loadingTitle: AUTOPILOT_UI_SPEC.panel.loadingTitle,
-      loadingBody: AUTOPILOT_UI_SPEC.panel.loadingBody,
-      loadingShimmerLines: AUTOPILOT_UI_SPEC.panel.loadingShimmerLines,
-      errorTitle: AUTOPILOT_UI_SPEC.panel.errorTitle,
-      errorBody: AUTOPILOT_UI_SPEC.panel.errorBody,
-      errorTimestampFallback: AUTOPILOT_UI_SPEC.panel.errorTimestampFallback,
-      sectionSimulationEyebrow: AUTOPILOT_UI_SPEC.panel.sectionSimulationEyebrow,
-      unnamedMerchantFallback: AUTOPILOT_UI_SPEC.panel.unnamedMerchantFallback,
-      recommendationSectionTitle: AUTOPILOT_UI_SPEC.panel.recommendationSectionTitle,
-      alternativeSectionTitle: AUTOPILOT_UI_SPEC.panel.alternativeSectionTitle,
-      actionComingSoonNote: AUTOPILOT_UI_SPEC.panel.actionComingSoonNote,
-      simulationIssueTitle: AUTOPILOT_UI_SPEC.panel.simulationIssueTitle,
-      showingPreviousResultNote: AUTOPILOT_UI_SPEC.panel.showingPreviousResultNote,
-      safetyLabel: AUTOPILOT_UI_SPEC.panel.safetyLabel,
-    },
+    ui: preview.ui.panel,
   };
 }
 
@@ -345,7 +303,7 @@ function buildPreviewPayload(summary: AutopilotPurchaseSummary) {
     merchant: summary.merchant.trim(),
     amountCents: dollarsToCents(summary.amount),
     occurredAt: new Date().toISOString(),
-    category: categoryRewardMap[summary.category],
+    category: CATEGORY_REWARD_MAP[summary.category],
   };
 }
 
@@ -356,7 +314,7 @@ export async function runSimulation(
   // Adapter: UI-only entry point. Maps AutopilotPurchaseSummary → /api/autopilot/preview → AutopilotSimulationResult. See docs/autopilot-engine-adapter.md.
   if (!validateSummary(summary)) {
     throw {
-      message: 'Invalid simulation summary',
+      message: 'INVALID_SIMULATION_SUMMARY',
       errorTimestamp: new Date().toISOString(),
     };
   }
@@ -374,17 +332,15 @@ export async function runSimulation(
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    throw {
-      message:
-        error instanceof Error
-          ? error.message
-          : 'Unable to reach Autopilot preview endpoint',
-      errorTimestamp: new Date().toISOString(),
-    };
+    const message =
+      error instanceof Error && typeof error.message === 'string' && error.message.length > 0
+        ? error.message
+        : 'PREVIEW_REQUEST_FAILED';
+    throw { message, errorTimestamp: new Date().toISOString() };
   }
 
   if (!response.ok) {
-    let message = 'Autopilot preview failed';
+    let message: string | undefined;
     let code: string | undefined;
     try {
       const errorBody: unknown = await response.json();
@@ -399,8 +355,12 @@ export async function runSimulation(
     } catch {
       // ignore parse errors and fall back to generic message
     }
+    const fallbackMessage =
+      typeof response.statusText === 'string' && response.statusText.length > 0
+        ? response.statusText
+        : 'PREVIEW_ERROR';
     const errorPayload: { message: string; errorTimestamp: string; code?: string } = {
-      message,
+      message: message ?? fallbackMessage,
       errorTimestamp: new Date().toISOString(),
     };
     if (code !== undefined && code !== '') {
@@ -413,7 +373,7 @@ export async function runSimulation(
   const parsed = AutopilotPreviewOutputSchema.safeParse(raw);
   if (!parsed.success) {
     throw {
-      message: 'Autopilot returned an invalid response',
+      message: 'PREVIEW_RESPONSE_INVALID',
       errorTimestamp: new Date().toISOString(),
     };
   }
