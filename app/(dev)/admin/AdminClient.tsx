@@ -202,8 +202,8 @@ export default function AdminClient(): JSX.Element {
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Seed demo data</p>
-            <p className="text-xs text-cloud-400">
+            <p className="text-sm font-semibold text-[#f8fafc]">Seed demo data</p>
+            <p className="text-xs text-[#a5b0d0]">
               Populate cards, buckets, sessions, and sample Cherry Points for this user.
             </p>
           </div>
@@ -228,8 +228,8 @@ export default function AdminClient(): JSX.Element {
 
         <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Seed cards &amp; buckets</p>
-            <p className="text-xs text-cloud-400">
+            <p className="text-sm font-semibold text-[#f8fafc]">Seed cards &amp; buckets</p>
+            <p className="text-xs text-[#a5b0d0]">
               Populate only cards and buckets for this user. Sessions and points remain untouched.
             </p>
           </div>
@@ -259,8 +259,8 @@ export default function AdminClient(): JSX.Element {
 
         <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Clear user data</p>
-            <p className="text-xs text-cloud-400">
+            <p className="text-sm font-semibold text-[#f8fafc]">Clear user data</p>
+            <p className="text-xs text-[#a5b0d0]">
               Delete cards, buckets, and simulations for the current user.
             </p>
           </div>
@@ -276,7 +276,7 @@ export default function AdminClient(): JSX.Element {
                 )
               }
               disabled={isClearingUser}
-              variant="danger"
+              variant="destructive"
             >
               {isClearingUser ? 'Clearing…' : 'Clear user data'}
             </Button>
@@ -291,8 +291,8 @@ export default function AdminClient(): JSX.Element {
 
         <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Clear Cherry Session Diagnostics</p>
-            <p className="text-xs text-cloud-400">
+            <p className="text-sm font-semibold text-[#f8fafc]">Clear Cherry Session Diagnostics</p>
+            <p className="text-xs text-[#a5b0d0]">
               Delete all Cherry recommendation sessions and their points for this user. Sandbox only.
             </p>
           </div>
@@ -308,7 +308,7 @@ export default function AdminClient(): JSX.Element {
                 )
               }
               disabled={isClearingSessions}
-              variant="danger"
+              variant="destructive"
             >
               {isClearingSessions ? 'Clearing…' : 'Clear sessions + diagnostics'}
             </Button>
@@ -323,8 +323,8 @@ export default function AdminClient(): JSX.Element {
 
         <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Clear Cherry Points Ledger</p>
-            <p className="text-xs text-cloud-400">
+            <p className="text-sm font-semibold text-[#f8fafc]">Clear Cherry Points Ledger</p>
+            <p className="text-xs text-[#a5b0d0]">
               Delete all CherryPointLedger entries for this user. Does not remove sessions.
             </p>
           </div>
@@ -340,7 +340,7 @@ export default function AdminClient(): JSX.Element {
                 )
               }
               disabled={isClearingLedger}
-              variant="danger"
+              variant="destructive"
             >
               {isClearingLedger ? 'Clearing…' : 'Clear points ledger'}
             </Button>
@@ -355,8 +355,8 @@ export default function AdminClient(): JSX.Element {
 
         <Card tone="base" padding="md" className="md:col-span-2 space-y-3">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Bank ingest debug</p>
-            <p className="text-xs text-cloud-400">
+            <p className="text-sm font-semibold text-[#f8fafc]">Bank ingest debug</p>
+            <p className="text-xs text-[#a5b0d0]">
               Paste provider-shaped transactions and upsert into BankTransaction. Use this to test
               history/statements without the bank simulator.
             </p>
@@ -364,7 +364,7 @@ export default function AdminClient(): JSX.Element {
           <textarea
             value={bankPayload}
             onChange={(e) => setBankPayload(e.target.value)}
-            className="min-h-[140px] rounded-lg border border-ink-700/60 bg-ink-950 px-3 py-2 text-xs text-cloud-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cherry-400"
+            className="min-h-[140px] rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#05060f] px-3 py-2 text-xs text-[#eef2fb] focus-visible:outline-[2px_solid_#ff6b8a] focus-visible:outline-offset-2"
             spellCheck={false}
           />
           <div className="flex flex-wrap items-center gap-2">
@@ -388,7 +388,7 @@ export default function AdminClient(): JSX.Element {
             ) : null}
           </div>
           {hasText(bankDump) && (
-            <pre className="max-h-48 overflow-auto rounded-lg border border-ink-700/60 bg-ink-950 px-3 py-2 text-[11px] leading-relaxed text-cloud-200">
+            <pre className="max-h-48 overflow-auto rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#05060f] px-3 py-2 text-[11px] leading-relaxed text-[#dbe4ff]">
 {bankDump}
             </pre>
           )}

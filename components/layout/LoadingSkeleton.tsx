@@ -12,7 +12,7 @@ export function LoadingSkeleton({ lines = 3, className }: LoadingSkeletonProps):
       {Array.from({ length: lines }).map((_, index) => (
         <div
           key={index}
-          className="h-4 rounded-md border border-cherry-border/60 bg-cherry-surface/80 shadow-sm animate-pulse"
+          className="h-4 rounded-md border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.8)] shadow-sm animate-pulse"
         />
       ))}
     </div>

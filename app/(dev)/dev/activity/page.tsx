@@ -20,7 +20,7 @@ export default async function DevActivityPage(): Promise<JSX.Element> {
     <main className="flex-1 overflow-y-auto px-6 py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="space-y-1">
-          <p className="text-xs uppercase tracking-label text-pink-200">Dev Tools</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Dev Tools</p>
           <h1 className="text-3xl font-semibold text-white">Activity Inspector</h1>
           <p className="text-slate-300">
             Unified timeline of real, simulated, and points events for debugging Cherry&apos;s event

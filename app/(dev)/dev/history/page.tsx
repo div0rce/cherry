@@ -79,8 +79,8 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full table-fixed text-sm text-cloud-50">
-              <thead className="text-xs uppercase tracking-label text-cloud-300">
+            <table className="min-w-full table-fixed text-sm text-[#f8fafc]">
+              <thead className="text-xs uppercase tracking-[0.2em] text-[#c3cce5]">
                 <tr>
                   <th className="py-2 pr-4 text-left">When</th>
                   <th className="py-2 pr-4 text-left">Merchant</th>
@@ -90,28 +90,28 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
                   <th className="py-2 text-right">Source</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink-800/60">
+              <tbody className="divide-y divide-[rgba(17,26,47,0.6)]">
                 {rows.map((row) => {
                   const amountCents = row.cashDeltaCents ?? Math.round((row.amount ?? 0) * 100);
                   const direction = amountCents < 0 ? 'Debit' : 'Credit';
                   const amountClass =
-                    amountCents < 0 ? 'text-rose-200 font-semibold' : 'text-mint-200 font-semibold';
+                    amountCents < 0 ? 'text-rose-200 font-semibold' : 'text-[#bff0db] font-semibold';
                   return (
                     <tr key={row.id}>
-                      <td className="py-2 pr-4 text-xs text-cloud-400">
+                      <td className="py-2 pr-4 text-xs text-[#a5b0d0]">
                         {formatTimestamp(new Date(row.occurredAt))}
                       </td>
                       <td className="py-2 pr-4">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-cloud-50">
+                          <span className="font-semibold text-[#f8fafc]">
                             {row.merchantName ?? 'Unknown merchant'}
                           </span>
-                          <span className="text-xs text-cloud-400">
+                          <span className="text-xs text-[#a5b0d0]">
                             {isValidNumber(row.mcc) ? `MCC ${row.mcc}` : 'MCC unknown'}
                           </span>
                         </div>
                       </td>
-                      <td className="py-2 pr-4 text-xs text-cloud-300">
+                      <td className="py-2 pr-4 text-xs text-[#c3cce5]">
                         {hasText(row.cardName)
                           ? row.cardName
                           : hasText(row.cardBrand)
@@ -125,15 +125,15 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
                         </span>
                       </td>
                       <td className="py-2 pr-4 text-right">
-                        <span className="text-xs text-cloud-400">{direction}</span>
+                        <span className="text-xs text-[#a5b0d0]">{direction}</span>
                       </td>
                       <td className="py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-2 py-0.5 text-[10px] uppercase tracking-wide text-cloud-200">
+                          <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#dbe4ff]">
                             {(row.source ?? 'unknown').replace('_', ' ').toLowerCase()}
                           </span>
                           {process.env.NODE_ENV !== 'production' && hasText(row.providerSource) ? (
-                            <span className="rounded-full border border-ink-700/60 bg-cherry-500/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-cherry-100">
+                            <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(255,77,109,0.15)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#ffe6ee]">
                               {row.providerSource}
                             </span>
                           ) : null}

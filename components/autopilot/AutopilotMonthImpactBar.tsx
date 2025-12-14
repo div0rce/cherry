@@ -6,17 +6,21 @@ type Segment = {
   color: string;
 };
 
-const segments: Segment[] = [
-  { label: "Essentials", percentage: 45, color: "bg-[#C21733]" },
-  { label: "Lifestyle", percentage: 30, color: "bg-[#E53E5A]" },
-  { label: "Other", percentage: 25, color: "bg-[#F97373]" },
+const defaultSegments: Segment[] = [
+  { label: "Essentials", percentage: 45, color: "bg-[#BBF7D0]" },
+  { label: "Lifestyle", percentage: 30, color: "bg-[#FED7E2]" },
+  { label: "Other", percentage: 25, color: "bg-[#E5E7EB]" },
 ];
 
-export function AutopilotMonthImpactBar(): JSX.Element {
+export function AutopilotMonthImpactBar({
+  segments = defaultSegments,
+}: {
+  segments?: Segment[];
+}): JSX.Element {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E2E8F0]">
-        <div className="flex h-full w-full">
+        <div className="flex h-full">
           {segments.map((segment) => (
             <div
               key={segment.label}
@@ -27,13 +31,10 @@ export function AutopilotMonthImpactBar(): JSX.Element {
           ))}
         </div>
       </div>
-      <div className="flex gap-4 text-[11px] text-[#94A3B8]">
-        {segments.map((segment) => (
-          <div key={segment.label} className="flex items-center gap-1">
-            <span className={`h-2 w-2 rounded-full ${segment.color}`} />
-            <span>{segment.label}</span>
-          </div>
-        ))}
+      <div className="flex items-center justify-between text-[10px] text-[#94A3B8]">
+        <span>Essentials · 62% remaining</span>
+        <span>Lifestyle · 34% remaining</span>
+        <span>Other · stable</span>
       </div>
     </div>
   );

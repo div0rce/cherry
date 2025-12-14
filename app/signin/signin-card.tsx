@@ -72,7 +72,7 @@ export function SignInCard({
   return (
     <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-2xl backdrop-blur">
       <div className="space-y-1">
-        <p className="text-xs uppercase tracking-label text-pink-200">Welcome back</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Welcome back</p>
         <h2 className="text-2xl font-semibold text-white">Sign in to Cherry</h2>
         <p className="text-sm text-slate-300">Continue to your cards and buckets.</p>
       </div>
@@ -152,7 +152,7 @@ function SocialButtons({ callbackUrl }: { callbackUrl: string }) {
     <div className="space-y-2">
       <div className="flex items-center gap-3">
         <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs uppercase tracking-label text-slate-500">
+        <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
           or continue with
         </span>
         <div className="h-px flex-1 bg-white/10" />

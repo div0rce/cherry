@@ -35,7 +35,7 @@ export function LoadingMetricGrid({
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, idx) => (
-        <Skeleton key={idx} className="h-24 w-full rounded-2xl border border-ink-700/50" />
+        <Skeleton key={idx} className="h-24 w-full rounded-2xl border border-[rgba(27,38,69,0.5)]" />
       ))}
     </div>
   );

@@ -67,12 +67,12 @@ export default function GuardrailMonitorPage(): JSX.Element {
       <Panel tone="muted" title="Guardrail catalog" description="Codes, severity, and descriptions.">
         <div className="grid gap-3 md:grid-cols-2">
           {GUARDRails.map((guardrail) => (
-            <Card key={guardrail.code} tone="base" padding="md" className="border border-ink-700/60">
-              <p className="text-sm font-semibold text-cloud-50">{guardrail.code}</p>
-              <p className="text-xs text-cloud-300">
+            <Card key={guardrail.code} tone="base" padding="md" className="border border-[rgba(27,38,69,0.6)]">
+              <p className="text-sm font-semibold text-[#f8fafc]">{guardrail.code}</p>
+              <p className="text-xs text-[#c3cce5]">
                 Severity: {guardrail.severity} · Category: {guardrail.category}
               </p>
-              <p className="mt-1 text-sm text-cloud-200">{guardrail.description}</p>
+              <p className="mt-1 text-sm text-[#dbe4ff]">{guardrail.description}</p>
             </Card>
           ))}
         </div>

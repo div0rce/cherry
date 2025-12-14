@@ -83,10 +83,10 @@ export default async function IngestDashboardPage(): Promise<JSX.Element> {
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {summaries.map((item) => (
-              <Card key={item.source} tone="base" padding="md" className="border border-ink-700/60">
-                <p className="text-sm font-semibold text-cloud-50">{item.source}</p>
-                <p className="text-sm text-cloud-300">Transactions: {item.count}</p>
-                <p className="text-sm text-cloud-300">
+              <Card key={item.source} tone="base" padding="md" className="border border-[rgba(27,38,69,0.6)]">
+                <p className="text-sm font-semibold text-[#f8fafc]">{item.source}</p>
+                <p className="text-sm text-[#c3cce5]">Transactions: {item.count}</p>
+                <p className="text-sm text-[#c3cce5]">
                   Last posted:{' '}
                   {item.lastPostedAt ? item.lastPostedAt.toLocaleString() : 'No posted items'}
                 </p>

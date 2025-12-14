@@ -89,7 +89,7 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
               <ButtonLink href={ROUTES.dev.cards} variant="secondary" size="sm">
                 Manage cards
               </ButtonLink>
-              <ButtonLink href="/simulate" variant="ghost" size="sm" className="text-cherry-100">
+              <ButtonLink href="/simulate" variant="ghost" size="sm" className="text-[#ffe6ee]">
                 Run simulations
               </ButtonLink>
           </div>
@@ -119,14 +119,14 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
           ) : (
             <ul className="space-y-3">
               {buckets.map((bucket) => (
-                <Card key={bucket.id} tone="base" padding="md" className="border-ink-700/60">
+                <Card key={bucket.id} tone="base" padding="md" className="border-[rgba(27,38,69,0.6)]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-lg font-semibold text-cloud-50">{bucket.name}</p>
-                      <p className="text-sm text-cloud-300">
+                      <p className="text-lg font-semibold text-[#f8fafc]">{bucket.name}</p>
+                      <p className="text-sm text-[#c3cce5]">
                         {bucket.period} · {bucket.category} · {bucket.strictMode ? 'Strict' : 'Soft'}
                       </p>
-                      <p className="text-sm text-cloud-300">
+                      <p className="text-sm text-[#c3cce5]">
                         Remaining: {formatCents(bucket.remainingCents)} / {formatCents(bucket.budgetAmount)}
                       </p>
                     </div>

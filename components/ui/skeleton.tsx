@@ -8,7 +8,7 @@ type SkeletonProps = {
 };
 
 export function Skeleton({ className }: SkeletonProps): JSX.Element {
-  return <div className={cn('animate-pulse rounded-lg bg-ink-800/70', className)} aria-hidden />;
+  return <div className={cn('animate-pulse rounded-lg bg-[rgba(17,26,47,0.7)]', className)} aria-hidden />;
 }
 
 export function SkeletonText({ lines = 3 }: { lines?: number }): JSX.Element {

@@ -2,7 +2,6 @@
 
 import type { JSX, ReactNode } from 'react';
 import { cn } from '@/lib/ui/cn';
-import { cherryTextClasses } from '@/lib/ui/theme';
 
 type MetricCardProps = {
   label: string;
@@ -13,10 +12,10 @@ type MetricCardProps = {
 };
 
 const toneStyles = {
-  default: 'border-ink-700/60 bg-ink-900/70 shadow-soft',
-  positive: 'border-mint-400/50 bg-mint-400/10 shadow-soft',
-  negative: 'border-rose-500/50 bg-rose-500/10 shadow-soft',
-  accent: 'border-cherry-500/50 bg-cherry-500/10 shadow-soft',
+  default: 'border-[rgba(27,38,69,0.6)] bg-[rgba(11,16,33,0.7)] shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)]',
+  positive: 'border-[rgba(52,211,153,0.5)] bg-[rgba(52,211,153,0.1)] shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)]',
+  negative: 'border-rose-500/50 bg-rose-500/10 shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)]',
+  accent: 'border-[rgba(255,77,109,0.5)] bg-[rgba(255,77,109,0.1)] shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)]',
 } as const;
 
 export function MetricCard({
@@ -28,24 +27,24 @@ export function MetricCard({
 }: MetricCardProps): JSX.Element {
   const valueColor =
     tone === 'positive'
-      ? 'text-mint-100'
+      ? 'text-[#e6f8f1]'
       : tone === 'negative'
         ? 'text-rose-50'
         : tone === 'accent'
-          ? 'text-cherry-100'
-          : 'text-cloud-50';
+          ? 'text-[#ffe6ee]'
+          : 'text-[#f8fafc]';
 
   return (
     <div className={cn('rounded-2xl border p-4', toneStyles[tone])}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-label text-cloud-300">{label}</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">{label}</p>
           <p className={cn('mt-2 text-3xl font-semibold leading-tight', valueColor)}>{value}</p>
           {helper != null && helper !== '' ? (
-            <p className={cn('mt-1 text-sm', cherryTextClasses.subtle)}>{helper}</p>
+            <p className={cn('mt-1 text-sm text-[#c3cce5]')}>{helper}</p>
           ) : null}
         </div>
-        {icon != null ? <div className="text-lg text-cloud-200">{icon}</div> : null}
+        {icon != null ? <div className="text-lg text-[#dbe4ff]">{icon}</div> : null}
       </div>
     </div>
   );

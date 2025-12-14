@@ -13,8 +13,8 @@ export default function MonthPicker({ initialMonth }: { initialMonth: string }):
   const currentValue = searchParams.get('month') ?? initialMonth;
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-ink-800/60 bg-ink-900/70 p-3 shadow-soft">
-      <label className="flex flex-col gap-1 text-[11px] uppercase tracking-label text-cloud-300">
+    <div className="flex items-center gap-3 rounded-2xl border border-[rgba(17,26,47,0.6)] bg-[rgba(11,16,33,0.7)] p-3 shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)]">
+      <label className="flex flex-col gap-1 text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">
         Statement month
         <input
           type="month"
@@ -25,10 +25,10 @@ export default function MonthPicker({ initialMonth }: { initialMonth: string }):
               router.replace(`${ROUTES.dev.statements}?month=${next}`);
             })
           }
-          className="rounded-lg border border-ink-700/60 bg-ink-900 px-3 py-2 text-sm text-cloud-50 shadow-inner focus:outline-2 focus:outline-offset-2 focus:outline-cherry-400"
+          className="rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#0b1021] px-3 py-2 text-sm text-[#f8fafc] shadow-inner focus:outline-[2px_solid_#ff6b8a] focus:outline-offset-2"
         />
       </label>
-      {isPending ? <span className="text-xs text-cloud-400">Loading…</span> : null}
+      {isPending ? <span className="text-xs text-[#a5b0d0]">Loading…</span> : null}
     </div>
   );
 }

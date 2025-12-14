@@ -95,8 +95,8 @@ export default async function AdminPage(): Promise<JSX.Element> {
           <MetricCard label="Ledger Entries" value={ledgerStats.entries} tone="accent" />
           <MetricCard label="Points (Posted)" value={ledgerStats.points} tone="positive" />
         </div>
-        <p className="text-xs text-cloud-400">
-          Current Balance: <span className="text-cherry-100 font-semibold">{points}</span>
+        <p className="text-xs text-[#a5b0d0]">
+          Current Balance: <span className="text-[#ffe6ee] font-semibold">{points}</span>
         </p>
       </Panel>
 
@@ -111,13 +111,13 @@ export default async function AdminPage(): Promise<JSX.Element> {
       <Panel tone="muted" title="Invariants & assumptions" description="Summary of guardrails enforced in CI and scripts.">
         <div className="grid gap-3 md:grid-cols-3">
           {invariantChecks.map((check) => (
-            <Card key={check.name} tone="base" padding="md" className="space-y-2 border border-ink-700/60">
-              <p className="text-sm font-semibold text-cloud-50">{check.name}</p>
+            <Card key={check.name} tone="base" padding="md" className="space-y-2 border border-[rgba(27,38,69,0.6)]">
+              <p className="text-sm font-semibold text-[#f8fafc]">{check.name}</p>
               <Alert
                 variant="success"
                 title={`Status: ${check.status}`}
                 description={check.description}
-                className="border border-ink-700/60"
+                className="border border-[rgba(27,38,69,0.6)]"
               />
             </Card>
           ))}
@@ -129,20 +129,20 @@ export default async function AdminPage(): Promise<JSX.Element> {
           <div className="grid gap-3 md:grid-cols-2">
             {lastSession && (
               <Card tone="base" padding="md" className="space-y-1">
-                <p className="text-sm font-semibold text-cloud-50">Last Session</p>
-                <p className="text-xs text-cloud-400">
+                <p className="text-sm font-semibold text-[#f8fafc]">Last Session</p>
+                <p className="text-xs text-[#a5b0d0]">
                   {lastSession.merchantName ?? 'Unknown'} • ${(lastSession.amountCents / 100).toFixed(2)}
                 </p>
-                <p className="text-xs text-cloud-400">Verdict: {lastSession.verdict}</p>
-                <p className="text-xs text-cloud-400">Status: {lastSession.status}</p>
+                <p className="text-xs text-[#a5b0d0]">Verdict: {lastSession.verdict}</p>
+                <p className="text-xs text-[#a5b0d0]">Status: {lastSession.status}</p>
               </Card>
             )}
             {lastLedger && (
               <Card tone="base" padding="md" className="space-y-1">
-                <p className="text-sm font-semibold text-cloud-50">Last Ledger Entry</p>
-                <p className="text-xs text-cloud-400">Points: {lastLedger.points}</p>
-                <p className="text-xs text-cloud-400">Reason: {lastLedger.reason}</p>
-                <p className="text-xs text-cloud-400">
+                <p className="text-sm font-semibold text-[#f8fafc]">Last Ledger Entry</p>
+                <p className="text-xs text-[#a5b0d0]">Points: {lastLedger.points}</p>
+                <p className="text-xs text-[#a5b0d0]">Reason: {lastLedger.reason}</p>
+                <p className="text-xs text-[#a5b0d0]">
                   Status: {lastLedger.status} · {new Date(lastLedger.awardedAt).toLocaleString()}
                 </p>
               </Card>
@@ -154,8 +154,8 @@ export default async function AdminPage(): Promise<JSX.Element> {
       <Panel tone="muted" title="Health">
         <Card tone="base" padding="md" className="space-y-2">
           <div>
-            <p className="text-sm font-semibold text-cloud-50">Health check</p>
-            <p className="text-xs text-cloud-400">API: {health.ok ? 'OK' : 'FAIL'}</p>
+            <p className="text-sm font-semibold text-[#f8fafc]">Health check</p>
+            <p className="text-xs text-[#a5b0d0]">API: {health.ok ? 'OK' : 'FAIL'}</p>
           </div>
           <ButtonLink href="/api/health" variant="secondary" size="sm">
             View health
@@ -163,26 +163,26 @@ export default async function AdminPage(): Promise<JSX.Element> {
         </Card>
       </Panel>
 
-      <Card tone="muted" padding="md" className="flex flex-wrap items-center gap-3 text-sm text-cherry-100">
-        <ButtonLink href="/scan" variant="ghost" size="sm" className="text-cherry-100">
+      <Card tone="muted" padding="md" className="flex flex-wrap items-center gap-3 text-sm text-[#ffe6ee]">
+        <ButtonLink href="/scan" variant="ghost" size="sm" className="text-[#ffe6ee]">
           Scan before pay →
         </ButtonLink>
-        <ButtonLink href="/sessions" variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href="/sessions" variant="ghost" size="sm" className="text-[#ffe6ee]">
           Sessions →
         </ButtonLink>
-        <ButtonLink href="/vine-simulator" variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href="/vine-simulator" variant="ghost" size="sm" className="text-[#ffe6ee]">
           Vine simulator (dev) →
         </ButtonLink>
-        <ButtonLink href="/bank-simulator" variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href="/bank-simulator" variant="ghost" size="sm" className="text-[#ffe6ee]">
           Bank / Plaid simulator →
         </ButtonLink>
-        <ButtonLink href="/simulate" variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href="/simulate" variant="ghost" size="sm" className="text-[#ffe6ee]">
           Run simulation →
         </ButtonLink>
-        <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="sm" className="text-[#ffe6ee]">
           Manage cards →
         </ButtonLink>
-        <ButtonLink href={ROUTES.dev.buckets} variant="ghost" size="sm" className="text-cherry-100">
+        <ButtonLink href={ROUTES.dev.buckets} variant="ghost" size="sm" className="text-[#ffe6ee]">
           Manage buckets →
         </ButtonLink>
       </Card>

@@ -39,17 +39,17 @@ function DevShortcut({ href, title, description }: { href: string; title: string
     <Card
       tone="muted"
       padding="md"
-      className="flex h-full flex-col gap-2 transition hover:-translate-y-0.5 hover:border-cherry-border"
+      className="flex h-full flex-col gap-2 transition hover:-translate-y-0.5 hover:border-[#1b2645]"
     >
-      <p className="text-xs uppercase tracking-label text-cherry-text/80">Dev tool</p>
-      <p className="text-base font-semibold text-cherry-text">{title}</p>
-      <p className="text-sm text-cherry-text/80">{description}</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-[rgba(238,242,251,0.8)]">Dev tool</p>
+      <p className="text-base font-semibold text-[#eef2fb]">{title}</p>
+      <p className="text-sm text-[rgba(238,242,251,0.8)]">{description}</p>
       <div className="pt-1">
         <ButtonLink
           href={href}
           variant="ghost"
           size="sm"
-          className="px-0 text-cherry-text"
+          className="px-0 text-[#eef2fb]"
         >
           Open →
         </ButtonLink>
@@ -113,20 +113,20 @@ export default async function DashboardPage(): Promise<JSX.Element> {
             description="Real-time budget state that the engine enforces during Observe → Evaluate."
           >
             <div className="grid grid-cols-3 gap-3 text-sm">
-              <Card tone="muted" padding="sm" className="border-ink-700/60">
-                <p className="text-xs uppercase tracking-label text-cloud-300">On track</p>
-                <p className="mt-1 text-xl font-semibold text-mint-200">{stats.bucketHealth.onTrack}</p>
+              <Card tone="muted" padding="sm" className="border-[rgba(27,38,69,0.6)]">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#c3cce5]">On track</p>
+                <p className="mt-1 text-xl font-semibold text-[#bff0db]">{stats.bucketHealth.onTrack}</p>
               </Card>
-              <Card tone="muted" padding="sm" className="border-ink-700/60">
-                <p className="text-xs uppercase tracking-label text-cloud-300">At risk</p>
+              <Card tone="muted" padding="sm" className="border-[rgba(27,38,69,0.6)]">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#c3cce5]">At risk</p>
                 <p className="mt-1 text-xl font-semibold text-amber-200">{stats.bucketHealth.atRisk}</p>
               </Card>
-              <Card tone="muted" padding="sm" className="border-ink-700/60">
-                <p className="text-xs uppercase tracking-label text-cloud-300">Over limit</p>
+              <Card tone="muted" padding="sm" className="border-[rgba(27,38,69,0.6)]">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#c3cce5]">Over limit</p>
                 <p className="mt-1 text-xl font-semibold text-rose-200">{stats.bucketHealth.overLimit}</p>
               </Card>
             </div>
-            <p className="text-sm text-cloud-300">
+            <p className="text-sm text-[#c3cce5]">
               {totalBuckets === 0
                 ? 'No buckets configured yet. Create buckets to enforce weekly/monthly budgets.'
                 : stats.bucketHealth.overLimit > 0 || stats.bucketHealth.atRisk > 0
@@ -137,7 +137,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
               <ButtonLink href={ROUTES.dev.buckets} variant="secondary" size="sm">
                 Manage buckets
               </ButtonLink>
-              <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="sm" className="text-cloud-200">
+              <ButtonLink href={ROUTES.dev.cards} variant="ghost" size="sm" className="text-[#dbe4ff]">
                 Manage cards
               </ButtonLink>
             </div>
@@ -161,26 +161,26 @@ export default async function DashboardPage(): Promise<JSX.Element> {
                 actionHref="/simulate"
               />
             ) : (
-              <ul className="space-y-2 text-sm text-cloud-50">
+              <ul className="space-y-2 text-sm text-[#f8fafc]">
                 {stats.recentUnifiedActivity.map((item) => (
                   <li
                     key={item.id}
-                    className="flex items-center justify-between rounded-lg border border-ink-800/60 bg-ink-900/60 px-3 py-2"
+                    className="flex items-center justify-between rounded-lg border border-[rgba(17,26,47,0.6)] bg-[rgba(11,16,33,0.6)] px-3 py-2"
                   >
                     <div className="min-w-0">
                       <p className="truncate">
                         {item.label}
                         {item.amountCents != null && (
-                          <span className="ml-1 text-cloud-300">
+                          <span className="ml-1 text-[#c3cce5]">
                             · {formatMoney(item.amountCents, item.currency ?? 'USD')}
                           </span>
                         )}
                       </p>
-                      <p className="mt-0.5 text-xs text-cloud-400">
+                      <p className="mt-0.5 text-xs text-[#a5b0d0]">
                         {formatTimestamp(item.occurredAt)}
                       </p>
                     </div>
-                    <span className="ml-3 inline-flex items-center rounded-full border border-ink-700/60 bg-ink-800/70 px-2 py-0.5 text-xs text-cloud-200">
+                    <span className="ml-3 inline-flex items-center rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-0.5 text-xs text-[#dbe4ff]">
                       {item.kind === 'REAL_TRANSACTION'
                         ? 'Real'
                         : item.kind === 'SIMULATED_TRANSACTION'
@@ -214,23 +214,23 @@ export default async function DashboardPage(): Promise<JSX.Element> {
               actionHref="/simulate"
             />
           ) : (
-            <ul className="divide-y divide-ink-800/60 text-sm text-cloud-50">
+            <ul className="divide-y divide-[rgba(17,26,47,0.6)] text-sm text-[#f8fafc]">
               {stats.recentSimulations.map((sim) => (
                 <li key={sim.id} className="flex items-center justify-between py-2">
                   <div className="min-w-0">
                     <p className="truncate">
                       {sim.merchantLabel}
-                      <span className="ml-1 text-cloud-300">
+                      <span className="ml-1 text-[#c3cce5]">
                         · {formatMoney(sim.amountCents, sim.currency)}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-xs text-cloud-400">{formatTimestamp(sim.occurredAt)}</p>
+                    <p className="mt-0.5 text-xs text-[#a5b0d0]">{formatTimestamp(sim.occurredAt)}</p>
                   </div>
                   <div className="ml-3 flex flex-col items-end gap-1">
                     {hasText(sim.recommendedCardName) && (
-                      <p className="text-xs text-cloud-300">{sim.recommendedCardName}</p>
+                      <p className="text-xs text-[#c3cce5]">{sim.recommendedCardName}</p>
                     )}
-                    <span className="inline-flex items-center rounded-full border border-ink-800/80 bg-ink-900 px-2 py-0.5 text-xs text-cloud-100">
+                    <span className="inline-flex items-center rounded-full border border-[rgba(17,26,47,0.8)] bg-[#0b1021] px-2 py-0.5 text-xs text-[#eef2fb]">
                       {sim.verdict}
                     </span>
                   </div>

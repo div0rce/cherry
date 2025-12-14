@@ -29,14 +29,14 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center gap-3 rounded-lg border border-cherry-border bg-cherry-surface px-6 py-10 text-center shadow-sm',
+        'flex flex-col items-center gap-3 rounded-lg border border-[#1b2645] bg-[#111a2f] px-6 py-10 text-center shadow-sm',
         className
       )}
     >
       {icon != null ? <div className="text-2xl">{icon}</div> : null}
       <div className="space-y-1">
-        <h3 className="text-lg font-semibold text-cherry-text">{title}</h3>
-        {hasDescription ? <p className="text-sm text-cherry-text/80">{description}</p> : null}
+        <h3 className="text-lg font-semibold text-[#eef2fb]">{title}</h3>
+        {hasDescription ? <p className="text-sm text-[rgba(238,242,251,0.8)]">{description}</p> : null}
       </div>
       {hasAction ? (
         hasActionHref ? (
@@ -50,7 +50,7 @@ export function EmptyState({
         )
       ) : null}
       {!hasAction && hasActionLabel ? (
-        <div className="text-sm text-cherry-text/80">No action provided.</div>
+        <div className="text-sm text-[rgba(238,242,251,0.8)]">No action provided.</div>
       ) : null}
     </div>
   );

@@ -58,13 +58,13 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
   }, [initialSummaries, status]);
 
   const statusSelect = (
-    <label className="flex items-center gap-2 text-sm text-cloud-300">
-      <span className="text-xs uppercase tracking-label text-cloud-400">Status</span>
+    <label className="flex items-center gap-2 text-sm text-[#c3cce5]">
+      <span className="text-xs uppercase tracking-[0.2em] text-[#a5b0d0]">Status</span>
       <select
         name="status"
         value={status}
         onChange={(e) => setStatus(e.target.value as Props['initialStatus'])}
-        className="rounded-lg border border-ink-700/60 bg-ink-900 px-3 py-2 text-sm text-cloud-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cherry-400"
+        className="rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#0b1021] px-3 py-2 text-sm text-[#f8fafc] focus-visible:outline-[2px_solid_#ff6b8a] focus-visible:outline-offset-2"
       >
         <option value="all">All</option>
         <option value="active">Open</option>
@@ -122,46 +122,46 @@ export function SessionsPageClient({ initialSummaries, initialStatus }: Props): 
                 <ButtonLink
                   href={`/sessions/${s.id}`}
                   variant="ghost"
-                  className="block rounded-2xl border border-ink-800/60 bg-ink-900/70 p-4 text-left shadow-soft hover:border-cherry-500/50"
+                  className="block rounded-2xl border border-[rgba(17,26,47,0.6)] bg-[rgba(11,16,33,0.7)] p-4 text-left shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)] hover:border-[rgba(255,77,109,0.5)]"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-semibold text-cloud-50">
+                        <p className="text-lg font-semibold text-[#f8fafc]">
                           {s.merchantName ?? 'Manual scan'}
                         </p>
                         <span
-                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${verdictClasses[s.verdict] ?? 'border-ink-700/60 bg-ink-800/70 text-cloud-100'}`}
+                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${verdictClasses[s.verdict] ?? 'border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] text-[#eef2fb]'}`}
                         >
                           {s.verdict}
                         </span>
                         <span
-                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusClasses[s.displayStatus] ?? 'border-ink-700/60 bg-ink-800/70 text-cloud-100'}`}
+                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${statusClasses[s.displayStatus] ?? 'border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] text-[#eef2fb]'}`}
                         >
                           {s.displayStatus}
                         </span>
                       </div>
-                      <p className="text-sm text-cloud-300">
+                      <p className="text-sm text-[#c3cce5]">
                         {new Date(s.createdAt).toLocaleString()} · {s.category} ·{' '}
                         {formatCents(s.amountCents)}
                       </p>
                       {hasText(s.bucketName) ? (
-                        <p className="text-xs text-cloud-400">Bucket: {s.bucketName}</p>
+                        <p className="text-xs text-[#a5b0d0]">Bucket: {s.bucketName}</p>
                       ) : null}
                     </div>
-                    <div className="flex flex-col items-end gap-1 text-sm text-cloud-200">
+                    <div className="flex flex-col items-end gap-1 text-sm text-[#dbe4ff]">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs uppercase tracking-wide text-cloud-400">Points</span>
-                        <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-3 py-1 text-mint-100">
+                        <span className="text-xs uppercase tracking-wide text-[#a5b0d0]">Points</span>
+                        <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-3 py-1 text-[#e6f8f1]">
                           {s.pointsPosted} posted
                         </span>
                         {s.pointsPending > 0 ? (
-                          <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-3 py-1 text-cloud-100">
+                          <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-3 py-1 text-[#eef2fb]">
                             {s.pointsPending} pending
                           </span>
                         ) : null}
                         {s.pointsPosted === 0 && s.pointsPending === 0 ? (
-                          <span className="text-xs text-cloud-400">Offered: {s.pointsOffered}</span>
+                          <span className="text-xs text-[#a5b0d0]">Offered: {s.pointsOffered}</span>
                         ) : null}
                       </div>
                     </div>

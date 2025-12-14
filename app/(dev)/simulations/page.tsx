@@ -41,7 +41,7 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="flex items-center justify-between">
         <div>
-          <p className="text-xs uppercase tracking-label text-pink-200">Simulations</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Simulations</p>
           <h1 className="text-3xl font-semibold text-white">Simulation Runs</h1>
           <p className="text-slate-300">Review your scenarios and dive into their timelines.</p>
         </div>

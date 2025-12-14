@@ -235,7 +235,7 @@ export function AddCardForm(): JSX.Element {
           <p className="text-sm font-semibold text-white">Initial reward rule</p>
           <div className="grid grid-cols-4 gap-2">
             <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-label-tight text-slate-300">
+              <label className="block text-xs uppercase tracking-[0.12em] text-slate-300">
                 Category
               </label>
               <input
@@ -247,7 +247,7 @@ export function AddCardForm(): JSX.Element {
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-label-tight text-slate-300">
+              <label className="block text-xs uppercase tracking-[0.12em] text-slate-300">
                 Reward type
               </label>
               <div className="flex rounded-md border border-white/10 overflow-hidden">
@@ -272,7 +272,7 @@ export function AddCardForm(): JSX.Element {
               </div>
             </div>
             <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-label-tight text-slate-300">
+              <label className="block text-xs uppercase tracking-[0.12em] text-slate-300">
                 {ruleType === 'CASH' ? 'Cash back %' : 'Points multiplier'}
               </label>
               <input
@@ -287,7 +287,7 @@ export function AddCardForm(): JSX.Element {
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-xs uppercase tracking-label-tight text-slate-300">
+              <label className="block text-xs uppercase tracking-[0.12em] text-slate-300">
                 Credit limit (USD, optional)
               </label>
               <input

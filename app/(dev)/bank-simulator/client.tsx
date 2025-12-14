@@ -70,7 +70,7 @@ export default function BankSimulatorClient(): JSX.Element {
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-10 text-slate-100">
       <header className="space-y-2">
-        <p className="text-xs uppercase tracking-label text-pink-200">Dev Tool</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Dev Tool</p>
         <h1 className="text-3xl font-semibold text-white">Bank / Plaid Simulator</h1>
         <p className="text-sm text-slate-300">
           Simulate a <span className="font-semibold text-pink-300">Plaid-like bank feed</span> to

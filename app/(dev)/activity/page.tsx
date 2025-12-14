@@ -70,8 +70,8 @@ export default async function ActivityPage(): Promise<JSX.Element> {
                   className="space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-label text-cloud-300">
-                      <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-2 py-1">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">
+                      <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-1">
                         {item.type.replace(/_/g, ' ')}
                       </span>
                       {hasText(item.sessionId) ? (
@@ -80,11 +80,11 @@ export default async function ActivityPage(): Promise<JSX.Element> {
                         </ButtonLink>
                       ) : null}
                     </div>
-                    <span className="text-xs text-cloud-400">
+                    <span className="text-xs text-[#a5b0d0]">
                       {new Date(item.occurredAt).toLocaleString()}
                     </span>
                   </div>
-                  <div className="space-y-1 text-sm text-cloud-50">
+                  <div className="space-y-1 text-sm text-[#f8fafc]">
                     {item.type === 'SESSION_CREATED' && (
                       <p>
                         {item.merchantName ?? 'Manual scan'} · {item.category} ·{' '}
@@ -97,7 +97,7 @@ export default async function ActivityPage(): Promise<JSX.Element> {
                     {item.type === 'LEDGER_POSTED' && <p>Points posted · {formatPoints(item.points)}</p>}
                     {item.type === 'LEDGER_REVOKED' && <p>Points revoked · {formatPoints(item.points)}</p>}
                     {hasText(item.verdict) ? (
-                      <p className="text-xs text-cloud-400">Verdict: {item.verdict}</p>
+                      <p className="text-xs text-[#a5b0d0]">Verdict: {item.verdict}</p>
                     ) : null}
                   </div>
                 </Card>

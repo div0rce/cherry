@@ -12,8 +12,8 @@ type BadgeProps = {
 export function Badge({ children, variant = 'default', className }: BadgeProps): JSX.Element {
   const variantClass =
     variant === 'outline'
-      ? 'border border-cherry-border text-cherry-text'
-      : 'border border-cherry-border bg-cherry-surface text-cherry-text';
+      ? 'border border-[#1b2645] text-[#eef2fb]'
+      : 'border border-[#1b2645] bg-[#111a2f] text-[#eef2fb]';
 
   return (
     <span

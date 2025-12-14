@@ -18,7 +18,7 @@ export function ErrorBanner({ message, actionLabel, onAction }: Props): JSX.Elem
 
   const action =
     hasText(actionLabel) && onAction ? (
-      <Button variant="danger" size="sm" onClick={onAction}>
+      <Button variant="destructive" size="sm" onClick={onAction}>
         {actionLabel}
       </Button>
     ) : null;

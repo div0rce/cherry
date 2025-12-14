@@ -36,10 +36,10 @@ export const Toggle = forwardRef<HTMLInputElement, ToggleProps>(function Toggle(
         onChange={handleChange}
         {...rest}
       />
-      <span className="relative inline-flex h-6 w-10 items-center rounded-full bg-cherry-border transition peer-checked:bg-cherry-green peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cherry-red">
-        <span className="inline-flex h-4 w-4 translate-x-1 rounded-full bg-cherry-bg shadow-sm transition peer-checked:translate-x-5 peer-checked:bg-cherry-surface" />
+      <span className="relative inline-flex h-6 w-10 items-center rounded-full bg-[#1b2645] transition peer-checked:bg-[#34d399] peer-focus-visible:outline-[2px_solid_#ff4d6d] peer-focus-visible:outline-offset-2">
+        <span className="inline-flex h-4 w-4 translate-x-1 rounded-full bg-[#0b1021] shadow-sm transition peer-checked:translate-x-5 peer-checked:bg-[#111a2f]" />
       </span>
-      {hasLabel ? <span className="text-sm text-cherry-text">{label}</span> : null}
+      {hasLabel ? <span className="text-sm text-[#eef2fb]">{label}</span> : null}
     </label>
   );
 });

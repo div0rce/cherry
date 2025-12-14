@@ -61,16 +61,16 @@ export function SidebarNav(): JSX.Element {
   const pathname = usePathname() ?? '/';
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r border-ink-800/70 bg-ink-950/80 px-4 py-6 text-cloud-100 shadow-faint md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto">
+    <aside className="hidden w-64 shrink-0 border-r border-[rgba(17,26,47,0.7)] bg-[rgba(5,6,15,0.8)] px-4 py-6 text-[#eef2fb] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] md:sticky md:top-0 md:block md:h-screen md:overflow-y-auto">
       <div className="mb-8 px-2">
-        <div className="text-[11px] uppercase tracking-label text-cherry-100">Cherry</div>
-        <div className="text-lg font-semibold text-cloud-50">Dev Console</div>
+        <div className="text-[11px] uppercase tracking-[0.2em] text-[#ffe6ee]">Cherry</div>
+        <div className="text-lg font-semibold text-[#f8fafc]">Dev Console</div>
       </div>
 
       <nav className="space-y-6">
         {SECTIONS.map((section) => (
           <div key={section.label} className="space-y-2">
-            <p className="px-2 text-xs uppercase tracking-label text-cloud-400">
+            <p className="px-2 text-xs uppercase tracking-[0.2em] text-[#a5b0d0]">
               {section.label}
             </p>
             <ul className="space-y-1">
@@ -79,9 +79,9 @@ export function SidebarNav(): JSX.Element {
                 const baseClasses =
                   'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition border';
                 const activeClasses =
-                  'bg-ink-800/80 text-cloud-50 border-cherry-500/50 shadow-soft';
+                  'bg-[rgba(17,26,47,0.8)] text-[#f8fafc] border-[rgba(255,77,109,0.5)] shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)]';
                 const inactiveClasses =
-                  'text-cloud-200 border-transparent hover:border-ink-700/60 hover:bg-ink-800/50';
+                  'text-[#dbe4ff] border-transparent hover:border-[rgba(27,38,69,0.6)] hover:bg-[rgba(17,26,47,0.5)]';
 
                 return (
                   <li key={item.href}>

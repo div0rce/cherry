@@ -107,7 +107,7 @@ export function SimulationHistoryList({
               <li key={item.id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
-                    <p className="text-[11px] uppercase tracking-label-tight text-slate-500">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500">
                       {formatTimestamp(item.createdAt)}
                     </p>
                     <p className="truncate text-lg font-semibold text-white">{item.title}</p>

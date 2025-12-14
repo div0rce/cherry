@@ -24,7 +24,7 @@ type InspectResponse = {
 };
 
 const inputClasses =
-  'w-full rounded-lg border border-ink-700/60 bg-ink-900/70 px-3 py-2 text-cloud-50 placeholder-cloud-400 shadow-soft focus:border-cherry-400 focus:outline-none focus:ring-2 focus:ring-cherry-400/60';
+  'w-full rounded-lg border border-[rgba(27,38,69,0.6)] bg-[rgba(11,16,33,0.7)] px-3 py-2 text-[#f8fafc] placeholder-[#a5b0d0] shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)] focus:border-[#ff6b8a] focus:outline-none focus:ring-2 focus:ring-[rgba(255,107,138,0.6)]';
 
 export default function InspectorClient(): JSX.Element {
   const [merchant, setMerchant] = useState('');
@@ -78,7 +78,7 @@ export default function InspectorClient(): JSX.Element {
     <div className="space-y-4">
       <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <label htmlFor="merchant" className="text-sm font-semibold text-cloud-200">
+          <label htmlFor="merchant" className="text-sm font-semibold text-[#dbe4ff]">
             Merchant
           </label>
           <input
@@ -91,7 +91,7 @@ export default function InspectorClient(): JSX.Element {
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="amount" className="text-sm font-semibold text-cloud-200">
+          <label htmlFor="amount" className="text-sm font-semibold text-[#dbe4ff]">
             Amount (USD)
           </label>
           <input
@@ -105,7 +105,7 @@ export default function InspectorClient(): JSX.Element {
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="category" className="text-sm font-semibold text-cloud-200">
+          <label htmlFor="category" className="text-sm font-semibold text-[#dbe4ff]">
             Category (optional)
           </label>
           <input
@@ -129,10 +129,10 @@ export default function InspectorClient(): JSX.Element {
 
       {status === 'ready' && result ? (
         <div className="space-y-4">
-          <Card tone="base" padding="md" className="border border-ink-700/60">
-            <p className="text-sm font-semibold text-cloud-50">Top decision</p>
+          <Card tone="base" padding="md" className="border border-[rgba(27,38,69,0.6)]">
+            <p className="text-sm font-semibold text-[#f8fafc]">Top decision</p>
             {result.topDecision ? (
-              <div className="mt-2 space-y-1 text-sm text-cloud-200">
+              <div className="mt-2 space-y-1 text-sm text-[#dbe4ff]">
                 <p>Action: {result.topDecision.actionType}</p>
                 <p>Card: {result.topDecision.cardId ?? '—'}</p>
                 <p>Score: {result.topDecision.score.toFixed(2)}</p>
@@ -151,8 +151,8 @@ export default function InspectorClient(): JSX.Element {
             )}
           </Card>
 
-          <Card tone="muted" padding="md" className="border border-ink-700/60">
-            <p className="text-sm font-semibold text-cloud-50">Candidate actions</p>
+          <Card tone="muted" padding="md" className="border border-[rgba(27,38,69,0.6)]">
+            <p className="text-sm font-semibold text-[#f8fafc]">Candidate actions</p>
             {result.decisions.length === 0 ? (
               <EmptyState title="No candidates" description="No actions were returned." />
             ) : (
@@ -160,13 +160,13 @@ export default function InspectorClient(): JSX.Element {
                 {result.decisions.map((decision) => (
                   <div
                     key={decision.id}
-                    className="rounded-lg border border-ink-800/60 bg-ink-900/70 p-3 text-sm text-cloud-100"
+                    className="rounded-lg border border-[rgba(17,26,47,0.6)] bg-[rgba(11,16,33,0.7)] p-3 text-sm text-[#eef2fb]"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">{decision.actionType}</span>
-                      <span className="text-cloud-300">Score: {decision.score.toFixed(2)}</span>
+                      <span className="text-[#c3cce5]">Score: {decision.score.toFixed(2)}</span>
                     </div>
-                    <p className="text-xs text-cloud-300">
+                    <p className="text-xs text-[#c3cce5]">
                       Card: {decision.cardId ?? '—'} · Guardrails:{' '}
                       {decision.constraintsBreached.length > 0
                         ? decision.constraintsBreached.join(', ')

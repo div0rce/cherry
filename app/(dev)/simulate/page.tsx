@@ -112,7 +112,7 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
       body: (
         <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
-            <p className="text-[11px] uppercase tracking-label-tight text-slate-400">Card</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Card</p>
             {hasText(cardDisplayName) ? (
               <p className="text-sm font-semibold text-white">{cardDisplayName}</p>
             ) : (
@@ -121,7 +121,7 @@ function toHistoryItems(simulations: Simulation[]): SimulationHistoryItem[] {
           </div>
 
           <div className="rounded-xl border border-white/10 bg-slate-900/70 p-3 space-y-1">
-            <p className="text-[11px] uppercase tracking-label-tight text-slate-400">Bucket</p>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Bucket</p>
             {hasText(bucketLabel) ? (
               <div className="text-sm text-slate-200">
                 <p className="font-semibold text-white">
@@ -314,11 +314,11 @@ function SimulationFilters({
   const statusValue = hasText(status) ? status : 'ALL';
   const categoryValue = hasText(category) ? category : '';
   const inputClasses =
-    'rounded-lg border border-ink-700/60 bg-ink-900 px-3 py-2 text-sm text-cloud-50 placeholder:text-cloud-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cherry-400';
+    'rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#0b1021] px-3 py-2 text-sm text-[#f8fafc] placeholder:text-[#a5b0d0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff6b8a]';
   return (
     <form method="get" className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
-        <label className="block text-[11px] uppercase tracking-label-tight text-cloud-300">
+        <label className="block text-[11px] uppercase tracking-[0.12em] text-[#c3cce5]">
           Status
         </label>
         <select
@@ -332,7 +332,7 @@ function SimulationFilters({
         </select>
       </div>
       <div className="space-y-1">
-        <label className="block text-[11px] uppercase tracking-label-tight text-cloud-300">
+        <label className="block text-[11px] uppercase tracking-[0.12em] text-[#c3cce5]">
           Category
         </label>
         <input
@@ -380,8 +380,8 @@ function SimulationPagination({
   nextParams.set('page', String(nextPage));
 
   return (
-    <div className="flex flex-col gap-3 text-sm text-cloud-300 md:flex-row md:items-center md:justify-between">
-      <p className="text-xs text-cloud-400">
+    <div className="flex flex-col gap-3 text-sm text-[#c3cce5] md:flex-row md:items-center md:justify-between">
+      <p className="text-xs text-[#a5b0d0]">
         Page {page} of {totalPages} · {total} total
       </p>
       <div className="flex items-center gap-2">

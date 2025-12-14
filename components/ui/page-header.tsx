@@ -1,7 +1,6 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { cherryBadgeClasses, cherryTextClasses } from '@/lib/ui/theme';
 import { cn } from '@/lib/ui/cn';
 
 type PageHeaderProps = {
@@ -16,6 +15,9 @@ type PageHeaderProps = {
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
+const badgeClasses =
+  'inline-flex items-center rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.8)] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#dbe4ff]';
+
 export function PageHeader({
   title,
   description,
@@ -27,22 +29,22 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        'flex flex-col gap-3 rounded-2xl border border-ink-700/60 bg-ink-900/60 p-4 shadow-soft backdrop-blur md:p-5',
+        'flex flex-col gap-3 rounded-2xl border border-[rgba(27,38,69,0.6)] bg-[rgba(11,16,33,0.6)] p-4 shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)] backdrop-blur md:p-5',
         className
       )}
     >
       {(hasText(label) || hasText(badge)) && (
-        <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-label text-cloud-300">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">
           {hasText(label) ? (
-            <span className={cherryBadgeClasses} aria-label={label}>
+            <span className={badgeClasses} aria-label={label}>
               {label}
             </span>
           ) : null}
           {hasText(badge) ? (
             <span
               className={cn(
-                cherryBadgeClasses,
-                'border-cherry-500/50 bg-cherry-500/15 text-cherry-100'
+                badgeClasses,
+                'border-[rgba(255,77,109,0.5)] bg-[rgba(255,77,109,0.15)] text-[#ffe6ee]'
               )}
             >
               {badge}
@@ -52,9 +54,9 @@ export function PageHeader({
       )}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold leading-tight text-cloud-50">{title}</h1>
+          <h1 className="text-3xl font-semibold leading-tight text-[#f8fafc]">{title}</h1>
           {hasText(description) ? (
-            <p className={cn('text-sm md:max-w-3xl', cherryTextClasses.subtle)}>{description}</p>
+            <p className={cn('text-sm md:max-w-3xl text-[#c3cce5]')}>{description}</p>
           ) : null}
         </div>
         {actions != null ? <div className="flex flex-wrap gap-2">{actions}</div> : null}

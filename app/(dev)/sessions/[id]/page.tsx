@@ -71,13 +71,13 @@ export default async function SessionDetailPage({
 
       <Card tone="muted" padding="md" className="space-y-2">
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-2 py-1 font-semibold text-cloud-100">
+          <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-1 font-semibold text-[#eef2fb]">
             Source: {session.source}
           </span>
-          <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-2 py-1 font-semibold text-cloud-100">
+          <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-1 font-semibold text-[#eef2fb]">
             Verdict: {session.verdict}
           </span>
-          <span className="rounded-full border border-ink-700/60 bg-ink-800/70 px-2 py-1 font-semibold text-cloud-100">
+          <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-1 font-semibold text-[#eef2fb]">
             Status: {status}
           </span>
         </div>
@@ -85,23 +85,23 @@ export default async function SessionDetailPage({
 
       <div className="grid gap-4 md:grid-cols-2">
         <Panel tone="muted" title="Bucket impact">
-          <p className="text-sm text-cloud-300">
+          <p className="text-sm text-[#c3cce5]">
             {session.recommendedBucket
               ? `Bucket: ${session.recommendedBucket.name} (${formatCents(session.recommendedBucket.budgetAmount)})`
               : 'No bucket matched this scan.'}
           </p>
-          <p className="text-sm text-cloud-300">
+          <p className="text-sm text-[#c3cce5]">
             Strict mode: {session.recommendedBucket?.strictMode ? 'On' : 'Off'}
           </p>
         </Panel>
 
         <Panel tone="muted" title="Points">
-          <div className="space-y-1 text-sm text-cloud-200">
+          <div className="space-y-1 text-sm text-[#dbe4ff]">
             <p>Offered: {session.cherryPointsOffered ?? 0}</p>
             <p>Pending: {pointsPending}</p>
             <p>Posted: {pointsPosted}</p>
           </div>
-          <p className="mt-2 text-xs text-cloud-400">
+          <p className="mt-2 text-xs text-[#a5b0d0]">
             {pointsPosted > 0
               ? 'Points posted for this session.'
               : pointsPending > 0
@@ -114,7 +114,7 @@ export default async function SessionDetailPage({
       </div>
 
       <Panel tone="muted" title="Timeline">
-        <ul className="mt-2 space-y-2 text-sm text-cloud-200">
+        <ul className="mt-2 space-y-2 text-sm text-[#dbe4ff]">
           <li>Recommendation generated · {new Date(session.createdAt).toLocaleString()}</li>
           {pointsPending > 0 && (
             <li>

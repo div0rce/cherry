@@ -311,8 +311,8 @@ export function VineSimulatorClient(): JSX.Element {
     <div className="space-y-6">
       <Card tone="muted" padding="md" className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-cloud-50">Merchant data exposure</p>
-          <p className="text-xs text-cloud-400">
+          <p className="text-sm font-semibold text-[#f8fafc]">Merchant data exposure</p>
+          <p className="text-xs text-[#a5b0d0]">
             Minimal: amount + MCC only. Extended: include optional merchant/terminal/card metadata.
           </p>
         </div>
@@ -330,7 +330,7 @@ export function VineSimulatorClient(): JSX.Element {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-sm text-cloud-300">Amount (USD)</span>
+              <span className="text-sm text-[#c3cce5]">Amount (USD)</span>
               <input
                 className={inputClass}
                 value={amountDollars}
@@ -343,7 +343,7 @@ export function VineSimulatorClient(): JSX.Element {
               />
             </label>
             <label className="space-y-1">
-              <span className="text-sm text-cloud-300">MCC (required)</span>
+              <span className="text-sm text-[#c3cce5]">MCC (required)</span>
               <input
                 className={inputClass}
                 value={mccCode}
@@ -355,7 +355,7 @@ export function VineSimulatorClient(): JSX.Element {
               />
             </label>
             <label className="space-y-1">
-              <span className="text-sm text-cloud-300">Currency</span>
+              <span className="text-sm text-[#c3cce5]">Currency</span>
               <input
                 className={inputClass}
                 value={currency}
@@ -364,7 +364,7 @@ export function VineSimulatorClient(): JSX.Element {
               />
             </label>
             <label className="space-y-1">
-              <span className="text-sm text-cloud-300">Device ID</span>
+              <span className="text-sm text-[#c3cce5]">Device ID</span>
               <input
                 className={inputClass}
                 value={deviceId}
@@ -379,7 +379,7 @@ export function VineSimulatorClient(): JSX.Element {
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-1">
-                  <span className="text-sm text-cloud-300">Merchant name</span>
+                  <span className="text-sm text-[#c3cce5]">Merchant name</span>
                   <input
                     className={inputClass}
                     value={merchantName}
@@ -388,7 +388,7 @@ export function VineSimulatorClient(): JSX.Element {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-sm text-cloud-300">Store ID</span>
+                  <span className="text-sm text-[#c3cce5]">Store ID</span>
                   <input
                     className={inputClass}
                     value={storeId}
@@ -397,7 +397,7 @@ export function VineSimulatorClient(): JSX.Element {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-sm text-cloud-300">Terminal ID</span>
+                  <span className="text-sm text-[#c3cce5]">Terminal ID</span>
                   <input
                     className={inputClass}
                     value={terminalId}
@@ -406,7 +406,7 @@ export function VineSimulatorClient(): JSX.Element {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-sm text-cloud-300">Card brand</span>
+                  <span className="text-sm text-[#c3cce5]">Card brand</span>
                   <input
                     className={inputClass}
                     value={cardBrand}
@@ -415,7 +415,7 @@ export function VineSimulatorClient(): JSX.Element {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-sm text-cloud-300">Card BIN (first 6-8)</span>
+                  <span className="text-sm text-[#c3cce5]">Card BIN (first 6-8)</span>
                   <input
                     className={inputClass}
                     value={cardBin}
@@ -424,7 +424,7 @@ export function VineSimulatorClient(): JSX.Element {
                   />
                 </label>
                 <label className="space-y-1">
-                  <span className="text-sm text-cloud-300">Card Last4</span>
+                  <span className="text-sm text-[#c3cce5]">Card Last4</span>
                   <input
                     className={inputClass}
                     value={cardLast4}
@@ -452,20 +452,20 @@ export function VineSimulatorClient(): JSX.Element {
         <Card tone="muted" padding="md" className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-cloud-300">Session</p>
-              <p className="text-lg font-semibold text-cloud-50">{orderResult.sessionId}</p>
+              <p className="text-sm text-[#c3cce5]">Session</p>
+              <p className="text-lg font-semibold text-[#f8fafc]">{orderResult.sessionId}</p>
               {hasText(orderResult.orderToken) && (
-                <p className="text-xs text-cloud-400">Token: {orderResult.orderToken}</p>
+                <p className="text-xs text-[#a5b0d0]">Token: {orderResult.orderToken}</p>
               )}
               {hasText(orderResult.expiresAt) && (
-                <p className="text-xs text-cloud-400">
+                <p className="text-xs text-[#a5b0d0]">
                   Expires at: {new Date(orderResult.expiresAt).toLocaleString()}
                 </p>
               )}
             </div>
             <div className="text-right">
-              <p className="text-sm text-cloud-300">Verdict</p>
-              <p className="text-lg font-semibold text-cloud-50">
+              <p className="text-sm text-[#c3cce5]">Verdict</p>
+              <p className="text-lg font-semibold text-[#f8fafc]">
                 {orderResult.decision.overallVerdict}
               </p>
             </div>
@@ -473,8 +473,8 @@ export function VineSimulatorClient(): JSX.Element {
 
           <div className="grid gap-3 md:grid-cols-3">
             <Card tone="base" padding="sm">
-              <p className="text-[11px] uppercase tracking-label text-cloud-300">Recommended card</p>
-              <p className="text-sm text-cloud-50">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">Recommended card</p>
+              <p className="text-sm text-[#f8fafc]">
                 {orderResult.decision.card.cardNickname ?? 'No card on file'}
               </p>
               {orderResult.decision.card.verdict === 'NO_CARD_DATA' && (
@@ -484,12 +484,12 @@ export function VineSimulatorClient(): JSX.Element {
               )}
             </Card>
             <Card tone="base" padding="sm">
-              <p className="text-[11px] uppercase tracking-label text-cloud-300">Bucket</p>
-              <p className="text-sm text-cloud-50">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">Bucket</p>
+              <p className="text-sm text-[#f8fafc]">
                 {orderResult.decision.budget.name ?? 'No bucket'}
               </p>
               {orderResult.decision.budget.limitCents != null && (
-                <p className="text-xs text-cloud-300">
+                <p className="text-xs text-[#c3cce5]">
                   Limit ${(orderResult.decision.budget.limitCents / 100).toFixed(2)}
                 </p>
               )}
@@ -499,14 +499,14 @@ export function VineSimulatorClient(): JSX.Element {
                 </p>
               )}
               {orderResult.decision.budget.verdict === 'UNBOUNDED' && (
-                <p className="text-xs text-cloud-300">
+                <p className="text-xs text-[#c3cce5]">
                   Intentionally unbudgeted; rewards optimization only.
                 </p>
               )}
             </Card>
             <Card tone="base" padding="sm">
-              <p className="text-[11px] uppercase tracking-label text-cloud-300">Cherry points</p>
-              <p className="text-sm text-cloud-50">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[#c3cce5]">Cherry points</p>
+              <p className="text-sm text-[#f8fafc]">
                 {orderResult.decision.cherryIncentive.pointsIfFollowed} pts if followed
               </p>
             </Card>
@@ -526,11 +526,11 @@ export function VineSimulatorClient(): JSX.Element {
                   : 'No points available for this amount.'}
               </span>
             )}
-            <ButtonLink href="/sessions" variant="ghost" size="sm" className="text-cherry-100">
+            <ButtonLink href="/sessions" variant="ghost" size="sm" className="text-[#ffe6ee]">
               View sessions →
             </ButtonLink>
             {confirmResult !== null ? (
-              <p className="text-sm text-cloud-200">
+              <p className="text-sm text-[#dbe4ff]">
                 Awarded {confirmResult.pointsAwarded} pts
                 {confirmResult.totalPoints != null
                   ? ` • Balance ${confirmResult.totalPoints} pts`

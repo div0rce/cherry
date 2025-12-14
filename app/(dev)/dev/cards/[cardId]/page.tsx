@@ -42,7 +42,7 @@ export default async function CardDetailPage({
     <div className="max-w-5xl mx-auto space-y-6">
       <header className="flex items-start justify-between">
         <div>
-          <p className="text-xs uppercase tracking-label text-pink-200">Card</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Card</p>
           <h1 className="text-3xl font-semibold text-white">{card.nickname}</h1>
           <p className="text-slate-300">
             {card.issuer} · {card.network} · {card.isCredit ? 'Credit' : 'Debit'} · Annual fee:{' '}

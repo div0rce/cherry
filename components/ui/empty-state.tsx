@@ -3,7 +3,6 @@
 import type { JSX, ReactNode } from 'react';
 import { Card } from './card';
 import { Button, ButtonLink } from './Button';
-import { cherryTextClasses } from '@/lib/ui/theme';
 import { cn } from '@/lib/ui/cn';
 
 type EmptyStateProps = {
@@ -22,7 +21,7 @@ const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
 const variantClasses = {
-  default: 'border-ink-700/40 bg-ink-900/60',
+  default: 'border-[rgba(27,38,69,0.4)] bg-[rgba(11,16,33,0.6)]',
   error: 'border-rose-500/50 bg-rose-500/10',
 };
 
@@ -48,14 +47,18 @@ export function EmptyState({
     (hasAction
       ? hasText(actionHref)
         ? (
-          <ButtonLink href={actionHref} size="sm" variant={variant === 'error' ? 'danger' : 'primary'}>
+          <ButtonLink
+            href={actionHref}
+            size="sm"
+            variant={variant === 'error' ? 'destructive' : 'primary'}
+          >
             {actionLabel}
           </ButtonLink>
         )
         : (
           <Button
             size="sm"
-            variant={variant === 'error' ? 'danger' : 'primary'}
+            variant={variant === 'error' ? 'destructive' : 'primary'}
             onClick={onAction}
           >
             {actionLabel}
@@ -71,14 +74,14 @@ export function EmptyState({
     >
       <div className="flex items-center gap-3">
         {icon != null ? (
-          <span className="text-lg text-cherry-100" aria-hidden>
+          <span className="text-lg text-[#ffe6ee]" aria-hidden>
             {icon}
           </span>
         ) : null}
         <div>
-          <p className="text-base font-semibold text-cloud-50">{title}</p>
+          <p className="text-base font-semibold text-[#f8fafc]">{title}</p>
           {hasText(description) ? (
-            <p className={cn('text-sm', cherryTextClasses.subtle)}>{description}</p>
+            <p className={cn('text-sm text-[#c3cce5]')}>{description}</p>
           ) : null}
         </div>
       </div>

@@ -1,7 +1,6 @@
 import type { JSX, ReactNode } from 'react';
 import { UserMenu } from './user-menu';
 import { ButtonLink } from '@/components/ui/Button';
-import { cherryBadgeClasses } from '@/lib/ui/theme';
 import { cn } from '@/lib/ui/cn';
 
 type DevConsoleHeaderProps = {
@@ -10,31 +9,34 @@ type DevConsoleHeaderProps = {
   actions?: ReactNode;
 };
 
+const badgeClasses =
+  'inline-flex items-center rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.8)] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#dbe4ff]';
+
 export function DevConsoleHeader({
   userEmail,
   environmentLabel = 'Local',
   actions,
 }: DevConsoleHeaderProps): JSX.Element {
   return (
-    <header className="flex flex-col gap-3 border-b border-ink-700/50 bg-ink-900/70 px-4 py-4 shadow-soft backdrop-blur md:flex-row md:items-center md:justify-between md:px-6">
+    <header className="flex flex-col gap-3 border-b border-[rgba(27,38,69,0.5)] bg-[rgba(11,16,33,0.7)] px-4 py-4 shadow-[0_15px_45px_-30px_rgba(0,0,0,0.65)] backdrop-blur md:flex-row md:items-center md:justify-between md:px-6">
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-label text-cloud-300">
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#c3cce5]">
           <span
             className={cn(
-              cherryBadgeClasses,
-              'border-cherry-500/50 bg-cherry-500/15 text-cherry-100'
+              badgeClasses,
+              'border-[rgba(255,77,109,0.5)] bg-[rgba(255,77,109,0.15)] text-[#ffe6ee]'
             )}
           >
             {environmentLabel}
           </span>
-          <span className={cherryBadgeClasses}>Dev / Lab</span>
-          <span className="hidden rounded-full bg-ink-800/60 px-2 py-1 text-cloud-300 sm:inline">
+          <span className={badgeClasses}>Dev / Lab</span>
+          <span className="hidden rounded-full bg-[rgba(17,26,47,0.6)] px-2 py-1 text-[#c3cce5] sm:inline">
             Not user-facing
           </span>
         </div>
-        <p className="text-xs text-cloud-300">Signed in as {userEmail}</p>
+        <p className="text-xs text-[#c3cce5]">Signed in as {userEmail}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2 text-sm text-cloud-200">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-[#dbe4ff]">
         <ButtonLink href="/scan" variant="secondary" size="sm">
           Scan
         </ButtonLink>

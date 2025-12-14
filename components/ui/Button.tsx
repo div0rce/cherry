@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { JSX } from 'react';
 import Link from 'next/link';
 import type { LinkProps } from 'next/link';
 import { Slot } from '@radix-ui/react-slot';
@@ -14,18 +15,15 @@ export interface ButtonProps
   asChild?: boolean;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size }), className)}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { className, variant, size, asChild = false, ...props },
+  ref
+): JSX.Element {
+  const Comp = asChild ? Slot : 'button';
+  return (
+    <Comp className={cn(buttonVariants({ variant, size }), className)} ref={ref} {...props} />
+  );
+});
 Button.displayName = 'Button';
 
 export interface ButtonLinkProps
@@ -44,7 +42,7 @@ function ButtonLink({
   children,
   disabled = false,
   ...props
-}: ButtonLinkProps) {
+}: ButtonLinkProps): JSX.Element {
   return (
     <Button
       asChild
