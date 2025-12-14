@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { commitAutopilotDecision } from '@/lib/autopilot/service';
+import { commitAutopilotDecision, commitAutopilotDecisionV2 } from '@/lib/autopilot/service';
 import { AutopilotCommitInputSchema, AutopilotServiceError } from '@/lib/autopilot/types';
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
 import { resolveUserContext } from '@/lib/user-context';
+
+const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   let userId: string | null = null;
@@ -23,7 +25,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return parsed.response;
     }
 
-    const result = await commitAutopilotDecision(userContext.userId, parsed.data);
+    const result = AUTOPILOT_COMMIT_V2_ENABLED
+      ? await commitAutopilotDecisionV2(userContext.userId, parsed.data)
+      : await commitAutopilotDecision(userContext.userId, parsed.data);
 
     return NextResponse.json(result, { status: 200 });
   } catch (err) {
@@ -46,13 +50,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (err instanceof Error && err.message.includes('Unauthorized')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot commit failed unexpectedly',
       data: { userId, error: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
     });
-    return NextResponse.json({ error: 'Failed to commit swipe' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to commit swipe', code: 'AUTOPILOT_COMMIT_UNEXPECTED' },
+      { status: 500 }
+    );
   }
 }

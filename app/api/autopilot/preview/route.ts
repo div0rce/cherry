@@ -1,18 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAutopilotDecisionForUserSwipe } from '@/lib/autopilot/service';
-import { AutopilotPreviewInputSchema, AutopilotServiceError } from '@/lib/autopilot/types';
+import { getAutopilotPreview } from '@/lib/autopilot/service';
+import { AutopilotServiceError } from '@/lib/autopilot/types';
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
-import { parseJsonBody } from '@/lib/validation';
+import type { AutopilotPreviewEngineContext } from '@/lib/autopilot/service';
+import {
+  AutopilotPreviewInputSchema,
+  AutopilotPreviewOutputSchema,
+} from '@/lib/validation/autopilot/preview';
 import { resolveUserContext } from '@/lib/user-context';
+import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
+import { parseJsonBody } from '@/lib/validation';
+
+// Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const startedAt = Date.now();
   let userId: string | null = null;
+  let previewStatusLabel: 'ok' | 'blocked' | 'fallback' | 'invalid' | 'none' = 'none';
+
+  const respond = (status: number, body: Record<string, unknown>): NextResponse => {
+    const durationMs = Date.now() - startedAt;
+    incrementCounter('autopilot_preview_requests_total', {
+      http_status: status,
+      preview_status: previewStatusLabel,
+    });
+    observeDuration('autopilot_preview_route_ms', durationMs, { http_status: status });
+    return NextResponse.json(body, { status });
+  };
+
   try {
     const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
     userId = userContext.userId;
 
-    const parsed = await parseJsonBody(request, AutopilotPreviewInputSchema);
-    if (!parsed.ok) {
+    const parsedInput = await parseJsonBody(request, AutopilotPreviewInputSchema);
+    if (!parsedInput.ok) {
+      previewStatusLabel = 'invalid';
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
@@ -20,33 +42,64 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'hard',
         reason: 'INVALID_PAYLOAD',
       });
-      return parsed.response;
+      return respond(400, { error: 'Invalid payload', code: 'INVALID_PAYLOAD' });
     }
 
-    const preview = await getAutopilotDecisionForUserSwipe(userContext.userId, parsed.data);
+    const normalizedInput: AutopilotPreviewEngineContext = {
+      ...parsedInput.data,
+      occurredAt: parsedInput.data.occurredAt ?? new Date().toISOString(),
+    };
 
-    if (preview.status === 'blocked') {
+    const preview = await getAutopilotPreview(userContext.userId, normalizedInput);
+    const validatedPreview = AutopilotPreviewOutputSchema.safeParse(preview);
+    if (!validatedPreview.success) {
+      previewStatusLabel = 'invalid';
+      logInvariantViolation({
+        surface: 'autopilot',
+        detail: 'Autopilot preview response failed validation at route',
+        data: {
+          reason: 'PREVIEW_OUTPUT_SCHEMA_MISMATCH',
+          status: preview?.status ?? 'unknown',
+          reasonCode: preview?.reasonCode,
+          issues: validatedPreview.error.format(),
+        },
+      });
+      return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
+    }
+
+    previewStatusLabel = validatedPreview.data.status;
+
+    if (validatedPreview.data.status === 'blocked') {
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
         kind: 'DECISION_BLOCKED',
         severity: 'hard',
-        reason: preview.reasonCode,
+        reason: validatedPreview.data.reasonCode,
       });
     }
-    if (preview.status === 'fallback') {
+    if (validatedPreview.data.status === 'fallback') {
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
         kind: 'ENGINE_ERROR',
         severity: 'soft',
-        reason: preview.reasonCode,
+        reason: validatedPreview.data.reasonCode,
       });
     }
 
-    return NextResponse.json(preview, { status: 200 });
+    const remainingCents = validatedPreview.data.bucketImpact?.remainingCents;
+    incrementCounter('autopilot_preview_bucket_pressure_total', {
+      pressure: remainingCents != null && remainingCents <= 0 ? 'exhausted' : 'ok',
+    });
+    incrementCounter('autopilot_preview_has_warnings_total', {
+      has_warnings: validatedPreview.data.explanation.warnings.length > 0 ? 'yes' : 'no',
+    });
+
+    return respond(200, validatedPreview.data);
   } catch (err) {
     if (err instanceof AutopilotServiceError) {
+      previewStatusLabel = 'invalid';
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
@@ -54,17 +107,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: err.status >= 500 ? 'soft' : 'hard',
         reason: err.code,
       });
-      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+      return respond(err.status, { error: err.message, code: err.code });
     }
 
     if (err instanceof Error && err.message.includes('Unauthorized')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      previewStatusLabel = 'invalid';
+      return respond(401, { error: 'Unauthorized', code: 'UNAUTHORIZED' });
     }
+    previewStatusLabel = 'invalid';
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot preview failed unexpectedly',
       data: { userId, error: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
     });
-    return NextResponse.json({ error: 'Failed to evaluate autopilot' }, { status: 500 });
+    return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
   }
 }
