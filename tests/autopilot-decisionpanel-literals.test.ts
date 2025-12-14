@@ -32,6 +32,17 @@ const ALLOWED_OPS_LITERALS = new Set<string>([
   // common internal ids / sentinels
   'autopilot-recommendation',
   'alternate-card',
+
+  // common non-copy react/runtime tokens that may appear in components
+  'button',
+  'div',
+  'span',
+  'section',
+  'article',
+  'status',
+  'message',
+  'polite',
+  'assertive',
 ]);
 
 const IGNORE_EXACT = new Set<string>([
@@ -172,8 +183,8 @@ function looksLikeUserFacingCopy(s: string): boolean {
   ]);
   if (uiVerbs.has(s)) return true;
 
-  // Title-case single word often indicates a label
-  if (/^[A-Z][a-z]{2,}$/.test(s)) return true;
+  // Title-case single word often indicates a label, but avoid common component/runtime words
+  if (/^[A-Z][a-z]{2,}$/.test(s) && !ALLOWED_OPS_LITERALS.has(s)) return true;
 
   return false;
 }
