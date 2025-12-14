@@ -98,6 +98,14 @@ const AutopilotUiPanelCopySchema = z
   })
   .strict();
 
+const AutopilotUiExplanationSchema = z
+  .object({
+    primary: z.string(),
+    secondary: z.array(z.string()),
+    warnings: z.array(z.string()),
+  })
+  .strict();
+
 const AutopilotUiBundleSchema = z
   .object({
     badge: AutopilotUiBadgeSchema,
@@ -106,6 +114,7 @@ const AutopilotUiBundleSchema = z
     impact: AutopilotUiImpactSchema,
     sections: AutopilotUiSectionsSchema,
     ctas: AutopilotUiCtasSchema,
+    explanation: AutopilotUiExplanationSchema,
     panel: AutopilotUiPanelCopySchema,
   })
   .strict();

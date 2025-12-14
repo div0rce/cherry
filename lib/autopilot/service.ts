@@ -108,7 +108,7 @@ function toRecommendedCard(card: CardSummary | null): AutopilotRecommendedCard |
   };
 }
 
-function buildPreviewUiBundle(): AutopilotPreviewUiBundle {
+function buildPreviewUiBundle(explanation: AutopilotPreviewOutput['explanation']): AutopilotPreviewUiBundle {
   const spec = getAutopilotUiSpec();
 
   return {
@@ -143,6 +143,7 @@ function buildPreviewUiBundle(): AutopilotPreviewUiBundle {
       primaryTemplate: 'Use ${cardName} for this purchase',
       secondary: 'View bucket impact',
     },
+    explanation,
     panel: {
       idleTitle: spec.panel.idleTitle,
       idleBody: spec.panel.idleBody,
@@ -452,6 +453,9 @@ export async function getAutopilotPreview(
   const startedAt = Date.now();
   const evaluation = await evaluateAutopilot(userId, input, { timeoutMs: ENGINE_TIMEOUT_MS });
 
+  const explanation = buildExplanation(evaluation);
+  const ui = buildPreviewUiBundle(explanation);
+
   const preview: AutopilotPreviewOutput = {
     decisionId: evaluation.decisionId,
     merchant: evaluation.merchant,
@@ -460,10 +464,10 @@ export async function getAutopilotPreview(
     status: evaluation.status,
     recommendedCard: toRecommendedCard(evaluation.recommendedCard),
     expectedBenefitCents: evaluation.expectedBenefitCents,
-    explanation: buildExplanation(evaluation),
+    explanation,
     bucketImpact: evaluation.bucketImpact,
     reasonCode: evaluation.decision.reasonCode,
-    ui: buildPreviewUiBundle(),
+    ui,
   };
 
   const parsed = AutopilotPreviewOutputSchema.safeParse(preview);

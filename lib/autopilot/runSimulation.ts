@@ -155,14 +155,14 @@ function buildImpactSegments(preview: AutopilotPreviewOutput): AutopilotSimulati
 function mapStatusToState(preview: AutopilotPreviewOutput): 'recommended' | 'warning' {
   const hasBudgetPressure =
     preview.bucketImpact?.remainingCents != null && preview.bucketImpact.remainingCents <= 0;
-  const hasWarnings = preview.explanation.warnings.length > 0;
+  const hasWarnings = preview.ui.explanation.warnings.length > 0;
   return preview.status === 'ok' && !hasBudgetPressure && !hasWarnings ? 'recommended' : 'warning';
 }
 
 function buildImpactNotes(preview: AutopilotPreviewOutput): string[] {
   const impactNotes: string[] = [];
-  impactNotes.push(...preview.explanation.secondary);
-  impactNotes.push(...preview.explanation.warnings);
+  impactNotes.push(...preview.ui.explanation.secondary);
+  impactNotes.push(...preview.ui.explanation.warnings);
   return impactNotes;
 }
 
@@ -173,8 +173,8 @@ function buildSimulationCards(
   const recommendedCard = preview.recommendedCard;
   const primaryName = recommendedCard?.label ?? preview.ui.cardLabels.usualCardFallback;
   const primarySentence =
-    preview.explanation.primary?.trim().length > 0
-      ? preview.explanation.primary
+    preview.ui.explanation.primary?.trim().length > 0
+      ? preview.ui.explanation.primary
       : preview.ui.ctas.primaryTemplate.replace('${cardName}', primaryName);
 
   const cards: SimulationCardChoice[] = [
@@ -187,7 +187,7 @@ function buildSimulationCards(
     },
   ];
 
-  const secondarySentence = preview.explanation.secondary[0] ?? '';
+  const secondarySentence = preview.ui.explanation.secondary[0] ?? '';
   cards.push({
     id: 'alternate-card',
     name: preview.ui.cardLabels.alternate,
@@ -244,17 +244,17 @@ function mapPreviewToSimulationResult(
 
   const safetyBadge = buildSafetyBadge(preview.ui.badge.tone, preview.ui.badge.label);
   const recommendationSummary =
-    preview.explanation.primary?.trim().length > 0
-      ? preview.explanation.primary
+    preview.ui.explanation.primary?.trim().length > 0
+      ? preview.ui.explanation.primary
       : preview.ui.ctas.primaryTemplate.replace(
           '${cardName}',
           cards[0]?.name ?? preview.ui.cardLabels.usualCardFallback
         );
 
-  const warningNote = preview.explanation.warnings.join(' ').trim();
+  const warningNote = preview.ui.explanation.warnings.join(' ').trim();
 
   const riskBanner =
-    state === 'warning' ? (preview.explanation.warnings[0] ?? null) : null;
+    state === 'warning' ? (preview.ui.explanation.warnings[0] ?? null) : null;
 
   return {
     state,
@@ -274,7 +274,7 @@ function mapPreviewToSimulationResult(
     rewardStrengthLabel,
     alternativeSectionLabel: preview.ui.sections.alternatives,
     monthImpactTitle: preview.ui.sections.monthImpactTitle,
-    monthImpactSummary: preview.explanation.secondary.join(' ').trim(),
+    monthImpactSummary: preview.ui.explanation.secondary.join(' ').trim(),
     safetyBadgeClass: safetyBadge.safetyBadgeClass,
     safetyBadgeDotClass: safetyBadge.safetyBadgeDotClass,
     safetyBadgeLabel: safetyBadge.safetyBadgeLabel,

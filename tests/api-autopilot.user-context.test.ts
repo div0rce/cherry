@@ -93,6 +93,11 @@ function buildUiStub() {
       primaryTemplate: 'Use ${cardName} for this purchase',
       secondary: 'View bucket impact',
     },
+    explanation: {
+      primary: 'ok',
+      secondary: [],
+      warnings: [],
+    },
     panel: {
       idleTitle: spec.panel.idleTitle,
       idleBody: spec.panel.idleBody,

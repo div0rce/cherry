@@ -47,6 +47,11 @@ function buildUiStub() {
       primaryTemplate: 'Use ${cardName} for this purchase',
       secondary: 'View bucket impact',
     },
+    explanation: {
+      primary: 'Use Alpha',
+      secondary: ['Keeps budget steady'],
+      warnings: [],
+    },
     panel: {
       idleTitle: spec.panel.idleTitle,
       idleBody: spec.panel.idleBody,
@@ -129,7 +134,14 @@ async function runWarningMapping() {
       explanation: { primary: 'Fallback', secondary: [], warnings: ['Budget pressure detected'] },
       bucketImpact: { bucketId: 'bucket-2', name: 'Other', remainingCents: 0, spentCents: 500 },
       reasonCode: 'FALLBACK_SAFE',
-      ui: buildUiStub(),
+      ui: {
+        ...buildUiStub(),
+        explanation: {
+          primary: 'Fallback',
+          secondary: [],
+          warnings: ['Budget pressure detected'],
+        },
+      },
     };
     return new Response(JSON.stringify(payload), {
       status: 200,

@@ -93,6 +93,11 @@ function buildUiStub() {
       primaryTemplate: 'Use ${cardName} for this purchase',
       secondary: 'View bucket impact',
     },
+    explanation: {
+      primary: 'Use Alpha',
+      secondary: [],
+      warnings: [],
+    },
     panel: {
       idleTitle: spec.panel.idleTitle,
       idleBody: spec.panel.idleBody,
@@ -153,6 +158,7 @@ async function runPreviewValid() {
   assert.equal(res.status, 200);
   assert.equal(body.decisionId, 'decision-1');
   assert.equal(body.recommendedCard.id, 'card-1');
+  assert.deepEqual(body.ui.explanation, body.explanation);
   assert.equal(logEvents.length, 0);
 }
 
