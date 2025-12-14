@@ -36,6 +36,7 @@ enum RecommendationSource {
   APP_SCAN
   VINE_SIM
   VINE_DEVICE
+  AUTOPILOT
 }
 
 enum CherryPointLedgerStatus {
@@ -207,6 +208,7 @@ model User {
   accounts                    Account[]
   sessions                    Session[]
   recommendationSessions      RecommendationSession[]
+  autopilotCommits            AutopilotCommit[]
   cherryPointLedgerEntries    CherryPointLedger[]
   categoryPreferences         CategoryPreference[]
   bankTransactions            BankTransaction[]
@@ -369,17 +371,18 @@ model RecommendationSession {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
-  merchantName String?
-  mccCode      Int?
-  category     RewardCategory
-  amountCents  Int
-  currency     String               @default("USD")
-  deviceId     String?
-  storeId      String?
-  terminalId   String?
-  orderId      String?
-  orderToken   String               @unique
-  source       RecommendationSource @default(APP_SCAN)
+  merchantName     String?
+  mccCode          Int?
+  category         RewardCategory
+  amountCents      Int
+  currency         String               @default("USD")
+  deviceId         String?
+  storeId          String?
+  terminalId       String?
+  orderId          String?
+  orderToken       String               @unique
+  source           RecommendationSource @default(APP_SCAN)
+  engineDecisionId String?
 
   recommendedCard      Card?   @relation(fields: [recommendedCardId], references: [id], onDelete: SetNull)
   recommendedCardId    String?
@@ -405,12 +408,27 @@ model RecommendationSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ledgerEntries CherryPointLedger[]
+  ledgerEntries    CherryPointLedger[]
+  autopilotCommits AutopilotCommit[]
 
   @@unique([userId, orderToken], map: "user_order_token_unique")
+  @@index([userId, engineDecisionId])
   @@index([userId])
   @@index([recommendedCardId])
   @@index([recommendedBucketId])
+}
+
+model AutopilotCommit {
+  id         String                @id @default(cuid())
+  user       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  session    RecommendationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId  String
+  decisionId String
+  createdAt  DateTime              @default(now())
+
+  @@unique([userId, decisionId])
+  @@index([sessionId])
 }
 
 model VineDevice {
