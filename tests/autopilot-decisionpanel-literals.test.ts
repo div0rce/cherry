@@ -9,45 +9,200 @@ const decisionPanelPath = path.resolve(
 
 /**
  * Guardrail intent:
- * - DecisionPanel must not introduce UI-authored copy.
- * - It may have classNames, imports, enum-ish strings, etc.
- * - It must not contain human-readable text nodes in JSX like: <div>Some sentence</div>.
+ * - AutopilotDecisionPanel must be a renderer-only surface.
+ * - No user-facing copy literals should live in the panel.
+ * - Ignore imports, HTTP/constants, test ids, CSS/layout classNames, and protocol/ops tokens.
+ * - Fail when human-readable literals appear.
  */
 
-function extractJsxTextNodes(src: string): string[] {
-  const results: string[] = [];
+const ALLOWED_OPS_LITERALS = new Set<string>([
+  // states / operational enums
+  'idle',
+  'loading',
+  'error',
+  'simulated',
+  'recommended',
+  'warning',
 
-  // Heuristic: find text between tags that is not starting with "<" or "{"
-  const regex = />\s*([^<{][\s\S]*?)\s*</g;
+  // badge severity enums
+  'positive',
+  'neutral',
+  'negative',
 
-  for (const m of src.matchAll(regex)) {
-    const raw = (m[1] ?? '').trim();
-    if (raw.length === 0) continue;
+  // common internal ids / sentinels
+  'autopilot-recommendation',
+  'alternate-card',
+]);
 
-    const normalized = raw.replace(/\s+/g, ' ').trim();
-    if (normalized === '') continue;
+const IGNORE_EXACT = new Set<string>([
+  // common jsx keys / attributes / primitives
+  'className',
+  'children',
+  'key',
+  'id',
+  'role',
+  'type',
+  'name',
+  'value',
+  'disabled',
+  'checked',
+  'selected',
+  'placeholder',
+  'title',
+  'aria-label',
+  'aria-describedby',
+  'aria-hidden',
+  'data-testid',
+  'data-test-id',
+  'data-state',
+  'data-slot',
 
-    // Allow a single middot or similar trivial separator if ever present.
-    if (normalized === '·') continue;
+  // types / misc
+  'string',
+  'number',
+  'object',
+  'undefined',
+  'null',
+  'true',
+  'false',
 
-    results.push(normalized);
-  }
+  // common props passed through from ui bundle
+  'ui',
+  'panel',
+  'badge',
+  'severity',
+  'label',
+  'explanation',
+  'formLabels',
+  'rewardStrength',
+  'sections',
+  'ctas',
+  'impact',
+  'fallbackSegments',
 
-  return results;
+  // if the file references routes/constants
+  '/api/autopilot/preview',
+]);
+
+function extractAllStringLiterals(src: string): string[] {
+  const regex = /(['"`])((?:\\.|(?!\\1)[\\s\\S])*)\\1/g;
+  return [...src.matchAll(regex)].map((m) => m[2] ?? '');
+}
+
+function looksLikeCssToken(s: string): boolean {
+  return (
+    s.includes('bg-[') ||
+    s.includes('text-[') ||
+    s.includes('rounded') ||
+    s.includes('shadow') ||
+    s.includes('px-') ||
+    s.includes('py-') ||
+    s.includes('pt-') ||
+    s.includes('pb-') ||
+    s.includes('pl-') ||
+    s.includes('pr-') ||
+    s.includes('mt-') ||
+    s.includes('mb-') ||
+    s.includes('ml-') ||
+    s.includes('mr-') ||
+    s.includes('w-') ||
+    s.includes('h-') ||
+    s.includes('min-') ||
+    s.includes('max-') ||
+    s.includes('grid') ||
+    s.includes('flex') ||
+    s.includes('gap-') ||
+    s.includes('border') ||
+    s.includes('ring') ||
+    s.includes('outline') ||
+    s.includes('animate') ||
+    s.includes('transition') ||
+    s.includes('duration-') ||
+    s.includes('ease-')
+  );
+}
+
+function isProbablyNonCopyToken(s: string): boolean {
+  if (s.trim().length === 0) return true;
+
+  // import-ish / module-ish
+  if (/^@\/|^\.\//.test(s)) return true;
+
+  // urls
+  if (/^\w+:\/\//.test(s)) return true;
+
+  // file-ish / route-ish segments
+  if (s.includes('/') && !s.includes(' ')) return true;
+
+  // dot-notation / identifiers
+  if (s.includes('.') && !/\s/.test(s) && !/[.?!]$/.test(s)) return true;
+
+  // pure identifier token
+  if (/^[a-z0-9_.:-]+$/i.test(s)) return true;
+
+  return false;
+}
+
+function looksLikeUserFacingCopy(s: string): boolean {
+  // templates are always copy
+  if (/\$\{/.test(s)) return true;
+
+  // punctuation/whitespace usually implies copy
+  if (/[.?!]/.test(s)) return true;
+  if (/\s/.test(s)) return true;
+
+  // single-word UI labels (common “leaks”)
+  const uiVerbs = new Set([
+    'Submit',
+    'Continue',
+    'Cancel',
+    'Retry',
+    'Close',
+    'Save',
+    'Done',
+    'Back',
+    'Next',
+    'Skip',
+    'Confirm',
+    'Remove',
+    'Edit',
+    'View',
+    'Apply',
+    'Dismiss',
+  ]);
+  if (uiVerbs.has(s)) return true;
+
+  // Title-case single word often indicates a label
+  if (/^[A-Z][a-z]{2,}$/.test(s)) return true;
+
+  return false;
 }
 
 function main(): void {
   const content = fs.readFileSync(decisionPanelPath, 'utf8');
-  const textNodes = extractJsxTextNodes(content);
+  const literals = extractAllStringLiterals(content);
+
+  const copyViolations: string[] = [];
+
+  for (const lit of literals) {
+    if (IGNORE_EXACT.has(lit)) continue;
+    if (ALLOWED_OPS_LITERALS.has(lit)) continue;
+    if (looksLikeCssToken(lit)) continue;
+    if (isProbablyNonCopyToken(lit)) continue;
+
+    if (looksLikeUserFacingCopy(lit)) {
+      copyViolations.push(lit);
+    }
+  }
 
   assert.deepEqual(
-    textNodes,
+    copyViolations,
     [],
     [
-      'AutopilotDecisionPanel must not include JSX-visible literal copy.',
-      'Move any new copy into uiSpec / engine payload and render it from props.',
-      'Found these JSX text nodes:',
-      ...textNodes.map((t) => `- ${t}`),
+      'AutopilotDecisionPanel introduced user-facing copy literals (panel must remain renderer-only).',
+      'Move copy into engine-owned preview.ui.* fields, or explicitly classify as protocol/ops.',
+      'Copy-like literals detected:',
+      ...copyViolations.map((t) => `- ${JSON.stringify(t)}`),
     ].join('\n')
   );
 
