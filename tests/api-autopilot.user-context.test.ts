@@ -66,15 +66,16 @@ function buildUiStub() {
       tone: 'neutral',
       label: spec.panel.safetyLabel,
     },
-    cardLabels: {
-      recommended: 'Recommended',
-      alternate: 'Alternate card',
-      caution: 'Use caution',
-      usualCardFallback: 'Your usual card',
-    },
-    rewardStrength: {
-      label: 'Good rewards',
-    },
+  cardLabels: {
+    recommended: 'Recommended',
+    alternate: 'Alternate card',
+    caution: 'Use caution',
+    usualCardFallback: 'Your usual card',
+  },
+  rewardStrength: {
+    label: 'Good rewards',
+    level: 3,
+  },
     impact: {
       fallbackSegments: {
         usedLabel: 'Bucket used',
@@ -88,6 +89,19 @@ function buildUiStub() {
       recommendation: 'Autopilot recommendation',
       alternatives: 'Other ways to pay',
       monthImpactTitle: 'Month impact',
+    },
+    formLabels: {
+      category: {
+        dining: 'Dining',
+        groceries: 'Groceries',
+        travel: 'Travel',
+        gas: 'Gas',
+        other: 'Other',
+      },
+      timing: {
+        now: 'Now',
+        'scheduled-soon': 'Scheduling soon',
+      },
     },
     ctas: {
       primaryTemplate: 'Use ${cardName} for this purchase',

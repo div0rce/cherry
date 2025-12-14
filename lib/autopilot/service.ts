@@ -81,6 +81,7 @@ type EvaluatedAutopilotContext = {
 };
 
 const ENGINE_TIMEOUT_MS = 1500;
+const DEFAULT_REWARD_STRENGTH_LEVEL: AutopilotPreviewUiBundle['rewardStrength']['level'] = 3;
 
 function parseOccurredAt(raw?: string): Date {
   if (raw === undefined) return new Date();
@@ -126,6 +127,7 @@ function buildPreviewUiBundle(
     },
     rewardStrength: {
       label: 'Good rewards',
+      level: DEFAULT_REWARD_STRENGTH_LEVEL,
     },
     impact: {
       fallbackSegments: {
@@ -161,6 +163,16 @@ function buildPreviewUiBundle(
       showingPreviousResultNote: spec.panel.showingPreviousResultNote,
       actionComingSoonNote: spec.panel.actionComingSoonNote,
       safetyLabel: spec.panel.safetyLabel,
+    },
+    formLabels: {
+      category: spec.form.categoryOptions.reduce<Record<string, string>>((acc, option) => {
+        acc[option.value] = option.label;
+        return acc;
+      }, {}),
+      timing: spec.form.timingOptions.reduce<Record<string, string>>((acc, option) => {
+        acc[option.value] = option.label;
+        return acc;
+      }, {}),
     },
   };
 }
@@ -447,6 +459,18 @@ function buildExplanation(
   return { primary, secondary, warnings };
 }
 
+function computeRewardStrengthLevel(
+  expectedBenefitCents: number,
+  amountCents: number
+): AutopilotPreviewUiBundle['rewardStrength']['level'] {
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return 1;
+  const ratio = expectedBenefitCents / amountCents;
+  if (ratio > 0.03) return 4;
+  if (ratio > 0.02) return 3;
+  if (ratio > 0.01) return 2;
+  return 1;
+}
+
 export async function getAutopilotPreview(
   userId: string,
   input: AutopilotPreviewEngineContext
@@ -457,6 +481,10 @@ export async function getAutopilotPreview(
 
   const explanation = buildExplanation(evaluation);
   const ui = buildPreviewUiBundle(explanation);
+  ui.rewardStrength.level = computeRewardStrengthLevel(
+    evaluation.expectedBenefitCents,
+    evaluation.amountCents
+  );
 
   const preview: AutopilotPreviewOutput = {
     decisionId: evaluation.decisionId,

@@ -46,6 +46,7 @@ const AutopilotUiCardLabelsSchema = z
 const AutopilotUiRewardStrengthSchema = z
   .object({
     label: NonEmptyStringSchema,
+    level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
     strengthPercent: PercentSchema.optional(),
   })
   .strict();
@@ -116,6 +117,12 @@ const AutopilotUiBundleSchema = z
     ctas: AutopilotUiCtasSchema,
     explanation: AutopilotUiExplanationSchema,
     panel: AutopilotUiPanelCopySchema,
+    formLabels: z
+      .object({
+        category: z.record(z.string(), NonEmptyStringSchema),
+        timing: z.record(z.string(), NonEmptyStringSchema),
+      })
+      .strict(),
   })
   .strict();
 

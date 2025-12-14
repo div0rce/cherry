@@ -20,15 +20,16 @@ function buildUiStub() {
       tone: 'neutral',
       label: spec.panel.safetyLabel,
     },
-    cardLabels: {
-      recommended: 'Recommended',
-      alternate: 'Alternate card',
-      caution: 'Use caution',
-      usualCardFallback: 'Your usual card',
-    },
-    rewardStrength: {
-      label: 'Good rewards',
-    },
+  cardLabels: {
+    recommended: 'Recommended',
+    alternate: 'Alternate card',
+    caution: 'Use caution',
+    usualCardFallback: 'Your usual card',
+  },
+  rewardStrength: {
+    label: 'Good rewards',
+    level: 3,
+  },
     impact: {
       fallbackSegments: {
         usedLabel: 'Bucket used',
@@ -42,6 +43,19 @@ function buildUiStub() {
       recommendation: 'Autopilot recommendation',
       alternatives: 'Other ways to pay',
       monthImpactTitle: 'Month impact',
+    },
+    formLabels: {
+      category: {
+        dining: 'Dining',
+        groceries: 'Groceries',
+        travel: 'Travel',
+        gas: 'Gas',
+        other: 'Other',
+      },
+      timing: {
+        now: 'Now',
+        'scheduled-soon': 'Scheduling soon',
+      },
     },
     ctas: {
       primaryTemplate: 'Use ${cardName} for this purchase',
@@ -110,8 +124,10 @@ async function runHappyPath() {
   assert.equal(firstCall.body.category, 'DINING');
   assert.equal(result.cards[0].name, 'Alpha');
   assert.equal(result.state, 'recommended');
+  assert.equal(result.categoryLabel, 'Dining');
+  assert.equal(result.timingLabel, 'Now');
   assert.equal(result.impactSegments.length, 3);
-  assert.ok(result.rewardStrength >= 1 && result.rewardStrength <= 4);
+  assert.equal(result.rewardStrength, 3);
   assert.ok(result.monthImpactSummary.length > 0);
 
   // clean up

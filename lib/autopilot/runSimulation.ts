@@ -84,15 +84,6 @@ function clampPercentage(value: number): number {
   return Math.max(0, Math.min(100, Number(value.toFixed(1))));
 }
 
-function computeRewardStrength(benefitCents: number, amountCents: number): 1 | 2 | 3 | 4 {
-  if (!Number.isFinite(amountCents) || amountCents <= 0) return 1;
-  const ratio = benefitCents / amountCents;
-  if (ratio > 0.03) return 4;
-  if (ratio > 0.02) return 3;
-  if (ratio > 0.01) return 2;
-  return 1;
-}
-
 function ensureImpactSegments(
   input: AutopilotSimulationResult['impactSegments'],
   fallbackSegments: AutopilotPreviewOutput['ui']['impact']['fallbackSegments']
@@ -209,8 +200,8 @@ function buildSafetyBadge(
 } {
   if (tone === 'negative') {
     return {
-      safetyBadgeClass: 'bg-[#FEF3C7] text-[#92400E]',
-      safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#F59E0B]',
+      safetyBadgeClass: 'bg-[#FEE2E2] text-[#991B1B]',
+      safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#DC2626]',
       safetyBadgeLabel: label,
     };
   }
@@ -234,9 +225,11 @@ function mapPreviewToSimulationResult(
   preview: AutopilotPreviewOutput,
   summary: AutopilotPurchaseSummary
 ): AutopilotSimulationResult {
-  const categoryLabel = String(summary.category);
+  const categoryLabel =
+    preview.ui.formLabels.category[summary.category] ?? String(summary.category);
+  const timingLabel = preview.ui.formLabels.timing[summary.timing] ?? String(summary.timing);
   const state = mapStatusToState(preview);
-  const rewardStrength = computeRewardStrength(preview.expectedBenefitCents, preview.amountCents);
+  const rewardStrength = preview.ui.rewardStrength.level;
   const rewardStrengthLabel = preview.ui.rewardStrength.label;
   const impactSegments = buildImpactSegments(preview);
   const impactNotes = buildImpactNotes(preview);
@@ -268,7 +261,7 @@ function mapPreviewToSimulationResult(
     impactNotes,
     rewardStrength,
     categoryLabel,
-    timingLabel: String(summary.timing),
+    timingLabel,
     recommendationSectionLabel: preview.ui.sections.recommendation,
     recommendationSummary,
     rewardStrengthLabel,
