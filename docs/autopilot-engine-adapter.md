@@ -27,6 +27,10 @@ Repo/location primers:
 5) Route re-validates with `AutopilotPreviewOutputSchema`, logs guardrail events on `blocked`/`fallback`, and responds 200 JSON.
 6) Adapter validates the JSON again with `AutopilotPreviewOutputSchema`, maps to `AutopilotSimulationResult` (state, cards, impact bar, badges, CTAs), and hands it to the pure UI renderers.
 
+### Semantics ownership (current and target)
+- **AdapterSemantics v1 (current reality):** `lib/autopilot/runSimulation.ts` still authors user-facing strings (card labels, reward strength labels, badge copy, impact segment labels). Guardrail tests (`tests/autopilot-*-literals.test.ts`) snapshot current literals to prevent silent drift.
+- **EngineSemantics v2 (target):** `/api/autopilot/preview` should return a complete UI bundle (badge labels/tones, card labels/sentences, section headers, segment labels, reward strength label, CTA labels, action note, idle/loading/error copy, timestamp fallback). When v2 exists, the adapter becomes formatting-only and the UI remains a pure renderer. Keep v1 stable until v2 is implemented and adopted.
+
 ## Shape quick reference (with validation hooks)
 - **Input (UI → runSimulation):**
   ```ts

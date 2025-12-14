@@ -1,10 +1,13 @@
 import type { AutopilotPurchaseSummary } from '@/components/autopilot/AutopilotShell';
+import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 import type { AutopilotRewardCategory } from '@/lib/autopilot/types';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
 } from '@/lib/validation/autopilot/preview';
 import { formatCurrency } from '@/lib/formatCurrency';
+
+const AUTOPILOT_UI_SPEC = getAutopilotUiSpec();
 
 export type SimulationCardChoice = {
   id: string;
@@ -46,26 +49,39 @@ export type AutopilotSimulationResult = {
   ctaSecondary: string;
   riskBanner?: string;
   errorTimestamp?: string;
+  ui: {
+    idleTitle: string;
+    idleBody: string;
+    loadingTitle: string;
+    loadingBody: string;
+    loadingShimmerLines: number;
+    errorTitle: string;
+    errorBody: string;
+    errorTimestampFallback: string;
+    sectionSimulationEyebrow: string;
+    unnamedMerchantFallback: string;
+    recommendationSectionTitle: string;
+    alternativeSectionTitle: string;
+    actionComingSoonNote: string;
+    simulationIssueTitle: string;
+    showingPreviousResultNote: string;
+    safetyLabel: string;
+  };
 };
 
-const categoryLabelMap: Record<AutopilotPurchaseSummary['category'], string> = {
-  dining: 'Dining',
-  groceries: 'Groceries',
-  travel: 'Travel',
-  gas: 'Gas',
-  other: 'Other',
-};
+const categoryLabelMap: Record<AutopilotPurchaseSummary['category'], string> =
+  AUTOPILOT_UI_SPEC.form.categoryOptions.reduce(
+    (acc, option) => ({ ...acc, [option.value]: option.label }),
+    {} as Record<AutopilotPurchaseSummary['category'], string>
+  );
 
-const categoryToRewardCategory: Record<
+const categoryRewardMap: Record<
   AutopilotPurchaseSummary['category'],
   AutopilotRewardCategory
-> = {
-  dining: 'DINING',
-  groceries: 'GROCERIES',
-  travel: 'TRAVEL',
-  gas: 'GAS',
-  other: 'OTHER',
-};
+> = AUTOPILOT_UI_SPEC.form.categoryOptions.reduce(
+  (acc, option) => ({ ...acc, [option.value]: option.rewardCategory }),
+  {} as Record<AutopilotPurchaseSummary['category'], AutopilotRewardCategory>
+);
 
 function dollarsToCents(amount: number): number {
   return Math.round(amount * 100);
@@ -97,6 +113,11 @@ function rewardStrengthLabelFor(strength: 1 | 2 | 3 | 4): string {
   if (strength === 3) return 'Good rewards';
   if (strength === 2) return 'Moderate rewards';
   return 'Low rewards';
+}
+
+function timingLabelFor(value: AutopilotPurchaseSummary['timing']): string {
+  const option = AUTOPILOT_UI_SPEC.form.timingOptions.find((entry) => entry.value === value);
+  return option?.label ?? AUTOPILOT_UI_SPEC.form.timingOptions[0]?.label ?? 'Now';
 }
 
 function ensureImpactSegments(
@@ -274,7 +295,7 @@ function mapPreviewToSimulationResult(
     impactNotes,
     rewardStrength,
     categoryLabel: `${categoryName} bucket`,
-    timingLabel: summary.timing === 'now' ? 'Right now' : 'Scheduling soon',
+    timingLabel: timingLabelFor(summary.timing),
     recommendationSectionLabel: 'Autopilot recommendation',
     recommendationSummary,
     rewardStrengthLabel,
@@ -287,6 +308,24 @@ function mapPreviewToSimulationResult(
     ctaPrimary: `Use ${cards[0]?.name ?? 'your usual card'} for this purchase`,
     ctaSecondary: 'View bucket impact',
     ...(riskBanner !== null ? { riskBanner } : {}),
+    ui: {
+      idleTitle: AUTOPILOT_UI_SPEC.panel.idleTitle,
+      idleBody: AUTOPILOT_UI_SPEC.panel.idleBody,
+      loadingTitle: AUTOPILOT_UI_SPEC.panel.loadingTitle,
+      loadingBody: AUTOPILOT_UI_SPEC.panel.loadingBody,
+      loadingShimmerLines: AUTOPILOT_UI_SPEC.panel.loadingShimmerLines,
+      errorTitle: AUTOPILOT_UI_SPEC.panel.errorTitle,
+      errorBody: AUTOPILOT_UI_SPEC.panel.errorBody,
+      errorTimestampFallback: AUTOPILOT_UI_SPEC.panel.errorTimestampFallback,
+      sectionSimulationEyebrow: AUTOPILOT_UI_SPEC.panel.sectionSimulationEyebrow,
+      unnamedMerchantFallback: AUTOPILOT_UI_SPEC.panel.unnamedMerchantFallback,
+      recommendationSectionTitle: AUTOPILOT_UI_SPEC.panel.recommendationSectionTitle,
+      alternativeSectionTitle: AUTOPILOT_UI_SPEC.panel.alternativeSectionTitle,
+      actionComingSoonNote: AUTOPILOT_UI_SPEC.panel.actionComingSoonNote,
+      simulationIssueTitle: AUTOPILOT_UI_SPEC.panel.simulationIssueTitle,
+      showingPreviousResultNote: AUTOPILOT_UI_SPEC.panel.showingPreviousResultNote,
+      safetyLabel: AUTOPILOT_UI_SPEC.panel.safetyLabel,
+    },
   };
 }
 
@@ -306,7 +345,7 @@ function buildPreviewPayload(summary: AutopilotPurchaseSummary) {
     merchant: summary.merchant.trim(),
     amountCents: dollarsToCents(summary.amount),
     occurredAt: new Date().toISOString(),
-    category: categoryToRewardCategory[summary.category],
+    category: categoryRewardMap[summary.category],
   };
 }
 

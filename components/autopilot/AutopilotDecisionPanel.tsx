@@ -1,12 +1,13 @@
-import type { JSX } from "react";
-import { Button } from "@/components/ui/Button";
-import { AutopilotMonthImpactBar } from "./AutopilotMonthImpactBar";
-import type { AutopilotPurchaseSummary } from "./AutopilotShell";
+import type { JSX } from 'react';
+import { Button } from '@/components/ui/Button';
+import { AutopilotMonthImpactBar } from './AutopilotMonthImpactBar';
+import type { AutopilotPurchaseSummary } from './AutopilotShell';
 import type {
   AutopilotSimulationResult,
   SimulationCardChoice,
-} from "@/lib/autopilot/runSimulation";
-import { formatCurrency } from "@/lib/formatCurrency";
+} from '@/lib/autopilot/runSimulation';
+import { formatCurrency } from '@/lib/formatCurrency';
+import type { AutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 
 type AutopilotDecisionPanelProps = {
   hasPurchase: boolean;
@@ -14,18 +15,19 @@ type AutopilotDecisionPanelProps = {
   simulationResult: AutopilotSimulationResult | null;
   isSimulating: boolean;
   simulationError: string | null;
+  uiSpec: AutopilotUiSpec;
 };
 
-const labelToneClass: Record<SimulationCardChoice["labelTone"], string> = {
-  positive: "bg-[#DCFCE7] text-[#166534]",
-  neutral: "bg-[#E5E7EB] text-[#4B5563]",
-  negative: "bg-[#FEE2E2] text-[#991B1B]",
+const labelToneClass: Record<SimulationCardChoice['labelTone'], string> = {
+  positive: 'bg-[#DCFCE7] text-[#166534]',
+  neutral: 'bg-[#E5E7EB] text-[#4B5563]',
+  negative: 'bg-[#FEE2E2] text-[#991B1B]',
 };
 
-const labelToneText: Record<SimulationCardChoice["labelTone"], string> = {
-  positive: "text-[#16A34A]",
-  neutral: "text-[#94A3B8]",
-  negative: "text-[#DC2626]",
+const labelToneText: Record<SimulationCardChoice['labelTone'], string> = {
+  positive: 'text-[#16A34A]',
+  neutral: 'text-[#94A3B8]',
+  negative: 'text-[#DC2626]',
 };
 
 const hasText = (value?: string | null): value is string =>
@@ -37,19 +39,18 @@ export function AutopilotDecisionPanel({
   simulationResult,
   isSimulating,
   simulationError,
+  uiSpec,
 }: AutopilotDecisionPanelProps): JSX.Element {
-  const state = simulationResult?.state ?? "recommended";
+  const state = simulationResult?.state ?? 'recommended';
+  const panelCopy = simulationResult?.ui ?? uiSpec.panel;
 
   if (!hasPurchase || !purchaseSummary) {
     return (
       <div className="space-y-2 rounded-2xl border border-[#E2E8F0] bg-white/90 p-6 text-sm text-[#475569] shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
         <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-          Autopilot is idle
+          {panelCopy.idleTitle}
         </div>
-        <p>
-          Fill in an amount and merchant on the left. Autopilot will show the
-          best card and the full impact on your month.
-        </p>
+        <p>{panelCopy.idleBody}</p>
       </div>
     );
   }
@@ -58,24 +59,26 @@ export function AutopilotDecisionPanel({
     return (
       <div className="space-y-4 rounded-2xl border border-[#E2E8F0] bg-white/95 p-6 text-sm text-[#475569] shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
         <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-          Preparing simulation
+          {panelCopy.loadingTitle}
         </div>
         {isSimulating ? (
           <div className="space-y-4">
-            <div className="text-sm text-[#94A3B8]">
-              Autopilot is analyzing this purchase...
-            </div>
+            <div className="text-sm text-[#94A3B8]">{panelCopy.loadingBody}</div>
             <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
               <div className="h-3 w-3/4 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
               <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
               <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-              <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
+              {Array.from({ length: panelCopy.loadingShimmerLines }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]"
+                />
+              ))}
             </div>
           </div>
         ) : (
           <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[#991B1B]">
-            {simulationError ??
-              "Simulation output is unavailable right now. Please try again in a moment."}
+            {simulationError ?? panelCopy.errorBody}
           </div>
         )}
       </div>
@@ -93,9 +96,9 @@ export function AutopilotDecisionPanel({
   const errorTimestamp =
     simulationResult.errorTimestamp !== undefined &&
     simulationResult.errorTimestamp !== null &&
-    simulationResult.errorTimestamp !== ""
+    simulationResult.errorTimestamp !== ''
       ? simulationResult.errorTimestamp
-      : "Just now";
+      : panelCopy.errorTimestampFallback;
 
   return (
     <div className="space-y-6 rounded-2xl border border-[#E2E8F0] bg-white/95 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
@@ -109,13 +112,13 @@ export function AutopilotDecisionPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-              This simulation
+              {panelCopy.sectionSimulationEyebrow}
             </div>
             <div className="text-base font-semibold text-[#0F172A]">
-              {merchant !== "" ? merchant : "Unnamed merchant"}
+              {merchant !== '' ? merchant : panelCopy.unnamedMerchantFallback}
             </div>
             <div className="text-[12px] text-[#64748B]">
-              {formatCurrency(amount)} · {simulationResult.categoryLabel} ·{" "}
+              {formatCurrency(amount)} · {simulationResult.categoryLabel} ·{' '}
               {simulationResult.timingLabel}
             </div>
           </div>
@@ -132,11 +135,9 @@ export function AutopilotDecisionPanel({
       </div>
 
       {isSimulating && (
-        <div className="space-y-4">
-          <div className="text-sm text-[#94A3B8]">
-            Autopilot is analyzing this purchase...
-          </div>
-          <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
+          <div className="space-y-4">
+            <div className="text-sm text-[#94A3B8]">{panelCopy.loadingBody}</div>
+            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
             <div className="h-3 w-3/4 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
             <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
             <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
@@ -157,16 +158,16 @@ export function AutopilotDecisionPanel({
           <div className="flex items-start justify-between transition-opacity duration-200">
             <div className="space-y-2 rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-sm text-[#991B1B]">
               <div className="text-[11px] uppercase tracking-[0.14em]">
-                Simulation issue
+                {panelCopy.simulationIssueTitle}
               </div>
-              <p>{simulationError}</p>
+              <p>{simulationError ?? panelCopy.errorBody}</p>
               {hasSimulationResult && (
                 <p className="text-[11px] text-[#991B1B]">
-                  Showing your last successful simulation.
+                  {panelCopy.showingPreviousResultNote}
                 </p>
               )}
             </div>
-            <span className="text-[10px] text-[#991B1B]">{errorTimestamp}</span>
+            <span className="text-[10px] text-[#991B1B]">{errorTimestamp ?? panelCopy.errorTimestampFallback}</span>
           </div>
         </>
       )}
@@ -295,7 +296,7 @@ export function AutopilotDecisionPanel({
             </Button>
           </div>
           <p className="text-[11px] text-[#94A3B8]">
-            Actions coming soon — this is a planning sandbox.
+            {panelCopy.actionComingSoonNote}
           </p>
         </>
       )}

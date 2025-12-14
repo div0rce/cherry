@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import type { JSX } from "react";
+import { useState } from 'react';
+import type { JSX } from 'react';
 import {
   runSimulation,
   type AutopilotSimulationResult,
-} from "@/lib/autopilot/runSimulation";
-import { AutopilotPurchaseForm } from "./AutopilotPurchaseForm";
-import { AutopilotDecisionPanel } from "./AutopilotDecisionPanel";
-
-export type Category = "dining" | "groceries" | "travel" | "gas" | "other";
-export type Timing = "now" | "scheduled-soon";
+} from '@/lib/autopilot/runSimulation';
+import type {
+  AutopilotUiSpec,
+  AutopilotCategoryOptionValue,
+  AutopilotTimingOption,
+} from '@/lib/autopilot/uiSpec';
+import { AutopilotPurchaseForm } from './AutopilotPurchaseForm';
+import { AutopilotDecisionPanel } from './AutopilotDecisionPanel';
 
 export type AutopilotPurchaseSummary = {
   amount: number;
@@ -19,11 +21,30 @@ export type AutopilotPurchaseSummary = {
   timing: Timing;
 };
 
-export function AutopilotShell(): JSX.Element {
+type Category = AutopilotCategoryOptionValue;
+type Timing = AutopilotTimingOption;
+export type { Category, Timing };
+
+function invariant(condition: boolean, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Element {
+  invariant(uiSpec.form.categoryOptions.length > 0, 'Autopilot UI spec missing category options');
+  invariant(uiSpec.form.timingOptions.length > 0, 'Autopilot UI spec missing timing options');
+
+  const categoryOption = uiSpec.form.categoryOptions[0];
+  const timingOption = uiSpec.form.timingOptions[0];
+  invariant(categoryOption !== undefined, 'Autopilot UI spec missing first category option');
+  invariant(timingOption !== undefined, 'Autopilot UI spec missing first timing option');
+  const defaultCategory = categoryOption.value as Category;
+  const defaultTiming = timingOption.value as Timing;
   const [amount, setAmount] = useState<number | null>(null);
   const [merchant, setMerchant] = useState("");
-  const [category, setCategory] = useState<Category>("dining");
-  const [timing, setTiming] = useState<Timing>("now");
+  const [category, setCategory] = useState<Category>(defaultCategory);
+  const [timing, setTiming] = useState<Timing>(defaultTiming);
   const [hasPurchase, setHasPurchase] = useState(false);
   const [purchaseSummary, setPurchaseSummary] =
     useState<AutopilotPurchaseSummary | null>(null);
@@ -52,10 +73,8 @@ export function AutopilotShell(): JSX.Element {
       const result = await runSimulation(summary);
       setSimulationResult(result);
     } catch (error) {
-      console.error("Autopilot simulation failed", error);
-      setSimulationError(
-        "Autopilot couldn’t simulate this purchase. Your buckets and cards are safe; try again in a moment. If it persists, try a smaller amount.",
-      );
+      console.error('Autopilot simulation failed', error);
+      setSimulationError(uiSpec.simulationErrorMessage);
       setSimulationResult(null);
     } finally {
       setIsSimulating(false);
@@ -68,21 +87,23 @@ export function AutopilotShell(): JSX.Element {
         {/* Page heading */}
         <header className="mb-8 md:mb-10">
           <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-            Cherry Autopilot
+            {uiSpec.eyebrow}
           </div>
           <h1 className="text-2xl font-semibold text-[#0F172A] md:text-3xl">
-            See how Autopilot would handle this purchase.
+            {uiSpec.headline}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-[#475569]">
-            Describe the spend, Autopilot simulates your month, chooses the
-            card, and shows bucket impact before you tap pay.
-          </p>
+          {uiSpec.subhead !== '' && (
+            <p className="mt-2 max-w-2xl text-sm text-[#475569]">
+              {uiSpec.subhead}
+            </p>
+          )}
         </header>
 
         {/* Two-column main layout */}
         <main className="grid gap-6 md:grid-cols-[1.15fr_1.5fr]">
           <section className="md:sticky md:top-6">
             <AutopilotPurchaseForm
+              uiSpec={uiSpec}
               amount={amount}
               merchant={merchant}
               category={category}
@@ -98,6 +119,7 @@ export function AutopilotShell(): JSX.Element {
           </section>
           <section>
             <AutopilotDecisionPanel
+              uiSpec={uiSpec}
               hasPurchase={hasPurchase}
               purchaseSummary={purchaseSummary}
               simulationResult={simulationResult}
