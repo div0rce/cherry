@@ -5,6 +5,9 @@ import { AUTOPILOT_REWARD_CATEGORIES } from '@/lib/autopilot/types';
 
 const PositiveCentsSchema = z.number().int().positive();
 const IsoDatetimeStringSchema = z.string().datetime();
+const AutopilotToneSchema = z.enum(['positive', 'neutral', 'negative']);
+const NonEmptyStringSchema = z.string().trim().min(1);
+const PercentSchema = z.number().finite().min(0).max(100);
 
 const AutopilotRecommendedCardSchema = z
   .object({
@@ -21,6 +24,89 @@ const AutopilotBucketImpactSchema = z
     name: z.string().trim().min(1).nullable(),
     remainingCents: z.number().int(),
     spentCents: z.number().int(),
+  })
+  .strict();
+
+const AutopilotUiBadgeSchema = z
+  .object({
+    tone: AutopilotToneSchema,
+    label: NonEmptyStringSchema,
+  })
+  .strict();
+
+const AutopilotUiCardLabelsSchema = z
+  .object({
+    recommended: NonEmptyStringSchema,
+    alternate: NonEmptyStringSchema,
+    caution: NonEmptyStringSchema,
+    usualCardFallback: NonEmptyStringSchema,
+  })
+  .strict();
+
+const AutopilotUiRewardStrengthSchema = z
+  .object({
+    label: NonEmptyStringSchema,
+    strengthPercent: PercentSchema.optional(),
+  })
+  .strict();
+
+const AutopilotUiImpactSchema = z
+  .object({
+    fallbackSegments: z
+      .object({
+        usedLabel: NonEmptyStringSchema,
+        remainingLabel: NonEmptyStringSchema,
+        otherLabel: NonEmptyStringSchema,
+      })
+      .strict(),
+    bucketUsedTemplate: NonEmptyStringSchema,
+    bucketRemainingTemplate: NonEmptyStringSchema,
+  })
+  .strict();
+
+const AutopilotUiSectionsSchema = z
+  .object({
+    recommendation: NonEmptyStringSchema,
+    alternatives: NonEmptyStringSchema,
+    monthImpactTitle: NonEmptyStringSchema,
+  })
+  .strict();
+
+const AutopilotUiCtasSchema = z
+  .object({
+    primaryTemplate: NonEmptyStringSchema,
+    secondary: NonEmptyStringSchema,
+  })
+  .strict();
+
+const AutopilotUiPanelCopySchema = z
+  .object({
+    idleTitle: NonEmptyStringSchema,
+    idleBody: NonEmptyStringSchema,
+    loadingTitle: NonEmptyStringSchema,
+    loadingBody: NonEmptyStringSchema,
+    loadingShimmerLines: z.number().int().min(0).max(12),
+    errorTitle: NonEmptyStringSchema,
+    errorBody: NonEmptyStringSchema,
+    errorTimestampFallback: NonEmptyStringSchema,
+    sectionSimulationEyebrow: NonEmptyStringSchema,
+    unnamedMerchantFallback: NonEmptyStringSchema,
+    simulationIssueTitle: NonEmptyStringSchema,
+    showingPreviousResultNote: NonEmptyStringSchema,
+    actionComingSoonNote: NonEmptyStringSchema,
+    safetyLabel: NonEmptyStringSchema,
+  })
+  .strict();
+
+const AutopilotUiBundleSchema = z
+  .object({
+    badge: AutopilotUiBadgeSchema,
+    cardLabels: AutopilotUiCardLabelsSchema,
+    rewardStrength: AutopilotUiRewardStrengthSchema,
+    impact: AutopilotUiImpactSchema,
+    sections: AutopilotUiSectionsSchema,
+    ctas: AutopilotUiCtasSchema,
+    panel: AutopilotUiPanelCopySchema,
   })
   .strict();
 
@@ -51,8 +137,10 @@ export const AutopilotPreviewOutputSchema = z
       .strict(),
     bucketImpact: AutopilotBucketImpactSchema.nullable(),
     reasonCode: z.string().trim().min(1),
+    ui: AutopilotUiBundleSchema,
   })
   .strict();
 
 export type AutopilotPreviewInput = z.infer<typeof AutopilotPreviewInputSchema>;
 export type AutopilotPreviewOutput = z.infer<typeof AutopilotPreviewOutputSchema>;
+export type AutopilotPreviewUiBundle = z.infer<typeof AutopilotUiBundleSchema>;

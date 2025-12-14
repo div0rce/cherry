@@ -45,6 +45,7 @@ function resetModules() {
     '@/lib/autopilot/service',
     '@/lib/user-context',
     '@/lib/metrics/autopilot',
+    '@/lib/autopilot/uiSpec',
   ];
   for (const target of targets) {
     try {
@@ -54,6 +55,61 @@ function resetModules() {
       // ignore missing entries
     }
   }
+}
+
+function buildUiStub() {
+  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec');
+  const spec = getAutopilotUiSpec();
+
+  return {
+    badge: {
+      tone: 'neutral',
+      label: spec.panel.safetyLabel,
+    },
+    cardLabels: {
+      recommended: 'Recommended',
+      alternate: 'Alternate card',
+      caution: 'Use caution',
+      usualCardFallback: 'Your usual card',
+    },
+    rewardStrength: {
+      label: 'Good rewards',
+    },
+    impact: {
+      fallbackSegments: {
+        usedLabel: 'Bucket used',
+        remainingLabel: 'Bucket remaining',
+        otherLabel: 'Everything else',
+      },
+      bucketUsedTemplate: '${bucketName} used',
+      bucketRemainingTemplate: '${bucketName} remaining',
+    },
+    sections: {
+      recommendation: 'Autopilot recommendation',
+      alternatives: 'Other ways to pay',
+      monthImpactTitle: 'Month impact',
+    },
+    ctas: {
+      primaryTemplate: 'Use ${cardName} for this purchase',
+      secondary: 'View bucket impact',
+    },
+    panel: {
+      idleTitle: spec.panel.idleTitle,
+      idleBody: spec.panel.idleBody,
+      loadingTitle: spec.panel.loadingTitle,
+      loadingBody: spec.panel.loadingBody,
+      loadingShimmerLines: spec.panel.loadingShimmerLines,
+      errorTitle: spec.panel.errorTitle,
+      errorBody: spec.panel.errorBody,
+      errorTimestampFallback: spec.panel.errorTimestampFallback,
+      sectionSimulationEyebrow: spec.panel.sectionSimulationEyebrow,
+      unnamedMerchantFallback: spec.panel.unnamedMerchantFallback,
+      simulationIssueTitle: spec.panel.simulationIssueTitle,
+      showingPreviousResultNote: spec.panel.showingPreviousResultNote,
+      actionComingSoonNote: spec.panel.actionComingSoonNote,
+      safetyLabel: spec.panel.safetyLabel,
+    },
+  };
 }
 
 async function runPreviewValid() {
@@ -80,6 +136,7 @@ async function runPreviewValid() {
       explanation: { primary: 'Use Alpha', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'MAX_REWARDS',
+      ui: buildUiStub(),
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
@@ -123,6 +180,7 @@ async function runPreviewInvalid() {
       explanation: { primary: 'fallback', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'FALLBACK',
+      ui: buildUiStub(),
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
@@ -165,6 +223,7 @@ async function runPreviewUnauthorized() {
       explanation: { primary: 'blocked', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'NO_USER',
+      ui: buildUiStub(),
     }),
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
