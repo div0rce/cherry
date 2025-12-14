@@ -116,13 +116,14 @@ function ensureImpactSegments(
 
 function buildImpactSegments(preview: AutopilotPreviewOutput): AutopilotSimulationResult['impactSegments'] {
   const bucketName = preview.bucketImpact?.name ?? null;
+  const hasBucketName = typeof bucketName === 'string' && bucketName.trim().length > 0;
   const usedCents = Math.max(preview.bucketImpact?.spentCents ?? 0, 0);
   const remainingCents = Math.max(preview.bucketImpact?.remainingCents ?? 0, 0);
   const total = usedCents + remainingCents;
-  const bucketUsedLabel = bucketName
+  const bucketUsedLabel = hasBucketName
     ? preview.ui.impact.bucketUsedTemplate.replace('${bucketName}', bucketName)
     : preview.ui.impact.fallbackSegments.usedLabel;
-  const bucketRemainingLabel = bucketName
+  const bucketRemainingLabel = hasBucketName
     ? preview.ui.impact.bucketRemainingTemplate.replace('${bucketName}', bucketName)
     : preview.ui.impact.fallbackSegments.remainingLabel;
   const otherLabel = preview.ui.impact.fallbackSegments.otherLabel;
