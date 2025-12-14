@@ -6,8 +6,19 @@ import { AUTOPILOT_REWARD_CATEGORIES } from '@/lib/autopilot/types';
 const PositiveCentsSchema = z.number().int().positive();
 const IsoDatetimeStringSchema = z.string().datetime();
 const AutopilotToneSchema = z.enum(['positive', 'neutral', 'negative']);
+const AutopilotSeveritySchema = AutopilotToneSchema;
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PercentSchema = z.number().finite().min(0).max(100);
+export const RewardStrengthLevelSchema = z
+  .preprocess((value) => {
+    if (typeof value === 'number') {
+      if (!Number.isFinite(value) || !Number.isInteger(value)) return value;
+      return String(value);
+    }
+    return value;
+  }, z.enum(['1', '2', '3', '4']))
+  .transform((v) => Number(v) as 1 | 2 | 3 | 4);
+export type RewardStrengthLevel = z.infer<typeof RewardStrengthLevelSchema>;
 
 const AutopilotRecommendedCardSchema = z
   .object({
@@ -30,7 +41,16 @@ const AutopilotBucketImpactSchema = z
 const AutopilotUiBadgeSchema = z
   .object({
     tone: AutopilotToneSchema,
+    severity: AutopilotSeveritySchema,
     label: NonEmptyStringSchema,
+  })
+  .superRefine((value, ctx) => {
+    if (value.tone !== value.severity) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'badge.tone and badge.severity must match during shim period',
+      });
+    }
   })
   .strict();
 
@@ -46,7 +66,7 @@ const AutopilotUiCardLabelsSchema = z
 const AutopilotUiRewardStrengthSchema = z
   .object({
     label: NonEmptyStringSchema,
-    level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    level: RewardStrengthLevelSchema,
     strengthPercent: PercentSchema.optional(),
   })
   .strict();

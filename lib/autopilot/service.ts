@@ -81,7 +81,6 @@ type EvaluatedAutopilotContext = {
 };
 
 const ENGINE_TIMEOUT_MS = 1500;
-const DEFAULT_REWARD_STRENGTH_LEVEL: AutopilotPreviewUiBundle['rewardStrength']['level'] = 3;
 
 function parseOccurredAt(raw?: string): Date {
   if (raw === undefined) return new Date();
@@ -109,14 +108,17 @@ function toRecommendedCard(card: CardSummary | null): AutopilotRecommendedCard |
   };
 }
 
-function buildPreviewUiBundle(
-  explanation: AutopilotPreviewUiBundle['explanation']
-): AutopilotPreviewUiBundle {
+function buildPreviewUiBundle(options: {
+  explanation: AutopilotPreviewUiBundle['explanation'];
+  rewardStrengthLevel: AutopilotPreviewUiBundle['rewardStrength']['level'];
+}): AutopilotPreviewUiBundle {
+  const { explanation, rewardStrengthLevel } = options;
   const spec = getAutopilotUiSpec();
 
   return {
     badge: {
       tone: 'neutral',
+      severity: 'neutral',
       label: spec.panel.safetyLabel,
     },
     cardLabels: {
@@ -127,7 +129,7 @@ function buildPreviewUiBundle(
     },
     rewardStrength: {
       label: 'Good rewards',
-      level: DEFAULT_REWARD_STRENGTH_LEVEL,
+      level: rewardStrengthLevel,
     },
     impact: {
       fallbackSegments: {
@@ -480,11 +482,11 @@ export async function getAutopilotPreview(
   const evaluation = await evaluateAutopilot(userId, input, { timeoutMs: ENGINE_TIMEOUT_MS });
 
   const explanation = buildExplanation(evaluation);
-  const ui = buildPreviewUiBundle(explanation);
-  ui.rewardStrength.level = computeRewardStrengthLevel(
+  const rewardStrengthLevel = computeRewardStrengthLevel(
     evaluation.expectedBenefitCents,
     evaluation.amountCents
   );
+  const ui = buildPreviewUiBundle({ explanation, rewardStrengthLevel });
 
   const preview: AutopilotPreviewOutput = {
     decisionId: evaluation.decisionId,

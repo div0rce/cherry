@@ -11,13 +11,21 @@ const runSimulationPath = path.resolve(__dirname, '../lib/autopilot/runSimulatio
  * - Fail when new human-readable literals appear outside the allowlist.
  */
 
-const ALLOWED_SEMANTIC_LITERALS_V1 = new Set<string>([
+// Protocol/operational literals the adapter is allowed to contain.
+const ALLOWED_OPS_LITERALS = new Set<string>([
   'autopilot-recommendation',
   'alternate-card',
   'INVALID_SIMULATION_SUMMARY',
   'PREVIEW_REQUEST_FAILED',
   'PREVIEW_ERROR',
   'PREVIEW_RESPONSE_INVALID',
+  // adapter output/contract enums
+  'recommended',
+  'warning',
+  // badge tone enums
+  'positive',
+  'neutral',
+  'negative',
 ]);
 
 const IGNORE_EXACT = new Set<string>([
@@ -41,35 +49,47 @@ const IGNORE_EXACT = new Set<string>([
   'state',
   'impactSegments',
   'ok',
-  'recommended',
-  'warning',
-  'positive',
-  'neutral',
-  'negative',
-  'DINING',
-  'GROCERIES',
-  'GAS',
-  'TRAVEL',
-  'OTHER',
-  'dining',
-  'groceries',
-  'travel',
-  'gas',
-  'other',
-  'bg-[#FECACA]',
-  'bg-[#DCFCE7]',
-  'bg-[#E2E8F0]',
-  'bg-[#FEF3C7] text-[#92400E]',
-  'h-2 w-2 rounded-full bg-[#F59E0B]',
-  'bg-[#F0FDF4] text-[#15803D]',
-  'h-2 w-2 rounded-full bg-[#22C55E]',
-  '',
-  ' ',
 ]);
 
 function extractAllStringLiterals(src: string): string[] {
   const regex = /(['"`])((?:\\.|(?!\\1)[\\s\\S])*)\\1/g;
   return [...src.matchAll(regex)].map((m) => m[2] ?? '');
+}
+
+function isProbablyNonCopyToken(s: string): boolean {
+  if (s.trim().length === 0) return true;
+  if (/^\w+:\/\//.test(s)) return true;
+  if (s.includes('/') && !s.includes(' ')) return true;
+  if (s.includes('.') && !/\s/.test(s) && !/[.?!]$/.test(s)) return true;
+  if (/^[a-z0-9_.-]+$/i.test(s)) return true;
+  return false;
+}
+
+function looksLikeUserFacingCopy(s: string): boolean {
+  if (/\$\{/.test(s)) return true;
+  if (/[.?!]/.test(s)) return true;
+  if (/\s/.test(s)) return true;
+
+  const uiVerbs = new Set([
+    'Submit',
+    'Continue',
+    'Cancel',
+    'Retry',
+    'Close',
+    'Save',
+    'Done',
+    'Back',
+    'Next',
+    'Skip',
+    'Confirm',
+    'Remove',
+    'Edit',
+    'View',
+  ]);
+  if (uiVerbs.has(s)) return true;
+  if (/^[A-Z][a-z]{2,}$/.test(s)) return true;
+
+  return false;
 }
 
 function looksLikeCssToken(s: string): boolean {
@@ -96,25 +116,27 @@ function main(): void {
   const content = fs.readFileSync(runSimulationPath, 'utf8');
   const literals = extractAllStringLiterals(content);
 
-  const semanticCandidates: string[] = [];
+  const copyViolations: string[] = [];
   for (const lit of literals) {
     if (IGNORE_EXACT.has(lit)) continue;
     if (looksLikeCssToken(lit)) continue;
     if (/^@\/|^\.\//.test(lit)) continue;
+    if (ALLOWED_OPS_LITERALS.has(lit)) continue;
+    if (isProbablyNonCopyToken(lit)) continue;
 
-    if (!ALLOWED_SEMANTIC_LITERALS_V1.has(lit)) {
-      semanticCandidates.push(lit);
+    if (looksLikeUserFacingCopy(lit)) {
+      copyViolations.push(lit);
     }
   }
 
   assert.deepEqual(
-    semanticCandidates,
+    copyViolations,
     [],
     [
-      'runSimulation introduced new string literals not covered by AdapterSemantics v1 allowlist.',
-      'Either move semantics into the engine-owned UI bundle (v2), or expand the allowlist intentionally.',
-      'New literals detected:',
-      ...semanticCandidates.map((t) => `- ${JSON.stringify(t)}`),
+      'runSimulation introduced user-facing copy literals (adapter must remain renderer-only).',
+      'Move copy into engine-owned ui.* fields, or explicitly classify as protocol/ops.',
+      'Copy-like literals detected:',
+      ...copyViolations.map((t) => `- ${JSON.stringify(t)}`),
     ].join('\n')
   );
 

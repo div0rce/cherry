@@ -190,15 +190,15 @@ function buildSimulationCards(
   return cards;
 }
 
-function buildSafetyBadge(
-  tone: AutopilotPreviewOutput['ui']['badge']['tone'],
-  label: string
-): {
+function buildSafetyBadge(badge: AutopilotPreviewOutput['ui']['badge']): {
   safetyBadgeClass: string;
   safetyBadgeDotClass: string;
   safetyBadgeLabel: string;
 } {
-  if (tone === 'negative') {
+  const severity = badge.severity ?? badge.tone;
+  const label = badge.label;
+
+  if (severity === 'negative') {
     return {
       safetyBadgeClass: 'bg-[#FEE2E2] text-[#991B1B]',
       safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#DC2626]',
@@ -206,7 +206,7 @@ function buildSafetyBadge(
     };
   }
 
-  if (tone === 'neutral') {
+  if (severity === 'neutral') {
     return {
       safetyBadgeClass: 'bg-[#E2E8F0] text-[#0F172A]',
       safetyBadgeDotClass: 'h-2 w-2 rounded-full bg-[#64748B]',
@@ -235,7 +235,7 @@ function mapPreviewToSimulationResult(
   const impactNotes = buildImpactNotes(preview);
   const cards = buildSimulationCards(preview, state);
 
-  const safetyBadge = buildSafetyBadge(preview.ui.badge.tone, preview.ui.badge.label);
+  const safetyBadge = buildSafetyBadge(preview.ui.badge);
   const recommendationSummary =
     preview.ui.explanation.primary?.trim().length > 0
       ? preview.ui.explanation.primary
