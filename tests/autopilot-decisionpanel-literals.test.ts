@@ -22,7 +22,7 @@ function extractJsxTextNodes(src: string): string[] {
 
   for (const m of src.matchAll(regex)) {
     const raw = (m[1] ?? '').trim();
-    if (!raw) continue;
+    if (raw.length === 0) continue;
 
     const normalized = raw.replace(/\s+/g, ' ').trim();
     if (normalized === '') continue;
