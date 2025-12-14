@@ -61,7 +61,7 @@ function isProbablyNonCopyToken(s: string): boolean {
   if (/^\w+:\/\//.test(s)) return true;
   if (s.includes('/') && !s.includes(' ')) return true;
   if (s.includes('.') && !/\s/.test(s) && !/[.?!]$/.test(s)) return true;
-  if (/^[a-z0-9_.-]+$/i.test(s)) return true;
+  if (/^[a-z0-9_.-]+$/i.test(s) && !/^[A-Z][a-z]{2,}$/.test(s)) return true;
   return false;
 }
 
@@ -116,7 +116,7 @@ function main(): void {
   const content = fs.readFileSync(runSimulationPath, 'utf8');
   const literals = extractAllStringLiterals(content);
 
-  const copyViolations: string[] = [];
+  const copyViolations = new Set<string>();
   for (const lit of literals) {
     if (IGNORE_EXACT.has(lit)) continue;
     if (looksLikeCssToken(lit)) continue;
@@ -125,18 +125,18 @@ function main(): void {
     if (isProbablyNonCopyToken(lit)) continue;
 
     if (looksLikeUserFacingCopy(lit)) {
-      copyViolations.push(lit);
+      copyViolations.add(lit);
     }
   }
 
   assert.deepEqual(
-    copyViolations,
+    [...copyViolations].sort(),
     [],
     [
       'runSimulation introduced user-facing copy literals (adapter must remain renderer-only).',
       'Move copy into engine-owned ui.* fields, or explicitly classify as protocol/ops.',
       'Copy-like literals detected:',
-      ...copyViolations.map((t) => `- ${JSON.stringify(t)}`),
+      ...[...copyViolations].sort().map((t) => `- ${JSON.stringify(t)}`),
     ].join('\n')
   );
 

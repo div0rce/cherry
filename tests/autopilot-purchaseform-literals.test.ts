@@ -149,7 +149,7 @@ function isProbablyNonCopyToken(s: string): boolean {
   if (s.includes('.') && !/\s/.test(s) && !/[.?!]$/.test(s)) return true;
 
   // pure identifier token
-  if (/^[a-z0-9_.:-]+$/i.test(s)) return true;
+  if (/^[a-z0-9_.:-]+$/i.test(s) && !/^[A-Z][a-z]{2,}$/.test(s)) return true;
 
   return false;
 }
@@ -193,7 +193,7 @@ function main(): void {
   const content = fs.readFileSync(purchaseFormPath, 'utf8');
   const literals = extractAllStringLiterals(content);
 
-  const copyViolations: string[] = [];
+  const copyViolations = new Set<string>();
 
   for (const lit of literals) {
     if (IGNORE_EXACT.has(lit)) continue;
@@ -202,18 +202,18 @@ function main(): void {
     if (isProbablyNonCopyToken(lit)) continue;
 
     if (looksLikeUserFacingCopy(lit)) {
-      copyViolations.push(lit);
+      copyViolations.add(lit);
     }
   }
 
   assert.deepEqual(
-    copyViolations,
+    [...copyViolations].sort(),
     [],
     [
       'AutopilotPurchaseForm introduced user-facing copy literals (form must remain renderer-only).',
       'Move copy into engine-owned preview.ui.* fields, or explicitly classify as protocol/ops.',
       'Copy-like literals detected:',
-      ...copyViolations.map((t) => `- ${JSON.stringify(t)}`),
+      ...[...copyViolations].sort().map((t) => `- ${JSON.stringify(t)}`),
     ].join('\n')
   );
 

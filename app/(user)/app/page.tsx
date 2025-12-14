@@ -1,6 +1,5 @@
-import type { JSX } from 'react';
-import { AutopilotEntry } from './_components/AutopilotEntry';
+import { redirect } from 'next/navigation';
 
-export default async function AppHome(): Promise<JSX.Element> {
-  return AutopilotEntry();
+export default function AppHome(): void {
+  redirect('/app/onboarding');
 }
