@@ -44,6 +44,7 @@ function resetModules() {
     '@/lib/log',
     '@/lib/autopilot/service',
     '@/lib/user-context',
+    '@/lib/metrics/autopilot',
   ];
   for (const target of targets) {
     try {
@@ -63,8 +64,12 @@ async function runPreviewValid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
+  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+    incrementCounter: () => {},
+    observeDuration: () => {},
+  });
   mockModule(requireModule.resolve('@/lib/autopilot/service'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
+    getAutopilotPreview: async () => ({
       decisionId: 'decision-1',
       merchant: 'Test Shop',
       amountCents: 5_000,
@@ -84,7 +89,7 @@ async function runPreviewValid() {
     requireModule('../app/api/autopilot/preview/route');
 
   const res = await POST({
-    json: async () => ({ merchant: 'Test Shop', amountCents: 5_000 }),
+    json: async () => ({ merchant: 'Test Shop', amountCents: 5_000, category: 'DINING' }),
   });
   const body = await res.json();
 
@@ -102,8 +107,12 @@ async function runPreviewInvalid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
+  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+    incrementCounter: () => {},
+    observeDuration: () => {},
+  });
   mockModule(requireModule.resolve('@/lib/autopilot/service'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
+    getAutopilotPreview: async () => ({
       decisionId: 'decision-1',
       merchant: 'Test Shop',
       amountCents: 5_000,
@@ -125,9 +134,10 @@ async function runPreviewInvalid() {
   const res = await POST({
     json: async () => ({ amountCents: -1 }),
   });
-  await res.json();
+  const body = await res.json();
 
   assert.equal(res.status, 400);
+  assert.equal(body.code, 'INVALID_PAYLOAD');
   const lastEvent = logEvents.at(-1);
   assert.equal(lastEvent?.reason, 'INVALID_PAYLOAD');
 }
@@ -139,8 +149,12 @@ async function runPreviewUnauthorized() {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
+  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+    incrementCounter: () => {},
+    observeDuration: () => {},
+  });
   mockModule(requireModule.resolve('@/lib/autopilot/service'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
+    getAutopilotPreview: async () => ({
       decisionId: 'decision-1',
       merchant: 'Test Shop',
       amountCents: 5_000,
@@ -162,17 +176,51 @@ async function runPreviewUnauthorized() {
     requireModule('../app/api/autopilot/preview/route');
 
   const res = await POST({
-    json: async () => ({ merchant: 'Test', amountCents: 1_000 }),
+    json: async () => ({ merchant: 'Test', amountCents: 1_000, category: 'OTHER' }),
   });
-  await res.json();
+  const body = await res.json();
 
   assert.equal(res.status, 401);
+  assert.equal(body.code, 'UNAUTHORIZED');
+}
+
+async function runPreviewUnexpectedError() {
+  resetModules();
+  mockNextServer();
+  mockModule(requireModule.resolve('@/lib/log'), {
+    logGuardrailEvent: () => {},
+    logInvariantViolation: () => {},
+  });
+  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+    incrementCounter: () => {},
+    observeDuration: () => {},
+  });
+  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+    getAutopilotPreview: async () => {
+      throw new Error('boom');
+    },
+  });
+  mockModule(requireModule.resolve('@/lib/user-context'), {
+    resolveUserContext: async () => ({ userId: 'user-err', mode: 'AUTHENTICATED', email: null }),
+  });
+
+  const { POST } =
+    requireModule('../app/api/autopilot/preview/route');
+
+  const res = await POST({
+    json: async () => ({ merchant: 'Test Err', amountCents: 1_000, category: 'OTHER' }),
+  });
+  const body = await res.json();
+
+  assert.equal(res.status, 500);
+  assert.equal(body.code, 'PREVIEW_UNEXPECTED_ERROR');
 }
 
 async function run() {
   await runPreviewValid();
   await runPreviewInvalid();
   await runPreviewUnauthorized();
+  await runPreviewUnexpectedError();
   process.stdout.write('api-autopilot-preview: ok\n');
 }
 

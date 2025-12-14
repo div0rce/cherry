@@ -64,7 +64,7 @@ async function runUserContextPreview(): Promise<void> {
     logGuardrailEvent: (): void => {},
   });
   mockModule(requireModule.resolve('@/lib/autopilot/service'), {
-    getAutopilotDecisionForUserSwipe: async () => ({
+    getAutopilotPreview: async () => ({
       decisionId: 'decision-ctx-1',
       merchant: 'Shop',
       amountCents: 500,
@@ -88,7 +88,7 @@ async function runUserContextPreview(): Promise<void> {
     requireModule('../app/api/autopilot/preview/route') as typeof import('../app/api/autopilot/preview/route');
 
   const res = await POST({
-    json: async () => ({ merchant: 'Shop', amountCents: 500 }),
+    json: async () => ({ merchant: 'Shop', amountCents: 500, category: 'DINING' }),
   } as never);
   await res.json();
 

@@ -37,6 +37,8 @@ function mockNextServer() {
   }
 }
 
+const originalAutopilotCommitFlag = process.env.AUTOPILOT_COMMIT_V2;
+
 function resetModules() {
   const targets = [
     '../app/api/autopilot/commit/route',
@@ -56,6 +58,7 @@ function resetModules() {
 }
 
 async function runCommitValidAndIdempotent() {
+  process.env.AUTOPILOT_COMMIT_V2 = 'false';
   resetModules();
   mockNextServer();
   const logEvents = [];
@@ -110,9 +113,12 @@ async function runCommitValidAndIdempotent() {
   assert.equal(secondResponse.status, 200);
   assert.equal(secondBody.status, 'already_exists');
   assert.equal(logEvents.filter((e) => e?.kind === 'DECISION_BLOCKED').length, 0);
+
+  process.env.AUTOPILOT_COMMIT_V2 = originalAutopilotCommitFlag;
 }
 
 async function runCommitInvalid() {
+  process.env.AUTOPILOT_COMMIT_V2 = 'false';
   resetModules();
   mockNextServer();
   const logEvents = [];
@@ -149,9 +155,12 @@ async function runCommitInvalid() {
   assert.equal(res.status, 400);
   const lastEvent = logEvents.at(-1);
   assert.equal(lastEvent?.kind, 'INPUT_INVALID');
+
+  process.env.AUTOPILOT_COMMIT_V2 = originalAutopilotCommitFlag;
 }
 
 async function runCommitUnauthorized() {
+  process.env.AUTOPILOT_COMMIT_V2 = 'false';
   resetModules();
   mockNextServer();
   mockModule(requireModule.resolve('@/lib/log'), {
@@ -187,12 +196,68 @@ async function runCommitUnauthorized() {
   await res.json();
 
   assert.equal(res.status, 401);
+
+  process.env.AUTOPILOT_COMMIT_V2 = originalAutopilotCommitFlag;
+}
+
+async function runCommitV2Flagged() {
+  resetModules();
+  mockNextServer();
+  const logEvents = [];
+  const calls = [];
+  const originalFlag = process.env.AUTOPILOT_COMMIT_V2;
+  process.env.AUTOPILOT_COMMIT_V2 = 'true';
+  try {
+    mockModule(requireModule.resolve('@/lib/log'), {
+      logGuardrailEvent: (event) => logEvents.push(event),
+      logInvariantViolation: () => {},
+    });
+    mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+      commitAutopilotDecision: async () => {
+        throw new Error('v1 path should not be called when flag enabled');
+      },
+      commitAutopilotDecisionV2: async () => {
+        calls.push('v2');
+        return {
+          decisionId: 'decision-v2',
+          sessionId: 'session-2',
+          bucket: null,
+          status: 'created',
+        };
+      },
+    });
+    mockModule(requireModule.resolve('@/lib/user-context'), {
+      resolveUserContext: async () => ({ userId: 'user-v2', mode: 'AUTHENTICATED', email: null }),
+    });
+
+    const { POST } =
+      requireModule('../app/api/autopilot/commit/route');
+
+    const res = await POST({
+      json: async () => ({
+        decisionId: 'decision-v2',
+        merchant: 'Cafe',
+        amountCents: 1_000,
+        cardId: 'card-v2',
+        occurredAt: '2024-01-10T00:00:00.000Z',
+      }),
+    });
+    const body = await res.json();
+
+    assert.equal(res.status, 200);
+    assert.equal(body.sessionId, 'session-2');
+    assert.deepEqual(calls, ['v2']);
+    assert.equal(logEvents.filter((e) => e?.kind === 'DECISION_BLOCKED').length, 0);
+  } finally {
+    process.env.AUTOPILOT_COMMIT_V2 = originalFlag;
+  }
 }
 
 async function run() {
   await runCommitValidAndIdempotent();
   await runCommitInvalid();
   await runCommitUnauthorized();
+  await runCommitV2Flagged();
   process.stdout.write('api-autopilot-commit: ok\n');
 }
 
