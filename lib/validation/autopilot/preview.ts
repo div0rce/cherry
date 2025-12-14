@@ -5,8 +5,7 @@ import { AUTOPILOT_REWARD_CATEGORIES } from '@/lib/autopilot/types';
 
 const PositiveCentsSchema = z.number().int().positive();
 const IsoDatetimeStringSchema = z.string().datetime();
-const AutopilotToneSchema = z.enum(['positive', 'neutral', 'negative']);
-const AutopilotSeveritySchema = AutopilotToneSchema;
+const AutopilotSeveritySchema = z.enum(['positive', 'neutral', 'negative']);
 const NonEmptyStringSchema = z.string().trim().min(1);
 const PercentSchema = z.number().finite().min(0).max(100);
 export const RewardStrengthLevelSchema = z
@@ -40,17 +39,8 @@ const AutopilotBucketImpactSchema = z
 
 const AutopilotUiBadgeSchema = z
   .object({
-    tone: AutopilotToneSchema,
     severity: AutopilotSeveritySchema,
     label: NonEmptyStringSchema,
-  })
-  .superRefine((value, ctx) => {
-    if (value.tone !== value.severity) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'badge.tone and badge.severity must match during shim period',
-      });
-    }
   })
   .strict();
 

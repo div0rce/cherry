@@ -195,7 +195,7 @@ function buildSafetyBadge(badge: AutopilotPreviewOutput['ui']['badge']): {
   safetyBadgeDotClass: string;
   safetyBadgeLabel: string;
 } {
-  const severity = badge.severity ?? badge.tone;
+  const severity = badge.severity;
   const label = badge.label;
 
   if (severity === 'negative') {

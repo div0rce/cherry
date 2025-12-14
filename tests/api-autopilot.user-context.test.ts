@@ -63,7 +63,6 @@ function buildUiStub() {
 
   return {
     badge: {
-      tone: 'neutral',
       severity: 'neutral',
       label: spec.panel.safetyLabel,
     },

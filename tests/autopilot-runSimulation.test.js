@@ -17,7 +17,6 @@ function buildUiStub() {
   const spec = getAutopilotUiSpec();
   return {
     badge: {
-      tone: 'neutral',
       severity: 'neutral',
       label: spec.panel.safetyLabel,
     },
