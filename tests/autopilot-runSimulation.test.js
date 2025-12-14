@@ -12,6 +12,60 @@ function resetModules() {
   }
 }
 
+function buildUiStub() {
+  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec');
+  const spec = getAutopilotUiSpec();
+  return {
+    badge: {
+      tone: 'neutral',
+      label: spec.panel.safetyLabel,
+    },
+    cardLabels: {
+      recommended: 'Recommended',
+      alternate: 'Alternate card',
+      caution: 'Use caution',
+      usualCardFallback: 'Your usual card',
+    },
+    rewardStrength: {
+      label: 'Good rewards',
+    },
+    impact: {
+      fallbackSegments: {
+        usedLabel: 'Bucket used',
+        remainingLabel: 'Bucket remaining',
+        otherLabel: 'Everything else',
+      },
+      bucketUsedTemplate: '${bucketName} used',
+      bucketRemainingTemplate: '${bucketName} remaining',
+    },
+    sections: {
+      recommendation: 'Autopilot recommendation',
+      alternatives: 'Other ways to pay',
+      monthImpactTitle: 'Month impact',
+    },
+    ctas: {
+      primaryTemplate: 'Use ${cardName} for this purchase',
+      secondary: 'View bucket impact',
+    },
+    panel: {
+      idleTitle: spec.panel.idleTitle,
+      idleBody: spec.panel.idleBody,
+      loadingTitle: spec.panel.loadingTitle,
+      loadingBody: spec.panel.loadingBody,
+      loadingShimmerLines: spec.panel.loadingShimmerLines,
+      errorTitle: spec.panel.errorTitle,
+      errorBody: spec.panel.errorBody,
+      errorTimestampFallback: spec.panel.errorTimestampFallback,
+      sectionSimulationEyebrow: spec.panel.sectionSimulationEyebrow,
+      unnamedMerchantFallback: spec.panel.unnamedMerchantFallback,
+      simulationIssueTitle: spec.panel.simulationIssueTitle,
+      showingPreviousResultNote: spec.panel.showingPreviousResultNote,
+      actionComingSoonNote: spec.panel.actionComingSoonNote,
+      safetyLabel: spec.panel.safetyLabel,
+    },
+  };
+}
+
 async function runHappyPath() {
   resetModules();
   const calls = [];
@@ -29,6 +83,7 @@ async function runHappyPath() {
       explanation: { primary: 'Use Alpha', secondary: ['Keeps budget steady'], warnings: [] },
       bucketImpact: { bucketId: 'bucket-1', name: 'Dining', remainingCents: 7_000, spentCents: 13_000 },
       reasonCode: 'MAX_REWARDS',
+      ui: buildUiStub(),
     };
     return new Response(JSON.stringify(payload), {
       status: 200,
@@ -74,6 +129,7 @@ async function runWarningMapping() {
       explanation: { primary: 'Fallback', secondary: [], warnings: ['Budget pressure detected'] },
       bucketImpact: { bucketId: 'bucket-2', name: 'Other', remainingCents: 0, spentCents: 500 },
       reasonCode: 'FALLBACK_SAFE',
+      ui: buildUiStub(),
     };
     return new Response(JSON.stringify(payload), {
       status: 200,

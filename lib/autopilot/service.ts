@@ -33,7 +33,11 @@ import type {
   AutopilotRewardCategory,
 } from './types';
 import { AutopilotServiceError } from './types';
-import type { AutopilotPreviewOutput } from '@/lib/validation/autopilot/preview';
+import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
+import type {
+  AutopilotPreviewOutput,
+  AutopilotPreviewUiBundle,
+} from '@/lib/validation/autopilot/preview';
 import { AutopilotPreviewOutputSchema } from '@/lib/validation/autopilot/preview';
 import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
 import { confirmRecommendationSession, SessionConfirmError } from '@/lib/sessions/confirm-service';
@@ -101,6 +105,60 @@ function toRecommendedCard(card: CardSummary | null): AutopilotRecommendedCard |
     label,
     issuer: card.issuer,
     network: card.network,
+  };
+}
+
+function buildPreviewUiBundle(): AutopilotPreviewUiBundle {
+  const spec = getAutopilotUiSpec();
+
+  return {
+    badge: {
+      tone: 'neutral',
+      label: spec.panel.safetyLabel,
+    },
+    cardLabels: {
+      recommended: 'Recommended',
+      alternate: 'Alternate card',
+      caution: 'Use caution',
+      usualCardFallback: 'Your usual card',
+    },
+    rewardStrength: {
+      label: 'Good rewards',
+    },
+    impact: {
+      fallbackSegments: {
+        usedLabel: 'Bucket used',
+        remainingLabel: 'Bucket remaining',
+        otherLabel: 'Everything else',
+      },
+      bucketUsedTemplate: '${bucketName} used',
+      bucketRemainingTemplate: '${bucketName} remaining',
+    },
+    sections: {
+      recommendation: 'Autopilot recommendation',
+      alternatives: 'Other ways to pay',
+      monthImpactTitle: 'Month impact',
+    },
+    ctas: {
+      primaryTemplate: 'Use ${cardName} for this purchase',
+      secondary: 'View bucket impact',
+    },
+    panel: {
+      idleTitle: spec.panel.idleTitle,
+      idleBody: spec.panel.idleBody,
+      loadingTitle: spec.panel.loadingTitle,
+      loadingBody: spec.panel.loadingBody,
+      loadingShimmerLines: spec.panel.loadingShimmerLines,
+      errorTitle: spec.panel.errorTitle,
+      errorBody: spec.panel.errorBody,
+      errorTimestampFallback: spec.panel.errorTimestampFallback,
+      sectionSimulationEyebrow: spec.panel.sectionSimulationEyebrow,
+      unnamedMerchantFallback: spec.panel.unnamedMerchantFallback,
+      simulationIssueTitle: spec.panel.simulationIssueTitle,
+      showingPreviousResultNote: spec.panel.showingPreviousResultNote,
+      actionComingSoonNote: spec.panel.actionComingSoonNote,
+      safetyLabel: spec.panel.safetyLabel,
+    },
   };
 }
 
@@ -405,6 +463,7 @@ export async function getAutopilotPreview(
     explanation: buildExplanation(evaluation),
     bucketImpact: evaluation.bucketImpact,
     reasonCode: evaluation.decision.reasonCode,
+    ui: buildPreviewUiBundle(),
   };
 
   const parsed = AutopilotPreviewOutputSchema.safeParse(preview);
