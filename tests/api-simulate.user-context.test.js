@@ -146,6 +146,10 @@ function setupSimulationMocks() {
   mockModule('../lib/prisma', {
     prisma: {
       user: {
+        upsert: async ({ create, where }) => ({
+          id: (create && create.id) || (where && where.id) || 'lab-user-1',
+          email: (create && create.email) || 'lab@example.com',
+        }),
         findUnique: async () => ({ id: 'lab-user-1', email: 'lab@example.com' }),
         create: async () => ({ id: 'lab-user-1', email: 'lab@example.com' }),
       },

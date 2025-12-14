@@ -23,24 +23,75 @@ export interface UserContext {
 export const LAB_USER_EMAIL = 'lab+single-user@cherry.dev';
 export const LAB_USER_NAME = 'Cherry Lab User';
 
+function hasText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function fallbackEmail(userId: string): string {
+  const normalizedRaw = userId.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+  const normalized = normalizedRaw.length > 0 ? normalizedRaw : 'user';
+  return `${normalized}@cherry.local`;
+}
+
+async function ensureUserRow(params: { userId: string; email: string | null; name?: string | null }) {
+  const { userId, email, name } = params;
+  assertUserId(userId, 'ensureUserRow');
+  const normalizedEmailInput = hasText(email) ? email.trim() : null;
+  const normalizedName = hasText(name) ? name.trim() : null;
+
+  let safeEmail: string | null = normalizedEmailInput;
+  if (safeEmail !== null) {
+    const existingByEmail = await prisma.user.findUnique({ where: { email: safeEmail } });
+    const isOwnedBySameUser = existingByEmail !== null && existingByEmail.id === userId;
+    if (!isOwnedBySameUser && existingByEmail !== null) {
+      safeEmail = null;
+    }
+  }
+
+  const createEmail = safeEmail ?? fallbackEmail(userId);
+  const updateData: { email?: string; name?: string | null } = {};
+  if (safeEmail !== null) {
+    updateData.email = safeEmail;
+  }
+  if (normalizedName !== null) {
+    updateData.name = normalizedName;
+  }
+
+  return prisma.user.upsert({
+    where: { id: userId },
+    update: updateData,
+    create: {
+      id: userId,
+      email: createEmail,
+      name: normalizedName,
+    },
+  });
+}
+
 async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string; email?: string | null }>) {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Unauthorized: lab demo mode is disabled in production');
   }
 
   if (factoryOverride) {
-    return factoryOverride();
+    const created = await factoryOverride();
+    return ensureUserRow({
+      userId: created.id,
+      email: created.email ?? LAB_USER_EMAIL,
+      name: LAB_USER_NAME,
+    });
   }
 
   const existing = await prisma.user.findUnique({ where: { email: LAB_USER_EMAIL } });
   if (existing) return existing;
 
-  return prisma.user.create({
+  const created = await prisma.user.create({
     data: {
       email: LAB_USER_EMAIL,
       name: LAB_USER_NAME,
     },
   });
+  return created;
 }
 
 export async function resolveUserContext(opts: ResolveUserContextOptions): Promise<UserContext> {
@@ -54,16 +105,42 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
       return getServerSession((mod as { authOptions: unknown }).authOptions as never);
     })());
 
-  const sessionUser = session?.user;
-  const sessionUserId = sessionUser?.id;
-  const hasSessionUserId = typeof sessionUserId === 'string' && sessionUserId !== '';
-  if (hasSessionUserId) {
-    const sessionEmail =
-      sessionUser !== undefined && typeof sessionUser.email === 'string'
-        ? sessionUser.email
-        : null;
+  const sessionUserRaw =
+    session !== null &&
+    session !== undefined &&
+    typeof session === 'object' &&
+    'user' in session
+      ? (session as { user?: unknown }).user
+      : undefined;
+  const sessionUser =
+    sessionUserRaw !== null && typeof sessionUserRaw === 'object' ? sessionUserRaw : null;
+  const sessionUserIdValue =
+    sessionUser !== null && 'id' in sessionUser ? (sessionUser as { id?: unknown }).id : undefined;
+  const hasSessionUserId = typeof sessionUserIdValue === 'string' && sessionUserIdValue !== '';
+  if (hasSessionUserId && typeof sessionUserIdValue === 'string') {
+    let sessionEmail: string | null = null;
+    if (
+      sessionUser !== null &&
+      'email' in sessionUser &&
+      typeof (sessionUser as { email?: unknown }).email === 'string'
+    ) {
+      sessionEmail = (sessionUser as { email: string }).email;
+    }
+    let sessionName: string | null = null;
+    if (
+      sessionUser !== null &&
+      'name' in sessionUser &&
+      typeof (sessionUser as { name?: unknown }).name === 'string'
+    ) {
+      sessionName = (sessionUser as { name: string }).name;
+    }
+    await ensureUserRow({
+      userId: sessionUserIdValue,
+      email: sessionEmail,
+      name: sessionName,
+    });
     return {
-      userId: sessionUserId,
+      userId: sessionUserIdValue,
       mode: 'AUTHENTICATED',
       email: sessionEmail,
     };
@@ -72,6 +149,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
   const hasNoSession = session === null || session === undefined;
   if (hasNoSession && allowLabDemo === true) {
     const user = await findOrCreateLabUser(labUserFactory);
+    await ensureUserRow({ userId: user.id, email: user.email ?? LAB_USER_EMAIL, name: user.name ?? LAB_USER_NAME });
 
     if (user.id === '') {
       throw new Error('Invariant: lab user upsert did not return an id');

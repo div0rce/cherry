@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import assert from 'node:assert/strict';
 import Module from 'node:module';
 
@@ -43,12 +42,17 @@ function mockPrisma(): void {
       },
       rewardRule: {
         count: async (args: unknown) => {
-          if (
-            typeof args === 'object' &&
-            args !== null &&
-            'where' in (args as Record<string, unknown>) &&
-            (args as { where?: { category?: string } }).where?.category
-          ) {
+          const where =
+            typeof args === 'object' && args !== null && 'where' in (args as Record<string, unknown>)
+              ? (args as Record<string, unknown>)['where']
+              : undefined;
+          const category =
+            typeof where === 'object' && where !== null && 'category' in (where as Record<string, unknown>)
+              ? (where as Record<string, unknown>)['category']
+              : undefined;
+          const hasCategory =
+            typeof category === 'string' && category.length > 0;
+          if (hasCategory) {
             return scenario.baseRuleCount;
           }
           return scenario.rulesCount;
@@ -147,12 +151,10 @@ async function run(): Promise<void> {
   await testNeedsRules();
   await testNeedsBuckets();
   await testReadyWithWarnings();
-  // eslint-disable-next-line no-console
   console.warn('onboarding-prereqs: ok');
 }
 
 run().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

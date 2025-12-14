@@ -17,7 +17,10 @@ export function DeleteActionButton({
   hiddenFields,
   label,
 }: DeleteActionButtonProps): JSX.Element {
-  const [state, formAction] = useFormState<ActionState, FormData>(action, initialActionState);
+  const [state, formAction] = useFormState<ActionState, FormData>(
+    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
+    initialActionState
+  );
 
   return (
     <form action={formAction} className="space-y-1">

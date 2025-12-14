@@ -13,7 +13,7 @@ export default async function EditBucketPage({
   params,
 }: {
   params: Promise<PageParams> | PageParams;
-}): Promise<JSX.Element> {
+}): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { bucketId } = resolvedParams;
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -23,8 +23,9 @@ export default async function EditBucketPage({
     select: { id: true, name: true, budgetAmount: true, category: true, period: true },
   });
 
-  if (!bucket) {
+  if (bucket === null) {
     redirect('/app/onboarding?missing=buckets');
+    return null;
   }
 
   const currentBucket = bucket;

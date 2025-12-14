@@ -13,7 +13,7 @@ export default async function EditCardPage({
   params,
 }: {
   params: Promise<PageParams> | PageParams;
-}): Promise<JSX.Element> {
+}): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -23,8 +23,9 @@ export default async function EditCardPage({
     select: { id: true, nickname: true, issuer: true, network: true, isCredit: true, annualFee: true },
   });
 
-  if (!card) {
+  if (card === null) {
     redirect('/app/onboarding?missing=cards');
+    return null;
   }
 
   const currentCard = card;

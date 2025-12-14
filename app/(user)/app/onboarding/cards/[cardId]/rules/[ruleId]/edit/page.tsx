@@ -13,7 +13,7 @@ export default async function EditRewardRulePage({
   params,
 }: {
   params: Promise<PageParams> | PageParams;
-}): Promise<JSX.Element> {
+}): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId, ruleId } = resolvedParams;
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -29,8 +29,9 @@ export default async function EditRewardRulePage({
     },
   });
 
-  if (!rule) {
+  if (rule === null) {
     redirect('/app/onboarding?missing=rules');
+    return null;
   }
 
   const currentRule = rule;

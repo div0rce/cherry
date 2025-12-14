@@ -9,25 +9,29 @@ import type { ActionState } from '../../../_lib/form-state';
 
 const ALLOWED_NETWORKS = ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'OTHER'] as const;
 
-const UpdateCardSchema = z.object({
-  cardId: z.string().trim().min(1, 'Card id is required'),
-  nickname: z.string().trim().min(1, 'Nickname is required').max(64),
-  issuer: z.string().trim().max(64).optional(),
-  network: z
-    .string()
-    .trim()
-    .transform((value) => value.toUpperCase())
-    .refine((value) => value === '' || ALLOWED_NETWORKS.includes(value as (typeof ALLOWED_NETWORKS)[number]), {
-      message: 'Choose a network from the list.',
-    })
-    .optional(),
-  cardType: z.enum(['credit', 'debit']),
-  annualFee: z.string().trim().optional(),
-});
+const UpdateCardSchema = z
+  .object({
+    cardId: z.string().trim().min(1, 'Card id is required'),
+    nickname: z.string().trim().min(1, 'Nickname is required').max(64),
+    issuer: z.string().trim().max(64).optional(),
+    network: z
+      .string()
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .refine((value) => value === '' || ALLOWED_NETWORKS.includes(value as (typeof ALLOWED_NETWORKS)[number]), {
+        message: 'Choose a network from the list.',
+      })
+      .optional(),
+    cardType: z.enum(['credit', 'debit']),
+    annualFee: z.string().trim().optional(),
+  })
+  .strict();
 
-const DeleteCardSchema = z.object({
-  cardId: z.string().trim().min(1, 'Card id is required'),
-});
+const DeleteCardSchema = z
+  .object({
+    cardId: z.string().trim().min(1, 'Card id is required'),
+  })
+  .strict();
 
 function parseAnnualFee(raw?: string): { cents: number | null; error?: string } {
   const normalized = raw?.trim() ?? '';
@@ -58,8 +62,8 @@ export async function updateCard(
   }
 
   const { cents, error } = parseAnnualFee(parsed.data.annualFee);
-  if (error) {
-    return { status: 'error', message: error, fieldErrors: { annualFee: [error] } };
+  if (typeof error === 'string') {
+    return { status: 'error', message: error ?? null, fieldErrors: { annualFee: [error] } };
   }
 
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -69,15 +73,16 @@ export async function updateCard(
     where: { id: parsed.data.cardId, userId },
     select: { id: true },
   });
-  if (!card) {
+  if (card === null) {
     return { status: 'error', message: 'Card not found for this user.' };
   }
 
-  const issuer = parsed.data.issuer && parsed.data.issuer.trim() !== '' ? parsed.data.issuer.trim() : 'Custom issuer';
-  const network =
-    parsed.data.network && parsed.data.network.trim() !== ''
-      ? parsed.data.network.trim().toUpperCase()
-      : 'OTHER';
+  const issuerInput = parsed.data.issuer;
+  const hasIssuer = typeof issuerInput === 'string' && issuerInput.trim().length > 0;
+  const issuer = hasIssuer ? issuerInput.trim() : 'Custom issuer';
+  const networkInput = parsed.data.network;
+  const hasNetwork = typeof networkInput === 'string' && networkInput.trim().length > 0;
+  const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
   await prisma.card.update({
     where: { id: card.id },
@@ -114,7 +119,7 @@ export async function deleteCard(
     select: { id: true },
   });
 
-  if (!card) {
+  if (card === null) {
     return { status: 'error', message: 'Card not found for this user.' };
   }
 

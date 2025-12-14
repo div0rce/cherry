@@ -9,12 +9,14 @@ import { assertUserId } from '@/lib/invariants';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '@/lib/buckets-runtime';
 import type { ActionState } from '../../_lib/form-state';
 
-const BucketSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(80),
-  budgetAmount: z.string().trim(),
-  category: z.nativeEnum(RewardCategory, { required_error: 'Category is required' }),
-  period: z.enum(['WEEKLY', 'MONTHLY']),
-});
+const BucketSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required').max(80),
+    budgetAmount: z.string().trim(),
+  category: z.nativeEnum(RewardCategory),
+    period: z.enum(['WEEKLY', 'MONTHLY']),
+  })
+  .strict();
 
 function parseBudget(raw: string): { cents: number | null; error?: string } {
   const normalized = raw.trim();
@@ -65,15 +67,20 @@ export async function createBucket(
   }
 
   const { cents, error } = parseBudget(parsed.data.budgetAmount);
-  if (error || cents === null) {
-    return { status: 'error', message: error, fieldErrors: { budgetAmount: [error ?? 'Invalid amount'] } };
+  if (typeof error === 'string' || cents === null) {
+    return {
+      status: 'error',
+      message: error ?? null,
+      fieldErrors: { budgetAmount: [error ?? 'Invalid amount'] },
+    };
   }
 
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
   assertUserId(userId, 'onboarding createBucket');
 
   const now = new Date();
-  const { start, end } = getPeriodWindow(parsed.data.period as BucketPeriod, now);
+  const period = parsed.data.period as BucketPeriod;
+  const { start, end } = getPeriodWindow(period, now);
   const balance = computeBucketBalanceFromNumbers(cents, 0, 0);
 
   await prisma.bucket.create({

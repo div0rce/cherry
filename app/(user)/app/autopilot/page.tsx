@@ -9,7 +9,7 @@ export default async function AutopilotPage(): Promise<JSX.Element> {
   const prereqs = await getAutopilotPrereqs(userId);
   const missing = getFirstMissingPrereq(prereqs);
 
-  if (missing) {
+  if (missing !== null) {
     redirect(`/app/onboarding?missing=${missing}`);
   }
 

@@ -12,7 +12,7 @@ export default async function NewRewardRulePage({
   params,
 }: {
   params: Promise<PageParams> | PageParams;
-}): Promise<JSX.Element> {
+}): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -22,8 +22,9 @@ export default async function NewRewardRulePage({
     select: { id: true, nickname: true },
   });
 
-  if (!card) {
+  if (card === null) {
     redirect('/app/onboarding?missing=cards');
+    return null;
   }
 
   const targetCard = card;

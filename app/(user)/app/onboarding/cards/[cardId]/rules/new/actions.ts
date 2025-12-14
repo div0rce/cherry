@@ -14,15 +14,21 @@ const ALLOWED_CATEGORIES = [
   RewardCategory.GAS,
   RewardCategory.TRAVEL,
   RewardCategory.OTHER,
-] as const;
+] as const satisfies ReadonlyArray<RewardCategory>;
 
-const RuleSchema = z.object({
-  cardId: z.string().trim().min(1, 'Card id is required'),
-  scope: z.enum(['BASE', 'CATEGORY']),
-  category: z.string().trim().min(1, 'Category is required'),
-  rateKind: z.enum(['points', 'cashback']),
-  rateValue: z.string().trim(),
-});
+function isAllowedCategory(value: RewardCategory): value is (typeof ALLOWED_CATEGORIES)[number] {
+  return ALLOWED_CATEGORIES.includes(value as (typeof ALLOWED_CATEGORIES)[number]);
+}
+
+const RuleSchema = z
+  .object({
+    cardId: z.string().trim().min(1, 'Card id is required'),
+    scope: z.enum(['BASE', 'CATEGORY']),
+    category: z.string().trim().min(1, 'Category is required'),
+    rateKind: z.enum(['points', 'cashback']),
+    rateValue: z.string().trim(),
+  })
+  .strict();
 
 function parseRate(raw: string): { value: number | null; error?: string } {
   const parsed = Number.parseFloat(raw);
@@ -50,13 +56,14 @@ export async function createRewardRule(
   }
 
   const { value: rateValue, error } = parseRate(parsed.data.rateValue);
-  if (error || rateValue === null) {
-    return { status: 'error', message: error, fieldErrors: { rateValue: [error ?? 'Invalid rate'] } };
+  if (typeof error === 'string' || rateValue === null) {
+    return { status: 'error', message: error ?? null, fieldErrors: { rateValue: [error ?? 'Invalid rate'] } };
   }
 
-  const categoryValue =
+  const categoryCandidate: RewardCategory =
     parsed.data.scope === 'BASE' ? RewardCategory.OTHER : (parsed.data.category as RewardCategory);
-  if (!ALLOWED_CATEGORIES.includes(categoryValue)) {
+  const allowedCategory = isAllowedCategory(categoryCandidate) ? categoryCandidate : null;
+  if (allowedCategory === null) {
     return {
       status: 'error',
       message: 'Choose a supported category.',
@@ -72,11 +79,13 @@ export async function createRewardRule(
     select: { id: true },
   });
 
-  if (!card) {
+  if (card === null) {
     redirect('/app/onboarding?missing=cards');
+    return;
   }
 
   const cardIdForRule = card.id;
+  const categoryValue: RewardCategory = allowedCategory;
 
   await prisma.rewardRule.create({
     data: {

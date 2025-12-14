@@ -17,7 +17,8 @@ type OnboardingSearchParams = {
 };
 
 function toMissingKey(raw: string | string[] | undefined): MissingKey {
-  if (raw === 'cards' || raw === 'rules' || raw === 'buckets') return raw;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === 'cards' || value === 'rules' || value === 'buckets') return value;
   return null;
 }
 
@@ -45,7 +46,8 @@ function buildPrimaryCta(prereqs: AutopilotPrereqs, missing: MissingKey): { href
   }
   if (missing === 'rules') {
     const firstCardId = prereqs.cards[0]?.id;
-    const href = firstCardId
+    const hasFirstCardId = typeof firstCardId === 'string' && firstCardId.length > 0;
+    const href = hasFirstCardId
       ? `/app/onboarding/cards/${firstCardId}/rules/new`
       : '/app/onboarding/cards/new';
     return { href, label: 'Add a reward rule' };
@@ -231,24 +233,28 @@ export default async function OnboardingPage({
 }): Promise<JSX.Element> {
   const resolvedSearchParams =
     searchParams instanceof Promise ? await searchParams : (searchParams ?? {});
-  const highlightedMissing = toMissingKey(resolvedSearchParams.missing);
+  const rawMissing = resolvedSearchParams.missing;
+  const missingParam = typeof rawMissing === 'string' ? rawMissing : '';
+  const highlightedMissing = toMissingKey(missingParam);
 
   const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
   const prereqs = await getAutopilotPrereqs(userContext.userId);
   const missing = getFirstMissingPrereq(prereqs);
   const primaryCta = buildPrimaryCta(prereqs, missing);
 
-  const missingLabel =
-    highlightedMissing ?? missing
-      ? {
-          cards: 'cards',
-          rules: 'reward rules',
-          buckets: 'buckets',
-        }[(highlightedMissing ?? missing)!]
-      : null;
+  const chosenMissing = highlightedMissing !== null ? highlightedMissing : missing;
+  const hasMissingKey = chosenMissing !== null;
+  const missingLabel = hasMissingKey
+    ? ({
+        cards: 'cards',
+        rules: 'reward rules',
+        buckets: 'buckets',
+      } as const)[chosenMissing]
+    : null;
+  const hasMissingLabel = typeof missingLabel === 'string' && missingLabel.length > 0;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e2e8f0]">
+    <main className="min-h-screen bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">
       <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
         <header className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#ff4d6d]">
@@ -261,7 +267,7 @@ export default async function OnboardingPage({
           </p>
         </header>
 
-        {missingLabel ? (
+        {hasMissingLabel ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Autopilot can’t run yet. Add {missingLabel} to continue.
           </div>

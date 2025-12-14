@@ -1,10 +1,10 @@
 'use client';
 
+import * as React from 'react';
 import type { JSX, ReactNode } from 'react';
-import { useFormState } from 'react-dom';
 import type { ActionState } from '../_lib/form-state';
 import { initialActionState } from '../_lib/form-state';
-import { FieldError, FormMessage, SubmitButton, inputClasses } from './form-helpers';
+import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers';
 
 const CATEGORY_OPTIONS = [
   { value: 'DINING', label: 'Dining' },
@@ -33,16 +33,18 @@ export function BucketForm({
   submitLabel,
   footerSlot,
 }: BucketFormProps): JSX.Element {
-  const [state, formAction] = useFormState<ActionState, FormData>(action, initialActionState);
+  const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
+    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
+    initialActionState
+  );
 
-  const defaultBudget =
-    defaultValues?.budgetAmountCents != null
-      ? (defaultValues.budgetAmountCents / 100).toFixed(0)
-      : '';
+  const hasBudget = hasNumber(defaultValues?.budgetAmountCents);
+  const defaultBudget = hasBudget ? ((defaultValues?.budgetAmountCents ?? 0) / 100).toFixed(0) : '';
+  const bucketIdValue = typeof defaultValues?.bucketId === 'string' ? defaultValues.bucketId : null;
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      {defaultValues?.bucketId ? <input type="hidden" name="bucketId" value={defaultValues.bucketId} /> : null}
+      {bucketIdValue !== null ? <input type="hidden" name="bucketId" value={bucketIdValue} /> : null}
 
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#0f172a]">Bucket name</label>
@@ -53,12 +55,12 @@ export function BucketForm({
           required
           className={inputClasses}
         />
-        <FieldError errors={state.fieldErrors?.name} />
+        <FieldError errors={state.fieldErrors?.['name'] ?? []} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Monthly limit (USD)</label>
+          <label className="block text-sm font-semibold text-[#0f172a]">Budget limit (USD)</label>
           <input
             type="number"
             name="budgetAmount"
@@ -68,7 +70,7 @@ export function BucketForm({
             defaultValue={defaultBudget}
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.budgetAmount} />
+          <FieldError errors={state.fieldErrors?.['budgetAmount'] ?? []} />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-[#0f172a]">Category</label>
@@ -83,7 +85,7 @@ export function BucketForm({
               </option>
             ))}
           </select>
-          <FieldError errors={state.fieldErrors?.category} />
+          <FieldError errors={state.fieldErrors?.['category'] ?? []} />
         </div>
       </div>
 
@@ -97,7 +99,7 @@ export function BucketForm({
           <option value="MONTHLY">Monthly</option>
           <option value="WEEKLY">Weekly</option>
         </select>
-        <FieldError errors={state.fieldErrors?.period} />
+        <FieldError errors={state.fieldErrors?.['period'] ?? []} />
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -108,7 +110,7 @@ export function BucketForm({
         </div>
         <div className="flex items-center gap-2">
           {footerSlot}
-          <SubmitButton label={submitLabel} pendingLabel="Saving…" />
+          <SubmitButton label={submitLabel} pendingLabel="Saving…" pending={pending} />
         </div>
       </div>
     </form>

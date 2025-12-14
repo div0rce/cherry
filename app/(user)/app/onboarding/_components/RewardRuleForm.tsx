@@ -1,10 +1,10 @@
 'use client';
 
+import * as React from 'react';
 import type { JSX, ReactNode } from 'react';
-import { useFormState } from 'react-dom';
 import type { ActionState } from '../_lib/form-state';
 import { initialActionState } from '../_lib/form-state';
-import { FieldError, FormMessage, SubmitButton, inputClasses } from './form-helpers';
+import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers';
 
 const CATEGORY_OPTIONS = [
   { value: 'DINING', label: 'Dining' },
@@ -34,21 +34,26 @@ export function RewardRuleForm({
   submitLabel,
   footerSlot,
 }: RewardRuleFormProps): JSX.Element {
-  const [state, formAction] = useFormState<ActionState, FormData>(action, initialActionState);
+  const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
+    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
+    initialActionState
+  );
 
-  const defaultRateKind = defaultValues?.cashbackPercent != null ? 'cashback' : 'points';
-  const defaultRateValue =
-    defaultValues?.cashbackPercent != null
-      ? String(defaultValues.cashbackPercent)
-      : defaultValues?.multiplier != null
-        ? String(defaultValues.multiplier)
-        : '';
+  const hasCashback = hasNumber(defaultValues?.cashbackPercent);
+  const hasMultiplier = hasNumber(defaultValues?.multiplier);
+  const defaultRateKind = hasCashback ? 'cashback' : 'points';
+  const defaultRateValue = hasCashback
+    ? String(defaultValues?.cashbackPercent ?? '')
+    : hasMultiplier
+      ? String(defaultValues?.multiplier ?? '')
+      : '';
   const defaultScope = (defaultValues?.category ?? 'OTHER') === 'OTHER' ? 'BASE' : 'CATEGORY';
+  const ruleIdValue = typeof defaultValues?.ruleId === 'string' ? defaultValues.ruleId : null;
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <input type="hidden" name="cardId" value={cardId} />
-      {defaultValues?.ruleId ? <input type="hidden" name="ruleId" value={defaultValues.ruleId} /> : null}
+      {ruleIdValue !== null ? <input type="hidden" name="ruleId" value={ruleIdValue} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
@@ -57,7 +62,7 @@ export function RewardRuleForm({
             <option value="BASE">Base (catch-all)</option>
             <option value="CATEGORY">Specific category</option>
           </select>
-          <FieldError errors={state.fieldErrors?.scope} />
+          <FieldError errors={state.fieldErrors?.['scope'] ?? []} />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-[#0f172a]">Category</label>
@@ -72,7 +77,7 @@ export function RewardRuleForm({
               </option>
             ))}
           </select>
-          <FieldError errors={state.fieldErrors?.category} />
+          <FieldError errors={state.fieldErrors?.['category'] ?? []} />
         </div>
       </div>
 
@@ -89,7 +94,7 @@ export function RewardRuleForm({
               Cash back (%)
             </label>
           </div>
-          <FieldError errors={state.fieldErrors?.rateKind} />
+          <FieldError errors={state.fieldErrors?.['rateKind'] ?? []} />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-[#0f172a]">Rate</label>
@@ -102,7 +107,7 @@ export function RewardRuleForm({
             defaultValue={defaultRateValue}
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.rateValue} />
+          <FieldError errors={state.fieldErrors?.['rateValue'] ?? []} />
         </div>
       </div>
 
@@ -114,7 +119,7 @@ export function RewardRuleForm({
         </div>
         <div className="flex items-center gap-2">
           {footerSlot}
-          <SubmitButton label={submitLabel} pendingLabel="Saving…" />
+          <SubmitButton label={submitLabel} pendingLabel="Saving…" pending={pending} />
         </div>
       </div>
     </form>

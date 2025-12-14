@@ -9,17 +9,21 @@ import { assertUserId } from '@/lib/invariants';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '@/lib/buckets-runtime';
 import type { ActionState } from '../../../_lib/form-state';
 
-const UpdateBucketSchema = z.object({
-  bucketId: z.string().trim().min(1, 'Bucket id is required'),
-  name: z.string().trim().min(1, 'Name is required').max(80),
-  budgetAmount: z.string().trim(),
-  category: z.nativeEnum(RewardCategory, { required_error: 'Category is required' }),
-  period: z.enum(['WEEKLY', 'MONTHLY']),
-});
+const UpdateBucketSchema = z
+  .object({
+    bucketId: z.string().trim().min(1, 'Bucket id is required'),
+    name: z.string().trim().min(1, 'Name is required').max(80),
+    budgetAmount: z.string().trim(),
+  category: z.nativeEnum(RewardCategory),
+    period: z.enum(['WEEKLY', 'MONTHLY']),
+  })
+  .strict();
 
-const DeleteBucketSchema = z.object({
-  bucketId: z.string().trim().min(1, 'Bucket id is required'),
-});
+const DeleteBucketSchema = z
+  .object({
+    bucketId: z.string().trim().min(1, 'Bucket id is required'),
+  })
+  .strict();
 
 function parseBudget(raw: string): { cents: number | null; error?: string } {
   const normalized = raw.trim();
@@ -71,8 +75,12 @@ export async function updateBucket(
   }
 
   const { cents, error } = parseBudget(parsed.data.budgetAmount);
-  if (error || cents === null) {
-    return { status: 'error', message: error, fieldErrors: { budgetAmount: [error ?? 'Invalid amount'] } };
+  if (typeof error === 'string' || cents === null) {
+    return {
+      status: 'error',
+      message: error ?? null,
+      fieldErrors: { budgetAmount: [error ?? 'Invalid amount'] },
+    };
   }
 
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -83,8 +91,9 @@ export async function updateBucket(
     select: { id: true, spentCents: true, period: true },
   });
 
-  if (!bucket) {
+  if (bucket === null) {
     redirect('/app/onboarding?missing=buckets');
+    return;
   }
 
   const bucketRecord = bucket;
@@ -131,8 +140,9 @@ export async function deleteBucket(
     select: { id: true },
   });
 
-  if (!bucket) {
+  if (bucket === null) {
     redirect('/app/onboarding?missing=buckets');
+    return;
   }
 
   await prisma.bucket.delete({ where: { id: parsed.data.bucketId } });

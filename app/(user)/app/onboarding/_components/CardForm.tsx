@@ -1,10 +1,10 @@
 'use client';
 
+import * as React from 'react';
 import type { JSX, ReactNode } from 'react';
-import { useFormState } from 'react-dom';
 import type { ActionState } from '../_lib/form-state';
 import { initialActionState } from '../_lib/form-state';
-import { FieldError, FormMessage, SubmitButton, inputClasses } from './form-helpers';
+import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers';
 
 type CardFormProps = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState | void>;
@@ -21,16 +21,18 @@ type CardFormProps = {
 };
 
 export function CardForm({ action, defaultValues, submitLabel, footerSlot }: CardFormProps): JSX.Element {
-  const [state, formAction] = useFormState<ActionState, FormData>(action, initialActionState);
+  const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
+    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
+    initialActionState
+  );
 
-  const annualFeeDefault =
-    defaultValues?.annualFeeCents != null
-      ? (defaultValues.annualFeeCents / 100).toFixed(2)
-      : '';
+  const hasAnnualFee = hasNumber(defaultValues?.annualFeeCents);
+  const annualFeeDefault = hasAnnualFee ? ((defaultValues?.annualFeeCents ?? 0) / 100).toFixed(2) : '';
+  const cardIdValue = typeof defaultValues?.cardId === 'string' ? defaultValues.cardId : null;
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      {defaultValues?.cardId ? <input type="hidden" name="cardId" value={defaultValues.cardId} /> : null}
+      {cardIdValue !== null ? <input type="hidden" name="cardId" value={cardIdValue} /> : null}
       <div className="space-y-2">
         <label className="block text-sm font-semibold text-[#0f172a]">Nickname</label>
         <input
@@ -40,7 +42,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
           required
           className={inputClasses}
         />
-        <FieldError errors={state.fieldErrors?.nickname} />
+        <FieldError errors={state.fieldErrors?.['nickname'] ?? []} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -52,7 +54,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
             placeholder="AMEX, Chase, Local credit union"
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.issuer} />
+          <FieldError errors={state.fieldErrors?.['issuer'] ?? []} />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-[#0f172a]">Network</label>
@@ -67,7 +69,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
             <option value="DISCOVER">Discover</option>
             <option value="OTHER">Other</option>
           </select>
-          <FieldError errors={state.fieldErrors?.network} />
+          <FieldError errors={state.fieldErrors?.['network'] ?? []} />
         </div>
       </div>
 
@@ -94,7 +96,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
               Debit
             </label>
           </div>
-          <FieldError errors={state.fieldErrors?.cardType} />
+          <FieldError errors={state.fieldErrors?.['cardType'] ?? []} />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-semibold text-[#0f172a]">Annual fee (USD)</label>
@@ -107,7 +109,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
             defaultValue={annualFeeDefault}
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.annualFee} />
+          <FieldError errors={state.fieldErrors?.['annualFee'] ?? []} />
         </div>
       </div>
 
@@ -119,7 +121,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
         </div>
         <div className="flex items-center gap-2">
           {footerSlot}
-          <SubmitButton label={submitLabel} pendingLabel="Saving…" />
+          <SubmitButton label={submitLabel} pendingLabel="Saving…" pending={pending} />
         </div>
       </div>
     </form>
