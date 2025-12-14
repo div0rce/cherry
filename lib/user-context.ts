@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getServerSession } from 'next-auth';
 import { prisma } from './prisma.ts';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -28,44 +29,90 @@ function hasText(value: unknown): value is string {
 }
 
 function fallbackEmail(userId: string): string {
-  const normalizedRaw = userId.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
-  const normalized = normalizedRaw.length > 0 ? normalizedRaw : 'user';
-  return `${normalized}@cherry.local`;
+  const digest = crypto.createHash('sha256').update(userId).digest('hex').slice(0, 24);
+  return `user-${digest}@cherry.example.invalid`;
+}
+
+function fallbackEmailV2(userId: string): string {
+  const digest = crypto.createHash('sha256').update(`v2:${userId}`).digest('hex').slice(0, 24);
+  return `user-${digest}@cherry.example.invalid`;
 }
 
 async function ensureUserRow(params: { userId: string; email: string | null; name?: string | null }) {
   const { userId, email, name } = params;
   assertUserId(userId, 'ensureUserRow');
-  const normalizedEmailInput = hasText(email) ? email.trim() : null;
+  const providedEmail = hasText(email) ? email.trim().toLowerCase() : null;
   const normalizedName = hasText(name) ? name.trim() : null;
+  const safeFallback = fallbackEmail(userId);
+  const safeFallback2 = fallbackEmailV2(userId);
 
-  let safeEmail: string | null = normalizedEmailInput;
-  if (safeEmail !== null) {
-    const existingByEmail = await prisma.user.findUnique({ where: { email: safeEmail } });
-    const isOwnedBySameUser = existingByEmail !== null && existingByEmail.id === userId;
-    if (!isOwnedBySameUser && existingByEmail !== null) {
-      safeEmail = null;
+  let emailForUpsert: string | null = providedEmail;
+  if (emailForUpsert !== null) {
+    const existing = await prisma.user.findUnique({ where: { email: emailForUpsert } });
+    const ownedByUser = existing !== null && existing.id === userId;
+    if (existing !== null && !ownedByUser) {
+      emailForUpsert = null;
     }
   }
 
-  const createEmail = safeEmail ?? fallbackEmail(userId);
   const updateData: { email?: string; name?: string | null } = {};
-  if (safeEmail !== null) {
-    updateData.email = safeEmail;
+  if (emailForUpsert !== null) {
+    updateData.email = emailForUpsert;
   }
   if (normalizedName !== null) {
     updateData.name = normalizedName;
   }
 
-  return prisma.user.upsert({
-    where: { id: userId },
-    update: updateData,
-    create: {
-      id: userId,
-      email: createEmail,
-      name: normalizedName,
-    },
-  });
+  let createEmail = emailForUpsert ?? safeFallback;
+  if (emailForUpsert === null) {
+    const fallbackOwner = await prisma.user.findUnique({ where: { email: safeFallback } });
+    const fallbackOwnedBySameUser = fallbackOwner !== null && fallbackOwner.id === userId;
+    if (fallbackOwner !== null && !fallbackOwnedBySameUser) {
+      createEmail = safeFallback2;
+    }
+  }
+
+  try {
+    return await prisma.user.upsert({
+      where: { id: userId },
+      update: updateData,
+      create: {
+        id: userId,
+        email: createEmail,
+        name: normalizedName,
+      },
+    });
+  } catch (err: unknown) {
+    if (isP2002Email(err)) {
+      const retryUpdate: { name?: string | null } = {};
+      if (normalizedName !== null) {
+        retryUpdate.name = normalizedName;
+      }
+
+      const fallbackCandidates = [safeFallback, safeFallback2].filter(
+        (candidate) => candidate !== createEmail
+      );
+
+      for (const candidate of fallbackCandidates) {
+        try {
+          return await prisma.user.upsert({
+            where: { id: userId },
+            update: retryUpdate,
+            create: {
+              id: userId,
+              email: candidate,
+              name: normalizedName,
+            },
+          });
+        } catch (err2: unknown) {
+          if (!isP2002Email(err2)) {
+            throw err2;
+          }
+        }
+      }
+    }
+    throw err;
+  }
 }
 
 async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string; email?: string | null }>) {
@@ -175,4 +222,13 @@ export function isPrismaP2003(err: unknown): err is PrismaClientKnownRequestErro
   return err instanceof PrismaClientKnownRequestError && err.code === 'P2003';
 }
 
-export { logInvariant, assertUserId };
+function isP2002Email(err: unknown): boolean {
+  if (!(err instanceof PrismaClientKnownRequestError)) return false;
+  if (err.code !== 'P2002') return false;
+  const metaTarget = (err.meta as { target?: unknown } | undefined)?.target;
+  if (Array.isArray(metaTarget)) return metaTarget.includes('email');
+  if (typeof metaTarget === 'string') return metaTarget === 'email';
+  return false;
+}
+
+export { logInvariant, assertUserId, fallbackEmail, fallbackEmailV2 };
