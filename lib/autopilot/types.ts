@@ -71,7 +71,8 @@ export type AutopilotCommitInput = {
 
 export type AutopilotCommitResult = {
   decisionId: string;
-  transactionId: string;
+  transactionId?: string;
+  sessionId?: string;
   bucket: BucketRuntime | null;
   status: 'created' | 'already_exists';
 };
