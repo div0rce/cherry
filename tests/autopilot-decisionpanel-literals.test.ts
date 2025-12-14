@@ -41,8 +41,6 @@ const ALLOWED_OPS_LITERALS = new Set<string>([
   'article',
   'status',
   'message',
-  'polite',
-  'assertive',
 ]);
 
 const IGNORE_EXACT = new Set<string>([
@@ -63,6 +61,8 @@ const IGNORE_EXACT = new Set<string>([
   'aria-label',
   'aria-describedby',
   'aria-hidden',
+  'polite',
+  'assertive',
   'data-testid',
   'data-test-id',
   'data-state',

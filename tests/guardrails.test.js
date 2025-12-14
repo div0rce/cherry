@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
 
 const env = {
   ...process.env,
@@ -8,6 +9,10 @@ const env = {
 };
 
 function runGuardrail(file) {
+  if (!fs.existsSync(file)) {
+    process.stderr.write(`guardrails: missing file: ${file}\n`);
+    process.exit(1);
+  }
   const res = spawnSync(
     'node',
     ['-r', 'ts-node/register/transpile-only', '-r', 'tsconfig-paths/register', file],
