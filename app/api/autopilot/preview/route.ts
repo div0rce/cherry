@@ -93,7 +93,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       pressure: remainingCents != null && remainingCents <= 0 ? 'exhausted' : 'ok',
     });
     incrementCounter('autopilot_preview_has_warnings_total', {
-      has_warnings: validatedPreview.data.explanation.warnings.length > 0 ? 'yes' : 'no',
+      has_warnings: validatedPreview.data.ui.explanation.warnings.length > 0 ? 'yes' : 'no',
     });
 
     return respond(200, validatedPreview.data);

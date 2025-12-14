@@ -138,7 +138,6 @@ async function runPreviewValid() {
       status: 'ok',
       recommendedCard: { id: 'card-1', label: 'Alpha', issuer: 'Issuer', network: 'VISA' },
       expectedBenefitCents: 100,
-      explanation: { primary: 'Use Alpha', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'MAX_REWARDS',
       ui: buildUiStub(),
@@ -158,7 +157,7 @@ async function runPreviewValid() {
   assert.equal(res.status, 200);
   assert.equal(body.decisionId, 'decision-1');
   assert.equal(body.recommendedCard.id, 'card-1');
-  assert.deepEqual(body.ui.explanation, body.explanation);
+  assert.ok(!('explanation' in body));
   assert.equal(logEvents.length, 0);
 }
 
@@ -183,7 +182,6 @@ async function runPreviewInvalid() {
       status: 'ok',
       recommendedCard: null,
       expectedBenefitCents: 0,
-      explanation: { primary: 'fallback', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'FALLBACK',
       ui: buildUiStub(),
@@ -226,7 +224,6 @@ async function runPreviewUnauthorized() {
       status: 'blocked',
       recommendedCard: null,
       expectedBenefitCents: 0,
-      explanation: { primary: 'blocked', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'NO_USER',
       ui: buildUiStub(),

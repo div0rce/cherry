@@ -108,7 +108,9 @@ function toRecommendedCard(card: CardSummary | null): AutopilotRecommendedCard |
   };
 }
 
-function buildPreviewUiBundle(explanation: AutopilotPreviewOutput['explanation']): AutopilotPreviewUiBundle {
+function buildPreviewUiBundle(
+  explanation: AutopilotPreviewUiBundle['explanation']
+): AutopilotPreviewUiBundle {
   const spec = getAutopilotUiSpec();
 
   return {
@@ -411,7 +413,7 @@ async function findOrCreateAutopilotSession(options: {
 
 function buildExplanation(
   evaluation: EvaluatedAutopilotContext
-): AutopilotPreviewOutput['explanation'] {
+): AutopilotPreviewUiBundle['explanation'] {
   const primary = hasText(evaluation.decision.userFacingMessage)
     ? evaluation.decision.userFacingMessage
     : 'No recommendation available for this purchase.';
@@ -464,7 +466,6 @@ export async function getAutopilotPreview(
     status: evaluation.status,
     recommendedCard: toRecommendedCard(evaluation.recommendedCard),
     expectedBenefitCents: evaluation.expectedBenefitCents,
-    explanation,
     bucketImpact: evaluation.bucketImpact,
     reasonCode: evaluation.decision.reasonCode,
     ui,

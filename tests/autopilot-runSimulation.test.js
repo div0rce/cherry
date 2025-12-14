@@ -85,7 +85,6 @@ async function runHappyPath() {
       status: 'ok',
       recommendedCard: { id: 'card-1', label: 'Alpha', issuer: 'Issuer', network: 'VISA' },
       expectedBenefitCents: 120,
-      explanation: { primary: 'Use Alpha', secondary: ['Keeps budget steady'], warnings: [] },
       bucketImpact: { bucketId: 'bucket-1', name: 'Dining', remainingCents: 7_000, spentCents: 13_000 },
       reasonCode: 'MAX_REWARDS',
       ui: buildUiStub(),
@@ -131,7 +130,6 @@ async function runWarningMapping() {
       status: 'fallback',
       recommendedCard: null,
       expectedBenefitCents: 0,
-      explanation: { primary: 'Fallback', secondary: [], warnings: ['Budget pressure detected'] },
       bucketImpact: { bucketId: 'bucket-2', name: 'Other', remainingCents: 0, spentCents: 500 },
       reasonCode: 'FALLBACK_SAFE',
       ui: {

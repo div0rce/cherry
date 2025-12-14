@@ -134,7 +134,6 @@ async function runUserContextPreview(): Promise<void> {
       status: 'ok',
       recommendedCard: { id: 'card-1', label: 'Alpha', issuer: 'Issuer', network: 'VISA' },
       expectedBenefitCents: 10,
-      explanation: { primary: 'ok', secondary: [], warnings: [] },
       bucketImpact: null,
       reasonCode: 'OK',
       ui: buildUiStub(),

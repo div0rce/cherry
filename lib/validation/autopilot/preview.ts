@@ -137,13 +137,6 @@ export const AutopilotPreviewOutputSchema = z
     status: z.enum(['ok', 'blocked', 'fallback']),
     recommendedCard: AutopilotRecommendedCardSchema.nullable(),
     expectedBenefitCents: z.number().int().nonnegative(),
-    explanation: z
-      .object({
-        primary: z.string(),
-        secondary: z.array(z.string()),
-        warnings: z.array(z.string()),
-      })
-      .strict(),
     bucketImpact: AutopilotBucketImpactSchema.nullable(),
     reasonCode: z.string().trim().min(1),
     ui: AutopilotUiBundleSchema,
