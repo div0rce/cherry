@@ -1,0 +1,131 @@
+import { BucketPeriod, RewardCategory } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { assertUserId } from '@/lib/invariants';
+
+export type AutopilotOnboardingState = 'EMPTY' | 'NEED_RULES' | 'NEED_BUCKETS' | 'READY';
+
+export type PrereqCard = {
+  id: string;
+  nickname: string;
+  issuer: string;
+  network: string;
+  rewardRuleCount: number;
+};
+
+export type PrereqBucket = {
+  id: string;
+  name: string;
+  category: RewardCategory;
+  budgetAmount: number;
+  period: BucketPeriod;
+};
+
+export type AutopilotPrereqs = {
+  cardsCount: number;
+  rulesCount: number;
+  bucketsCount: number;
+  cards: PrereqCard[];
+  buckets: PrereqBucket[];
+  hasBaseRule: boolean;
+  state: AutopilotOnboardingState;
+  warnings: string[];
+};
+
+function deriveState(counts: {
+  cardsCount: number;
+  rulesCount: number;
+  bucketsCount: number;
+}): AutopilotOnboardingState {
+  if (counts.cardsCount <= 0) return 'EMPTY';
+  if (counts.rulesCount <= 0) return 'NEED_RULES';
+  if (counts.bucketsCount <= 0) return 'NEED_BUCKETS';
+  return 'READY';
+}
+
+function buildWarnings(
+  counts: { cardsCount: number; bucketsCount: number },
+  hasBaseRule: boolean
+): string[] {
+  const warnings: string[] = [];
+  if (counts.cardsCount === 1) {
+    warnings.push('Only one card is configured; Autopilot recommendations will be trivial.');
+  }
+  if (!hasBaseRule) {
+    warnings.push('No base reward rule found; uncategorized spend may fall back to 0% rewards.');
+  }
+  if (counts.bucketsCount === 1) {
+    warnings.push('Only one bucket is configured; bucket guardrails may be less informative.');
+  }
+  return warnings;
+}
+
+export function getFirstMissingPrereq(
+  prereqs: Pick<AutopilotPrereqs, 'cardsCount' | 'rulesCount' | 'bucketsCount'>
+): 'cards' | 'rules' | 'buckets' | null {
+  if (prereqs.cardsCount <= 0) return 'cards';
+  if (prereqs.rulesCount <= 0) return 'rules';
+  if (prereqs.bucketsCount <= 0) return 'buckets';
+  return null;
+}
+
+export async function getAutopilotPrereqs(userId: string): Promise<AutopilotPrereqs> {
+  assertUserId(userId, 'getAutopilotPrereqs');
+
+  const [cardsCount, rulesCount, bucketsCount, baseRuleCount, cards, buckets] = await Promise.all([
+    prisma.card.count({ where: { userId } }),
+    prisma.rewardRule.count({ where: { card: { userId } } }),
+    prisma.bucket.count({ where: { userId } }),
+    prisma.rewardRule.count({
+      where: { card: { userId }, category: RewardCategory.OTHER },
+    }),
+    prisma.card.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        nickname: true,
+        issuer: true,
+        network: true,
+        _count: { select: { rewardRules: true } },
+      },
+    }),
+    prisma.bucket.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        budgetAmount: true,
+        period: true,
+      },
+    }),
+  ]);
+
+  const state = deriveState({ cardsCount, rulesCount, bucketsCount });
+  const hasBaseRule = baseRuleCount > 0;
+  const warnings = buildWarnings({ cardsCount, bucketsCount }, hasBaseRule);
+
+  return {
+    cardsCount,
+    rulesCount,
+    bucketsCount,
+    cards: cards.map((card) => ({
+      id: card.id,
+      nickname: card.nickname,
+      issuer: card.issuer,
+      network: card.network,
+      rewardRuleCount: card._count.rewardRules,
+    })),
+    buckets: buckets.map((bucket) => ({
+      id: bucket.id,
+      name: bucket.name,
+      category: bucket.category,
+      budgetAmount: bucket.budgetAmount,
+      period: bucket.period,
+    })),
+    hasBaseRule,
+    state,
+    warnings,
+  };
+}
