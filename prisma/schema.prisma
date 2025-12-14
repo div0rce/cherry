@@ -411,7 +411,7 @@ model RecommendationSession {
   ledgerEntries    CherryPointLedger[]
   autopilotCommits AutopilotCommit[]
 
-  @@unique([userId, orderToken], map: "user_order_token_unique")
+  @@unique([userId, orderToken], name: "userId_orderToken", map: "user_order_token_unique")
   @@index([userId, engineDecisionId])
   @@index([userId])
   @@index([recommendedCardId])

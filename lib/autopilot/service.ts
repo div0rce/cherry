@@ -260,26 +260,27 @@ async function findOrCreateAutopilotSession(options: {
 }): Promise<{ id: string; recommendedBucketId: string | null }> {
   const { evaluation, userId, resolvedCategory } = options;
 
-  const existing = await prisma.recommendationSession.findFirst({
-    where: {
-      userId,
-      engineDecisionId: evaluation.decisionId,
-      source: RecommendationSource.AUTOPILOT,
-    },
-    select: { id: true, recommendedBucketId: true },
-  });
-
-  if (existing) {
-    return existing;
-  }
-
   const budgetVerdict = deriveBudgetVerdict(evaluation.bucketImpact);
   const overallVerdict = deriveOverallVerdict(evaluation.status, budgetVerdict);
   const cardVerdict =
     evaluation.recommendedCard === null ? CardVerdict.NO_CARD_DATA : CardVerdict.OPTIMAL;
 
-  const session = await prisma.recommendationSession.create({
-    data: {
+  const session = await prisma.recommendationSession.upsert({
+    where: {
+      userId_orderToken: {
+        userId,
+        orderToken: evaluation.decisionId,
+      },
+    },
+    update: {
+      recommendedCardId: evaluation.recommendedCard?.id ?? null,
+      recommendedBucketId: evaluation.decision.bucketDelta?.bucketId ?? null,
+      budgetVerdict,
+      cardVerdict,
+      overallVerdict,
+      coverageMode: CategoryCoverageModeDb.UNCONFIGURED,
+    },
+    create: {
       userId,
       merchantName: evaluation.merchant,
       mccCode: null,
