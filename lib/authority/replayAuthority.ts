@@ -48,7 +48,7 @@ async function loadDecisionEvent(lookup: ReplayLookup): Promise<DecisionEvent> {
     return found;
   }
 
-  if (!lookup.userId || !lookup.inputsVersion) {
+  if (lookup.userId === undefined || lookup.inputsVersion === undefined) {
     throw new Error('userId and inputsVersion are required for lookup');
   }
   const found = await prisma.decisionEvent.findFirst({

@@ -12,7 +12,8 @@ import {
 import { prisma } from '@/lib/prisma';
 import { applyInMemoryRollover } from '@/lib/buckets/periods';
 import { toBucketRuntime, type BucketRuntime } from '@/lib/buckets-runtime';
-import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from '@/lib/authority/reasonCodes';
+import { AuthorityReason } from '@/lib/authority/reasonCodes';
+import { getReasonSeverity, type AuthoritySurface } from '@/lib/authority/config';
 
 const ENGINE_VERSION =
   process.env['VERCEL_GIT_COMMIT_SHA'] ??
@@ -86,11 +87,13 @@ type AuthorityInputs = {
   amountCents: number;
   category: RewardCategory;
   surface: SimulateSpendParams['surface'];
-  dailyState: {
-    status: DailyStateStatus;
-    safeToSpendCents: number | null;
-  inputsVersion: string | null;
-} | null;
+  dailyState:
+    | {
+        status: DailyStateStatus;
+        safeToSpendCents: number | null;
+        inputsVersion: string | null;
+      }
+    | null;
   categoryPreferenceMode: CategoryPreference['mode'] | null;
   pendingSessions: number;
   pendingPoints: number;
@@ -115,6 +118,7 @@ type EvaluationContext = {
   pendingSessions: number;
   pendingPoints: number;
   delayDays: number;
+  surface: AuthoritySurface;
 };
 
 function computeInputsVersion(inputs: AuthorityInputs): string {
@@ -156,7 +160,7 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   if (categoryRestricted) {
     reasons.push({
       code: AuthorityReason.CATEGORY_RESTRICTED,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.CATEGORY_RESTRICTED],
+      severity: getReasonSeverity(AuthorityReason.CATEGORY_RESTRICTED, ctx.surface),
       detail: 'Category is restricted in preferences; simulator would flag this spend.',
     });
   }
@@ -164,13 +168,13 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   if (ctx.dailyStateStatus === DailyStateStatus.RISKY) {
     reasons.push({
       code: AuthorityReason.DAILY_STATE_RISKY,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.DAILY_STATE_RISKY],
+      severity: getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, ctx.surface),
       detail: 'DailyState is risky; simulator recommends caution.',
     });
   } else if (ctx.dailyStateStatus === DailyStateStatus.TIGHT) {
     reasons.push({
       code: AuthorityReason.DAILY_STATE_RISKY,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.DAILY_STATE_RISKY],
+      severity: getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, ctx.surface),
       detail: 'DailyState is tight; simulator suggests extra care.',
     });
   }
@@ -178,7 +182,7 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   if (bucketExhausted) {
     reasons.push({
       code: AuthorityReason.BUCKET_EXHAUSTED,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.BUCKET_EXHAUSTED],
+      severity: getReasonSeverity(AuthorityReason.BUCKET_EXHAUSTED, ctx.surface),
       detail: 'Category bucket is exhausted; simulator would flag this spend.',
     });
   }
@@ -186,7 +190,7 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   if (verificationPending) {
     reasons.push({
       code: AuthorityReason.VERIFICATION_PENDING,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.VERIFICATION_PENDING],
+      severity: getReasonSeverity(AuthorityReason.VERIFICATION_PENDING, ctx.surface),
       detail: 'Verification is pending; simulator warns before new spend.',
     });
   }
@@ -195,7 +199,7 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
     const remaining = ctx.bucket?.remainingCents ?? ctx.safeToSpendCents ?? 0;
     reasons.push({
       code: AuthorityReason.ESSENTIAL_BUFFER_LOW,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.ESSENTIAL_BUFFER_LOW],
+      severity: getReasonSeverity(AuthorityReason.ESSENTIAL_BUFFER_LOW, ctx.surface),
       detail: `Essential buffer is low (~${Math.max(0, Math.floor(remaining))} cents remaining).`,
     });
   }
@@ -203,7 +207,7 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   if (amountSpike) {
     reasons.push({
       code: AuthorityReason.AMOUNT_SPIKE,
-      severity: AUTHORITY_REASON_SEVERITY[AuthorityReason.AMOUNT_SPIKE],
+      severity: getReasonSeverity(AuthorityReason.AMOUNT_SPIKE, ctx.surface),
       detail: 'Amount looks like a spike relative to available buffer.',
     });
   }
@@ -305,6 +309,7 @@ export async function simulateSpendAuthority(
     pendingSessions,
     pendingPoints,
     delayDays: 0,
+    surface: params.surface,
   };
 
   const reasons = evaluateReasons(ctx);
@@ -331,6 +336,7 @@ export async function simulateSpendAuthority(
         amountCents: adjustment.amountCents ?? amountCents,
         bucket: adjustedBucket,
         delayDays: adjustment.delayDays ?? 0,
+        surface: params.surface,
       };
       const cfReasons = evaluateReasons(adjustedCtx);
       const cfSeverity = cfReasons.reduce((acc, r) => Math.max(acc, r.severity), 0);
