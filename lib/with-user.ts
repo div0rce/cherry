@@ -5,7 +5,7 @@ import { assertUserId } from '@/lib/invariants';
 
 export async function withUser(
   request: NextRequest,
-  handler: (userId: string, req: NextRequest) => Promise<NextResponse> | NextResponse
+  handler: (userId: string, req: NextRequest) => Promise<NextResponse>
 ): Promise<NextResponse> {
   try {
     const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });

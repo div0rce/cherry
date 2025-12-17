@@ -190,6 +190,18 @@ enum BankTransactionP2PKind {
   P2P_PSEUDO_MERCHANT_OUT
 }
 
+enum DailyStateStatus {
+  SAFE
+  TIGHT
+  RISKY
+  INSUFFICIENT_DATA
+}
+
+enum DailyStateSource {
+  NIGHTLY
+  MANUAL
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -216,6 +228,7 @@ model User {
   historicalEngineEvaluations HistoricalEngineEvaluation[]
   historicalIncomeRegimes     HistoricalIncomeRegime[]
   historicalBucketTemplates   HistoricalBucketTemplate[]
+  dailyStates                 DailyState[]
 }
 
 model Card {
@@ -430,6 +443,27 @@ model AutopilotCommit {
 
   @@unique([userId, decisionId])
   @@index([sessionId])
+}
+
+model DailyState {
+  id               String           @id @default(cuid())
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  date             DateTime
+  status           DailyStateStatus
+  safeToSpendCents Int?
+  nextRiskEvent    Json?
+  summary          Json?
+  computedAt       DateTime         @default(now())
+  source           DailyStateSource @default(NIGHTLY)
+  engineVersion    String?
+  inputsVersion    String?
+  errors           String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, computedAt])
 }
 
 model VineDevice {
