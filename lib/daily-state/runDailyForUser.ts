@@ -1,0 +1,208 @@
+// Advisory-only DailyState kernel runner.
+// Do not add auth, spend, alerts, UI coupling, or mutations beyond the DailyState row.
+import { createHash } from 'crypto';
+import { DailyStateSource, DailyStateStatus, Prisma } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
+import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
+import { toBucketRuntime } from '@/lib/buckets-runtime';
+
+const ENGINE_VERSION =
+  process.env['VERCEL_GIT_COMMIT_SHA'] ??
+  process.env['COMMIT_SHA'] ??
+  process.env['NEXT_PUBLIC_SITE_VERSION'] ??
+  null;
+
+function startOfUtcDay(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function rank(status: DailyStateStatus): number {
+  if (status === DailyStateStatus.SAFE) return 3;
+  if (status === DailyStateStatus.TIGHT) return 2;
+  if (status === DailyStateStatus.RISKY) return 1;
+  return 0;
+}
+
+export async function runDailyForUser(params: {
+  userId: string;
+  date: Date;
+  source: DailyStateSource;
+}): Promise<{
+  status: DailyStateStatus;
+  inputsVersion: string | null;
+  engineVersion: string | null;
+}> {
+  const { userId, date, source } = params;
+  const targetDate = startOfUtcDay(date);
+  const now = new Date();
+
+  const existing = await prisma.dailyState.findUnique({
+    where: { userId_date: { userId, date: targetDate } },
+  });
+
+  try {
+    const buckets = await prisma.bucket.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const freshBuckets = (
+      await Promise.all(
+        buckets.map(async (bucket) => {
+          const fresh = await ensureBucketFresh(bucket.id, now);
+          return fresh && fresh.userId === userId ? fresh : null;
+        })
+      )
+    ).filter((b): b is NonNullable<typeof b> => b !== null);
+
+    const runtimeBuckets = freshBuckets.map(toBucketRuntime);
+    const cards = await prisma.card.findMany({
+      where: { userId },
+      include: { rewardRules: true },
+    });
+
+    const ledgerPending = await prisma.cherryPointLedger.aggregate({
+      where: { userId, status: 'PENDING' },
+      _sum: { points: true },
+    });
+
+    const sessionsPendingVerification = await prisma.recommendationSession.count({
+      where: {
+        userId,
+        verificationStatus: 'PENDING',
+      },
+    });
+
+    const exhaustedCategories = runtimeBuckets
+      .filter((b) => (b.remainingCents ?? 0) <= 0)
+      .map((b) => b.category);
+
+    const minRemaining = runtimeBuckets.reduce<number>(
+      (acc, b) => Math.min(acc, b.remainingCents ?? acc),
+      runtimeBuckets.length > 0 ? Number.POSITIVE_INFINITY : 0
+    );
+
+    const remainingTotal = runtimeBuckets.reduce<number>(
+      (acc, b) => acc + (b.remainingCents ?? 0),
+      0
+    );
+
+    let status: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
+    if (runtimeBuckets.length === 0 || cards.length === 0) {
+      status = DailyStateStatus.INSUFFICIENT_DATA;
+    } else if (minRemaining <= 0) {
+      status = DailyStateStatus.RISKY;
+    } else if (minRemaining <= 2000) {
+      status = DailyStateStatus.TIGHT;
+    } else {
+      status = DailyStateStatus.SAFE;
+    }
+
+    const nextRiskEvent =
+      runtimeBuckets.length > 0
+        ? {
+            kind: 'BUCKET_PERIOD_END',
+            at: runtimeBuckets
+              .map((b) => b.periodEnd)
+              .filter(Boolean)
+              .sort((a, b) => a.getTime() - b.getTime())[0] ?? null,
+          }
+        : Prisma.JsonNull;
+
+    const summary = {
+      buckets: {
+        remainingCents: remainingTotal,
+        exhaustedCategories,
+      },
+      pointsPending: ledgerPending._sum.points ?? 0,
+      sessionsPendingVerification,
+    };
+
+    const hash = createHash('sha256');
+    hash.update(
+      JSON.stringify({
+        buckets: runtimeBuckets.map((b) => ({
+          id: b.id,
+          remainingCents: b.remainingCents,
+          periodEnd: b.periodEnd?.toISOString() ?? null,
+        })),
+        cards: cards.map((c) => ({ id: c.id, rewardRules: c.rewardRules.length })),
+        pointsPending: summary.pointsPending,
+        sessionsPendingVerification,
+      })
+    );
+    const inputsVersion = hash.digest('hex');
+
+    if (
+      existing !== null &&
+      existing.inputsVersion === inputsVersion &&
+      rank(status) < rank(existing.status)
+    ) {
+      return {
+        status: existing.status,
+        inputsVersion: existing.inputsVersion,
+        engineVersion: existing.engineVersion,
+      };
+    }
+
+    const dailyState = await prisma.dailyState.upsert({
+      where: { userId_date: { userId, date: targetDate } },
+      update: {
+        status,
+        safeToSpendCents: Number.isFinite(minRemaining) ? Math.max(0, Math.floor(minRemaining)) : null,
+        nextRiskEvent,
+        summary,
+        computedAt: now,
+        source,
+        engineVersion: ENGINE_VERSION,
+        inputsVersion,
+        errors: null,
+      },
+      create: {
+        userId,
+        date: targetDate,
+        status,
+        safeToSpendCents: Number.isFinite(minRemaining) ? Math.max(0, Math.floor(minRemaining)) : null,
+        nextRiskEvent,
+        summary,
+        computedAt: now,
+        source,
+        engineVersion: ENGINE_VERSION,
+        inputsVersion,
+        errors: null,
+      },
+    });
+
+    return {
+      status: dailyState.status,
+      inputsVersion: dailyState.inputsVersion,
+      engineVersion: dailyState.engineVersion,
+    };
+  } catch (error) {
+    const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
+    await prisma.dailyState.upsert({
+      where: { userId_date: { userId, date: targetDate } },
+      update: {
+        status: fallbackStatus,
+        computedAt: now,
+        source,
+        errors: error instanceof Error ? error.message : 'unknown_error',
+      },
+      create: {
+        userId,
+        date: targetDate,
+        status: fallbackStatus,
+        computedAt: now,
+        source,
+        engineVersion: ENGINE_VERSION,
+        inputsVersion: null,
+        summary: Prisma.JsonNull,
+        safeToSpendCents: null,
+        nextRiskEvent: Prisma.JsonNull,
+        errors: error instanceof Error ? error.message : 'unknown_error',
+      },
+    });
+
+    return { status: fallbackStatus, inputsVersion: null, engineVersion: ENGINE_VERSION };
+  }
+}

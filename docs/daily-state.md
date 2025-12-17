@@ -25,6 +25,7 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 - Schedule: run once per user per UTC day (default at 00:15 UTC). Allow manual backfill via `POST /api/internal/run-daily` gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true` and auth.
 - Idempotency: `(userId, date)` is unique. Recomputes for the same day overwrite the row only on success.
 - Batch: cron/worker pages through users to avoid timeouts; manual route accepts optional `{ userId?, date? }`.
+- Fanout: internal nightly orchestrator (`POST /api/internal/run-daily-all`) pages through users in batches; errors are isolated per user.
 
 ---
 
