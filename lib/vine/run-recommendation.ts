@@ -8,6 +8,11 @@ import {
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
+  recordDecisionEvent,
+  simulateSpendAuthority,
+  type SimulatedAuthorityDecision,
+} from '@/lib/authority/simulateSpendAuthority';
+import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   safeSolveDecisionForUser,
@@ -22,7 +27,12 @@ import type { RewardCategory } from '@prisma/client';
 export async function runRecommendationFromOrderContext(
   ctx: OrderContext,
   userId: string
-): Promise<{ sessionId: string; orderToken: string; decision: LegacyEngineDecision }> {
+): Promise<{
+  sessionId: string;
+  orderToken: string;
+  decision: LegacyEngineDecision;
+  authority: SimulatedAuthorityDecision;
+}> {
   assertUserId(userId);
 
   const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : Date.now();
@@ -66,6 +76,21 @@ export async function runRecommendationFromOrderContext(
 
   validateEngineDecision(mappedDecision);
   const decision: LegacyEngineDecision = mappedDecision;
+
+  const authorityParams = {
+    userId,
+    amountCents,
+    category: decision.category,
+    surface: 'vine' as const,
+    counterfactuals: [],
+  };
+  const authorityDecision = await simulateSpendAuthority(authorityParams);
+  await recordDecisionEvent({
+    userId,
+    surface: 'vine',
+    params: authorityParams,
+    decision: authorityDecision,
+  });
 
   const expiresAt = new Date(Math.max(timestamp, Date.now()) + 15 * 60 * 1000);
   const orderToken = ctx.nonce ?? randomUUID();
@@ -111,7 +136,7 @@ export async function runRecommendationFromOrderContext(
       select: { id: true },
     });
 
-    return { sessionId: session.id, orderToken, decision };
+    return { sessionId: session.id, orderToken, decision, authority: authorityDecision };
   } catch (err: unknown) {
     if (isPrismaP2003(err)) {
       logInvariant('FK failure in recommendationSession.create', {

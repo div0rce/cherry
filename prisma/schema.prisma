@@ -480,6 +480,23 @@ model AlertEvent {
   @@index([userId, date])
 }
 
+model DecisionEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  surface       String
+  amountCents   Int
+  category      String
+  verdict       String
+  reasonCode    String
+  reasonCodes   Json
+  severity      Int
+  inputsVersion String
+  counterfactuals Json
+  createdAt     DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
 model VineDevice {
   id        String   @id @default(cuid())
   deviceId  String   @unique

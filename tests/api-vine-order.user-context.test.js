@@ -21,6 +21,17 @@ Module._resolveFilename = function (request, parent, isMain, options) {
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
+const authorityDecisionStub = {
+  version: 'authority_v1',
+  verdict: 'ALLOW_SIMULATED',
+  severity: 0,
+  reasons: [{ code: 'DAILY_STATE_RISKY', severity: 0, detail: 'ok' }],
+  explanation: 'ok',
+  inputsVersion: 'hash',
+  engineVersion: 'test',
+  counterfactuals: [],
+};
+
 function mockModule(modulePath, exports) {
   require.cache[require.resolve(modulePath)] = {
     id: modulePath,
@@ -98,6 +109,7 @@ async function runDevNoAuth() {
       sessionId: 'sess-1',
       orderToken: 'token-1',
       decision: { ok: true },
+      authority: authorityDecisionStub,
     }),
   });
 

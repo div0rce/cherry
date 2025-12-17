@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AuthorityReason } from '@/lib/authority/reasonCodes';
 import { AUTOPILOT_REWARD_CATEGORIES } from '@/lib/autopilot/types';
 
 // Single-source schemas for /api/autopilot/preview input/output; used by route, service, adapter, and tests.
@@ -145,6 +146,43 @@ export const AutopilotPreviewInputSchema = z
   })
   .strict();
 
+const AuthorityReasonSchema = z
+  .object({
+    code: z.nativeEnum(AuthorityReason),
+    severity: z.number().int().min(0),
+    detail: z.string(),
+  })
+  .strict();
+
+const AuthorityDecisionSchema = z
+  .object({
+    version: z.literal('authority_v1'),
+    verdict: z.enum(['ALLOW_SIMULATED', 'WARN_SIMULATED', 'FLAG_SIMULATED']),
+    severity: z.number().int().min(0),
+    reasons: z.array(AuthorityReasonSchema).nonempty(),
+    explanation: z.string(),
+    inputsVersion: z.string(),
+    engineVersion: z.string().nullable(),
+    counterfactuals: z.array(
+      z
+        .object({
+          adjustment: z
+            .object({
+              amountCents: z.number().int().nonnegative().optional(),
+              delayDays: z.number().int().nonnegative().optional(),
+              bucketId: z.string().nullable().optional(),
+            })
+            .strict(),
+          verdict: z.enum(['ALLOW_SIMULATED', 'WARN_SIMULATED', 'FLAG_SIMULATED']),
+          severity: z.number().int().min(0),
+          reasons: z.array(AuthorityReasonSchema).nonempty(),
+          explanation: z.string(),
+        })
+        .strict()
+    ),
+  })
+  .strict();
+
 export const AutopilotPreviewOutputSchema = z
   .object({
     decisionId: z.string().trim().min(1),
@@ -156,6 +194,7 @@ export const AutopilotPreviewOutputSchema = z
     expectedBenefitCents: z.number().int().nonnegative(),
     bucketImpact: AutopilotBucketImpactSchema.nullable(),
     reasonCode: z.string().trim().min(1),
+    authority: AuthorityDecisionSchema,
     ui: AutopilotUiBundleSchema,
   })
   .strict();

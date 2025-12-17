@@ -377,6 +377,12 @@ async function runUpsertIdempotencySuite() {
         ],
         findUnique: async () => ({ name: 'Dining' }),
       },
+      dailyState: {
+        findFirst: async () => null,
+      },
+      categoryPreference: {
+        findUnique: async () => null,
+      },
       user: {
         findUnique: async () => ({
           engineObjectiveProfile: 'BALANCED',
@@ -384,6 +390,7 @@ async function runUpsertIdempotencySuite() {
         }),
       },
       recommendationSession: {
+        count: async () => 0,
         upsert: async ({ where, create, update, select }: RecommendationSessionUpsertArgs) => {
           const keyParts = where.userId_source_engineDecisionId;
           const key = `${keyParts.userId}:${keyParts.source}:${keyParts.engineDecisionId}`;
@@ -409,6 +416,12 @@ async function runUpsertIdempotencySuite() {
             ? { id: record.id, recommendedBucketId: record.recommendedBucketId }
             : record;
         },
+      },
+      cherryPointLedger: {
+        aggregate: async () => ({ _sum: { points: 0 } }),
+      },
+      decisionEvent: {
+        create: async () => ({}),
       },
       autopilotCommit: {
         findUnique: async () => null,

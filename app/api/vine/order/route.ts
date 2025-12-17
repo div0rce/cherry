@@ -104,6 +104,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         sessionId: result.sessionId,
         decision: result.decision,
         orderToken: result.orderToken,
+        authority: result.authority,
       });
     } catch (err: unknown) {
       if (isPrismaP2003(err)) {

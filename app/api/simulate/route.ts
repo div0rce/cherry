@@ -23,10 +23,17 @@ import { isPositiveNumber } from '@/lib/numbers';
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { buildSwipeIdempotencyKey } from '@/lib/ids';
 import { parseJsonBody } from '@/lib/validation';
+import {
+  recordDecisionEvent,
+  simulateSpendAuthority,
+  type SimulatedAuthorityDecision,
+  type SimulateSpendParams,
+} from '@/lib/authority/simulateSpendAuthority';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  let authorityDecision: SimulatedAuthorityDecision | null = null;
   try {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/simulate POST');
@@ -97,6 +104,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const now = new Date();
+    const authorityParams: SimulateSpendParams = {
+      userId,
+      amountCents: body.amountCents,
+      category: normalizedCategory as RewardCategory,
+      surface: 'simulate',
+      counterfactuals: [],
+    };
+    authorityDecision = await simulateSpendAuthority(authorityParams);
+    await recordDecisionEvent({
+      userId,
+      surface: 'simulate',
+      params: authorityParams,
+      decision: authorityDecision,
+    });
     const ctx = buildEngineContext({
       surface: 'web',
       now,
@@ -120,6 +141,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           simulationId,
           transaction: null,
           decision: null,
+          authority: authorityDecision,
           error: {
             code: engineResult.reason,
             message: engineResult.message,
@@ -155,6 +177,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           simulationId,
           transaction: null,
           decision: null,
+          authority: authorityDecision,
           error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
         },
         { status: 200 }
@@ -191,6 +214,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           simulationId,
           transaction: null,
           decision: null,
+          authority: authorityDecision,
           error: { code: 'INCOMPLETE_DECISION', message: 'No card available for simulation' },
         },
         { status: 200 }
@@ -314,6 +338,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       simulationId,
       transaction: tx,
       decision,
+      authority: authorityDecision,
       committed: canCommit && !strictDecline,
     });
   } catch (err: unknown) {
@@ -329,6 +354,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error in /api/simulate', err);
-    return NextResponse.json({ error: 'Failed to run simulation' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to run simulation', ...(authorityDecision ? { authority: authorityDecision } : {}) },
+      { status: 500 }
+    );
   }
 }

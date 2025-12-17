@@ -5,6 +5,11 @@ import {
   safeSolveDecisionForUser,
   type LegacyEngineDecision,
 } from '@/lib/engine';
+import {
+  recordDecisionEvent,
+  simulateSpendAuthority,
+  type SimulatedAuthorityDecision,
+} from '@/lib/authority/simulateSpendAuthority';
 import { resolveScanCategory } from '@/lib/scan-helpers';
 import type { ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
@@ -45,7 +50,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? Math.floor(body.expectedAmountCents)
         : 0;
 
+    let authorityDecision: SimulatedAuthorityDecision | null = null;
     try {
+      const authorityParams = {
+        userId,
+        amountCents,
+        category,
+        surface: 'scan' as const,
+        counterfactuals: [],
+      };
+      authorityDecision = await simulateSpendAuthority(authorityParams);
+      await recordDecisionEvent({
+        userId,
+        surface: 'scan',
+        params: authorityParams,
+        decision: authorityDecision,
+      });
+
       const ctx = buildEngineContext({
         surface: 'web',
         now: new Date(),
@@ -65,6 +86,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               message: engineResult.message,
             },
             decision: null,
+            authority: authorityDecision,
           },
           { status: 200 }
         );
@@ -87,6 +109,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           {
             error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
             decision: null,
+            authority: authorityDecision,
           },
           { status: 200 }
         );
@@ -125,12 +148,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         overallVerdict: decision.overallVerdict,
         cherryIncentive: decision.cherryIncentive,
         engineDecision: decision,
+        authority: authorityDecision,
       };
 
       return NextResponse.json(response);
     } catch (error) {
       logError('Error in /api/scan', error);
-      return NextResponse.json({ error: 'Failed to evaluate scan' }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: 'Failed to evaluate scan',
+          ...(authorityDecision ? { authority: authorityDecision } : {}),
+        },
+        { status: 500 }
+      );
     }
   } catch (error) {
     if (error instanceof Error && error.message?.includes('Unauthorized')) {

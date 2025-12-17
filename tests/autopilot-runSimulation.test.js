@@ -3,6 +3,17 @@ import Module from 'node:module';
 
 const requireModule = Module.createRequire(__filename);
 
+const authorityStub = {
+  version: 'authority_v1',
+  verdict: 'ALLOW_SIMULATED',
+  severity: 0,
+  reasons: [{ code: 'DAILY_STATE_RISKY', severity: 0, detail: 'ok' }],
+  explanation: 'ok',
+  inputsVersion: 'hash',
+  engineVersion: 'test',
+  counterfactuals: [],
+};
+
 function resetModules() {
   try {
     const resolved = requireModule.resolve('../lib/autopilot/runSimulation');
@@ -101,6 +112,7 @@ async function runHappyPath() {
       expectedBenefitCents: 120,
       bucketImpact: { bucketId: 'bucket-1', name: 'Dining', remainingCents: 7_000, spentCents: 13_000 },
       reasonCode: 'MAX_REWARDS',
+      authority: authorityStub,
       ui: buildUiStub(),
     };
     return new Response(JSON.stringify(payload), {
@@ -148,6 +160,7 @@ async function runWarningMapping() {
       expectedBenefitCents: 0,
       bucketImpact: { bucketId: 'bucket-2', name: 'Other', remainingCents: 0, spentCents: 500 },
       reasonCode: 'FALLBACK_SAFE',
+      authority: authorityStub,
       ui: {
         ...buildUiStub(),
         explanation: {

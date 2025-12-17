@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-02
+Last updated: 2025-12-17
 
 # Cherry API Reference (App Router)
 
@@ -50,8 +50,8 @@ This file documents the server routes under `app/api/*` and how they align with 
 - Behavior:
   - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody`.
   - Resolves category via `resolveScanCategory` (MCC-aware).
-  - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; never persists.
-- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging.
+  - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; logs a `DecisionEvent` row per request (no session/bucket/ledger writes).
+- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging + `authority` (authority_v1: verdict, severity, reasons[], counterfactuals[], explanation, inputsVersion).
 
 ---
 
@@ -112,8 +112,8 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - Behavior:
   - Parses terminal event first; falls back to `OrderContext`.
   - Validates MCC when provided; rejects stale payloads (> ~3 minutes old).
-  - Calls `runRecommendationFromOrderContext` → engine; persists `RecommendationSession` with `source` = `VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes.
-  - Returns `{ sessionId, decision, orderToken }`.
+  - Calls `runRecommendationFromOrderContext` → engine; persists `RecommendationSession` with `source` = `VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes; also runs `simulateSpendAuthority` (authority_v1) and logs a `DecisionEvent`.
+  - Returns `{ sessionId, decision, orderToken, authority }`.
 - Not implemented yet: HMAC/nonce verification, cleanup of expired order tokens.
 
 ---
@@ -136,7 +136,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card.
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
 - `/api/buckets/[bucketId]` — Delete a specific bucket.
-- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
+- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.

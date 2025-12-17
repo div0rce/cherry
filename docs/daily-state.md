@@ -1,5 +1,5 @@
 Status: Phase 3 complete — nightly fanout live, advisory-only
-Last updated: 2025-12-06
+Last updated: 2025-12-17
 
 # Completion Notes
 - Clock + memory live
@@ -75,6 +75,13 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 ## Semantic Stability (Versioning)
 - Changes that alter the meaning or thresholds of `SAFE | TIGHT | RISKY` must bump `engineVersion` and keep existing DailyState rows intact unless an explicit migration is run.
 - `inputsVersion` captures the hashed inputs used for the run; consumers must not assume cross-version equivalence without checking `engineVersion`.
+
+---
+
+## Relationship to Authority
+- DailyState is an **input signal** to `authority_v1`; it does not emit user-facing guidance.
+- All advisories/warnings shown to users must flow through `simulateSpendAuthority` and the authority contract.
+- DailyState status (SAFE/TIGHT/RISKY) informs authority severity but is not itself a verdict or enforcement surface.
 
 ---
 

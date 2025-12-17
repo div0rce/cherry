@@ -150,6 +150,16 @@ async function runUserContextPreview(): Promise<void> {
       expectedBenefitCents: 10,
       bucketImpact: null,
       reasonCode: 'OK',
+      authority: {
+        version: 'authority_v1',
+        verdict: 'ALLOW_SIMULATED',
+        severity: 0,
+        reasons: [{ code: 'DAILY_STATE_RISKY', severity: 0, detail: 'ok' }],
+        explanation: 'ok',
+        inputsVersion: 'hash',
+        engineVersion: 'test',
+        counterfactuals: [],
+      },
       ui: buildUiStub(),
     }),
   });

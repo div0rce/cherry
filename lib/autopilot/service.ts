@@ -15,6 +15,7 @@ import type { AutopilotDecision } from '@/lib/engine/public-types';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '@/lib/engine/public';
 import { logInvariantViolation } from '@/lib/log';
 import { prisma } from '@/lib/prisma';
+import { simulateSpendAuthority, recordDecisionEvent } from '@/lib/authority/simulateSpendAuthority';
 import { resolveScanCategory } from '@/lib/scan-helpers';
 import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import {
@@ -479,6 +480,25 @@ export async function getAutopilotPreview(
   // Preview: read-only engine wrapper (no bucket/session/ledger writes). Contract documented in docs/autopilot-master-spec.md.
   const startedAt = Date.now();
   const evaluation = await evaluateAutopilot(userId, input, { timeoutMs: ENGINE_TIMEOUT_MS });
+  const authorityDecision = await simulateSpendAuthority({
+    userId,
+    amountCents: evaluation.amountCents,
+    category: evaluation.resolvedCategory,
+    surface: 'autopilot',
+    counterfactuals: [],
+  });
+  await recordDecisionEvent({
+    userId,
+    surface: 'autopilot',
+    params: {
+      userId,
+      amountCents: evaluation.amountCents,
+      category: evaluation.resolvedCategory,
+      surface: 'autopilot',
+      counterfactuals: [],
+    },
+    decision: authorityDecision,
+  });
 
   const explanation = buildExplanation(evaluation);
   const rewardStrengthLevel = computeRewardStrengthLevel(
@@ -497,6 +517,7 @@ export async function getAutopilotPreview(
     expectedBenefitCents: evaluation.expectedBenefitCents,
     bucketImpact: evaluation.bucketImpact,
     reasonCode: evaluation.decision.reasonCode,
+    authority: authorityDecision,
     ui,
   };
 

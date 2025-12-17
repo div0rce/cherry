@@ -3,6 +3,17 @@ import Module from 'node:module';
 
 const requireModule = Module.createRequire(__filename);
 
+const authorityStub = {
+  version: 'authority_v1',
+  verdict: 'ALLOW_SIMULATED',
+  severity: 0,
+  reasons: [{ code: 'DAILY_STATE_RISKY', severity: 0, detail: 'ok' }],
+  explanation: 'ok',
+  inputsVersion: 'hash',
+  engineVersion: 'test',
+  counterfactuals: [],
+};
+
 function mockModule(modulePath, exports) {
   requireModule.cache[modulePath] = {
     id: modulePath,
@@ -46,6 +57,7 @@ function resetModules() {
     '@/lib/user-context',
     '@/lib/metrics/autopilot',
     '@/lib/autopilot/uiSpec',
+    '@/lib/authority/simulateSpendAuthority',
   ];
   for (const target of targets) {
     try {
@@ -139,6 +151,10 @@ async function runPreviewValid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
+  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+    simulateSpendAuthority: async () => authorityStub,
+    recordDecisionEvent: async () => {},
+  });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
@@ -154,6 +170,7 @@ async function runPreviewValid() {
       expectedBenefitCents: 100,
       bucketImpact: null,
       reasonCode: 'MAX_REWARDS',
+      authority: authorityStub,
       ui: buildUiStub(),
     }),
   });
@@ -183,6 +200,10 @@ async function runPreviewInvalid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
+  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+    simulateSpendAuthority: async () => authorityStub,
+    recordDecisionEvent: async () => {},
+  });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
@@ -198,6 +219,7 @@ async function runPreviewInvalid() {
       expectedBenefitCents: 0,
       bucketImpact: null,
       reasonCode: 'FALLBACK',
+      authority: authorityStub,
       ui: buildUiStub(),
     }),
   });
@@ -225,6 +247,10 @@ async function runPreviewUnauthorized() {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
+  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+    simulateSpendAuthority: async () => authorityStub,
+    recordDecisionEvent: async () => {},
+  });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
@@ -240,6 +266,7 @@ async function runPreviewUnauthorized() {
       expectedBenefitCents: 0,
       bucketImpact: null,
       reasonCode: 'NO_USER',
+      authority: authorityStub,
       ui: buildUiStub(),
     }),
   });
@@ -266,6 +293,10 @@ async function runPreviewUnexpectedError() {
   mockModule(requireModule.resolve('@/lib/log'), {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
+  });
+  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+    simulateSpendAuthority: async () => authorityStub,
+    recordDecisionEvent: async () => {},
   });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
     incrementCounter: () => {},

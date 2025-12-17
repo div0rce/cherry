@@ -21,6 +21,17 @@ Module._resolveFilename = function (request, parent, isMain, options) {
   return originalResolve.call(this, request, parent, isMain, options);
 };
 
+const authorityDecisionStub = {
+  version: 'authority_v1',
+  verdict: 'ALLOW_SIMULATED',
+  severity: 0,
+  reasons: [{ code: 'DAILY_STATE_RISKY', severity: 0, detail: 'ok' }],
+  explanation: 'ok',
+  inputsVersion: 'hash',
+  engineVersion: 'test',
+  counterfactuals: [],
+};
+
 function mockModule(modulePath, exports) {
   require.cache[require.resolve(modulePath)] = {
     id: modulePath,
@@ -119,6 +130,11 @@ function setupScanMocks({ engineOk = true } = {}) {
             state: engineState,
           }
         : { ok: false, reason: 'ENGINE_ERROR', message: 'fail' },
+  });
+
+  mockModule('../lib/authority/simulateSpendAuthority', {
+    simulateSpendAuthority: async () => authorityDecisionStub,
+    recordDecisionEvent: async () => {},
   });
 
   mockModule('../lib/user-context', {
