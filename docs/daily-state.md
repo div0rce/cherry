@@ -1,4 +1,4 @@
-Status: Phase 2 complete
+Status: Phase 3 complete — nightly fanout live, advisory-only
 Last updated: 2025-12-06
 
 # Completion Notes

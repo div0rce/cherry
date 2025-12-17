@@ -1,10 +1,12 @@
 // Advisory-only DailyState kernel runner.
 // Do not add auth, spend, alerts, UI coupling, or mutations beyond the DailyState row.
 import { createHash } from 'crypto';
-import { DailyStateSource, DailyStateStatus, Prisma } from '@prisma/client';
+import { DailyStateSource, DailyStateStatus, Prisma, type DailyState } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import { toBucketRuntime } from '@/lib/buckets-runtime';
+import { processDailyStateAlert } from '@/lib/alerts/processDailyStateAlert';
+import { logError } from '@/lib/logger';
 
 const ENGINE_VERSION =
   process.env['VERCEL_GIT_COMMIT_SHA'] ??
@@ -39,6 +41,16 @@ export async function runDailyForUser(params: {
   const existing = await prisma.dailyState.findUnique({
     where: { userId_date: { userId, date: targetDate } },
   });
+
+  const prevForAlert = await prisma.dailyState.findFirst({
+    where: { userId, date: { lt: targetDate } },
+    orderBy: { date: 'desc' },
+  });
+
+  let dailyStateRecord: DailyState | null = null;
+  let resultStatus: DailyStateStatus | null = null;
+  let resultInputsVersion: string | null = null;
+  let resultEngineVersion: string | null = null;
 
   try {
     const buckets = await prisma.bucket.findMany({
@@ -173,11 +185,10 @@ export async function runDailyForUser(params: {
       },
     });
 
-    return {
-      status: dailyState.status,
-      inputsVersion: dailyState.inputsVersion,
-      engineVersion: dailyState.engineVersion,
-    };
+    dailyStateRecord = dailyState;
+    resultStatus = dailyState.status;
+    resultInputsVersion = dailyState.inputsVersion;
+    resultEngineVersion = dailyState.engineVersion;
   } catch (error) {
     const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
     await prisma.dailyState.upsert({
@@ -205,4 +216,18 @@ export async function runDailyForUser(params: {
 
     return { status: fallbackStatus, inputsVersion: null, engineVersion: ENGINE_VERSION };
   }
+
+  if (dailyStateRecord !== null) {
+    try {
+      await processDailyStateAlert({ prev: prevForAlert, curr: dailyStateRecord });
+    } catch (err) {
+      logError('daily_state_alert_unhandled', { userId, err });
+    }
+  }
+
+  return {
+    status: resultStatus ?? DailyStateStatus.INSUFFICIENT_DATA,
+    inputsVersion: resultInputsVersion,
+    engineVersion: resultEngineVersion,
+  };
 }

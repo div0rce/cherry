@@ -229,6 +229,7 @@ model User {
   historicalIncomeRegimes     HistoricalIncomeRegime[]
   historicalBucketTemplates   HistoricalBucketTemplate[]
   dailyStates                 DailyState[]
+  alertEvents                 AlertEvent[]
 }
 
 model Card {
@@ -464,6 +465,19 @@ model DailyState {
 
   @@unique([userId, date])
   @@index([userId, computedAt])
+}
+
+model AlertEvent {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  date   DateTime
+  kind   String
+  sentAt DateTime @default(now())
+
+  @@unique([userId, date, kind])
+  @@index([userId, date])
 }
 
 model VineDevice {
