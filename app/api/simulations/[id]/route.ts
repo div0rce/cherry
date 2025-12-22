@@ -22,7 +22,7 @@ export async function DELETE(
       logGuardrailEvent({
         userId,
         surface: 'simulations',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'MISSING_SIMULATION_ID',
       });
       return new NextResponse('Invalid request', { status: 400 });
@@ -36,7 +36,7 @@ export async function DELETE(
       logGuardrailEvent({
         userId,
         surface: 'simulations',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'SIMULATION_NOT_FOUND',
       });
       return new NextResponse('Simulation not found for user', { status: 404 });

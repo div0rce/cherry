@@ -92,7 +92,7 @@ export function RunSimulationForm(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'simulate',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_FORM',
         detail: fieldErrors,
       });

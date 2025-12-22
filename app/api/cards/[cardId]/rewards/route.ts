@@ -45,7 +45,7 @@ export async function GET(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
     });
     return new NextResponse('Invalid request', { status: 400 });
@@ -56,7 +56,7 @@ export async function GET(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
     });
     return new NextResponse('Card not found for user', { status: 404 });
@@ -94,7 +94,7 @@ export async function POST(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
     });
     return new NextResponse('Invalid request', { status: 400 });
@@ -105,7 +105,7 @@ export async function POST(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
@@ -122,7 +122,7 @@ export async function POST(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'INVALID_FIELDS',
       detail: { hasValidCategory, hasValidMultiplier, hasValidCap },
     });
@@ -134,7 +134,7 @@ export async function POST(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
     });
     return new NextResponse('Card not found for user', { status: 404 });
@@ -181,7 +181,7 @@ export async function DELETE(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
     });
     return new NextResponse('Invalid request', { status: 400 });
@@ -192,7 +192,7 @@ export async function DELETE(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
@@ -202,7 +202,7 @@ export async function DELETE(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'MISSING_REWARD_RULE_ID',
     });
     return new NextResponse('Invalid request', { status: 400 });
@@ -213,7 +213,7 @@ export async function DELETE(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
     });
     return new NextResponse('Card not found for user', { status: 404 });
@@ -227,7 +227,7 @@ export async function DELETE(
     logGuardrailEvent({
       userId,
       surface: 'rewards',
-      outcome: 'BLOCK',
+      outcome: 'STOP',
       reason: 'REWARD_RULE_NOT_FOUND',
     });
     return new NextResponse('Reward rule not found for card', { status: 404 });

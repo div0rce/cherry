@@ -12,7 +12,7 @@ import {
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
   if (isProd) {
-    logInvariant('Admin route access in production', { route: 'api/admin/clear-user' });
+    logInvariant('Admin endpoint access in production', { endpoint: 'api/admin/clear-user' });
     return NextResponse.json(
       { error: 'Admin tools are disabled in production' },
       { status: 403 }

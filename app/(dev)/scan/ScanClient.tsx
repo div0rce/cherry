@@ -133,7 +133,7 @@ export default function ScanClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'MISSING_MERCHANT',
       });
       return;
@@ -147,7 +147,7 @@ export default function ScanClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_AMOUNT',
       });
       return;
@@ -190,7 +190,7 @@ export default function ScanClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'START_WITHOUT_PREVIEW',
       });
       return;
@@ -200,7 +200,7 @@ export default function ScanClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'SNAPSHOT_SESSION_BLOCK',
       });
       return;
@@ -256,7 +256,7 @@ export default function ScanClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'CONFIRM_WITHOUT_SESSION',
       });
       return;
@@ -274,7 +274,7 @@ export default function ScanClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_SESSION_AMOUNT',
       });
       setError('Enter a positive amount to confirm the session.');

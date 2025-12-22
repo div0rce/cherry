@@ -42,7 +42,7 @@ export function SignInCard({
       logGuardrailEvent({
         userId: null,
         surface: 'signin',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'MISSING_CREDENTIALS',
       });
       return;
@@ -60,7 +60,7 @@ export function SignInCard({
       logGuardrailEvent({
         userId: null,
         surface: 'signin',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: `AUTH_${result.error}`,
       });
       setStatus(errorMessages[result.error] ?? 'Invalid email or password. Please try again.');

@@ -87,7 +87,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_AMOUNT',
       });
       return;
@@ -103,7 +103,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_MCC',
       });
       return;
@@ -116,7 +116,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'MISSING_CURRENCY',
       });
       return;
@@ -177,7 +177,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_VINE_SIGNAL',
         detail: validation.error.flatten(),
       });
@@ -194,7 +194,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'UNAUTHENTICATED',
       });
       setTransientStatus({ type: 'error', message: 'Sign in to use the Vine simulator.' }, 6000);
@@ -237,7 +237,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'CONFIRM_WITHOUT_ORDER',
       });
       return;
@@ -255,7 +255,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_DECISION_AMOUNT',
       });
       setTransientStatus({ type: 'error', message: 'Invalid amount on recommendation.' }, 6000);
@@ -277,7 +277,7 @@ export function VineSimulatorClient(): JSX.Element {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'UNAUTHENTICATED',
       });
       setTransientStatus({ type: 'error', message: 'Sign in to confirm.' }, 6000);

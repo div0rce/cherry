@@ -9,7 +9,7 @@ export type GuardrailSurface =
   | 'rewards'
   | 'autopilot';
 
-export type GuardrailOutcome = 'OK' | 'WARN' | 'BLOCK' | 'FALLBACK';
+export type GuardrailOutcome = 'OK' | 'WARN' | 'STOP' | 'FALLBACK';
 
 export type AutopilotGuardrailKind = 'INPUT_INVALID' | 'DECISION_BLOCKED' | 'ENGINE_ERROR';
 
@@ -33,7 +33,7 @@ type AutopilotGuardrailEvent = {
 type GuardrailEvent = LegacyGuardrailEvent | AutopilotGuardrailEvent;
 
 function mapKindToOutcome(kind: AutopilotGuardrailKind): GuardrailOutcome {
-  if (kind === 'DECISION_BLOCKED') return 'BLOCK';
+  if (kind === 'DECISION_BLOCKED') return 'STOP';
   if (kind === 'ENGINE_ERROR') return 'FALLBACK';
   return 'WARN';
 }

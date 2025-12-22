@@ -12,7 +12,7 @@ import {
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
   if (isProd) {
-    logInvariant('Demo seed endpoint hit in production', { route: 'api/seed-demo/cards-buckets' });
+    logInvariant('Demo seed endpoint hit in production', { endpoint: 'api/seed-demo/cards-buckets' });
     return NextResponse.json(
       { error: 'Demo seeding is disabled in production' },
       { status: 403 }

@@ -43,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       logGuardrailEvent({
         userId,
         surface: 'simulate',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_PAYLOAD',
       });
       return NextResponse.json(
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       logGuardrailEvent({
         userId,
         surface: 'simulate',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'INVALID_FIELDS',
         detail: { fields: validationErrors },
       });
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       logGuardrailEvent({
         userId,
         surface: 'simulate',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'MISSING_CARD',
       });
       return NextResponse.json(
@@ -270,7 +270,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       logGuardrailEvent({
         userId,
         surface: 'simulate',
-        outcome: 'BLOCK',
+        outcome: 'STOP',
         reason: 'COMMIT_PRECONDITION_FAILED',
         detail: {
           strictDecline,
@@ -324,7 +324,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           logGuardrailEvent({
             userId,
             surface: 'simulate',
-            outcome: 'BLOCK',
+            outcome: 'STOP',
             reason: 'BUCKET_STALE_OR_MISMATCH',
             detail: { bucketId: decision.budget.bucketId },
           });

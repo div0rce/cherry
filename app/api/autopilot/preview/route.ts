@@ -24,7 +24,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       http_status: status,
       preview_status: previewStatusLabel,
     });
-    observeDuration('autopilot_preview_route_ms', durationMs, { http_status: status });
+    observeDuration('autopilot_preview_endpoint_ms', durationMs, { http_status: status });
     return NextResponse.json(body, { status });
   };
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       previewStatusLabel = 'invalid';
       logInvariantViolation({
         surface: 'autopilot',
-        detail: 'Autopilot preview response failed validation at route',
+        detail: 'Autopilot preview response failed validation at endpoint',
         data: {
           reason: 'PREVIEW_OUTPUT_SCHEMA_MISMATCH',
           status: preview?.status ?? 'unknown',

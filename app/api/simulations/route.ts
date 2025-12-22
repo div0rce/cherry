@@ -71,7 +71,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         logGuardrailEvent({
           userId,
           surface: 'simulations',
-          outcome: 'BLOCK',
+          outcome: 'STOP',
           reason: 'INVALID_STATUS',
         });
         return new NextResponse('Invalid request', { status: 400 });
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         logGuardrailEvent({
           userId,
           surface: 'simulations',
-          outcome: 'BLOCK',
+          outcome: 'STOP',
           reason: 'INVALID_CATEGORY',
         });
         return new NextResponse('Invalid request', { status: 400 });
