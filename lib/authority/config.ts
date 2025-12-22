@@ -1,4 +1,11 @@
+// authority_v1 — frozen. Any semantic change requires authority_v2.
 import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from '@/lib/authority/reasonCodes';
+
+export const authorityVersion = 'authority_v1' as const;
+export type AuthorityVersion = typeof authorityVersion;
+
+export const authorityPureBrand = Symbol('authority_pure');
+export type AuthorityPure = { readonly __authorityPure: typeof authorityPureBrand };
 
 export type AuthoritySurface = 'autopilot' | 'vine' | 'simulate' | 'scan';
 

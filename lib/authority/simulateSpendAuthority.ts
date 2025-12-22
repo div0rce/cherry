@@ -10,10 +10,18 @@ import {
   type CategoryPreference,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { logInvariantViolation } from '@/lib/log';
 import { applyInMemoryRollover } from '@/lib/buckets/periods';
 import { toBucketRuntime, type BucketRuntime } from '@/lib/buckets-runtime';
 import { AuthorityReason } from '@/lib/authority/reasonCodes';
-import { getReasonSeverity, type AuthoritySurface } from '@/lib/authority/config';
+import {
+  authorityPureBrand,
+  authorityVersion,
+  getReasonSeverity,
+  type AuthorityPure,
+  type AuthoritySurface,
+  type AuthorityVersion,
+} from '@/lib/authority/config';
 
 const ENGINE_VERSION =
   process.env['VERCEL_GIT_COMMIT_SHA'] ??
@@ -30,7 +38,7 @@ export type SimulatedAuthorityReason = {
 };
 
 export type SimulatedAuthorityDecision = {
-  version: 'authority_v1';
+  version: AuthorityVersion;
   verdict: SimulatedAuthorityVerdict;
   severity: number;
   reasons: SimulatedAuthorityReason[];
@@ -39,6 +47,8 @@ export type SimulatedAuthorityDecision = {
   engineVersion: string | null;
   counterfactuals: CounterfactualAuthorityResult[];
 };
+
+export type AuthorityDecision = AuthorityPure & SimulatedAuthorityDecision;
 
 export type SimulateSpendParams = {
   userId: string;
@@ -80,7 +90,11 @@ export type AuthorityPrismaClient = {
   };
 };
 
-type DecisionEventClient = Pick<typeof prisma, 'decisionEvent'>;
+export type DecisionEventClient = {
+  decisionEvent: {
+    create: (args: Parameters<typeof prisma.decisionEvent.create>[0]) => Promise<unknown>;
+  };
+};
 
 type AuthorityInputs = {
   userId: string;
@@ -237,7 +251,7 @@ function buildExplanation(reasons: SimulatedAuthorityReason[]): string {
 export async function simulateSpendAuthority(
   params: SimulateSpendParams,
   options: { prisma?: AuthorityPrismaClient; now?: Date } = {}
-): Promise<SimulatedAuthorityDecision> {
+): Promise<AuthorityDecision> {
   const client = options.prisma ?? prisma;
   const now = options.now ?? new Date();
   const amountCents = Math.max(0, Math.floor(params.amountCents));
@@ -351,8 +365,8 @@ export async function simulateSpendAuthority(
     }
   );
 
-  return {
-    version: 'authority_v1',
+  const decision: SimulatedAuthorityDecision = {
+    version: authorityVersion,
     verdict,
     severity,
     reasons,
@@ -360,6 +374,11 @@ export async function simulateSpendAuthority(
     inputsVersion,
     engineVersion: ENGINE_VERSION,
     counterfactuals,
+  };
+
+  return {
+    ...decision,
+    __authorityPure: authorityPureBrand,
   };
 }
 
@@ -371,7 +390,17 @@ export async function recordDecisionEvent(options: {
   db?: DecisionEventClient;
 }): Promise<void> {
   const client = options.db ?? prisma;
-  await client.decisionEvent.create({
+  const decisionEventClient = (client as { decisionEvent?: DecisionEventClient['decisionEvent'] }).decisionEvent;
+  if (!decisionEventClient || typeof decisionEventClient.create !== 'function') {
+    logInvariantViolation({
+      surface: options.surface,
+      detail: 'DecisionEvent client missing create; skipping record',
+      data: { userId: options.userId },
+    });
+    return;
+  }
+
+  await decisionEventClient.create({
     data: {
       userId: options.userId,
       surface: options.surface,

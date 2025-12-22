@@ -1,3 +1,4 @@
+// authority_v1 — frozen. Any semantic change requires authority_v2.
 export enum AuthorityReason {
   DAILY_STATE_RISKY = 'DAILY_STATE_RISKY',
   BUCKET_EXHAUSTED = 'BUCKET_EXHAUSTED',

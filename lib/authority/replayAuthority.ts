@@ -1,3 +1,4 @@
+// authority_v1 — frozen. Any semantic change requires authority_v2.
 import { prisma } from '@/lib/prisma';
 import type { DecisionEvent } from '@prisma/client';
 import {

@@ -25,3 +25,28 @@ Purpose: Immutable audit trail of every authority_v1 evaluation. Drives replay, 
 - Using DecisionEvent to gate transactions or modify balances.
 - Aggregating DecisionEvent with session/ledger mutations in the same transaction.
 - Writing synthetic events from UI or client code.
+
+## TODO — Phase 2: Ledger Safety & Replay Integrity
+
+Status: Not started  
+Prerequisite: Authority Phase 1 hardened in production-like usage
+
+Goals:
+- Prove DecisionEvent ledger is append-only and immutable.
+- Guarantee exactly-once writes per authority evaluation.
+- Ensure deterministic replay equivalence for all stored events.
+- Enforce strict separation between ledger writes and engine state mutations.
+
+Planned work:
+- [ ] Add immutability guards (no update/delete paths; schema + code-level tests)
+- [ ] Add exactly-once semantics tests (no duplicates, no drops)
+- [ ] Add replay equivalence tests using replayAuthority (verdict, severity, reasons, inputsVersion)
+- [ ] Add failure-isolation tests (ledger failures must not affect authority output)
+- [ ] Add invariant tests preventing downstream reinterpretation of stored events
+
+Explicitly out of scope:
+- Analytics
+- Aggregation
+- UI
+- Learning
+- Any spend control or enforcement

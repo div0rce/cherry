@@ -78,6 +78,31 @@ Verdict rule (severity lattice):
 - Do NOT use: approve, decline, block, route (except as simulated labels)
 - Always surface as advisory/sandbox; never imply fund movement or payment routing.
 
+## TODO — Phase 3: Offline Learning & Policy Evaluation
+
+Status: Deferred  
+Depends on: Phase 2 ledger guarantees
+
+Purpose:
+- Enable offline analysis and policy iteration using historical DecisionEvents.
+- Never affect live authority behavior.
+- Never mutate user state or spending power.
+
+Planned work:
+- [ ] Offline evaluators that consume DecisionEvent + inputsVersion snapshots
+- [ ] Counterfactual policy scoring (would-have-been-better analysis)
+- [ ] Rule fire-rate and severity distribution analysis
+- [ ] Dataset extraction for research / tuning only
+
+Hard constraints:
+- No feedback loop into authority_v1
+- No live re-weighting or auto-tuning
+- No enforcement logic
+- Results are advisory and retrospective only
+
+Notes:
+- Any live influence requires authority_v2 and explicit user opt-in.
+
 ---
 
 ## Counterfactuals (v1)
