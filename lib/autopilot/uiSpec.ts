@@ -1,7 +1,9 @@
 export type AutopilotUiSpec = {
   eyebrow: string;
+  modeLabel: string;
   headline: string;
   subhead: string;
+  resultTitle: string;
   simulationErrorMessage: string;
   panel: {
     idleTitle: string;
@@ -59,32 +61,35 @@ export type AutopilotTimingOption = 'now' | 'scheduled-soon';
 
 export function getAutopilotUiSpec(): AutopilotUiSpec {
   return {
-    eyebrow: 'Cherry Autopilot',
-    headline: 'See how Autopilot would handle this purchase.',
+    eyebrow: 'Autopilot · Decide',
+    modeLabel: 'Decide mode (optional)',
+    headline: 'What are you about to buy?',
     subhead:
-      'Describe the spend, Autopilot simulates your month, chooses the card, and shows bucket impact before you tap pay.',
+      'Cherry simulates this purchase before you make it. Autopilot is optional and advisory-only; no money movement happens here.',
+    resultTitle: 'Autopilot Result',
     simulationErrorMessage:
       'Autopilot could not simulate this purchase right now. Your buckets and cards are untouched; try again shortly.',
     panel: {
       idleTitle: 'Autopilot is idle',
-      idleBody: 'Fill in an amount and merchant on the left. Autopilot will show the best card and the full impact on your month.',
-      loadingTitle: 'Preparing simulation',
-      loadingBody: 'Autopilot is analyzing this purchase...',
+      idleBody:
+        'Declare amount and merchant to run Autopilot. No recommendations are shown until you press Run Autopilot.',
+      loadingTitle: 'Simulating intent',
+      loadingBody: 'Cherry is evaluating this purchase against your buckets and cards.',
       loadingShimmerLines: 4,
-      errorTitle: 'Simulation issue',
+      errorTitle: 'Simulation unavailable',
       errorBody: 'Simulation output is unavailable right now. Please try again in a moment.',
-      errorTimestampFallback: 'Just now',
-      sectionSimulationEyebrow: 'This simulation',
+      errorTimestampFallback: 'Now',
+      sectionSimulationEyebrow: 'Simulation context',
       unnamedMerchantFallback: 'Unnamed merchant',
-      recommendationSectionTitle: 'Recommendation',
+      recommendationSectionTitle: 'Primary recommendation',
       alternativeSectionTitle: 'Alternatives',
-      actionComingSoonNote: 'Actions coming soon — this is a planning sandbox.',
+      actionComingSoonNote: 'Advisory-only. Actions will stay in your wallet or banking app.',
       simulationIssueTitle: 'Simulation issue',
       showingPreviousResultNote: 'Showing your last successful simulation.',
-      safetyLabel: 'Safety indicator',
+      safetyLabel: 'Safety badge',
     },
     form: {
-      formTitle: 'Upcoming purchase',
+      formTitle: 'Intent declaration',
       amountLabel: 'Amount',
       amountPlaceholder: '42.18',
       merchantLabel: 'Merchant',
@@ -103,14 +108,15 @@ export function getAutopilotUiSpec(): AutopilotUiSpec {
         {
           value: 'scheduled-soon',
           label: 'Scheduling soon',
-          helper: 'Schedule-aware flows will use this later.',
+          helper: 'Use later when timing-aware flows are live.',
         },
       ],
       submitLoadingLabel: 'Running Autopilot...',
-      submitLabel: 'Simulate with Autopilot',
-      helperText: 'We never charge your cards from here. This is a live sandbox to plan the swipe before it happens.',
+      submitLabel: 'Run Autopilot',
+      helperText:
+        'Amount and merchant are required. Autopilot stays advisory; no money movement happens here.',
       disclaimer:
-        'Autopilot uses amount, merchant, and category to simulate your month before you commit in your banking app.',
+        'Cherry evaluates only; you will choose and pay in your banking app.',
     },
   };
 }
