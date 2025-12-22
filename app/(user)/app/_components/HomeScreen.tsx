@@ -69,13 +69,17 @@ function SectionCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-[#0F172A]">{title}</h2>
-          {helper ? <p className="text-sm text-slate-600">{helper}</p> : null}
+          {hasText(helper) ? <p className="text-sm text-slate-600">{helper}</p> : null}
         </div>
         {footer}
       </div>
       <div className="mt-4 space-y-3">{children}</div>
     </section>
   );
+}
+
+function hasText(value?: string | null): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
 function ProgressBar({ percent }: { percent: number }): JSX.Element {
@@ -263,7 +267,7 @@ export function HomeScreen({ bundle }: HomeScreenProps): JSX.Element {
                     <p className="font-semibold text-[#0F172A]">{item.name}</p>
                     <p className="text-slate-600">{item.dateLabel}</p>
                   </div>
-                  {item.amountLabel ? (
+                  {hasText(item.amountLabel) ? (
                     <span className="text-sm font-semibold text-[#0F172A]">{item.amountLabel}</span>
                   ) : null}
                 </li>
