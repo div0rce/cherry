@@ -46,10 +46,10 @@ export function AutopilotPurchaseForm({
 
   return (
     <form onSubmit={handleSubmit}>
-      <article className="rounded-2xl border border-[#E2E8F0] bg-white/95 p-5 shadow-sm backdrop-blur">
+      <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="space-y-1">
           <div className="text-sm font-semibold text-[#0F172A]">{spec.form.formTitle}</div>
-          <p className="text-xs text-[#64748B]">{spec.form.helperText}</p>
+          <p className="text-sm text-[#475569]">{spec.form.helperText}</p>
         </div>
 
         <div className="mt-4 space-y-4">
@@ -65,8 +65,9 @@ export function AutopilotPurchaseForm({
               <input
                 id="autopilot-amount"
                 type="number"
-                min="0"
+                min="0.01"
                 step="0.01"
+                inputMode="decimal"
                 value={amount ?? ""}
                 onChange={(e) =>
                   onAmountChange(
@@ -74,6 +75,7 @@ export function AutopilotPurchaseForm({
                   )
                 }
                 placeholder={spec.form.amountPlaceholder}
+                required
                 className="ml-2 w-full bg-transparent text-sm text-[#0F172A] placeholder:text-[#CBD5E1] focus-visible:outline-none"
               />
             </div>
@@ -92,6 +94,7 @@ export function AutopilotPurchaseForm({
               value={merchant}
               onChange={(e) => onMerchantChange(e.target.value)}
               placeholder={spec.form.merchantPlaceholder}
+              required
               className="mt-1 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-sm text-[#0F172A] placeholder:text-[#CBD5E1] focus-visible:outline-none focus-visible:border-[#C21733] focus-visible:ring-2 focus-visible:ring-[#C21733]/30"
             />
           </div>
@@ -150,17 +153,17 @@ export function AutopilotPurchaseForm({
             <button
               type="submit"
               disabled={!canSimulate || isSimulating}
-            className={`inline-flex w-full items-center justify-center rounded-xl bg-[#C21733] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors ${
-              isSimulating
-                ? 'opacity-90 tracking-tight'
-                : 'hover:bg-[#A01029] disabled:opacity-60 disabled:hover:bg-[#C21733]'
-            } disabled:cursor-not-allowed`}
-          >
+              className={`inline-flex w-full items-center justify-center rounded-xl bg-[#C21733] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors ${
+                isSimulating
+                  ? 'opacity-90 tracking-tight'
+                  : 'hover:bg-[#A01029] disabled:opacity-60 disabled:hover:bg-[#C21733]'
+              } disabled:cursor-not-allowed`}
+            >
               {isSimulating ? spec.form.submitLoadingLabel : spec.form.submitLabel}
             </button>
           </div>
 
-          <p className="text-xs text-[#94A3B8]">{spec.form.disclaimer}</p>
+          <p className="text-xs text-[#64748B]">{spec.form.disclaimer}</p>
         </div>
       </article>
     </form>

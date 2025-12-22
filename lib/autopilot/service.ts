@@ -141,13 +141,13 @@ function buildPreviewUiBundle(options: {
       bucketRemainingTemplate: '${bucketName} remaining',
     },
     sections: {
-      recommendation: 'Autopilot recommendation',
-      alternatives: 'Other ways to pay',
+      recommendation: 'Primary recommendation',
+      alternatives: 'See alternatives',
       monthImpactTitle: 'Month impact',
     },
     ctas: {
       primaryTemplate: 'Use ${cardName} for this purchase',
-      secondary: 'View bucket impact',
+      secondary: 'See alternatives',
     },
     explanation,
     panel: {
@@ -480,13 +480,14 @@ export async function getAutopilotPreview(
   // Preview: read-only engine wrapper (no bucket/session/ledger writes). Contract documented in docs/autopilot-master-spec.md.
   const startedAt = Date.now();
   const evaluation = await evaluateAutopilot(userId, input, { timeoutMs: ENGINE_TIMEOUT_MS });
-  const authorityDecision = await simulateSpendAuthority({
+  const { __authorityPure: _authorityBrand, ...authorityDecision } = await simulateSpendAuthority({
     userId,
     amountCents: evaluation.amountCents,
     category: evaluation.resolvedCategory,
     surface: 'autopilot',
     counterfactuals: [],
   });
+  void _authorityBrand;
   await recordDecisionEvent({
     userId,
     surface: 'autopilot',
@@ -567,7 +568,7 @@ export async function commitAutopilotDecisionV2(
   }
 
   if (evaluation.status !== 'ok') {
-    throw new AutopilotServiceError('Autopilot could not approve this swipe', 400, 'DECISION_BLOCKED');
+    throw new AutopilotServiceError('Autopilot could not allow this swipe', 400, 'DECISION_BLOCKED');
   }
 
   const recommendedCard = evaluation.recommendedCard;
@@ -674,7 +675,7 @@ export async function commitAutopilotDecision(
   }
 
   if (evaluation.status !== 'ok') {
-    throw new AutopilotServiceError('Autopilot could not approve this swipe', 400, 'DECISION_BLOCKED');
+    throw new AutopilotServiceError('Autopilot could not allow this swipe', 400, 'DECISION_BLOCKED');
   }
 
   const recommendedCard = evaluation.recommendedCard;

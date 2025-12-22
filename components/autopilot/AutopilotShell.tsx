@@ -82,53 +82,54 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F9FAFB] to-[#E2E8F0]">
-      <div className="mx-auto max-w-6xl px-4 py-8 md:py-12">
-        {/* Page heading */}
-        <header className="mb-8 md:mb-10">
-          <div className="mb-2 text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-            {uiSpec.eyebrow}
+    <div className="space-y-8 pb-12">
+      <header className="rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
+              {uiSpec.eyebrow}
+            </div>
+            <h1 className="mt-2 text-2xl font-semibold text-[#0F172A]">{uiSpec.headline}</h1>
+            {uiSpec.subhead !== '' && (
+              <p className="mt-2 max-w-2xl text-sm text-[#475569]">
+                {uiSpec.subhead}
+              </p>
+            )}
           </div>
-          <h1 className="text-2xl font-semibold text-[#0F172A] md:text-3xl">
-            {uiSpec.headline}
-          </h1>
-          {uiSpec.subhead !== '' && (
-            <p className="mt-2 max-w-2xl text-sm text-[#475569]">
-              {uiSpec.subhead}
-            </p>
-          )}
-        </header>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
+            {uiSpec.modeLabel}
+          </span>
+        </div>
+      </header>
 
-        {/* Two-column main layout */}
-        <main className="grid gap-6 md:grid-cols-[1.15fr_1.5fr]">
-          <section className="md:sticky md:top-6">
-            <AutopilotPurchaseForm
-              uiSpec={uiSpec}
-              amount={amount}
-              merchant={merchant}
-              category={category}
-              timing={timing}
-              canSimulate={canSimulate}
-              isSimulating={isSimulating}
-              onAmountChange={setAmount}
-              onMerchantChange={setMerchant}
-              onCategoryChange={setCategory}
-              onTimingChange={setTiming}
-              onSimulate={handleSimulate}
-            />
-          </section>
-          <section>
-            <AutopilotDecisionPanel
-              uiSpec={uiSpec}
-              hasPurchase={hasPurchase}
-              purchaseSummary={purchaseSummary}
-              simulationResult={simulationResult}
-              isSimulating={isSimulating}
-              simulationError={simulationError}
-            />
-          </section>
-        </main>
-      </div>
+      <main className="grid gap-6 lg:grid-cols-[1fr_1.15fr]">
+        <section className="lg:sticky lg:top-6">
+          <AutopilotPurchaseForm
+            uiSpec={uiSpec}
+            amount={amount}
+            merchant={merchant}
+            category={category}
+            timing={timing}
+            canSimulate={canSimulate}
+            isSimulating={isSimulating}
+            onAmountChange={setAmount}
+            onMerchantChange={setMerchant}
+            onCategoryChange={setCategory}
+            onTimingChange={setTiming}
+            onSimulate={handleSimulate}
+          />
+        </section>
+        <section>
+          <AutopilotDecisionPanel
+            uiSpec={uiSpec}
+            hasPurchase={hasPurchase}
+            purchaseSummary={purchaseSummary}
+            simulationResult={simulationResult}
+            isSimulating={isSimulating}
+            simulationError={simulationError}
+          />
+        </section>
+      </main>
     </div>
   );
 }

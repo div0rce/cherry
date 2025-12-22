@@ -1,11 +1,8 @@
 import type { JSX } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { AutopilotMonthImpactBar } from './AutopilotMonthImpactBar';
 import type { AutopilotPurchaseSummary } from './AutopilotShell';
-import type {
-  AutopilotSimulationResult,
-  SimulationCardChoice,
-} from '@/lib/autopilot/runSimulation';
+import type { AutopilotSimulationResult } from '@/lib/autopilot/runSimulation';
 import { formatCurrency } from '@/lib/formatCurrency';
 import type { AutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 
@@ -18,20 +15,18 @@ type AutopilotDecisionPanelProps = {
   uiSpec: AutopilotUiSpec;
 };
 
-const labelToneClass: Record<SimulationCardChoice['labelTone'], string> = {
-  positive: 'bg-[#DCFCE7] text-[#166534]',
-  neutral: 'bg-[#E5E7EB] text-[#4B5563]',
-  negative: 'bg-[#FEE2E2] text-[#991B1B]',
-};
+function hasText(value?: string | null): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
 
-const labelToneText: Record<SimulationCardChoice['labelTone'], string> = {
-  positive: 'text-[#16A34A]',
-  neutral: 'text-[#94A3B8]',
-  negative: 'text-[#DC2626]',
-};
-
-const hasText = (value?: string | null): value is string =>
-  value !== undefined && value !== null && value.trim() !== "";
+function ReasonBlock({ title, body }: { title: string; body: string }): JSX.Element {
+  return (
+    <div className="h-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
+      <p className="text-xs font-semibold text-[#0F172A]">{title}</p>
+      <p className="mt-1 text-sm text-slate-600">{body}</p>
+    </div>
+  );
+}
 
 export function AutopilotDecisionPanel({
   hasPurchase,
@@ -41,265 +36,187 @@ export function AutopilotDecisionPanel({
   simulationError,
   uiSpec,
 }: AutopilotDecisionPanelProps): JSX.Element {
-  const state = simulationResult?.state ?? 'recommended';
-  const panelCopy = simulationResult?.ui ?? uiSpec.panel;
+  const panelCopy = { ...uiSpec.panel, ...(simulationResult?.ui ?? {}) };
 
-  if (!hasPurchase || !purchaseSummary) {
+  if (!hasPurchase || purchaseSummary === null) {
     return (
-      <div className="space-y-2 rounded-2xl border border-[#E2E8F0] bg-white/90 p-6 text-sm text-[#475569] shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
           {panelCopy.idleTitle}
         </div>
-        <p>{panelCopy.idleBody}</p>
+        <p className="mt-2 text-sm text-slate-600">{panelCopy.idleBody}</p>
       </div>
     );
   }
 
   if (!simulationResult) {
     return (
-      <div className="space-y-4 rounded-2xl border border-[#E2E8F0] bg-white/95 p-6 text-sm text-[#475569] shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
-        <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-          {panelCopy.loadingTitle}
-        </div>
-        {isSimulating ? (
-          <div className="space-y-4">
-            <div className="text-sm text-[#94A3B8]">{panelCopy.loadingBody}</div>
-            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
-              <div className="h-3 w-3/4 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-              <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-              <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-              {Array.from({ length: panelCopy.loadingShimmerLines }).map((_, idx) => (
-                <div
-                  key={idx}
-                  className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]"
-                />
-              ))}
+      <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
+              {panelCopy.loadingTitle}
             </div>
+            <p className="mt-1 text-sm text-slate-600">
+              {isSimulating ? panelCopy.loadingBody : simulationError ?? panelCopy.errorBody}
+            </p>
           </div>
-        ) : (
-          <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[#991B1B]">
-            {simulationError ?? panelCopy.errorBody}
-          </div>
-        )}
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {panelCopy.sectionSimulationEyebrow}
+          </span>
+        </div>
+        <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-4">
+          <div className="h-3 w-3/4 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-slate-200" />
+          <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-slate-200" />
+        </div>
       </div>
     );
   }
 
   const { merchant, amount } = purchaseSummary;
   const recommendedChoice = simulationResult.cards[0] ?? null;
-  const otherChoices = simulationResult.cards.slice(1);
-  const segments = simulationResult.impactSegments;
-  const impactNotes = simulationResult.impactNotes;
-  const rewardStrength = simulationResult.rewardStrength;
-  const hasBanner = hasText(simulationResult.riskBanner);
+  const alternativeChoice = simulationResult.cards[1] ?? null;
+  const rewardReason = simulationResult.recommendationSummary;
+  const budgetReason = simulationResult.monthImpactSummary;
+  const riskReason = simulationResult.riskBanner ?? simulationResult.monthImpact.riskNote ?? '';
   const hasSimulationResult = simulationResult !== null;
-  const errorTimestamp =
-    simulationResult.errorTimestamp !== undefined &&
-    simulationResult.errorTimestamp !== null &&
-    simulationResult.errorTimestamp !== ''
-      ? simulationResult.errorTimestamp
-      : panelCopy.errorTimestampFallback;
+  const contextLabel =
+    simulationResult.contextLabel ?? panelCopy.sectionSimulationEyebrow;
+  const reasonLabels = simulationResult.reasonLabels ?? {
+    rewards: simulationResult.recommendationSectionLabel,
+    budget: simulationResult.monthImpactTitle,
+    risk: panelCopy.simulationIssueTitle,
+  };
 
   return (
-    <div className="space-y-6 rounded-2xl border border-[#E2E8F0] bg-white/95 p-6 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur">
-      {state === "warning" && hasBanner && (
-        <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-[11px] text-[#991B1B]">
-          {simulationResult.riskBanner}
-        </div>
-      )}
-
-      <div className="space-y-3 border-b border-[#E2E8F0] pb-4">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
+          <div className="space-y-2">
             <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-              {panelCopy.sectionSimulationEyebrow}
+              {uiSpec.resultTitle}
             </div>
-            <div className="text-base font-semibold text-[#0F172A]">
-              {merchant !== '' ? merchant : panelCopy.unnamedMerchantFallback}
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-[#0F172A]">
+              {formatCurrency(amount)} · {simulationResult.categoryLabel}
             </div>
-            <div className="text-[12px] text-[#64748B]">
-              {formatCurrency(amount)} · {simulationResult.categoryLabel} ·{' '}
-              {simulationResult.timingLabel}
-            </div>
+            <p className="text-sm text-slate-600">{contextLabel}</p>
           </div>
           <div
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-medium ${simulationResult.safetyBadgeClass}`}
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${simulationResult.safetyBadgeClass}`}
           >
-            <span
-              className={simulationResult.safetyBadgeDotClass}
-              aria-hidden
-            />
+            <span className={simulationResult.safetyBadgeDotClass} aria-hidden />
             {simulationResult.safetyBadgeLabel}
           </div>
         </div>
+        {simulationResult.state === 'warning' && hasText(simulationResult.riskBanner) ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+            {simulationResult.riskBanner}
+          </div>
+        ) : null}
       </div>
 
-      {isSimulating && (
-          <div className="space-y-4">
-            <div className="text-sm text-[#94A3B8]">{panelCopy.loadingBody}</div>
-            <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4">
-            <div className="h-3 w-3/4 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-            <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-            <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-            <div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
+      {isSimulating ? (
+        <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-4">
+          <div className="h-3 w-3/4 animate-pulse rounded bg-slate-200" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-slate-200" />
+          <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200" />
+        </div>
+      ) : null}
+
+      <div className="space-y-4">
+        {recommendedChoice ? (
+          <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-4">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+              <span>{simulationResult.recommendationSectionLabel}</span>
+              <span>{simulationResult.rewardStrengthLabel}</span>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <div className="text-sm font-semibold text-[#0F172A]">{recommendedChoice.name}</div>
+                <p className="text-sm text-slate-600">
+                  {merchant !== '' ? merchant : panelCopy.unnamedMerchantFallback}
+                </p>
+                <p className="text-[12px] text-slate-600">{recommendedChoice.sentence}</p>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                  recommendedChoice.labelTone === 'positive'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : recommendedChoice.labelTone === 'negative'
+                      ? 'bg-rose-50 text-rose-700'
+                      : 'bg-slate-100 text-slate-700'
+                }`}
+              >
+                {recommendedChoice.label}
+              </span>
+            </div>
           </div>
-          <div className="space-y-2">
-            <div className="h-px w-full animate-pulse bg-[#E2E8F0] [animation-duration:1.1s]" />
-            <div className="h-3 w-2/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
-            <div className="h-3 w-1/3 animate-pulse rounded bg-[#E2E8F0] [animation-duration:1.1s]" />
+        ) : null}
+
+        <div className="grid gap-3 lg:grid-cols-3" id="autopilot-reasons">
+          {hasText(rewardReason) ? (
+            <ReasonBlock title={reasonLabels.rewards} body={rewardReason} />
+          ) : null}
+          {hasText(budgetReason) ? (
+            <ReasonBlock title={reasonLabels.budget} body={budgetReason} />
+          ) : null}
+          {hasText(riskReason) ? <ReasonBlock title={reasonLabels.risk} body={riskReason} /> : null}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+            <span>{simulationResult.monthImpactTitle}</span>
+            <span>{simulationResult.rewardStrengthLabel}</span>
+          </div>
+          <AutopilotMonthImpactBar segments={simulationResult.impactSegments} />
+          <div className="space-y-1">
+            {simulationResult.impactNotes.map((note) => (
+              <p key={note} className="text-[11px] text-slate-600">
+                {note}
+              </p>
+            ))}
           </div>
         </div>
-      )}
 
-      {!isSimulating && simulationError !== null && simulationError !== "" && (
-        <>
-          <div className="h-px bg-[#FECACA]" />
-          <div className="flex items-start justify-between transition-opacity duration-200">
-            <div className="space-y-2 rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-sm text-[#991B1B]">
-              <div className="text-[11px] uppercase tracking-[0.14em]">
-                {panelCopy.simulationIssueTitle}
-              </div>
-              <p>{simulationError ?? panelCopy.errorBody}</p>
-              {hasSimulationResult && (
-                <p className="text-[11px] text-[#991B1B]">
-                  {panelCopy.showingPreviousResultNote}
-                </p>
-              )}
-            </div>
-            <span className="text-[10px] text-[#991B1B]">{errorTimestamp ?? panelCopy.errorTimestampFallback}</span>
-          </div>
-        </>
-      )}
-
-      {!isSimulating && hasSimulationResult && (
-        <div
-          className={
-            simulationError !== null && simulationError !== ""
-              ? "opacity-70 space-y-6"
-              : "space-y-6"
-          }
-        >
-          <div className="space-y-2">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[#94A3B8]">
-              {simulationResult.recommendationSectionLabel}
-            </div>
-            <p className="text-sm text-[#475569]">
-              {simulationResult.recommendationSummary}
-            </p>
-          </div>
-
-          {recommendedChoice !== null && (
-            <div className="relative rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-4 transition-all duration-200 ease-out">
-              <div className="absolute left-0 right-0 top-0 h-[2px] rounded-t-xl bg-gradient-to-r from-[#C21733] to-[#FF4D6D]" />
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3">
-                <div>
-                  <div className="text-xs font-medium text-[#0F172A]">
-                    {recommendedChoice.name}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-[#64748B]">
-                    {recommendedChoice.sentence}
-                  </div>
-                  <div className="mt-2 flex items-center gap-1">
-                    {Array.from({ length: 4 }).map((_, idx) => {
-                      const isActive = idx < rewardStrength;
-                      return (
-                        <span
-                          key={idx}
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            isActive ? "bg-[#C21733]" : "bg-[#E2E8F0]"
-                          }`}
-                        />
-                      );
-                    })}
-                    <span className="text-[10px] text-[#94A3B8]">
-                      {simulationResult.rewardStrengthLabel}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  className={`self-start rounded-full px-2 py-1 text-[10px] font-semibold text-right ${labelToneClass[recommendedChoice.labelTone]}`}
-                >
-                  {recommendedChoice.label}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="my-3 h-px bg-[#E2E8F0]" />
-
-          <div className="space-y-3">
+        {alternativeChoice ? (
+          <div className="rounded-xl border border-slate-100 bg-white px-4 py-3">
             <div className="text-xs font-semibold text-[#0F172A]">
               {simulationResult.alternativeSectionLabel}
             </div>
-            <div className="space-y-3">
-              {otherChoices.map((choice) => (
-                <div
-                  key={choice.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 rounded-xl px-3 py-2.5 transition hover:bg-[#F8FAFC]"
-                >
-                  <div>
-                    <div className="text-xs font-medium text-[#0F172A]">
-                      {choice.name}
-                    </div>
-                  <div className="mt-0.5 text-[11px] text-[#64748B]">
-                    {choice.sentence}
-                  </div>
-                </div>
-                <div
-                  className={`self-start text-right text-[11px] font-semibold ${labelToneText[choice.labelTone]}`}
-                  >
-                    {choice.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-3 border-t border-[#E2E8F0] pt-4">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-[#94A3B8]">
-              {simulationResult.monthImpactTitle}
-            </div>
-            <div className="text-sm text-[#0F172A]">
-              {simulationResult.monthImpactSummary}
-            </div>
-            <AutopilotMonthImpactBar segments={segments} />
-            {impactNotes.length > 0 ? (
-              <div className="space-y-1">
-                {impactNotes.map((note) => (
-                  <p key={note} className="text-[11px] text-[#94A3B8]">
-                    {note}
-                  </p>
-                ))}
+            <div className="mt-2 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-[#0F172A]">{alternativeChoice.name}</p>
+                <p className="text-[12px] text-slate-600">{alternativeChoice.sentence}</p>
               </div>
-            ) : (
-              <p className="text-[11px] text-[#94A3B8]">
-                {simulationResult.monthImpact.riskNote}
-              </p>
-            )}
+              <span className="text-[11px] font-semibold text-slate-500">{alternativeChoice.label}</span>
+            </div>
           </div>
-        </div>
-      )}
+        ) : null}
+      </div>
 
-      {hasSimulationResult && (
-        <>
-          <div className="flex flex-col gap-3 pt-2 md:flex-row">
-            <Button type="button" className="w-full md:w-auto">
-              {simulationResult.ctaPrimary}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full md:w-auto"
-            >
-              {simulationResult.ctaSecondary}
-            </Button>
+      {hasText(simulationError) ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <div className="text-[11px] uppercase tracking-[0.14em]">
+            {panelCopy.simulationIssueTitle}
           </div>
-          <p className="text-[11px] text-[#94A3B8]">
-            {panelCopy.actionComingSoonNote}
-          </p>
-        </>
-      )}
+          <p>{simulationError}</p>
+          {hasSimulationResult ? (
+            <p className="text-[11px] text-amber-700">{panelCopy.showingPreviousResultNote}</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="lg">{simulationResult.ctaPrimary ?? 'Use this card'}</Button>
+        <Button variant="secondary" size="lg">
+          {simulationResult.ctaSecondary ?? 'See alternatives'}
+        </Button>
+        <ButtonLink href="#autopilot-reasons" variant="ghost" size="sm">
+          Why?
+        </ButtonLink>
+      </div>
+      <p className="text-[11px] text-slate-500">{panelCopy.actionComingSoonNote}</p>
     </div>
   );
 }

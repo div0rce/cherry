@@ -43,6 +43,12 @@ export type AutopilotSimulationResult = {
   safetyBadgeLabel: string;
   ctaPrimary: string;
   ctaSecondary: string;
+  contextLabel: string;
+  reasonLabels: {
+    rewards: string;
+    budget: string;
+    risk: string;
+  };
   riskBanner?: string;
   errorTimestamp?: string;
   ui: {
@@ -276,6 +282,12 @@ function mapPreviewToSimulationResult(
       cards[0]?.name ?? preview.ui.cardLabels.usualCardFallback
     ),
     ctaSecondary: preview.ui.ctas.secondary,
+    contextLabel: preview.ui.panel.sectionSimulationEyebrow,
+    reasonLabels: {
+      rewards: preview.ui.sections.recommendation,
+      budget: preview.ui.sections.monthImpactTitle,
+      risk: preview.ui.panel.simulationIssueTitle,
+    },
     ...(riskBanner !== null ? { riskBanner } : {}),
     ui: preview.ui.panel,
   };
