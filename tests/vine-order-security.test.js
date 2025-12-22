@@ -1,8 +1,37 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
+
+function mockModule(modulePath, exports) {
+  const resolved = require.resolve(modulePath);
+  require.cache[resolved] = {
+    id: resolved,
+    filename: resolved,
+    loaded: true,
+    exports,
+  };
+}
+
+mockModule('next-auth', { getServerSession: async () => null, default: () => ({}) });
+mockModule('next-auth/react', { signIn: async () => ({}) });
+mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+
 const { prisma } = require('../lib/prisma');
 const { callApi } = require('../lib/client/api');
+const { POST } = require('../app/api/vine/order/route');
+
+process.env.API_BASE_URL = 'http://localhost:3000';
+
+// Use the real route handler in-process so CHERRY_VINE_SIGNATURE_MODE applies during tests.
+global.fetch = async (url, init = {}) => {
+  const target = typeof url === 'string' ? url : url.toString();
+  const req = new Request(target, {
+    method: init.method,
+    headers: init.headers,
+    body: init.body,
+  });
+  return POST(req);
+};
 
 function hmac(secret, message) {
   return crypto.createHmac('sha256', secret).update(message).digest('hex');
@@ -94,4 +123,3 @@ run().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

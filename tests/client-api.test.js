@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
 
+process.env.API_BASE_URL = 'http://localhost:3000';
+
 global.fetch = async () => ({
   ok: true,
   status: 200,
