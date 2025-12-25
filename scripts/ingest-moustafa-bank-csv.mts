@@ -1,10 +1,18 @@
 import crypto from 'node:crypto';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { parseCsvDevFile, type CsvDevTransaction } from '../lib/bank/csv-dev-provider';
-import { upsertBankTransactions, type NormalizedBankTransactionInput } from '../lib/bank/ingest';
-import { prisma } from '../lib/prisma';
-import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context';
-import { getDevIngestUser } from '../lib/dev/dev-user';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { parseCsvDevFile } = requireFn('../lib/bank/csv-dev-provider.ts') as typeof import('../lib/bank/csv-dev-provider.ts');
+const { upsertBankTransactions } = requireFn('../lib/bank/ingest.ts') as typeof import('../lib/bank/ingest.ts');
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
+const { LAB_USER_EMAIL, LAB_USER_NAME } = requireFn('../lib/user-context.ts') as typeof import('../lib/user-context.ts');
+const { getDevIngestUser } = requireFn('../lib/dev/dev-user.ts') as typeof import('../lib/dev/dev-user.ts');
+
+type CsvDevTransaction = import('../lib/bank/csv-dev-provider.ts').CsvDevTransaction;
+type NormalizedBankTransactionInput = import('../lib/bank/ingest.ts').NormalizedBankTransactionInput;
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

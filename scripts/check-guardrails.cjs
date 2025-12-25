@@ -1,3 +1,3 @@
 require('ts-node/register/transpile-only');
 require('tsconfig-paths/register');
-require('./check-guardrails.ts');
+require('./check-guardrails.mts');

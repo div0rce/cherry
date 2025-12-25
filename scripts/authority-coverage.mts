@@ -1,4 +1,9 @@
-import { prisma } from '@/lib/prisma';
+import { createRequire } from 'node:module';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
 
 async function main(): Promise<void> {
   const events = await prisma.decisionEvent.findMany({

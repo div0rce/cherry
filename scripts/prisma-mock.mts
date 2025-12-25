@@ -1,9 +1,18 @@
 /* Simple Prisma client mock for test runs (no external database). */
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 
 type Where = Record<string, unknown>;
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+type ModuleWithInternals = {
+  _resolveFilename: (...args: [string, unknown]) => string;
+  _load: (...args: [string, unknown, boolean]) => unknown;
+};
 
 class MockDecimal {
   private value: number;
@@ -258,14 +267,7 @@ class MockPrismaClientKnownRequestError extends Error {
 }
 
 // Register mock in require cache for any import of '@prisma/client'.
-/* eslint-disable
-  @typescript-eslint/no-unsafe-assignment,
-  @typescript-eslint/no-unsafe-member-access,
-  @typescript-eslint/no-unsafe-call,
-  @typescript-eslint/no-unsafe-return,
-  @typescript-eslint/no-require-imports
-*/
-const Module = require('module');
+const Module = requireFn('module') as ModuleWithInternals;
 const originalResolveFilename = Module._resolveFilename;
 const originalLoad = Module._load;
 let resolvedPrismaPath = '@prisma/client';
@@ -310,10 +312,3 @@ Module._load = function (...args: [string, unknown, boolean]) {
   }
   return originalLoad.apply(this, args);
 };
-/* eslint-enable
-  @typescript-eslint/no-unsafe-assignment,
-  @typescript-eslint/no-unsafe-member-access,
-  @typescript-eslint/no-unsafe-call,
-  @typescript-eslint/no-unsafe-return,
-  @typescript-eslint/no-require-imports
-*/

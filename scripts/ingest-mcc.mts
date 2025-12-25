@@ -20,6 +20,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'node:module';
 import {
   MerchantVertical,
   MerchantChannel,
@@ -27,9 +28,12 @@ import {
   MerchantRiskProfile,
   MerchantLifeCategory,
 } from '@prisma/client';
-import { prisma } from '../lib/prisma';
-import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper';
-import { logError, logInfo } from '../lib/logger';
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
+const { mapTagsToRewardCategory } = requireFn('../lib/mccCategoryMapper.ts') as typeof import('../lib/mccCategoryMapper.ts');
+const { logError, logInfo } = requireFn('../lib/logger.ts') as typeof import('../lib/logger.ts');
 
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');

@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { createRequire } from 'node:module';
 import {
   CherryPointLedgerStatus,
   LedgerAnomalyCode,
@@ -6,7 +6,12 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { logInfo, logWarn } from '@/lib/logger';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
+const { logInfo, logWarn } = requireFn('../lib/logger.ts') as typeof import('../lib/logger.ts');
 
 const LEDGER_STATUS_FOR_BALANCE = CherryPointLedgerStatus.POSTED;
 const SESSION_EXPIRY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours

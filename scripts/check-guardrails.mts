@@ -86,10 +86,10 @@ function assertEslintRules(): void {
 function assertNoNewEslintDisables(): void {
   const allowList = new Set([
     'lib/logger.ts',
-    'scripts/debug-bucket-balance.ts',
+    'scripts/debug-bucket-balance.mts',
     'lib/unified-activity.ts',
-    'scripts/ingest-moustafa-bank-csv.ts',
-    'scripts/check-guardrails.ts',
+    'scripts/ingest-moustafa-bank-csv.mts',
+    'scripts/check-guardrails.mts',
     'tests/engine-solver.test.js',
     'tests/vine-security.test.js',
     'tests/offline-evaluator-regimes.test.js',
@@ -203,9 +203,9 @@ function assertPackageScripts(): void {
 }
 
 function assertPrismaAssumptions(): void {
-  const filePath = path.join(process.cwd(), 'scripts', 'check-prisma-assumptions.ts');
+  const filePath = path.join(process.cwd(), 'scripts', 'check-prisma-assumptions.mts');
   if (!fs.existsSync(filePath)) {
-    fail('scripts/check-prisma-assumptions.ts missing');
+    fail('scripts/check-prisma-assumptions.mts missing');
   }
 }
 
@@ -214,7 +214,7 @@ function assertCriticalFilesExist(): void {
     'lib/evaluator/offline-history.ts',
     'lib/evaluator/stats.ts',
     'lib/bank/ingest.ts',
-    'scripts/ingest-moustafa-bank-csv.ts',
+    'scripts/ingest-moustafa-bank-csv.mts',
     'lib/unified-activity.ts',
   ];
   requiredFiles.forEach((file) => {

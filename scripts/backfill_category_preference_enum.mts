@@ -1,5 +1,10 @@
-import { prisma } from '@/lib/prisma';
+import { createRequire } from 'node:module';
 import { RewardCategory } from '@prisma/client';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
 
 async function main(): Promise<void> {
   // Check if legacy column still exists; if not, exit early.

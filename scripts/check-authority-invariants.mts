@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/client';
-import {
-  simulateSpendAuthority,
-  recordDecisionEvent,
-  type AuthorityPrismaClient,
-  type DecisionEventClient,
-} from '@/lib/authority/simulateSpendAuthority';
+import { createRequire } from 'node:module';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { simulateSpendAuthority, recordDecisionEvent } = requireFn(
+  '../lib/authority/simulateSpendAuthority.ts'
+) as typeof import('../lib/authority/simulateSpendAuthority.ts');
+type AuthorityPrismaClient =
+  import('../lib/authority/simulateSpendAuthority.ts').AuthorityPrismaClient;
+type DecisionEventClient =
+  import('../lib/authority/simulateSpendAuthority.ts').DecisionEventClient;
 
 function buildStubClient(overrides: {
   dailyStateStatus?: DailyStateStatus;

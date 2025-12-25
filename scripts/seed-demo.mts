@@ -8,10 +8,15 @@
  *   npm run seed:demo you@example.com  # CLI arg takes precedence
  */
 
-import { prisma } from '../lib/prisma';
-import { logError, logInfo } from '../lib/logger';
-import { seedDemoForUser } from '../lib/demo-seeder';
-import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context';
+import { createRequire } from 'node:module';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
+const { logError, logInfo } = requireFn('../lib/logger.ts') as typeof import('../lib/logger.ts');
+const { seedDemoForUser } = requireFn('../lib/demo-seeder.ts') as typeof import('../lib/demo-seeder.ts');
+const { LAB_USER_EMAIL, LAB_USER_NAME } = requireFn('../lib/user-context.ts') as typeof import('../lib/user-context.ts');
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

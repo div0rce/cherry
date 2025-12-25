@@ -1,5 +1,12 @@
-import { prisma } from '../lib/prisma';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '../lib/buckets-runtime';
+import { createRequire } from 'node:module';
+
+const requireFn = createRequire(import.meta.url);
+requireFn('ts-node/register/transpile-only');
+
+const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
+const { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } = requireFn(
+  '../lib/buckets-runtime.ts'
+) as typeof import('../lib/buckets-runtime.ts');
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
