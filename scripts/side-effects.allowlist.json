@@ -148,12 +148,6 @@
     ],
     "source": "legacy"
   },
-  "lib/engine/solver.ts": {
-    "effects": [
-      "console"
-    ],
-    "source": "legacy"
-  },
   "lib/evaluator/prisma-safe.ts": {
     "effects": [
       "prisma"

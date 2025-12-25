@@ -25,12 +25,14 @@ import type {
   EngineState,
   ObjectiveWeights,
 } from './types';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
   maxCandidates?: number;
   includeLegacyDecision?: boolean;
   stateOverride?: EngineState;
+  runtime?: EngineRuntime;
 };
 
 export type SolveDecisionResult = {
@@ -41,13 +43,15 @@ export type SolveDecisionResult = {
 
 type EngineLogKind = 'validation' | 'unexpected';
 
-function logEngineError(kind: EngineLogKind, meta: unknown): void {
-  if (process.env.NODE_ENV === 'test') return;
+function logEngineError(runtime: EngineRuntime, kind: EngineLogKind, meta: unknown): void {
+  if (!runtime.enableLogs) return;
+  const logger = runtime.logger;
+  if (!logger) return;
   if (kind === 'validation') {
-    console.warn('[engine] validation/solve error', meta);
+    logger.warn('[engine] validation/solve error', meta);
     return;
   }
-  console.error('[engine] unexpected solve error', meta);
+  logger.error('[engine] unexpected solve error', meta);
 }
 
 export async function solveDecision(
@@ -55,6 +59,7 @@ export async function solveDecision(
   ctx: EngineContext,
   options: SolveDecisionOptions = {}
 ): Promise<SolveDecisionResult> {
+  const runtime = options.runtime ?? DEFAULT_ENGINE_RUNTIME;
   const stateIssues = validateEngineState(state);
   const ctxIssues = validateEngineContext(ctx);
 
@@ -66,12 +71,12 @@ export async function solveDecision(
 
   let weights: ObjectiveWeights;
   try {
-    const baseWeights = getObjectiveWeightsForState(state);
+    const baseWeights = getObjectiveWeightsForState(state, runtime);
     weights = options.weights
       ? normalizeObjectiveWeights({ ...baseWeights, ...options.weights })
       : baseWeights;
   } catch (err) {
-    logEngineError('unexpected', { userId: state.userId, err, context: 'resolve_weights' });
+    logEngineError(runtime, 'unexpected', { userId: state.userId, err, context: 'resolve_weights' });
     weights = options.weights
       ? normalizeObjectiveWeights({ ...DEFAULT_OBJECTIVE_WEIGHTS, ...options.weights })
       : DEFAULT_OBJECTIVE_WEIGHTS;
@@ -112,7 +117,11 @@ export async function solveDecision(
     });
   }
 
-  const filtered = enforceHardConstraints(decisions).sort((a, b) => b.score - a.score);
+  const filtered = enforceHardConstraints(decisions).sort((a, b) => {
+    const primary = b.score - a.score;
+    if (primary !== 0) return primary;
+    return a.actionId.localeCompare(b.actionId);
+  });
 
   const trace: EngineDecisionTrace = {
     engineVersion: ENGINE_VERSION,
@@ -176,10 +185,12 @@ export async function safeSolveDecisionForUser(
   options: SolveDecisionOptions = {}
 ): Promise<SafeDecisionOutcome> {
   try {
-    const state = options.stateOverride ?? (await fromPrismaUserToEngineState(userId));
+    const runtime = options.runtime ?? DEFAULT_ENGINE_RUNTIME;
+    const state = options.stateOverride ?? (await fromPrismaUserToEngineState(userId, ctx.now, runtime));
     const { decisions, trace, legacyDecision } = await solveDecision(state, ctx, {
       ...options,
       includeLegacyDecision: options.includeLegacyDecision ?? true,
+      runtime,
     });
     const successResult: SafeDecisionOutcome = { ok: true, decisions, trace, state };
     if (legacyDecision) {
@@ -187,8 +198,9 @@ export async function safeSolveDecisionForUser(
     }
     return successResult;
   } catch (err) {
+    const runtime = options.runtime ?? DEFAULT_ENGINE_RUNTIME;
     if (err instanceof EngineError) {
-      logEngineError('validation', { userId, err });
+      logEngineError(runtime, 'validation', { userId, err });
       return {
         ok: false,
         reason: 'VALIDATION_ERROR',
@@ -196,7 +208,7 @@ export async function safeSolveDecisionForUser(
       };
     }
 
-    logEngineError('unexpected', { userId, err });
+    logEngineError(runtime, 'unexpected', { userId, err });
     return {
       ok: false,
       reason: 'ENGINE_ERROR',
