@@ -1,4 +1,7 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
+import fg from 'fast-glob';
 
 const prisma = new PrismaClient();
 
@@ -19,6 +22,22 @@ function assertOfflineEvaluatorModelsPresent() {
 }
 
 async function main() {
+  const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+  if (fs.existsSync(schemaPath)) {
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    if (/@default\s*\(\s*uuid\s*\(\s*\)\s*\)/.test(schema)) {
+      throw new Error('Prisma schema uses @default(uuid()) — derive or inject IDs explicitly for engine-visible models.');
+    }
+  }
+
+  const sourceFiles = fg.sync(['lib/**/*.ts', 'app/**/*.ts'], { absolute: true, ignore: ['**/node_modules/**'] });
+  for (const file of sourceFiles) {
+    const content = fs.readFileSync(file, 'utf8');
+    if (content.includes('findMany(') && !content.includes('orderBy')) {
+      throw new Error(`findMany without orderBy detected in ${path.relative(process.cwd(), file)}`);
+    }
+  }
+
   assertOfflineEvaluatorModelsPresent();
   // BankTransaction timeline + required fields + composite unique
   await prisma.bankTransaction.findFirst({

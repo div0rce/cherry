@@ -29,8 +29,9 @@ async function auditLedgerSums(): Promise<void> {
   }
 }
 
-async function auditPendingSessions(): Promise<void> {
-  const cutoff = Date.now() - SESSION_EXPIRY_TTL_MS;
+async function auditPendingSessions(now: Date): Promise<void> {
+  const cutoff = now.getTime() - SESSION_EXPIRY_TTL_MS;
+  const expirationBoundary = new Date(cutoff);
   const pending = await prisma.recommendationSession.findMany({
     where: {
       verificationStatus: { in: [VerificationStatus.UNVERIFIED, VerificationStatus.PENDING] },
@@ -59,7 +60,7 @@ async function auditPendingSessions(): Promise<void> {
               : session.anomalyCode,
           anomalyDetails:
             session.anomalyCode === SessionAnomalyCode.NONE
-              ? JSON.stringify({ expiredAt: new Date(cutoff).toISOString() })
+              ? JSON.stringify({ expiredAt: expirationBoundary.toISOString() })
               : session.anomalyDetails,
         },
       });
@@ -81,8 +82,9 @@ async function auditPendingSessions(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  const now = new Date();
   await auditLedgerSums();
-  await auditPendingSessions();
+  await auditPendingSessions(now);
 }
 
 main()

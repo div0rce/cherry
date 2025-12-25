@@ -71,8 +71,9 @@ async function resolveTargetUser() {
 
 async function main() {
   const user = await resolveTargetUser();
+  const now = new Date();
 
-  await seedDemoForUser(user.id);
+  await seedDemoForUser(user.id, { now });
   logInfo(`Seeded demo data for user ${user.email ?? user.id}.`);
 }
 

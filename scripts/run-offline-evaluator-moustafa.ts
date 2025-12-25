@@ -95,7 +95,8 @@ async function main() {
     if (txs.length === 0) continue;
 
     const runIdFromEnv = buildRunId();
-    const runId = hasText(runIdFromEnv) ? runIdFromEnv : defaultRunIdForUser(userId);
+    const runClock = txs[0]?.postedAt ?? txs[0]?.occurredAt ?? new Date(0);
+    const runId = hasText(runIdFromEnv) ? runIdFromEnv : defaultRunIdForUser(userId, runClock);
     console.warn(`Running offline evaluator for user=${userId}, ${txs.length} transactions, runId=${runId}`);
     let processed = 0;
 

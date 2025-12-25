@@ -1,12 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist-scripts",
-    "module": "commonjs",
-    "target": "es2020",
-    "esModuleInterop": true,
-    "moduleResolution": "node",
-    "baseUrl": "."
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
-  "include": ["scripts/**/*"]
+  "include": ["scripts/**/*.ts", "scripts/**/*.mts", "scripts/**/*.cts"]
 }
