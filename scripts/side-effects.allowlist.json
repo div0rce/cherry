@@ -1,0 +1,296 @@
+{
+  "lib/activity/feed.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/admin/getLedgerStats.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/admin/getSessionStats.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/alerts/processDailyStateAlert.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/auth.ts": {
+    "effects": [
+      "next_redirect"
+    ],
+    "source": "legacy"
+  },
+  "lib/authority/replayAuthority.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/authority/simulateSpendAuthority.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/autopilot/engineDecisionId.ts": {
+    "effects": [
+      "crypto",
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/autopilot/runSimulation.ts": {
+    "effects": [
+      "fetch"
+    ],
+    "source": "legacy"
+  },
+  "lib/autopilot/service.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/bank/csv-dev-provider.ts": {
+    "effects": [
+      "fs",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/bank/ingest.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/bank/user-link.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/buckets/ensure-fresh.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/buckets/periods.ts": {
+    "effects": [
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/buckets/regimes.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/client/api.ts": {
+    "effects": [
+      "fetch"
+    ],
+    "source": "legacy"
+  },
+  "lib/daily-state/runDailyForUser.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/dashboard.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/demo-seeder.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/dev/dev-user.ts": {
+    "effects": [
+      "console",
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/engine/context.ts": {
+    "effects": [
+      "console",
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/engine/legacy.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/engine/solver.ts": {
+    "effects": [
+      "console"
+    ],
+    "source": "legacy"
+  },
+  "lib/evaluator/prisma-safe.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/evaluator/regime-buckets.ts": {
+    "effects": [
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/evaluator/stats.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/history.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/income/classifier.ts": {
+    "effects": [
+      "console",
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/income/monthly.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/ingest/bank-transactions.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/logger.ts": {
+    "effects": [
+      "console"
+    ],
+    "source": "legacy"
+  },
+  "lib/logging.ts": {
+    "effects": [
+      "console"
+    ],
+    "source": "legacy"
+  },
+  "lib/points.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/prisma.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/scan-helpers.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/schemas/bank-ingest.ts": {
+    "effects": [
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/sessions/confirm-service.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/sessions/summaries.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/simulation.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/unified-activity.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/user-context.ts": {
+    "effects": [
+      "crypto",
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/verification/verify-session.ts": {
+    "effects": [
+      "prisma"
+    ],
+    "source": "legacy"
+  },
+  "lib/vine/run-recommendation.ts": {
+    "effects": [
+      "prisma",
+      "time"
+    ],
+    "source": "legacy"
+  },
+  "lib/vine/security.ts": {
+    "effects": [
+      "console",
+      "crypto"
+    ],
+    "source": "legacy"
+  },
+  "lib/wallet/cherryPass.ts": {
+    "effects": [
+      "fs",
+      "path"
+    ],
+    "source": "legacy"
+  }
+}
