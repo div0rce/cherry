@@ -1,7 +1,7 @@
 import type { Bucket } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '../buckets-runtime';
-import { applyInMemoryRollover } from './periods';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '../buckets-runtime.js';
+import { applyInMemoryRollover } from './periods.js';
 
 type BucketClient = { bucket: typeof prisma.bucket };
 

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { Database } from '../contracts/Database';
+import type { Database } from '../contracts/Database.js';
 
 export class PrismaDatabase implements Database {
   prisma: PrismaClient;

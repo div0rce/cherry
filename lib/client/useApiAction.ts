@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { ApiResult } from './api';
+import type { ApiResult } from './api.js';
 
 type ApiActionState<T> = {
   data: T | null;

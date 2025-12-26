@@ -2,8 +2,8 @@ import crypto from 'node:crypto';
 import { getServerSession } from 'next-auth';
 import { prisma } from './prisma.ts';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { getServerConfig } from './config/store';
-import type { ServerConfig } from './config/server';
+import { getServerConfig } from './config/store.js';
+import type { ServerConfig } from './config/server.js';
 import { logInvariant } from './logging.ts';
 import { assertUserId } from './invariants.ts';
 

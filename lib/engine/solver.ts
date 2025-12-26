@@ -1,11 +1,11 @@
-import { generateCandidateActions } from './candidates';
-import { simulateAction } from './simulate';
+import { generateCandidateActions } from './candidates.js';
+import { simulateAction } from './simulate.js';
 import {
   DEFAULT_OBJECTIVE_WEIGHTS,
   scoreDecision,
   getObjectiveWeightsForState,
   normalizeObjectiveWeights,
-} from './objective';
+} from './objective.js';
 import {
   EngineError,
   enforceHardConstraints,
@@ -14,8 +14,8 @@ import {
   getHardConstraints,
   validateEngineContext,
   validateEngineState,
-} from './guardrails';
-import { ENGINE_VERSION } from './context';
+} from './guardrails.js';
+import { ENGINE_VERSION } from './context.js';
 import type {
   EngineAction,
   EngineContext,
@@ -23,8 +23,8 @@ import type {
   EngineDecisionTrace,
   EngineState,
   ObjectiveWeights,
-} from './types';
-import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
+} from './types.js';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '@/lib/legacy-engine-types';
 import { asError } from '@/lib/errors';
 

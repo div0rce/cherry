@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AutopilotDecisionStatus } from './types';
+import type { AutopilotDecisionStatus } from './types.js';
 
 export type StoredAutopilotDecision = {
   decisionId: string;

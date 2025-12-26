@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma, isProduction } from '@/lib/prisma';
 import { logInfo, logWarn } from '@/lib/logger';
 import { asError } from '@/lib/errors';
-import { resolveUserIdForExternalIds } from './user-link';
+import { resolveUserIdForExternalIds } from './user-link.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

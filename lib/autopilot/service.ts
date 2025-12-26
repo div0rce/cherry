@@ -34,8 +34,8 @@ import type {
   AutopilotDecisionStatus,
   AutopilotRecommendedCard,
   AutopilotRewardCategory,
-} from './types';
-import { AutopilotServiceError } from './types';
+} from './types.js';
+import { AutopilotServiceError } from './types.js';
 import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 import type {
   AutopilotPreviewOutput,

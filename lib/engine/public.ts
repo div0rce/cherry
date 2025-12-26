@@ -2,11 +2,11 @@ import type { RewardCategory } from '@/lib/enums';
 import { hasText } from '@/lib/text';
 import { isPositiveNumber } from '@/lib/numbers';
 import { resolveScanCategory } from '@/lib/scan-helpers';
-import { buildEngineContext } from './context';
+import { buildEngineContext } from './context.js';
 import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { safeSolveDecisionForWorld } from './run';
-import type { EngineDecision, EngineState } from './types';
-import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types';
+import { safeSolveDecisionForWorld } from './run.js';
+import type { EngineDecision, EngineState } from './types.js';
+import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types.js';
 import type { World } from '@/lib/adapters/world';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];

@@ -1,4 +1,4 @@
-import type { Logger } from '../adapters/contracts/Logger';
+import type { Logger } from '../adapters/contracts/Logger.js';
 
 export type EngineRuntime = {
   enableLogs: boolean;

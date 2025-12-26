@@ -10,7 +10,7 @@ import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import { computeBucketReversal } from '@/lib/sessions/reversal';
 import { logError, logWarn } from '@/lib/logger';
 import { asError } from '@/lib/errors';
-import type { VerificationResult, VerificationSignal } from './types';
+import type { VerificationResult, VerificationSignal } from './types.js';
 
 const AMOUNT_TOLERANCE_RATIO = 0.05;
 const AMOUNT_TOLERANCE_MIN_CENTS = 100;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CentsSchema } from './common';
+import { CentsSchema } from './common.js';
 import { mccSchema } from '@/lib/schemas/mcc';
 const vineOrderSourceValues = ['VINE_SIM', 'VINE_DEVICE', 'APP_SCAN'] as const;
 

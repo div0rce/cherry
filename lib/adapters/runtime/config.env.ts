@@ -1,5 +1,5 @@
 import { getServerConfig } from '@/lib/config/store';
-import type { ConfigReader } from '../config';
+import type { ConfigReader } from '../config.js';
 
 export const ServerConfigReader: ConfigReader = {
   get: (key) => {

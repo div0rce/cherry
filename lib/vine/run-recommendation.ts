@@ -17,12 +17,12 @@ import { safeSolveDecisionForWorld } from '@/lib/engine/run';
 import { fromPrismaUserToEngineState } from '@/lib/engine-state';
 import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
 import type { World } from '@/lib/adapters/world';
-import type { OrderContext } from './order-context';
+import type { OrderContext } from './order-context.js';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { assertUserId } from '@/lib/invariants';
 import { isPrismaP2003, logInvariant } from '@/lib/user-context';
 import type { RewardCategory } from '@prisma/client';
-import { deriveOrderToken } from './order-token';
+import { deriveOrderToken } from './order-token.js';
 import { assertStableId } from '@/lib/identity/hash';
 import { asError } from '@/lib/errors';
 

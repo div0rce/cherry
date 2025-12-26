@@ -1,4 +1,4 @@
-import type { Logger } from '../logger';
+import type { Logger } from '../logger.js';
 
 export const ConsoleLogger: Logger = {
   info: (message, meta) => {

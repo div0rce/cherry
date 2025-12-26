@@ -2,7 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import { z } from 'zod';
-import { getPublicConfig } from '../config/store';
+import { getPublicConfig } from '../config/store.js';
 
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }

@@ -1,8 +1,8 @@
 import crypto from 'crypto';
-import { prisma } from '../prisma';
+import { prisma } from '../prisma.js';
 import type { VineDevice, PrismaClient } from '@prisma/client';
-import { getServerConfig } from '../config/store';
-import type { VineSignatureMode } from '../config/server';
+import { getServerConfig } from '../config/store.js';
+import type { VineSignatureMode } from '../config/server.js';
 
 export function getVineSignatureMode(mode?: VineSignatureMode): VineSignatureMode {
   if (mode === 'warn' || mode === 'enforce' || mode === 'off') return mode;

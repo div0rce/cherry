@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import type { UnifiedActivityRow } from '@/lib/unified-activity';
 import { getUnifiedActivityForUser } from '@/lib/unified-activity';
-import { computeBucketBalanceFromNumbers } from './buckets-runtime';
+import { computeBucketBalanceFromNumbers } from './buckets-runtime.js';
 
 export type DashboardStats = {
   cardCount: number;

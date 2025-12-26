@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RewardCategorySchema } from './common';
+import { RewardCategorySchema } from './common.js';
 
 const RewardRuleSchema = z
   .object({

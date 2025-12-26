@@ -1,6 +1,6 @@
 import type { BankTransactionIncomeKind, BankTransactionP2PKind, Prisma } from '@prisma/client';
 import { prisma, isProduction } from '@/lib/prisma';
-import { IncomeKind, P2PKind, type ClassifiedBankTransaction } from './types';
+import { IncomeKind, P2PKind, type ClassifiedBankTransaction } from './types.js';
 import { hasText } from '@/lib/text';
 
 type ClassifiableTx = Pick<

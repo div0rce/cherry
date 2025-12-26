@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
-import { canonicalJson } from './canonical';
-import type { StableId } from './types';
+import { canonicalJson } from './canonical.js';
+import type { StableId } from './types.js';
 
 export function deriveStableId(namespace: string, payload: unknown): StableId {
   const serialized = canonicalJson(payload);
