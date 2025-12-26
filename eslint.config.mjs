@@ -40,6 +40,49 @@ const libRestrictedSyntaxRules = [
   },
 ];
 
+const engineSideEffectRules = [
+  {
+    selector: "CallExpression[callee.object.name='console']",
+    message: '❌ console usage is forbidden in engine core; inject a logger.',
+  },
+  {
+    selector: "CallExpression[callee.name='fetch']",
+    message: '❌ fetch() is forbidden in engine core; move I/O to boundaries.',
+  },
+  {
+    selector: "NewExpression[callee.name='XMLHttpRequest']",
+    message: '❌ XMLHttpRequest is forbidden in engine core; move I/O to boundaries.',
+  },
+  {
+    selector: "CallExpression[callee.name='axios']",
+    message: '❌ axios is forbidden in engine core; move I/O to boundaries.',
+  },
+  {
+    selector: "CallExpression[callee.object.name='axios']",
+    message: '❌ axios is forbidden in engine core; move I/O to boundaries.',
+  },
+  {
+    selector: "ImportDeclaration[source.value='axios']",
+    message: '❌ axios import is forbidden in engine core; move I/O to boundaries.',
+  },
+  {
+    selector: "ImportDeclaration[source.value='@/lib/prisma']",
+    message: '❌ prisma import is forbidden in engine core; use adapters.',
+  },
+  {
+    selector: "ImportDeclaration[source.value='@prisma/client']",
+    message: '❌ prisma import is forbidden in engine core; use adapters.',
+  },
+  {
+    selector: "ImportDeclaration[source.value=/^(node:)?fs$/]",
+    message: '❌ fs import is forbidden in engine core; move I/O to boundaries.',
+  },
+  {
+    selector: "ImportDeclaration[source.value=/^(node:)?child_process$/]",
+    message: '❌ child_process import is forbidden in engine core.',
+  },
+];
+
 const coreSilentDefaultRules = [
   {
     selector: 'LogicalExpression[operator="??"]',
@@ -71,11 +114,12 @@ export default defineConfig([
     'postcss.config.mjs',
   ]),
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.mts'],
+    files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'],
     plugins: { zod: zodPlugin },
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.json', './tsconfig.scripts.json'],
+        project: ['./tsconfig.eslint.json'],
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
@@ -121,6 +165,15 @@ export default defineConfig([
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       '@next/next/no-img-element': 'off',
+    },
+  },
+  {
+    files: ['scripts/**/*.ts', 'scripts/**/*.mts', 'scripts/**/*.cts'],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.scripts.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
   {
@@ -185,7 +238,6 @@ export default defineConfig([
   },
   {
     files: [
-      'lib/engine/**/*.{ts,tsx}',
       'lib/buckets/**/*.{ts,tsx}',
       'lib/verification/**/*.{ts,tsx}',
     ],
@@ -194,6 +246,17 @@ export default defineConfig([
         'error',
         ...libRestrictedSyntaxRules,
         ...coreSilentDefaultRules,
+      ],
+    },
+  },
+  {
+    files: ['lib/engine/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...libRestrictedSyntaxRules,
+        ...coreSilentDefaultRules,
+        ...engineSideEffectRules,
       ],
     },
   },
