@@ -7,6 +7,7 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
 import { ROUTES } from '@/lib/routes';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -33,6 +34,7 @@ export default async function DevBankPage(): Promise<JSX.Element> {
       take: 100,
     });
   } catch (err) {
+    asError(err);
     console.error('DevBankPage Prisma error:', err);
     loadError =
       'Failed to load bank rows (likely Prisma schema/client mismatch). Rerun prisma generate and align queries.';

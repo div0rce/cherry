@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
 import { Button, ButtonLink } from '@/components/ui/Button';
+import { asError } from '@/lib/errors';
 
 type Simulation = {
   id: string;
@@ -233,7 +234,8 @@ export default async function SimulatePage({
     };
     response = await fetchSimulations(query);
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load simulations';
+    asError(err);
+    error = err.message;
   }
 
   const simulations = response?.data ?? [];

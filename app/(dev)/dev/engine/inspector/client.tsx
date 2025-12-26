@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingRows } from '@/components/ui/loading-skeleton';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { asError } from '@/lib/errors';
 
 type Decision = {
   id: string;
@@ -68,8 +69,8 @@ export default function InspectorClient(): JSX.Element {
       setResult(payload);
       setStatus('ready');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Engine inspector failed';
-      setError(message);
+      asError(err);
+      setError(err.message);
       setStatus('error');
     }
   }

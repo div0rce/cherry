@@ -7,6 +7,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Alert } from '@/components/ui/alert';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -43,7 +44,8 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
       sourceFilter: ['BANK_FEED', 'STATEMENT_VIEW'],
     });
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load spend history';
+    asError(err);
+    error = err.message;
   }
 
   const debitRows = rows.filter((r) => (r.cashDeltaCents ?? 0) < 0);

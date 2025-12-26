@@ -18,6 +18,7 @@ import {
 import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -107,7 +108,8 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
   try {
     cards = await fetchCards();
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load cards';
+    asError(err);
+    error = err.message;
   }
 
   const totalRewardRules = cards.reduce((sum, card) => sum + card.rewardRules.length, 0);

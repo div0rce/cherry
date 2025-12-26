@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import { DeleteBucketButton, AddBucketForm } from './client';
+import { asError } from '@/lib/errors';
 import { getBaseUrl } from '@/lib/base-url';
 
 const hasText = (value?: string | null): value is string =>
@@ -71,7 +72,8 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
   try {
     buckets = await fetchBuckets();
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load buckets';
+    asError(err);
+    error = err.message;
   }
 
   const totalBudgetCents = buckets.reduce((sum, b) => sum + (b.budgetAmount ?? 0), 0);
