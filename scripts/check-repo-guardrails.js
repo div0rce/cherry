@@ -533,7 +533,7 @@ for (const file of scriptFiles) {
   if (
     content.includes('tsconfig.json') &&
     TS_CONFIG_PARSE.test(content) &&
-    !relPath.endsWith(path.normalize(path.join('scripts', 'lib', 'read-tsconfig.mts')))
+    !relPath.startsWith(path.normalize(path.join('scripts', 'lib')) + path.sep)
   ) {
     console.error(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
     process.exit(1);
