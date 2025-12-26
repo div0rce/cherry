@@ -1,11 +1,17 @@
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '@/lib/user-context';
+import type { BankIngestConfig } from '@/lib/config/server';
+import { getServerConfig } from '@/lib/config/store';
 import type { PrismaClient } from '@prisma/client';
 
-export async function getDevIngestUser(prisma: PrismaClient): Promise<{ id: string; email: string | null }> {
-  const envUserId = process.env['BANK_INGEST_USER_ID'];
-  const envEmail = process.env['BANK_INGEST_USER_EMAIL'];
+export async function getDevIngestUser(
+  prisma: PrismaClient,
+  bankIngestConfig?: BankIngestConfig
+): Promise<{ id: string; email: string | null }> {
+  const config = bankIngestConfig ?? getServerConfig().bankIngest;
+  const envUserId = config.userId;
+  const envEmail = config.userEmail;
 
-  const hasEnvUserId = envUserId !== undefined && envUserId !== '';
+  const hasEnvUserId = typeof envUserId === 'string' && envUserId.trim() !== '';
   if (hasEnvUserId) {
     const user = await prisma.user.findUnique({ where: { id: envUserId } });
     if (!user) {
@@ -14,7 +20,7 @@ export async function getDevIngestUser(prisma: PrismaClient): Promise<{ id: stri
     return { id: user.id, email: user.email ?? null };
   }
 
-  const hasEnvEmail = envEmail !== undefined && envEmail !== '';
+  const hasEnvEmail = typeof envEmail === 'string' && envEmail.trim() !== '';
   if (hasEnvEmail) {
     const user = await prisma.user.findUnique({ where: { email: envEmail } });
     if (!user) {

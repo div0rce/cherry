@@ -48,9 +48,9 @@ async function testEmailCollisionFallsBack() {
   const resolveUserContext = getResolveUserContext();
   const fallbackEmail = getFallbackEmail();
 
-  const sharedEmail = `dup-${Date.now()}@example.com`;
-  const userA = `user-a-${Date.now()}`;
-  const userB = `user-b-${Date.now()}`;
+  const sharedEmail = 'dup-fixed@example.com';
+  const userA = 'user-a-fixed';
+  const userB = 'user-b-fixed';
 
   await prismaUser.deleteMany({ where: { OR: [{ id: userA }, { id: userB }, { email: sharedEmail }] } });
   await prismaUser.create({ data: { id: userA, email: sharedEmail } });
@@ -74,8 +74,8 @@ async function testFallbackCollisionUsesV2() {
   const fallbackEmail = getFallbackEmail();
   const fallbackEmailV2 = getFallbackEmailV2();
 
-  const userA = `user-a-fallback-${Date.now()}`;
-  const userB = `user-b-fallback-${Date.now()}`;
+  const userA = 'user-a-fallback-fixed';
+  const userB = 'user-b-fallback-fixed';
   const fallbackForB = fallbackEmail(userB);
   const fallbackForB2 = fallbackEmailV2(userB);
 

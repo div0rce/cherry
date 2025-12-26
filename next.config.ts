@@ -1,4 +1,7 @@
 import type { NextConfig } from "next";
+import { initConfigFromEnv } from "./lib/config/init";
+
+initConfigFromEnv(process.env);
 
 const nextConfig: NextConfig = {
   /* config options here */

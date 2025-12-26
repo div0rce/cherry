@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import { getServerSession } from 'next-auth';
 import { prisma } from './prisma.ts';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { getServerConfig } from './config/store';
+import type { ServerConfig } from './config/server';
 import { logInvariant } from './logging.ts';
 import { assertUserId } from './invariants.ts';
 
@@ -13,6 +15,7 @@ export interface ResolveUserContextOptions {
   sessionOverride?: { user?: { id?: string | null; email?: string | null } } | null;
   labUserFactory?: () => Promise<{ id: string; email?: string | null }>;
   getSession?: () => Promise<{ user?: { id?: string | null; email?: string | null } } | null>;
+  serverConfig?: ServerConfig;
 }
 
 export interface UserContext {
@@ -115,8 +118,11 @@ async function ensureUserRow(params: { userId: string; email: string | null; nam
   }
 }
 
-async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string; email?: string | null }>) {
-  if (process.env.NODE_ENV === 'production') {
+async function findOrCreateLabUser(
+  factoryOverride: (() => Promise<{ id: string; email?: string | null }>) | undefined,
+  serverConfig: ServerConfig
+) {
+  if (serverConfig.environment === 'production') {
     throw new Error('Unauthorized: lab demo mode is disabled in production');
   }
 
@@ -143,12 +149,13 @@ async function findOrCreateLabUser(factoryOverride?: () => Promise<{ id: string;
 
 export async function resolveUserContext(opts: ResolveUserContextOptions): Promise<UserContext> {
   const { requireAuth, allowLabDemo, sessionOverride, labUserFactory, getSession } = opts;
+  const serverConfig = opts.serverConfig ?? getServerConfig();
 
   const session =
     sessionOverride ??
     (await (async () => {
       if (getSession !== undefined) return getSession();
-      const mod = await import('../app/api/auth/[...nextauth]/route');
+      const mod = await import('../app/api/auth/[...nextauth]/route.ts');
       return getServerSession((mod as { authOptions: unknown }).authOptions as never);
     })());
 
@@ -195,7 +202,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
 
   const hasNoSession = session === null || session === undefined;
   if (hasNoSession && allowLabDemo === true) {
-    const user = await findOrCreateLabUser(labUserFactory);
+    const user = await findOrCreateLabUser(labUserFactory, serverConfig);
     await ensureUserRow({ userId: user.id, email: user.email ?? LAB_USER_EMAIL, name: user.name ?? LAB_USER_NAME });
 
     if (user.id === '') {
