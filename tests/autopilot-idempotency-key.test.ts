@@ -3,6 +3,7 @@ import Module from 'node:module';
 import { BucketPeriod, RecommendationSource, RewardCategory } from '@prisma/client';
 import type { AutopilotStateSnapshot } from '@/lib/autopilot/engineDecisionId';
 import {
+import { fileURLToPath } from 'node:url';
   buildAutopilotStateSnapshotHash,
   computeEngineDecisionIdV1,
 } from '@/lib/autopilot/engineDecisionId';
@@ -12,8 +13,9 @@ import type {
   AutopilotPreviewOutput,
 } from '@/lib/autopilot/types';
 import type { World } from '@/lib/adapters/world';
-import { makeTestWorld } from './helpers/world';
+import { makeTestWorld } from './helpers/world.js';
 
+const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);
 
 function mockModule(modulePath: string, exports: unknown) {

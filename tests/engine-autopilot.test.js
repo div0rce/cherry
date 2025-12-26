@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import Module from 'node:module';
-import { makeTestWorld } from './helpers/world';
+import { makeTestWorld } from './helpers/world.js';
+import { fileURLToPath } from 'node:url';
 
+const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);
 const fixedNowMs = new Date('2024-01-01T00:00:00Z').getTime();
 const { world } = makeTestWorld({ nowMs: fixedNowMs });

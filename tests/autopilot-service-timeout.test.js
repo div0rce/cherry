@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import Module from 'node:module';
-import { makeTestWorld } from './helpers/world';
+import { makeTestWorld } from './helpers/world.js';
+import { fileURLToPath } from 'node:url';
 
+const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);
 
 function mockModule(modulePath, exports) {
