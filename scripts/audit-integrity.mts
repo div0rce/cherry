@@ -7,7 +7,7 @@ import {
 } from '@prisma/client';
 import { prisma } from '../lib/prisma.ts';
 import { logInfo, logWarn } from '../lib/logger.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

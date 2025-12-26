@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

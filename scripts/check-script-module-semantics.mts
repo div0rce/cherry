@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import fg from "fast-glob";
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 
@@ -273,6 +273,14 @@ function main(): void {
   const scriptFiles = fg.sync(SCRIPT_GLOB, { cwd: ROOT, absolute: true, ignore: IGNORE });
 
   for (const file of scriptFiles) {
+    const relative = normalizePath(file);
+    if (relative.startsWith(`scripts${path.sep}lib${path.sep}`) && file.endsWith(".ts")) {
+      violations.push({
+        file: relative,
+        message: "scripts/lib must use .mts to guarantee ESM semantics.",
+      });
+      continue;
+    }
     if (file.endsWith(".ts")) {
       checkNoImplicitEsm(file, violations);
     } else if (file.endsWith(".mts")) {

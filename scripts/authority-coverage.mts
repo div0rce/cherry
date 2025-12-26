@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

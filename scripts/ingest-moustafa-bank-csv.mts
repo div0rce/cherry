@@ -6,7 +6,7 @@ import { upsertBankTransactions } from '../lib/bank/ingest.ts';
 import { prisma } from '../lib/prisma.ts';
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
 import { getDevIngestUser } from '../lib/dev/dev-user.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

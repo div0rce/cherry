@@ -30,7 +30,7 @@ import {
 import { prisma } from '../lib/prisma.ts';
 import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.ts';
 import { logError, logInfo } from '../lib/logger.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

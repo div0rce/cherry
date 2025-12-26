@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import * as Module from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

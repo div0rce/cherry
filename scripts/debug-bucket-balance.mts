@@ -3,7 +3,7 @@ import {
   computeBucketBalanceFromNumbers,
   deriveLegacyCurrentAmount,
 } from '../lib/buckets-runtime.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

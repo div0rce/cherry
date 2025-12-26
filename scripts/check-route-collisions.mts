@@ -1,6 +1,6 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

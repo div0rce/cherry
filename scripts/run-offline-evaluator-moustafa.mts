@@ -7,7 +7,7 @@ import { getDevIngestUser } from '../lib/dev/dev-user.ts';
 import { classifyIncomeAndP2PForUser } from '../lib/income/classifier.ts';
 import { rebuildIncomeRegimesAndBuckets } from '../lib/buckets/regimes.ts';
 import { RegimeBucketTracker } from '../lib/evaluator/regime-buckets.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 

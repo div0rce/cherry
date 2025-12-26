@@ -5,7 +5,7 @@ import {
   lockServerConfig,
   setServerConfig,
 } from '../lib/config/store.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 
