@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 const { Prisma, PrismaClient } = require('@prisma/client');
 const { evaluateTransactionOffline } = require('../lib/evaluator/offline-history');

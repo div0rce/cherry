@@ -7,7 +7,5 @@ class MockResponse extends Response {
   }
 }
 
-module.exports = {
-  NextResponse: MockResponse,
-  NextRequest: class extends Request {},
-};
+export const NextResponse = MockResponse;
+export class NextRequest extends Request {}

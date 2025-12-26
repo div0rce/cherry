@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AutopilotMonthImpactBar } from '../components/autopilot/AutopilotMonthImpactBar';
+import { AutopilotMonthImpactBar } from '../components/autopilot/AutopilotMonthImpactBar.js';
 
 async function run(): Promise<void> {
   const html = renderToStaticMarkup(

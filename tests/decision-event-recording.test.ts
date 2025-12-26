@@ -4,9 +4,9 @@ import type {
   DecisionEventWriter,
   SimulatedAuthorityDecision,
   SimulateSpendParams,
-} from '../lib/authority/simulateSpendAuthority';
-import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority';
-import { AuthorityReason } from '../lib/authority/reasonCodes';
+} from '../lib/authority/simulateSpendAuthority.js';
+import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority.js';
+import { AuthorityReason } from '../lib/authority/reasonCodes.js';
 
 function buildDecision(): SimulatedAuthorityDecision {
   return {

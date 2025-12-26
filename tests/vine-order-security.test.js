@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
 

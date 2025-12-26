@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 const { getWalletPassConfigStatus } = require('../lib/wallet/config');
 const { assertServerConfig } = require('../lib/config/server');
 

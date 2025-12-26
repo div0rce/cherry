@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getHomeUiBundle } from '../lib/home/ui-bundle';
+import { getHomeUiBundle } from '../lib/home/ui-bundle.js';
 
 async function run(): Promise<void> {
   const bundle = await getHomeUiBundle('test-user');

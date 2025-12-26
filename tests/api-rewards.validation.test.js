@@ -1,3 +1,10 @@
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const assert = require('node:assert/strict');
 
 process.env.NODE_OPTIONS = '--experimental-specifier-resolution=node';
@@ -10,7 +17,6 @@ process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
   paths: { '@/*': ['./*'] },
 });
 const Module = require('module');
-const path = require('path');
 const originalResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (request.startsWith('@/')) {
