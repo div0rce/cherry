@@ -109,6 +109,7 @@ export default defineConfig([
     '.next/**',
     'out/**',
     'build/**',
+    'tests/fixtures/**',
     'next-env.d.ts',
     'eslint.config.mjs',
     'postcss.config.mjs',

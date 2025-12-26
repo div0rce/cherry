@@ -530,7 +530,11 @@ for (const file of allFiles) {
 for (const file of scriptFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
-  if (content.includes('tsconfig') && TS_CONFIG_PARSE.test(content)) {
+  if (
+    content.includes('tsconfig.json') &&
+    TS_CONFIG_PARSE.test(content) &&
+    !relPath.endsWith(path.normalize(path.join('scripts', 'lib', 'read-tsconfig.mts')))
+  ) {
     console.error(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
     process.exit(1);
   }

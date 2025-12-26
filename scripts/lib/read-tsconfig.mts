@@ -1,6 +1,6 @@
 import ts from 'typescript';
 
-export function readTsConfig(configPath: string) {
+export function readTsConfig(configPath: string): ts.ParsedCommandLine {
   const result = ts.readConfigFile(configPath, ts.sys.readFile);
   if (result.error) {
     throw new Error(ts.flattenDiagnosticMessageText(result.error.messageText, '\n'));
