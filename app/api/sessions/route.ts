@@ -25,6 +25,7 @@ import { fetchSessionSummaries } from '@/lib/sessions/summaries';
 import { assertUserId } from '@/lib/invariants';
 import { logInvariant } from '@/lib/logging';
 import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -38,7 +39,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+    asError(error);
+    if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in /api/sessions POST', error);
@@ -171,11 +173,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       decision,
     });
   } catch (error: unknown) {
+    asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('FK violation while creating recommendation session', {
         userId,
         mode,
-        meta: error.meta ?? null,
+        meta: asLogMeta(error.meta),
+        err: error,
       });
       return NextResponse.json(
         { error: 'Failed to create session (FK violation)' },
@@ -194,7 +198,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     userId = ctx.userId;
   } catch (error) {
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+    asError(error);
+    if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in /api/sessions GET', error);

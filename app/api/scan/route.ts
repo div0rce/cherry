@@ -17,6 +17,7 @@ import { ScanRequestSchema } from '@/lib/schemas/scan';
 import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { resolveUserContext } from '@/lib/user-context';
+import { asError } from '@/lib/errors';
 import type { RewardCategory } from '@prisma/client';
 
 const hasText = (value?: string | null): value is string =>
@@ -153,6 +154,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       return NextResponse.json(response);
     } catch (error) {
+      asError(error);
       logError('Error in /api/scan', error);
       return NextResponse.json(
         {
@@ -163,7 +165,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
   } catch (error) {
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+    asError(error);
+    if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error in /api/scan', error);

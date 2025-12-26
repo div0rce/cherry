@@ -4,6 +4,7 @@ import { AutopilotCommitInputSchema, AutopilotServiceError } from '@/lib/autopil
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
 import { resolveUserContext } from '@/lib/user-context';
+import { asError } from '@/lib/errors';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(result, { status: 200 });
   } catch (err) {
+    asError(err);
     if (err instanceof AutopilotServiceError) {
       const kind =
         err.code === 'DECISION_BLOCKED' || err.code === 'CARD_MISMATCH'
@@ -49,13 +51,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     }
 
-    if (err instanceof Error && err.message.includes('Unauthorized')) {
+    if (err.message.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot commit failed unexpectedly',
-      data: { userId, error: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
+      data: { userId, error: err.message },
     });
     return NextResponse.json(
       { error: 'Failed to commit swipe', code: 'AUTOPILOT_COMMIT_UNEXPECTED' },

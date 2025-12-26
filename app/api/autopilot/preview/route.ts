@@ -10,6 +10,7 @@ import {
 import { resolveUserContext } from '@/lib/user-context';
 import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
 import { parseJsonBody } from '@/lib/validation';
+import { asError } from '@/lib/errors';
 
 // Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return respond(200, validatedPreview.data);
   } catch (err) {
+    asError(err);
     if (err instanceof AutopilotServiceError) {
       previewStatusLabel = 'invalid';
       logGuardrailEvent({
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return respond(err.status, { error: err.message, code: err.code });
     }
 
-    if (err instanceof Error && err.message.includes('Unauthorized')) {
+    if (err.message.includes('Unauthorized')) {
       previewStatusLabel = 'invalid';
       return respond(401, { error: 'Unauthorized', code: 'UNAUTHORIZED' });
     }
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot preview failed unexpectedly',
-      data: { userId, error: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
+      data: { userId, error: err.message },
     });
     return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
   }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { resolveUserContext } from '@/lib/user-context';
 import { buildEngineContext, safeSolveDecisionForUser } from '@/lib/engine';
 import { parseJsonBody } from '@/lib/validation';
+import { asError } from '@/lib/errors';
 
 const InspectRequestSchema = z
   .object({
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       topDecision: decisions[0] ?? null,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Engine inspect failed';
-    return NextResponse.json({ error: message }, { status: 500 });
+    asError(error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
