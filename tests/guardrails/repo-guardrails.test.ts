@@ -116,6 +116,12 @@ function run(): void {
     file: 'package.json',
   });
 
+  runFixture('esm-loader-bypass', {
+    guardrail: 'esm-loader-bypass',
+    token: 'check:side-effects',
+    file: 'package.json',
+  });
+
   console.warn('repo-guardrails: ok');
 }
 

@@ -1,0 +1,7 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "check:side-effects": "node scripts/check-no-side-effects.mts"
+  }
+}
