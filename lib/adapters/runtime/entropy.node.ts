@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
-import type { Entropy } from '../entropy';
+import type { EntropySource } from '../entropy';
 
-export const NodeEntropy: Entropy = {
-  randomUUID: () => crypto.randomUUID(),
+export const NodeEntropy: EntropySource = {
   randomBytes: (length) => crypto.randomBytes(length),
 };
