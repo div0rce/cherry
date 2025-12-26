@@ -4,6 +4,7 @@ import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
 } from '@/lib/validation/autopilot/preview';
+import { asError } from '@/lib/errors';
 
 export type SimulationCardChoice = {
   id: string;

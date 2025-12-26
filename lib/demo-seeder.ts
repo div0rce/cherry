@@ -231,8 +231,9 @@ export async function seedCardsAndBucketsForUser(
 
     return { cards: cardsSeeded, buckets: bucketsSeeded };
   } catch (err: unknown) {
+    asError(err);
     if (isPrismaP2003(err)) {
-      logInvariant('P2003 in seedCardsAndBucketsForUser', { userId, meta: err.meta });
+      logInvariant('P2003 in seedCardsAndBucketsForUser', { userId, meta: asLogMeta(err.meta), err });
     } else {
       logInvariant('Error in seedCardsAndBucketsForUser', { userId, err });
     }
@@ -346,8 +347,9 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
       ledgerEntries: ledgerCreated,
     };
   } catch (err: unknown) {
+    asError(err);
     if (isPrismaP2003(err)) {
-      logInvariant('P2003 in seedDemoForUser', { userId, meta: err.meta });
+      logInvariant('P2003 in seedDemoForUser', { userId, meta: asLogMeta(err.meta), err });
     } else {
       logInvariant('Error in seedDemoForUser', { userId, err });
     }

@@ -262,6 +262,7 @@ async function evaluateAutopilot(
         ? await withTimeout(engineCall, options.timeoutMs, 'ENGINE_TIMEOUT')
         : await engineCall;
   } catch (error) {
+    asError(error);
     if (error instanceof AutopilotServiceError) {
       throw error;
     }
@@ -269,7 +270,7 @@ async function evaluateAutopilot(
       'Unable to evaluate Autopilot right now',
       500,
       'ENGINE_ERROR',
-      error instanceof Error ? error.message : 'UNKNOWN_ENGINE_ERROR'
+      error.message
     );
   }
 
@@ -299,11 +300,12 @@ async function evaluateAutopilot(
       stateSnapshotHash,
     });
   } catch (error) {
+    asError(error);
     throw new AutopilotServiceError(
       'Unable to build decision fingerprint',
       400,
       'INVALID_IDEMPOTENCY',
-      error instanceof Error ? error.message : 'INVALID_ID'
+      error.message
     );
   }
 
@@ -627,6 +629,7 @@ export async function commitAutopilotDecisionV2(
       now: evaluation.occurredAt,
     });
   } catch (error) {
+    asError(error);
     if (error instanceof SessionConfirmError) {
       throw new AutopilotServiceError(
         error.message,

@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma, isProduction } from '@/lib/prisma';
 import { logInfo, logWarn } from '@/lib/logger';
 import { resolveUserIdForExternalIds } from './user-link';
+import { asError } from '@/lib/errors';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -110,6 +111,7 @@ async function upsertMerchantObservation(
     });
     return created.id;
   } catch (err) {
+    asError(err);
     logWarn('bank_ingest_merchant_observation_failed', { err, userId, merchantName: safeName, mcc });
     return null;
   }

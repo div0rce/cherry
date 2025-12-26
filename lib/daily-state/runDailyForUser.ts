@@ -7,6 +7,7 @@ import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import { toBucketRuntime } from '@/lib/buckets-runtime';
 import { processDailyStateAlert } from '@/lib/alerts/processDailyStateAlert';
 import { logError } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 
 const ENGINE_VERSION =
   process.env['VERCEL_GIT_COMMIT_SHA'] ??
@@ -190,6 +191,7 @@ export async function runDailyForUser(params: {
     resultInputsVersion = dailyState.inputsVersion;
     resultEngineVersion = dailyState.engineVersion;
   } catch (error) {
+    asError(error);
     const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
     await prisma.dailyState.upsert({
       where: { userId_date: { userId, date: targetDate } },
@@ -197,7 +199,7 @@ export async function runDailyForUser(params: {
         status: fallbackStatus,
         computedAt: now,
         source,
-        errors: error instanceof Error ? error.message : 'unknown_error',
+        errors: error.message,
       },
       create: {
         userId,
@@ -210,7 +212,7 @@ export async function runDailyForUser(params: {
         summary: Prisma.JsonNull,
         safeToSpendCents: null,
         nextRiskEvent: Prisma.JsonNull,
-        errors: error instanceof Error ? error.message : 'unknown_error',
+        errors: error.message,
       },
     });
 
@@ -221,6 +223,7 @@ export async function runDailyForUser(params: {
     try {
       await processDailyStateAlert({ prev: prevForAlert, curr: dailyStateRecord });
     } catch (err) {
+      asError(err);
       logError('daily_state_alert_unhandled', { userId, err });
     }
   }

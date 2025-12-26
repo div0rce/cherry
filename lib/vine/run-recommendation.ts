@@ -138,10 +138,12 @@ export async function runRecommendationFromOrderContext(
 
     return { sessionId: session.id, orderToken, decision, authority: authorityDecision };
   } catch (err: unknown) {
+    asError(err);
     if (isPrismaP2003(err)) {
       logInvariant('FK failure in recommendationSession.create', {
         userId,
-        meta: err.meta ?? null,
+        meta: asLogMeta(err.meta),
+        err,
       });
       throw new Error('Internal error: failed to persist recommendation session (FK violation)');
     }
