@@ -177,6 +177,9 @@ const moneyModulePath = path.normalize(path.join('lib', 'money.ts'));
 const engineDir = path.join(root, 'lib', 'engine');
 const bucketsDir = path.join(root, 'lib', 'buckets');
 const verificationDir = path.join(root, 'lib', 'verification');
+const componentsDir = path.join(root, 'components');
+const middlewareFile = path.join(root, 'middleware.ts');
+const nextConfigFile = path.join(root, 'next.config.ts');
 
 const libStart = path.join(root, 'lib');
 const libFiles = collectFiles(libStart);
@@ -185,6 +188,7 @@ const engineFiles = collectFiles(engineDir);
 const bucketFiles = collectFiles(bucketsDir);
 
 const verificationFiles = collectFiles(verificationDir);
+const componentFiles = collectFiles(componentsDir);
 
 const appDir = path.join(root, 'app');
 const apiDir = path.join(appDir, 'api');
@@ -294,6 +298,7 @@ const MONEY_FLOAT_ALLOWLIST = new Map([
   ['lib/autopilot/service.ts', 'TEMP: service layer'],
   ['lib/alerts/sendEmailAlert.ts', 'TEMP: formatting only'],
 ]);
+const FORBIDDEN_ALIAS = /from\s+['"]@\/|import\s*\(\s*['"]@\/|require\s*\(\s*['"]@\//;
 const TS_CONFIG_PARSE = /JSON\.parse\s*\(/;
 
 for (const file of libFiles) {
@@ -654,6 +659,24 @@ for (const file of allFiles) {
   const content = fs.readFileSync(file, 'utf8');
   if (importsDeprecatedUserApi(content)) {
     console.error(`deprecated-user-api: ${relPath}: app/(user)/_lib/actions`);
+    process.exit(1);
+  }
+}
+
+const aliasFiles = new Set([
+  ...appFiles,
+  ...libFiles,
+  ...componentFiles,
+  ...testFiles,
+]);
+if (fs.existsSync(middlewareFile)) aliasFiles.add(middlewareFile);
+if (fs.existsSync(nextConfigFile)) aliasFiles.add(nextConfigFile);
+
+for (const file of aliasFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  if (FORBIDDEN_ALIAS.test(content)) {
+    console.error(`alias-forbidden: ${relPath}: @/`);
     process.exit(1);
   }
 }
