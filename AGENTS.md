@@ -142,13 +142,13 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 ## Guardrails / Scripts
 ### Script Module Semantics (Non-Negotiable)
 
-The repository is CommonJS by default. Script semantics are determined solely by file extension.
+The repository is ESM by default. Script semantics are determined solely by file extension.
 
 Rules:
-- Runtime code (lib/**, app/**) MUST remain `.ts` and CommonJS.
+- Runtime code (lib/**, app/**) MUST remain `.ts` and ESM.
 - Scripts using ESM syntax MUST be `.mts`.
 - `.mts` files are ONLY allowed under `scripts/`.
-- `.ts` files MUST NOT contain ESM syntax (`import`, `export`, `import.meta`, top-level await).
+- `.ts` files under `scripts/` MUST NOT contain ESM syntax (`import`, `export`, `import.meta`, top-level await).
 
 Runtime access from scripts:
 - `.mts` scripts MUST be executed via `npm run ts:esm -- <script>`.
@@ -156,8 +156,8 @@ Runtime access from scripts:
 - `ts-node/register` usage is forbidden.
 
 Forbidden:
-- `"type": "module"` in package.json
 - Bare `require()` without `createRequire`
+- Direct execution of `.mts` scripts outside `npm run ts:esm`
 - `.mts` outside `scripts/`
 
 Enforcement:
