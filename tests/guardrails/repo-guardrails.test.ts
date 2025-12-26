@@ -98,6 +98,12 @@ function run(): void {
     file: path.join('types', 'rogue.d.ts'),
   });
 
+  runFixture('tsconfig-json-parse', {
+    guardrail: 'tsconfig-parse-violation',
+    token: 'JSON.parse',
+    file: path.join('scripts', 'bad.ts'),
+  });
+
   console.warn('repo-guardrails: ok');
 }
 

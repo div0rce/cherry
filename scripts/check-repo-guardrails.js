@@ -250,6 +250,7 @@ const MONEY_FLOAT_ALLOWLIST = new Map([
   ['lib/autopilot/service.ts', 'TEMP: service layer'],
   ['lib/alerts/sendEmailAlert.ts', 'TEMP: formatting only'],
 ]);
+const TS_CONFIG_PARSE = /JSON\.parse\s*\(/;
 
 for (const file of libFiles) {
   const relPath = path.normalize(path.relative(root, file));
@@ -522,6 +523,15 @@ for (const file of allFiles) {
   const content = fs.readFileSync(file, 'utf8');
   if (importsDeprecatedUserApi(content)) {
     console.error(`deprecated-user-api: ${relPath}: app/(user)/_lib/actions`);
+    process.exit(1);
+  }
+}
+
+for (const file of scriptFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  if (content.includes('tsconfig') && TS_CONFIG_PARSE.test(content)) {
+    console.error(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
     process.exit(1);
   }
 }
