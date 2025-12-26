@@ -52,9 +52,19 @@ const IGNORED_DIR_NAMES = new Set([
   'coverage',
 ]);
 
-const ADAPTER_DIR = path.normalize(path.join('lib', 'adapters')) + path.sep;
+const RUNTIME_ADAPTER_DIR = path.normalize(path.join('lib', 'adapters', 'runtime'));
+const ADAPTER_DIR = `${RUNTIME_ADAPTER_DIR}${path.sep}`;
+
+function isRuntimeAdapterPath(fullPath: string): boolean {
+  const relative = path.normalize(path.relative(ROOT, fullPath));
+  return (
+    relative === RUNTIME_ADAPTER_DIR ||
+    relative.startsWith(`${RUNTIME_ADAPTER_DIR}${path.sep}`)
+  );
+}
 
 function shouldSkipDir(fullPath: string): boolean {
+  if (isRuntimeAdapterPath(fullPath)) return true;
   const parts = fullPath.split(path.sep);
   if (parts.includes('__tests__')) return true;
   if (parts.includes('__mocks__')) return true;

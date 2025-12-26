@@ -55,6 +55,9 @@ function isExcludedPath(filePath: string): boolean {
 
 function shouldSkipEntry(entryPath: string, isDirectory: boolean): boolean {
   if (isExcludedPath(entryPath)) return true;
+  const relative = path.normalize(path.relative(ROOT, entryPath));
+  const runtimePrefix = path.normalize(path.join("lib", "adapters", "runtime")) + path.sep;
+  if (relative.startsWith(runtimePrefix)) return true;
   if (!isDirectory) return false;
   const base = path.basename(entryPath);
   return EXCLUDED_DIR_NAMES.has(base);

@@ -13,6 +13,7 @@ const DEFAULT_EXTENSIONS = new Set([
   '.mjs',
   '.cjs',
 ]);
+const DTS_EXT = '.d.ts';
 
 const REQUIRED_GUARDRAILS = [
   'scripts/check-no-side-effects.mts',
@@ -31,11 +32,27 @@ const ENGINE_PRISMA_TOKENS = [
   { token: '.create(', regex: /\.create\s*\(/ },
   { token: '.update(', regex: /\.update\s*\(/ },
 ];
+const ENGINE_SIDE_EFFECT_TOKENS = [
+  { token: 'console.', regex: /\bconsole\./ },
+  { token: 'fetch(', regex: /\bfetch\s*\(/ },
+  { token: 'axios', regex: /\baxios\b/ },
+  { token: 'XMLHttpRequest', regex: /\bXMLHttpRequest\b/ },
+];
+const MIGRATION_GUARDED_MODELS = [
+  'RecommendationSession',
+  'CherryPointLedger',
+  'BankTransaction',
+];
 
 const TIME_TOKENS = [
   { token: 'new Date(', regex: /\bnew Date\s*\(/ },
   { token: 'Date.now(', regex: /\bDate\.now\s*\(/ },
 ];
+const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
+const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
+const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asError\s*\(/;
+const AS_ERROR_CALL = /\basError\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const CATCH_HEADER = /\bcatch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/;
 
 const IGNORE_DIRS = new Set([
   'node_modules',
@@ -71,6 +88,34 @@ function collectFiles(startDir) {
       }
       if (!DEFAULT_EXTENSIONS.has(path.extname(entry.name))) continue;
       if (entry.name.endsWith('.d.ts')) continue;
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+/**
+ * @param {string} startDir
+ * @returns {string[]}
+ */
+function collectDtsFiles(startDir) {
+  /** @type {string[]} */
+  const files = [];
+  if (!fs.existsSync(startDir)) return files;
+  /** @type {string[]} */
+  const stack = [startDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current !== 'string') continue;
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (IGNORE_DIRS.has(entry.name)) continue;
+        stack.push(fullPath);
+        continue;
+      }
+      if (!entry.name.endsWith(DTS_EXT)) continue;
       files.push(fullPath);
     }
   }
@@ -115,6 +160,29 @@ const apiFiles = collectFiles(apiDir);
 const userFiles = collectFiles(userDir);
 const scriptsDir = path.join(root, 'scripts');
 const scriptFiles = collectFiles(scriptsDir);
+const typesFiles = collectDtsFiles(path.join(root, 'types'));
+const migrationsDir = path.join(root, 'prisma', 'migrations');
+const migrationBaselinePath = path.join(
+  root,
+  'scripts',
+  'guardrails',
+  'migration-safety.baseline.json'
+);
+
+/**
+ * @param {string} line
+ * @param {number} startIndex
+ * @returns {number}
+ */
+function countBraces(line, startIndex = 0) {
+  let delta = 0;
+  for (let i = startIndex; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '{') delta += 1;
+    if (char === '}') delta -= 1;
+  }
+  return delta;
+}
 
 /**
  * @param {string} content
@@ -146,6 +214,17 @@ function importsDeprecatedUserApi(content) {
   return (
     /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions['"]/.test(content) ||
     /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions['"]\s*\)/.test(content)
+  );
+}
+
+/**
+ * @param {string} content
+ * @returns {boolean}
+ */
+function hasMigrationEscapeHatch(content) {
+  return (
+    /guardrail:\s*migration-no-replay-test-ok/.test(content) &&
+    /justification:\s*\S+/.test(content)
   );
 }
 
@@ -260,6 +339,16 @@ for (const file of engineFiles) {
     }
   }
 }
+for (const file of engineFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  for (const { token, regex } of ENGINE_SIDE_EFFECT_TOKENS) {
+    if (regex.test(content)) {
+      console.error(`engine-side-effect-banned: ${relPath}: ${token}`);
+      process.exit(1);
+    }
+  }
+}
 
 const timeFiles = [...engineFiles, ...verificationFiles];
 for (const file of timeFiles) {
@@ -270,6 +359,107 @@ for (const file of timeFiles) {
     if (regex.test(content)) {
       console.error(`no-implicit-time: ${relPath}: ${token}`);
       process.exit(1);
+    }
+  }
+}
+
+const errorLogFiles = [...appFiles, ...libFiles];
+for (const file of errorLogFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  const lines = content.split(/\r?\n/);
+  let inCatch = false;
+  let pendingCatch = false;
+  let catchDepth = 0;
+  let currentCatchVar = null;
+  let justEnteredCatch = false;
+  /** @type {Set<string>} */
+  let normalizedVars = new Set();
+
+  for (const line of lines) {
+    let startIndex = -1;
+
+    if (!inCatch) {
+      const idx = line.indexOf('catch');
+      if (idx !== -1) {
+        startIndex = idx;
+        const match = line.match(CATCH_HEADER);
+        currentCatchVar = match ? match[1] : null;
+        if (line.indexOf('{', idx) !== -1) {
+          inCatch = true;
+          pendingCatch = false;
+          catchDepth = countBraces(line, idx);
+          justEnteredCatch = true;
+          normalizedVars = new Set();
+        } else {
+          pendingCatch = true;
+        }
+      } else if (pendingCatch && line.includes('{')) {
+        inCatch = true;
+        pendingCatch = false;
+        catchDepth = countBraces(line);
+        justEnteredCatch = true;
+        normalizedVars = new Set();
+      }
+    }
+
+    if (inCatch) {
+      const assignment = line.match(AS_ERROR_ASSIGN);
+      if (assignment && assignment[1]) {
+        normalizedVars.add(assignment[1]);
+      }
+      const callMatches = line.matchAll(AS_ERROR_CALL);
+      for (const match of callMatches) {
+        const name = match[1];
+        if (name) {
+          normalizedVars.add(name);
+        }
+      }
+
+      if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
+        if (!justEnteredCatch) {
+          const usesVar = new RegExp(`\\b${currentCatchVar}\\b`).test(line);
+          if (usesVar && !line.includes('asError(')) {
+            console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
+            process.exit(1);
+          }
+        }
+      }
+
+      if (RAW_LOG_CALL.test(line)) {
+        if (!line.includes('asError(')) {
+          const matches = line.matchAll(RAW_ERROR_IDENTIFIER);
+          for (const match of matches) {
+            const identifier = match[1];
+            if (identifier && !normalizedVars.has(identifier)) {
+              console.error(`raw-error-logging: ${relPath}: ${identifier}`);
+              process.exit(1);
+            }
+          }
+        }
+      }
+
+      if (justEnteredCatch) {
+        justEnteredCatch = false;
+      }
+
+      if (startIndex >= 0) {
+        catchDepth = countBraces(line, startIndex);
+      } else {
+        catchDepth += countBraces(line);
+      }
+      if (catchDepth <= 0) {
+        if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
+          console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
+          process.exit(1);
+        }
+        inCatch = false;
+        pendingCatch = false;
+        catchDepth = 0;
+        currentCatchVar = null;
+        justEnteredCatch = false;
+        normalizedVars = new Set();
+      }
     }
   }
 }
@@ -341,6 +531,82 @@ for (const rel of REQUIRED_GUARDRAILS) {
   const fullPath = path.join(repoRoot, rel);
   if (!fs.existsSync(fullPath)) {
     console.error(`guardrail-integrity: ${rel}: missing`);
+    process.exit(1);
+  }
+}
+
+if (fs.existsSync(migrationsDir)) {
+  if (!fs.existsSync(migrationBaselinePath)) {
+    console.error('migration-safety-baseline: missing');
+    process.exit(1);
+  }
+  const baselineRaw = fs.readFileSync(migrationBaselinePath, 'utf8');
+  /** @type {string[]} */
+  const baselineList = JSON.parse(baselineRaw);
+  const baseline = new Set(baselineList.map((entry) => String(entry)));
+  const migrationDirs = fs
+    .readdirSync(migrationsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  const replayDir = path.join(root, 'tests', 'replay');
+  const hasReplayTests = fs.existsSync(replayDir) && collectFiles(replayDir).length > 0;
+
+  for (const dirName of migrationDirs) {
+    if (baseline.has(dirName)) continue;
+    const migrationSql = path.join(migrationsDir, dirName, 'migration.sql');
+    if (!fs.existsSync(migrationSql)) continue;
+    const sql = fs.readFileSync(migrationSql, 'utf8');
+    const touchesGuardedModel = MIGRATION_GUARDED_MODELS.some((model) => sql.includes(model));
+    if (!touchesGuardedModel) continue;
+    if (hasMigrationEscapeHatch(sql)) continue;
+
+    const migrationTestDir = path.join(root, 'tests', 'migrations');
+    const migrationTestCandidates = [
+      path.join(migrationTestDir, `${dirName}.test.ts`),
+      path.join(migrationTestDir, `${dirName}.test.js`),
+      path.join(migrationTestDir, `${dirName}.test.mts`),
+    ];
+    const hasMigrationTest = migrationTestCandidates.some((candidate) => fs.existsSync(candidate));
+
+    if (!hasReplayTests && !hasMigrationTest) {
+      console.error(`migration-safety-missing-test: ${dirName}`);
+      process.exit(1);
+    }
+  }
+}
+
+const MODULE_DECL = /declare module ['"]([^'"]+)['"]/g;
+// TODO: Consider a warning-only rule for package-level module shims (no slash),
+// with explicit exceptions (e.g., next-auth, nodemailer) if/when contributor count grows.
+const compatPrefix = path.normalize(path.join('types', 'compat')) + path.sep;
+const jsxGlobalPath = path.normalize(path.join('types', 'jsx-global.d.ts'));
+
+for (const file of typesFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  if (relPath === jsxGlobalPath) continue;
+  if (relPath.startsWith(compatPrefix)) continue;
+  console.error(`types-compat-only: ${relPath}`);
+  process.exit(1);
+}
+
+/** @type {Map<string, string[]>} */
+const moduleDeclarations = new Map();
+for (const file of typesFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  const matches = content.matchAll(MODULE_DECL);
+  for (const match of matches) {
+    const moduleName = match[1];
+    if (typeof moduleName !== 'string' || moduleName.length === 0) continue;
+    const entries = moduleDeclarations.get(moduleName) ?? [];
+    entries.push(relPath);
+    moduleDeclarations.set(moduleName, entries);
+  }
+}
+for (const [moduleName, files] of moduleDeclarations) {
+  if (files.length > 1) {
+    console.error(`types-duplicate-module: ${moduleName}: ${files.join(', ')}`);
     process.exit(1);
   }
 }

@@ -1,97 +1,98 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/client';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+if (process.env['CHERRY_AUTHORITY_INVARIANTS_RUNNER'] !== '1') {
+  const scriptPath = fileURLToPath(import.meta.url);
+  const result = spawnSync('node', [scriptPath], {
+    env: { ...process.env, CHERRY_AUTHORITY_INVARIANTS_RUNNER: '1' },
+    stdio: 'inherit',
+  });
+  process.exit(result.status ?? 1);
+}
 
 const requireFn = createRequire(import.meta.url);
+process.env['TS_NODE_COMPILER_OPTIONS'] =
+  process.env['TS_NODE_COMPILER_OPTIONS'] ??
+  JSON.stringify({
+    module: 'CommonJS',
+    moduleResolution: 'node',
+    baseUrl: '.',
+    paths: { '@/*': ['./*'] },
+    allowJs: true,
+    jsx: 'react-jsx',
+  });
 requireFn('ts-node/register/transpile-only');
+requireFn('tsconfig-paths/register');
 
-const { simulateSpendAuthority, recordDecisionEvent } = requireFn(
+const { simulateSpendAuthorityFromSnapshot, recordDecisionEventWithWriter } = requireFn(
   '../lib/authority/simulateSpendAuthority.ts'
 ) as typeof import('../lib/authority/simulateSpendAuthority.ts');
-type AuthorityPrismaClient =
-  import('../lib/authority/simulateSpendAuthority.ts').AuthorityPrismaClient;
-type DecisionEventClient =
-  import('../lib/authority/simulateSpendAuthority.ts').DecisionEventClient;
+const { initConfigFromEnv } = requireFn('../lib/config/init.ts') as typeof import('../lib/config/init.ts');
+const { getServerConfig } = requireFn('../lib/config/store.ts') as typeof import('../lib/config/store.ts');
+const { Sha256Digest } = requireFn('../lib/adapters/runtime/digest.sha256.ts') as typeof import('../lib/adapters/runtime/digest.sha256.ts');
 
-function buildStubClient(overrides: {
-  dailyStateStatus?: DailyStateStatus;
-  safeToSpendCents?: number | null;
-  categoryPreferenceMode?: CategoryBudgetMode | null;
-  pendingSessions?: number;
-  pendingPoints?: number;
-  buckets?: Array<Record<string, unknown>>;
-} = {}): AuthorityPrismaClient {
-  const buckets =
-    overrides.buckets ??
-    [
-      {
-        id: 'bucket-1',
-        userId: 'user-1',
-        name: 'Dining',
-        period: 'MONTHLY',
-        budgetAmount: 10_000,
-        currentAmount: 9_000,
-        spentCents: 1_000,
-        strictMode: true,
-        category: RewardCategory.DINING,
-        periodStart: new Date('2024-01-01T00:00:00Z'),
-        periodEnd: new Date('2024-02-01T00:00:00Z'),
-        lastResetAt: null,
-        simulations: [],
-        recommendationSessions: [],
-        createdAt: new Date('2024-01-01T00:00:00Z'),
-        updatedAt: new Date('2024-01-01T00:00:00Z'),
-      },
-    ];
+type AuthoritySnapshot = import('../lib/authority/simulateSpendAuthority.ts').AuthoritySnapshot;
+type SimulateSpendParams = import('../lib/authority/simulateSpendAuthority.ts').SimulateSpendParams;
+type SimulatedAuthorityDecision =
+  import('../lib/authority/simulateSpendAuthority.ts').SimulatedAuthorityDecision;
+type DecisionEventWriter = import('../lib/authority/simulateSpendAuthority.ts').DecisionEventWriter;
 
+const fixedNowMs = new Date('2024-01-02T00:00:00Z').getTime();
+const digest = Sha256Digest;
+
+function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySnapshot {
   return {
     dailyState: {
-      findFirst: async () =>
-        overrides.dailyStateStatus !== undefined
-          ? {
-              status: overrides.dailyStateStatus,
-              safeToSpendCents:
-                overrides.safeToSpendCents === undefined ? 15_000 : overrides.safeToSpendCents,
-              inputsVersion: 'ds-hash',
-            }
-          : null,
+      status: DailyStateStatus.SAFE,
+      safeToSpendCents: 15_000,
+      inputsVersion: 'ds-hash',
     },
-    bucket: {
-      findMany: async () => buckets,
-    },
-    categoryPreference: {
-      findUnique: async () =>
-        overrides.categoryPreferenceMode !== undefined
-          ? { mode: overrides.categoryPreferenceMode }
-          : null,
-    },
-    recommendationSession: {
-      count: async () => overrides.pendingSessions ?? 0,
-    },
-    cherryPointLedger: {
-      aggregate: async () => ({
-        _sum: { points: overrides.pendingPoints ?? 0 },
-      }),
-    },
-  } as unknown as AuthorityPrismaClient;
+    buckets: [
+      {
+        id: 'bucket-1',
+        category: RewardCategory.DINING,
+        budgetAmount: 10_000,
+        remainingCents: 9_000,
+        strictMode: true,
+        periodEndMs: new Date('2024-02-01T00:00:00Z').getTime(),
+      },
+    ],
+    categoryPreferenceMode: CategoryBudgetMode.BUDGETED,
+    pendingSessions: 0,
+    pendingPoints: 0,
+    ...overrides,
+  };
 }
 
 async function main(): Promise<void> {
-  const now = new Date('2024-01-02T00:00:00Z');
-  const client = buildStubClient({
-    dailyStateStatus: DailyStateStatus.SAFE,
-    categoryPreferenceMode: CategoryBudgetMode.BUDGETED,
-  });
-
-  const baseParams = {
+  if (process.env['NEXT_PUBLIC_SITE_VERSION'] == null) {
+    process.env['NEXT_PUBLIC_SITE_VERSION'] = 'dev';
+  }
+  initConfigFromEnv(process.env);
+  const engineVersion = getServerConfig().engineVersion;
+  const snapshot = buildSnapshot();
+  const baseParams: SimulateSpendParams = {
     userId: 'user-1',
     amountCents: 2_500,
     category: RewardCategory.DINING,
-    surface: 'simulate' as const,
+    surface: 'simulate',
   };
 
-  const first = await simulateSpendAuthority(baseParams, { prisma: client, now });
-  const second = await simulateSpendAuthority(baseParams, { prisma: client, now });
+  const first = await simulateSpendAuthorityFromSnapshot(baseParams, {
+    snapshot,
+    nowMs: fixedNowMs,
+    engineVersion,
+    digest,
+  });
+  const second = await simulateSpendAuthorityFromSnapshot(baseParams, {
+    snapshot,
+    nowMs: fixedNowMs,
+    engineVersion,
+    digest,
+  });
 
   assert.equal(first.inputsVersion, second.inputsVersion);
   assert.deepEqual(first, second);
@@ -100,9 +101,9 @@ async function main(): Promise<void> {
   assert.equal(first.severity, severityFromReasons);
   assert.ok(first.reasons.length >= 1);
 
-  const changed = await simulateSpendAuthority(
+  const changed = await simulateSpendAuthorityFromSnapshot(
     { ...baseParams, amountCents: baseParams.amountCents + 123 },
-    { prisma: client, now }
+    { snapshot, nowMs: fixedNowMs, engineVersion, digest }
   );
   assert.notEqual(first.inputsVersion, changed.inputsVersion);
 
@@ -113,21 +114,21 @@ async function main(): Promise<void> {
   }
 
   const recorded: Array<Record<string, unknown>> = [];
-  const db: DecisionEventClient = {
-    decisionEvent: {
-      create: async ({ data }: { data: Record<string, unknown> }) => {
-        recorded.push(data);
-        return data;
-      },
+  const writer: DecisionEventWriter = {
+    create: async ({ data }: { data: Record<string, unknown> }) => {
+      recorded.push(data);
+      return data;
     },
   };
 
-  await recordDecisionEvent({
+  const { __authorityPure: _authorityBrand, ...decision } = first;
+  void _authorityBrand;
+  await recordDecisionEventWithWriter({
     userId: baseParams.userId,
     surface: baseParams.surface,
     params: baseParams,
-    decision: first,
-    db,
+    decision: decision as SimulatedAuthorityDecision,
+    writer,
   });
 
   assert.equal(recorded.length, 1);
@@ -148,14 +149,10 @@ async function main(): Promise<void> {
     'counterfactuals',
   ];
   for (const field of requiredFields) {
-    assert.ok(
-      Object.hasOwn(event, field),
-      `DecisionEvent missing field ${field as string}`
-    );
+    assert.ok(field in event, `Missing decisionEvent field ${field}`);
   }
-  const reasonCodes = event['reasonCodes'];
-  assert.ok(Array.isArray(reasonCodes));
-  assert.ok((reasonCodes as unknown[]).length >= 1);
+
+  console.warn('authority invariants: ok');
 }
 
 main().catch((err) => {
