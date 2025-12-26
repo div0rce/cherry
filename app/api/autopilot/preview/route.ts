@@ -11,7 +11,7 @@ import { resolveUserContext } from '../../../../lib/user-context.js';
 import { incrementCounter, observeDuration } from '../../../../lib/metrics/autopilot.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
-import { asAppError } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
 
 // Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 
@@ -114,10 +114,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: caught.status >= 500 ? 'soft' : 'hard',
         reason: caught.code,
       });
-      return respond(caught.status, { error: caught.message, code: caught.code });
+      return respond(caught.status, { error: appError.message, code: caught.code });
     }
 
-    if (appError.message.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       previewStatusLabel = 'invalid';
       return respond(401, { error: 'Unauthorized', code: 'UNAUTHORIZED' });
     }

@@ -8,7 +8,7 @@ import { parseJsonBody } from '../../../lib/validation.js';
 import { assertUserId } from '../../../lib/invariants.js';
 import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -223,7 +223,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message?.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to delete card', { status: 500 });

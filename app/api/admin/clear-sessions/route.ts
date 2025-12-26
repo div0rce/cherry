@@ -7,7 +7,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '../../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
 
 export async function POST(_req: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -31,7 +31,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to resolve user context', { status: 500 });

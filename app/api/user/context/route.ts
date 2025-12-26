@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveUserContext } from '../../../../lib/user-context.js';
-import { asAppError } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
 
 export async function GET(): Promise<NextResponse> {
   try {
@@ -8,7 +8,7 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ userId: ctx.userId, mode: ctx.mode });
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return new NextResponse('Failed to resolve user context', { status: 500 });

@@ -175,6 +175,7 @@ const adaptersPrefix = path.normalize(path.join('lib', 'adapters')) + path.sep;
 const schemasPrefix = path.normalize(path.join('lib', 'schemas')) + path.sep;
 const validationPrefix = path.normalize(path.join('lib', 'validation')) + path.sep;
 const moneyModulePath = path.normalize(path.join('lib', 'money.ts'));
+const apiPrefix = path.normalize(path.join('app', 'api')) + path.sep;
 const engineDir = path.join(root, 'lib', 'engine');
 const bucketsDir = path.join(root, 'lib', 'buckets');
 const verificationDir = path.join(root, 'lib', 'verification');
@@ -497,6 +498,14 @@ for (const file of errorLogFiles) {
               process.exit(1);
             }
           }
+        }
+      }
+
+      if (currentCatchVar && relPath.startsWith(apiPrefix)) {
+        const messageAccess = new RegExp(`\\b${currentCatchVar}\\.message\\b`);
+        if (messageAccess.test(line)) {
+          console.error(`api-error-message-banned: ${relPath}: ${currentCatchVar}`);
+          process.exit(1);
         }
       }
 

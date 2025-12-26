@@ -6,6 +6,7 @@ import { getServerConfig } from './config/store.js';
 import type { ServerConfig } from './config/server.js';
 import { logInvariant } from './logging.ts';
 import { assertUserId } from './invariants.ts';
+import { AppError } from './errors.ts';
 
 export type UserContextMode = 'AUTHENTICATED' | 'LAB_DEMO';
 
@@ -123,7 +124,7 @@ async function findOrCreateLabUser(
   serverConfig: ServerConfig
 ) {
   if (serverConfig.environment === 'production') {
-    throw new Error('Unauthorized: lab demo mode is disabled in production');
+    throw new AppError('UNAUTHORIZED', 'Unauthorized: lab demo mode is disabled in production', 401);
   }
 
   if (factoryOverride) {
@@ -217,7 +218,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
   }
 
   if (requireAuth === true && hasNoSession) {
-    throw new Error('Unauthorized: no active session and lab demo not allowed');
+    throw new AppError('UNAUTHORIZED', 'Unauthorized: no active session and lab demo not allowed', 401);
   }
 
   throw new Error(

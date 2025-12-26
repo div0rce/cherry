@@ -5,7 +5,7 @@ import { ConfirmSessionSchema } from '../../../../../lib/schemas/sessions.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
 import { assertUserId, isPrismaP2003, logInvariant, resolveUserContext } from '../../../../../lib/user-context.js';
 import { confirmRecommendationSession, SessionConfirmError } from '../../../../../lib/sessions/confirm-service.js';
-import { asAppError, asLogMeta } from '../../../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -26,7 +26,7 @@ export async function POST(
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/sessions/[id]/confirm POST', appError);
@@ -74,7 +74,7 @@ export async function POST(
   } catch (error: unknown) {
     const appError = asAppError(error);
     if (error instanceof SessionConfirmError) {
-      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+      return NextResponse.json({ error: appError.message, code: error.code }, { status: error.status });
     }
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/sessions/[id]/confirm POST', {

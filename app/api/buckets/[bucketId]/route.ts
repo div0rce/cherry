@@ -12,7 +12,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '../../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -54,7 +54,7 @@ export async function PATCH(
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets/[bucketId] PATCH', appError);
@@ -138,7 +138,7 @@ export async function DELETE(
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets/[bucketId] DELETE', appError);

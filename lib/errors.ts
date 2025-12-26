@@ -20,8 +20,12 @@ export class AppError extends Error {
 
 export function asAppError(err: unknown): AppError {
   if (err instanceof AppError) return err;
-  if (err instanceof Error) return new AppError('INTERNAL', err.message, 500);
-  return new AppError('INTERNAL', 'Unknown error', 500, err);
+  if (err instanceof Error) return new AppError('INTERNAL', err.message, 500, err);
+  return new AppError('INTERNAL', String(err), 500, err);
+}
+
+export function isUnauthorized(err: AppError): boolean {
+  return err.code === 'UNAUTHORIZED' || err.status === 401;
 }
 
 export function asLogMeta(value: unknown): string | null {

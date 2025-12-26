@@ -11,7 +11,7 @@ import {
   logInvariant,
   isPrismaP2003,
 } from '../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
@@ -361,7 +361,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-    if (appError.message?.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error in /api/simulate', appError);

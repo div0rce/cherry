@@ -8,7 +8,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '../../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -32,7 +32,7 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/seed-demo/cards-buckets POST', appError);

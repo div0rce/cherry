@@ -5,7 +5,7 @@ import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log.js
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { resolveUserContext } from '../../../../lib/user-context.js';
 import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
-import { asAppError } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
@@ -53,12 +53,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         reason: caught.code,
       });
       return NextResponse.json(
-        { error: caught.message, code: caught.code },
+        { error: appError.message, code: caught.code },
         { status: caught.status }
       );
     }
 
-    if (appError.message.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
     logInvariantViolation({

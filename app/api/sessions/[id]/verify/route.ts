@@ -9,7 +9,7 @@ import {
   resolveUserContext,
 } from '../../../../../lib/user-context.js';
 import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session.js';
-import { asAppError } from '../../../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -30,7 +30,7 @@ export async function POST(
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/sessions/[id]/verify POST', appError);

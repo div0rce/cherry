@@ -13,7 +13,7 @@ import type { SimulatedAuthorityDecision } from '../../../lib/authority/simulate
 import { resolveScanCategory } from '../../../lib/scan-helpers.js';
 import type { ScanResponseBody } from '../../../lib/scan-types.js';
 import { logError } from '../../../lib/logger.js';
-import { asAppError } from '../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../lib/errors.js';
 import { ScanRequestSchema } from '../../../lib/schemas/scan.js';
 import { parseJsonBody } from '../../../lib/validation.js';
 import { validateEngineDecision } from '../../../lib/engine-invariants.js';
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message?.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error in /api/scan', appError);

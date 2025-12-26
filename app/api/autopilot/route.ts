@@ -6,7 +6,7 @@ import { resolveUserContext } from '../../../lib/user-context.js';
 import { logGuardrailEvent } from '../../../lib/log.js';
 import { parseJsonBody } from '../../../lib/validation.js';
 import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
-import { asAppError } from '../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../lib/errors.js';
 
 const AutopilotRequestSchema = z
   .object({
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   } catch (err: unknown) {
     const appError = asAppError(err);
-    if (appError.message.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     logGuardrailEvent({

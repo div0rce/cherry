@@ -13,7 +13,7 @@ import { verifyVineSignature, type VineSignatureContext } from '../../../../lib/
 import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '../../../../lib/user-context.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { z } from 'zod';
-import { asAppError, asLogMeta } from '../../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>
@@ -129,17 +129,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message?.includes('lab demo mode is disabled in production')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if (appError.message?.includes('Unauthorized')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if (appError.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
-      return NextResponse.json(
-        { error: 'vine_user_missing', message: appError.message },
-        { status: 500 }
-      );
     }
     logError('Error in /api/vine/order', appError);
     return NextResponse.json({ error: 'Failed to process order' }, { status: 500 });

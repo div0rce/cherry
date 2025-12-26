@@ -11,7 +11,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';
@@ -63,7 +63,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(runtimeBuckets);
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets POST', appError);
@@ -213,7 +213,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message.startsWith('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets DELETE', appError);

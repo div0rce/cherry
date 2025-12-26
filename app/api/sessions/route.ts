@@ -28,7 +28,7 @@ import { fetchSessionSummaries } from '../../../lib/sessions/summaries.js';
 import { assertUserId } from '../../../lib/invariants.js';
 import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     mode = ctx.mode;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message?.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in /api/sessions POST', appError);
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
   } catch (error: unknown) {
     const appError = asAppError(error);
-    if (appError.message?.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in /api/sessions GET', appError);
