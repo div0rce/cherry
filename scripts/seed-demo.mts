@@ -12,6 +12,10 @@ import { prisma } from '../lib/prisma.ts';
 import { logError, logInfo } from '../lib/logger.ts';
 import { seedDemoForUser } from '../lib/demo-seeder.ts';
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

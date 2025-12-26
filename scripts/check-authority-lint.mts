@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 const forbiddenTokens = ['approve', 'decline', 'block', 'route', 'authorization', 'auth loop'];
 const scopedGlobs = ['lib/authority/**/*.ts', 'lib/autopilot/**/*.ts', 'lib/vine/**/*.ts', 'app/api/**/*.ts'];

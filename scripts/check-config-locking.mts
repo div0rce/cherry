@@ -5,6 +5,10 @@ import {
   lockServerConfig,
   setServerConfig,
 } from '../lib/config/store.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 function expectThrow(fn: () => void, message: string): void {
   let threw = false;

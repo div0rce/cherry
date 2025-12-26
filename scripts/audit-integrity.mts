@@ -7,6 +7,10 @@ import {
 } from '@prisma/client';
 import { prisma } from '../lib/prisma.ts';
 import { logInfo, logWarn } from '../lib/logger.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 const LEDGER_STATUS_FOR_BALANCE = CherryPointLedgerStatus.POSTED;
 const SESSION_EXPIRY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours

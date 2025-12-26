@@ -1,6 +1,10 @@
 import { RecommendationStatus, RecommendationSource } from '@prisma/client';
 import { prisma } from '../lib/prisma.ts';
 import { logInvariant } from '../lib/user-context.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {

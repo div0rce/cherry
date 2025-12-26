@@ -1,4 +1,8 @@
 import { initConfigFromEnv } from '../lib/config/init.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 declare global {
   var __CHERRY_TEST_MODE__: boolean | undefined;

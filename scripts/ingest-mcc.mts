@@ -30,6 +30,10 @@ import {
 import { prisma } from '../lib/prisma.ts';
 import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.ts';
 import { logError, logInfo } from '../lib/logger.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');

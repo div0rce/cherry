@@ -7,6 +7,10 @@ import {
 import { initConfigFromEnv } from '../lib/config/init.ts';
 import { getServerConfig } from '../lib/config/store.ts';
 import { Sha256Digest } from '../lib/adapters/runtime/digest.sha256.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 type AuthoritySnapshot = import('../lib/authority/simulateSpendAuthority.ts').AuthoritySnapshot;
 type SimulateSpendParams = import('../lib/authority/simulateSpendAuthority.ts').SimulateSpendParams;

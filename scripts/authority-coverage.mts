@@ -1,4 +1,8 @@
 import { prisma } from '../lib/prisma.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 async function main(): Promise<void> {
   const events = await prisma.decisionEvent.findMany({

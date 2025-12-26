@@ -1,5 +1,9 @@
 import { RewardCategory } from '@prisma/client';
 import { prisma } from '../lib/prisma.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 async function main(): Promise<void> {
   // Check if legacy column still exists; if not, exit early.

@@ -3,6 +3,10 @@ import {
   computeBucketBalanceFromNumbers,
   deriveLegacyCurrentAmount,
 } from '../lib/buckets-runtime.ts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

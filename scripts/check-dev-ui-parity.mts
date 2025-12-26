@@ -1,5 +1,9 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 type ParityRow = {
   id: string;

@@ -1,5 +1,9 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
+import { ensureTsEsm } from './lib/ensure-ts-esm.ts';
+
+ensureTsEsm();
+
 
 const APP_DIR = join(process.cwd(), 'app');
 
