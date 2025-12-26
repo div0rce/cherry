@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
 import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
 import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import type { ActionState } from '../../_lib/form-state';
+import type { ActionState } from '../../_lib/form-state.js';
 
 const BucketSchema = z
   .object({

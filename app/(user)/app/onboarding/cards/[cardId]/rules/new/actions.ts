@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
 import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import type { ActionState } from '../../../../_lib/form-state';
+import type { ActionState } from '../../../../_lib/form-state.js';
 
 const ALLOWED_CATEGORIES = [
   RewardCategory.DINING,

@@ -9,7 +9,7 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
-import { DeleteBucketButton, AddBucketForm } from './client';
+import { DeleteBucketButton, AddBucketForm } from './client.js';
 import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>

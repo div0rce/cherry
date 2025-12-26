@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { Card } from './card';
+import { Card } from './card.js';
 import { cn } from '@/lib/ui/cn';
 
 type AlertVariant = 'info' | 'success' | 'warning' | 'danger';

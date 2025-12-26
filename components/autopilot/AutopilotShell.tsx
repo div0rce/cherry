@@ -11,8 +11,8 @@ import type {
   AutopilotCategoryOptionValue,
   AutopilotTimingOption,
 } from '@/lib/autopilot/uiSpec';
-import { AutopilotPurchaseForm } from './AutopilotPurchaseForm';
-import { AutopilotDecisionPanel } from './AutopilotDecisionPanel';
+import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.js';
+import { AutopilotDecisionPanel } from './AutopilotDecisionPanel.js';
 
 export type AutopilotPurchaseSummary = {
   amount: number;

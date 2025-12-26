@@ -7,7 +7,7 @@ import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getUnifiedActivityForUser, getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
 import { ROUTES } from '@/lib/routes';
 import { getServerConfig } from '@/lib/config/store';
-import MonthPicker from './client';
+import MonthPicker from './client.js';
 
 type SearchParams = Promise<{ month?: string }>;
 

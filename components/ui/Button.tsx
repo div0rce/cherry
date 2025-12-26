@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { LinkProps } from 'next/link';
 import { Slot } from '@radix-ui/react-slot';
 import { type VariantProps } from 'class-variance-authority';
-import { buttonVariants, type ButtonVariant, type ButtonSize } from './button-classes';
+import { buttonVariants, type ButtonVariant, type ButtonSize } from './button-classes.js';
 import { cn } from '@/lib/ui/cn';
 
 export interface ButtonProps

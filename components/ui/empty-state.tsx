@@ -1,8 +1,8 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { Card } from './card';
-import { Button, ButtonLink } from './Button';
+import { Card } from './card.js';
+import { Button, ButtonLink } from './Button.js';
 import { cn } from '@/lib/ui/cn';
 
 type EmptyStateProps = {

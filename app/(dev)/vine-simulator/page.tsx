@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
-import { VineSimulatorClient } from './client';
+import { VineSimulatorClient } from './client.js';
 export default async function VineSimulatorPage(): Promise<JSX.Element> {
   const session = await getServerSession(authOptions);
   if (!session) {

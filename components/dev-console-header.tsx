@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react';
-import { UserMenu } from './user-menu';
+import { UserMenu } from './user-menu.js';
 import { ButtonLink } from '@/components/ui/Button';
 import { cn } from '@/lib/ui/cn';
 

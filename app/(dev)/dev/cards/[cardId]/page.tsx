@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { ROUTES } from '@/lib/routes';
 import Link from 'next/link';
 import { EmptyState } from '@/components/ui/empty-state';
-import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client';
+import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client.js';
 
 function formatCents(cents: number | null) {
   if (cents == null) return '—';

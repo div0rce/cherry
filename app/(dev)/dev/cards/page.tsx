@@ -13,7 +13,7 @@ import {
   AddRewardRuleForm,
   DeleteCardButton,
   DeleteRewardRuleButton,
-} from './client';
+} from './client.js';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import { asError } from '@/lib/errors';

@@ -2,8 +2,8 @@ import type { JSX } from 'react';
 import Link from 'next/link';
 import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import type { AutopilotOnboardingState, AutopilotPrereqs } from '@/lib/autopilot/prereq-types';
-import { loadDemoDataset } from './actions';
-import { DemoDatasetButton } from './_components/DemoDatasetButton';
+import { loadDemoDataset } from './actions.js';
+import { DemoDatasetButton } from './_components/DemoDatasetButton.js';
 export const dynamic = 'force-dynamic';
 
 type MissingKey = 'cards' | 'rules' | 'buckets' | null;

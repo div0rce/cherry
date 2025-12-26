@@ -11,7 +11,7 @@ import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
 import { ButtonLink } from '@/components/ui/Button';
-import AdminClient from './AdminClient';
+import AdminClient from './AdminClient.js';
 import { Alert } from '@/components/ui/alert';
 import { getServerConfig } from '@/lib/config/store';
 

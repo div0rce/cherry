@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { RunSimulationForm, DeleteSimulationButton } from './client';
+import { RunSimulationForm, DeleteSimulationButton } from './client.js';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';

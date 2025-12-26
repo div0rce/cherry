@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import type { JSX, ReactNode } from 'react';
-import type { ActionState } from '../_lib/form-state';
-import { initialActionState } from '../_lib/form-state';
-import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers';
+import type { ActionState } from '../_lib/form-state.js';
+import { initialActionState } from '../_lib/form-state.js';
+import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers.js';
 
 const CATEGORY_OPTIONS = [
   { value: 'DINING', label: 'Dining' },

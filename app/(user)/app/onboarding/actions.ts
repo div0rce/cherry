@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
-import type { ActionState } from './_lib/form-state';
+import type { ActionState } from './_lib/form-state.js';
 
 export async function loadDemoDataset(
   _prevState: ActionState,

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 import type { AutopilotPrereqs } from '@/lib/autopilot/prereq-types';
-import { AutopilotEntry } from '../_components/AutopilotEntry';
+import { AutopilotEntry } from '../_components/AutopilotEntry.js';
 
 export const dynamic = 'force-dynamic';
 

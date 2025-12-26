@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { requireUserContext } from '@/app/(user)/_lib/api';
-import { CardForm } from '../../_components/CardForm';
-import { createCard } from './actions';
+import { CardForm } from '../../_components/CardForm.js';
+import { createCard } from './actions.js';
 export const dynamic = 'force-dynamic';
 
 
