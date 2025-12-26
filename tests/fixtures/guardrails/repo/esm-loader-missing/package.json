@@ -1,0 +1,7 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "check:side-effects": "ts-node --project tsconfig.scripts.json scripts/check-no-side-effects.mts"
+  }
+}

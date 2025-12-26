@@ -48,6 +48,7 @@ const TIME_TOKENS = [
   { token: 'new Date(', regex: /\bnew Date\s*\(/ },
   { token: 'Date.now(', regex: /\bDate\.now\s*\(/ },
 ];
+const BAD_TS_NODE_MTS = /ts-node(?![^\n]*--loader\s+ts-node\/esm)[^\n]*\.mts\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
 const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asError\s*\(/;
@@ -155,6 +156,7 @@ const verificationFiles = collectFiles(verificationDir);
 const appDir = path.join(root, 'app');
 const apiDir = path.join(appDir, 'api');
 const userDir = path.join(appDir, '(user)');
+const packageJsonPath = path.join(root, 'package.json');
 const appFiles = collectFiles(appDir);
 const apiFiles = collectFiles(apiDir);
 const userFiles = collectFiles(userDir);
@@ -462,6 +464,19 @@ for (const file of errorLogFiles) {
         normalizedVars = new Set();
       }
     }
+  }
+}
+
+const commandFiles = [packageJsonPath];
+for (const file of commandFiles) {
+  if (!fs.existsSync(file)) continue;
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  if (BAD_TS_NODE_MTS.test(content)) {
+    console.error(
+      `esm-loader-missing: ${relPath}: ts-node .mts without --loader ts-node/esm`
+    );
+    process.exit(1);
   }
 }
 

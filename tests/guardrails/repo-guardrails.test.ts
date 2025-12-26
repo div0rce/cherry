@@ -104,6 +104,12 @@ function run(): void {
     file: path.join('scripts', 'bad.ts'),
   });
 
+  runFixture('esm-loader-missing', {
+    guardrail: 'esm-loader-missing',
+    token: 'ts-node .mts without --loader ts-node/esm',
+    file: 'package.json',
+  });
+
   console.warn('repo-guardrails: ok');
 }
 
