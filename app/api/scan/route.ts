@@ -3,21 +3,21 @@ import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
-import { resolveScanCategory } from '@/lib/scan-helpers';
-import type { ScanResponseBody } from '@/lib/scan-types';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { ScanRequestSchema } from '@/lib/schemas/scan';
-import { parseJsonBody } from '@/lib/validation';
-import { validateEngineDecision } from '@/lib/engine-invariants';
-import { resolveUserContext } from '@/lib/user-context';
+} from '../../../lib/engine.js';
+import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
+import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
+import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
+import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma.js';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
+import type { SimulatedAuthorityDecision } from '../../../lib/authority/simulateSpendAuthority.js';
+import { resolveScanCategory } from '../../../lib/scan-helpers.js';
+import type { ScanResponseBody } from '../../../lib/scan-types.js';
+import { logError } from '../../../lib/logger.js';
+import { asError } from '../../../lib/errors.js';
+import { ScanRequestSchema } from '../../../lib/schemas/scan.js';
+import { parseJsonBody } from '../../../lib/validation.js';
+import { validateEngineDecision } from '../../../lib/engine-invariants.js';
+import { resolveUserContext } from '../../../lib/user-context.js';
 import type { RewardCategory } from '@prisma/client';
 
 const hasText = (value?: string | null): value is string =>

@@ -2,21 +2,21 @@ import { Suspense } from 'react';
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import { LoadingRows } from '@/components/ui/loading-skeleton';
-import { ErrorBanner } from '@/components/ErrorBanner';
+import { PageHeader } from '../../../../components/ui/page-header.js';
+import { MetricCard } from '../../../../components/ui/metric-card.js';
+import { Panel } from '../../../../components/ui/panel.js';
+import { EmptyState } from '../../../../components/ui/empty-state.js';
+import { LoadingRows } from '../../../../components/ui/loading-skeleton.js';
+import { ErrorBanner } from '../../../../components/ErrorBanner.js';
 import {
   AddCardForm,
   AddRewardRuleForm,
   DeleteCardButton,
   DeleteRewardRuleButton,
 } from './client.js';
-import { getCurrentUserId } from '@/lib/auth';
-import { ROUTES } from '@/lib/routes';
-import { asError } from '@/lib/errors';
+import { getCurrentUserId } from '../../../../lib/auth.js';
+import { ROUTES } from '../../../../lib/routes.js';
+import { asError } from '../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

@@ -1,13 +1,13 @@
-import type { RewardCategory } from '@/lib/enums';
-import { hasText } from '@/lib/text';
-import { isPositiveNumber } from '@/lib/numbers';
-import { resolveScanCategory } from '@/lib/scan-helpers';
+import type { RewardCategory } from '../enums.js';
+import { hasText } from '../text.js';
+import { isPositiveNumber } from '../numbers.js';
+import { resolveScanCategory } from '../scan-helpers.js';
 import { buildEngineContext } from './context.js';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { fromPrismaUserToEngineState } from '../engine-state.js';
 import { safeSolveDecisionForWorld } from './run.js';
 import type { EngineDecision, EngineState } from './types.js';
 import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types.js';
-import type { World } from '@/lib/adapters/world';
+import type { World } from '../adapters/world.js';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];
 

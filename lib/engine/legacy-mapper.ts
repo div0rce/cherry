@@ -1,5 +1,5 @@
-import type { RewardCategory } from '@/lib/enums';
-import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
+import type { RewardCategory } from '../enums.js';
+import type { BudgetVerdict, CardVerdict, OverallVerdict } from '../enums.js';
 import type { EngineContext, EngineDecision, EngineState } from './types.js';
 import type { EngineDecision as LegacyEngineDecision } from './legacy.js';
 

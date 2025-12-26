@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { getCurrentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { ROUTES } from '@/lib/routes';
+import { getCurrentUserId } from '../../../../../lib/auth.js';
+import { prisma } from '../../../../../lib/prisma.js';
+import { ROUTES } from '../../../../../lib/routes.js';
 import Link from 'next/link';
-import { EmptyState } from '@/components/ui/empty-state';
+import { EmptyState } from '../../../../../components/ui/empty-state.js';
 import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client.js';
 
 function formatCents(cents: number | null) {

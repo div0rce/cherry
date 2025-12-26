@@ -1,5 +1,5 @@
-import type { AlertReason } from '@/lib/alerts/alertPolicy';
-import { logInfo } from '@/lib/logger';
+import type { AlertReason } from './alertPolicy.js';
+import { logInfo } from '../logger.js';
 
 type SendEmailParams = {
   to: string;

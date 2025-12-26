@@ -1,5 +1,5 @@
 import type { Bucket } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../prisma.js';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '../buckets-runtime.js';
 import { applyInMemoryRollover } from './periods.js';
 

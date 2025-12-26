@@ -2,8 +2,8 @@
 
 import type { JSX, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { EmptyState } from '@/components/ui/empty-state';
-import type { ActivitySource, UnifiedActivityRow } from '@/lib/unified-activity';
+import { EmptyState } from '../../../components/ui/empty-state.js';
+import type { ActivitySource, UnifiedActivityRow } from '../../../lib/unified-activity.js';
 
 type TypeFilter = 'REAL' | 'SIMULATED';
 

@@ -4,8 +4,8 @@ import type { JSX } from 'react';
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
-import { hasText } from '@/lib/text';
-import { logGuardrailEvent } from '@/lib/log';
+import { hasText } from '../../lib/text.js';
+import { logGuardrailEvent } from '../../lib/log.js';
 
 type SignInCardProps = {
   errorCode?: string;

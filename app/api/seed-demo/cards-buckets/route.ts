@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError, logInfo } from '@/lib/logger';
-import { seedCardsAndBucketsForUser } from '@/lib/demo-seeder';
+import { logError, logInfo } from '../../../../lib/logger.js';
+import { seedCardsAndBucketsForUser } from '../../../../lib/demo-seeder.js';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+} from '../../../../lib/user-context.js';
+import { asError, asLogMeta } from '../../../../lib/errors.js';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';

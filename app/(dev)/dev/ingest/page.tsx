@@ -1,14 +1,14 @@
 import type { JSX } from 'react';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { ROUTES } from '@/lib/routes';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { asError } from '@/lib/errors';
+import { prisma } from '../../../../lib/prisma.js';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth.js';
+import { ROUTES } from '../../../../lib/routes.js';
+import { PageHeader } from '../../../../components/ui/page-header.js';
+import { MetricCard } from '../../../../components/ui/metric-card.js';
+import { Panel } from '../../../../components/ui/panel.js';
+import { Card } from '../../../../components/ui/card.js';
+import { EmptyState } from '../../../../components/ui/empty-state.js';
+import { ErrorBanner } from '../../../../components/ErrorBanner.js';
+import { asError } from '../../../../lib/errors.js';
 
 type SourceSummary = {
   source: string;

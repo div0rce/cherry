@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { commitAutopilotDecision, commitAutopilotDecisionV2 } from '@/lib/autopilot/service';
-import { AutopilotCommitInputSchema, AutopilotServiceError } from '@/lib/autopilot/types';
-import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
-import { parseJsonBody } from '@/lib/validation';
-import { resolveUserContext } from '@/lib/user-context';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { asError } from '@/lib/errors';
+import { commitAutopilotDecision, commitAutopilotDecisionV2 } from '../../../../lib/autopilot/service.js';
+import { AutopilotCommitInputSchema, AutopilotServiceError } from '../../../../lib/autopilot/types.js';
+import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log.js';
+import { parseJsonBody } from '../../../../lib/validation.js';
+import { resolveUserContext } from '../../../../lib/user-context.js';
+import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
+import { asError } from '../../../../lib/errors.js';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 

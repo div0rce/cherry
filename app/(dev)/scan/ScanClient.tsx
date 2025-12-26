@@ -1,22 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from 'react';
-import { PageHeader } from '@/components/ui/page-header';
-import { Panel } from '@/components/ui/panel';
-import { Card } from '@/components/ui/card';
-import { Button, ButtonLink } from '@/components/ui/Button';
-import { Alert } from '@/components/ui/alert';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { LegacyEngineDecision } from '@/lib/engine';
-import type { ScanResponse } from '@/lib/schemas/scan';
-import { ScanResponseSchema } from '@/lib/schemas/scan';
-import { callApi } from '@/lib/client/api';
-import { useApiAction } from '@/lib/client/useApiAction';
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { hasText } from '@/lib/text';
-import { isNonNegativeNumber, isPositiveNumber } from '@/lib/numbers';
-import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
+import { PageHeader } from '../../../components/ui/page-header.js';
+import { Panel } from '../../../components/ui/panel.js';
+import { Card } from '../../../components/ui/card.js';
+import { Button, ButtonLink } from '../../../components/ui/Button.js';
+import { Alert } from '../../../components/ui/alert.js';
+import { EmptyState } from '../../../components/ui/empty-state.js';
+import { Skeleton } from '../../../components/ui/skeleton.js';
+import type { LegacyEngineDecision } from '../../../lib/engine.js';
+import type { ScanResponse } from '../../../lib/schemas/scan.js';
+import { ScanResponseSchema } from '../../../lib/schemas/scan.js';
+import { callApi } from '../../../lib/client/api.js';
+import { useApiAction } from '../../../lib/client/useApiAction.js';
+import { ErrorBanner } from '../../../components/ErrorBanner.js';
+import { hasText } from '../../../lib/text.js';
+import { isNonNegativeNumber, isPositiveNumber } from '../../../lib/numbers.js';
+import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';
 
 type ScanPreview = {
   category: string | null;

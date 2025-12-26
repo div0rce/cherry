@@ -9,26 +9,26 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../lib/prisma.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { logError } from '@/lib/logger';
-import { CreateSessionSchema } from '@/lib/schemas/sessions';
-import { parseJsonBody } from '@/lib/validation';
-import { validateEngineDecision } from '@/lib/engine-invariants';
+} from '../../../lib/engine.js';
+import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
+import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
+import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
+import { logError } from '../../../lib/logger.js';
+import { CreateSessionSchema } from '../../../lib/schemas/sessions.js';
+import { parseJsonBody } from '../../../lib/validation.js';
+import { validateEngineDecision } from '../../../lib/engine-invariants.js';
 import { randomUUID } from 'crypto';
-import { fetchSessionSummaries } from '@/lib/sessions/summaries';
-import { assertUserId } from '@/lib/invariants';
-import { logInvariant } from '@/lib/logging';
-import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+import { fetchSessionSummaries } from '../../../lib/sessions/summaries.js';
+import { assertUserId } from '../../../lib/invariants.js';
+import { logInvariant } from '../../../lib/logging.js';
+import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
+import { asError, asLogMeta } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

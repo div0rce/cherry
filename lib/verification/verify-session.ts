@@ -5,11 +5,11 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { computeBucketReversal } from '@/lib/sessions/reversal';
-import { logError, logWarn } from '@/lib/logger';
-import { asError } from '@/lib/errors';
+import { prisma } from '../prisma.js';
+import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
+import { computeBucketReversal } from '../sessions/reversal.js';
+import { logError, logWarn } from '../logger.js';
+import { asError } from '../errors.js';
 import type { VerificationResult, VerificationSignal } from './types.js';
 
 const AMOUNT_TOLERANCE_RATIO = 0.05;

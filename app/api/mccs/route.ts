@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
+import { prisma } from '../../../lib/prisma.js';
+import { logError } from '../../../lib/logger.js';
+import { asError } from '../../../lib/errors.js';
 
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {

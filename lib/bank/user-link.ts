@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../prisma.js';
 
 export async function resolveUserIdForExternalIds(opts: {
   accountExternalId?: string | null;

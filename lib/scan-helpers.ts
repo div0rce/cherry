@@ -1,6 +1,6 @@
 import { RewardCategory } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { resolveCategory } from '@/lib/engine';
+import { prisma } from './prisma.js';
+import { resolveCategory } from './engine.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

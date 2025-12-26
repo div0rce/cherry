@@ -4,10 +4,10 @@ import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/Button';
-import { Alert } from '@/components/ui/alert';
-import { asError } from '@/lib/errors';
+import { Card } from '../../../components/ui/card.js';
+import { Button } from '../../../components/ui/Button.js';
+import { Alert } from '../../../components/ui/alert.js';
+import { asError } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

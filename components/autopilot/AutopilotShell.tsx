@@ -5,12 +5,12 @@ import type { JSX } from 'react';
 import {
   runSimulation,
   type AutopilotSimulationResult,
-} from '@/lib/autopilot/runSimulation';
+} from '../../lib/autopilot/runSimulation.js';
 import type {
   AutopilotUiSpec,
   AutopilotCategoryOptionValue,
   AutopilotTimingOption,
-} from '@/lib/autopilot/uiSpec';
+} from '../../lib/autopilot/uiSpec.js';
 import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.js';
 import { AutopilotDecisionPanel } from './AutopilotDecisionPanel.js';
 

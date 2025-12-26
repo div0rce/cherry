@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
-import { asError } from '@/lib/errors';
+import { asError } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

@@ -2,12 +2,12 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
-import { LoadingRows } from '@/components/ui/loading-skeleton';
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { asError } from '@/lib/errors';
+import { Button } from '../../../../../components/ui/Button.js';
+import { Card } from '../../../../../components/ui/card.js';
+import { EmptyState } from '../../../../../components/ui/empty-state.js';
+import { LoadingRows } from '../../../../../components/ui/loading-skeleton.js';
+import { ErrorBanner } from '../../../../../components/ErrorBanner.js';
+import { asError } from '../../../../../lib/errors.js';
 
 type Decision = {
   id: string;

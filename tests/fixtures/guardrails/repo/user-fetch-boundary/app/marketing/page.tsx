@@ -1,4 +1,4 @@
-import { fetchFromApi } from '@/app/(user)/_lib/api';
+import { fetchFromApi } from '../../../../../../../app/(user)/_lib/api.js';
 import type { ReactElement } from 'react';
 
 export default async function MarketingPage(): Promise<ReactElement> {

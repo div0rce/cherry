@@ -1,10 +1,10 @@
-import type { AutopilotPurchaseSummary } from '@/components/autopilot/AutopilotShell';
-import type { AutopilotRewardCategory } from '@/lib/autopilot/types';
+import type { AutopilotPurchaseSummary } from '../../components/autopilot/AutopilotShell.js';
+import type { AutopilotRewardCategory } from './types.js';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
-} from '@/lib/validation/autopilot/preview';
-import { asError } from '@/lib/errors';
+} from '../validation/autopilot/preview.js';
+import { asError } from '../errors.js';
 
 export type SimulationCardChoice = {
   id: string;

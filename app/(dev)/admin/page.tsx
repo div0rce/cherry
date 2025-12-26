@@ -1,19 +1,19 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getCurrentUserId } from '@/lib/auth';
-import { getCherryPointsBalance } from '@/lib/points';
-import { getSessionStats } from '@/lib/admin/getSessionStats';
-import { getLedgerStats } from '@/lib/admin/getLedgerStats';
-import { prisma } from '@/lib/prisma';
-import { ROUTES } from '@/lib/routes';
-import { PageHeader } from '@/components/ui/page-header';
-import { Panel } from '@/components/ui/panel';
-import { Card } from '@/components/ui/card';
-import { MetricCard } from '@/components/ui/metric-card';
-import { ButtonLink } from '@/components/ui/Button';
+import { getCurrentUserId } from '../../../lib/auth.js';
+import { getCherryPointsBalance } from '../../../lib/points.js';
+import { getSessionStats } from '../../../lib/admin/getSessionStats.js';
+import { getLedgerStats } from '../../../lib/admin/getLedgerStats.js';
+import { prisma } from '../../../lib/prisma.js';
+import { ROUTES } from '../../../lib/routes.js';
+import { PageHeader } from '../../../components/ui/page-header.js';
+import { Panel } from '../../../components/ui/panel.js';
+import { Card } from '../../../components/ui/card.js';
+import { MetricCard } from '../../../components/ui/metric-card.js';
+import { ButtonLink } from '../../../components/ui/Button.js';
 import AdminClient from './AdminClient.js';
-import { Alert } from '@/components/ui/alert';
-import { getServerConfig } from '@/lib/config/store';
+import { Alert } from '../../../components/ui/alert.js';
+import { getServerConfig } from '../../../lib/config/store.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

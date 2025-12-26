@@ -1,5 +1,5 @@
-import { deriveStableId } from '@/lib/identity/hash';
-import type { StableId } from '@/lib/identity/types';
+import { deriveStableId } from '../identity/hash.js';
+import type { StableId } from '../identity/types.js';
 
 type OrderTokenInput = {
   userId: string;

@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
+import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
 import { CardForm } from '../../../_components/CardForm.js';
 import { DeleteActionButton } from '../../../_components/DeleteActionButton.js';
 import { updateCard, deleteCard } from './actions.js';

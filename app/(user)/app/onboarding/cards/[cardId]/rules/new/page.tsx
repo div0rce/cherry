@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
+import { fetchFromApi, requireUserContext } from '../../../../../../_lib/api.js';
 import { RewardRuleForm } from '../../../../_components/RewardRuleForm.js';
 import { createRewardRule } from './actions.js';
 export const dynamic = 'force-dynamic';

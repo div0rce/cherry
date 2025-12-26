@@ -1,4 +1,4 @@
-import type { VineOrderSource } from '@/lib/enums';
+import type { VineOrderSource } from '../enums.js';
 
 export type OrderContext = {
   deviceId: string;

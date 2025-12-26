@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getCurrentUserId } from '@/lib/auth';
-import { fetchSessionSummaries } from '@/lib/sessions/summaries';
+import { getCurrentUserId } from '../../../lib/auth.js';
+import { fetchSessionSummaries } from '../../../lib/sessions/summaries.js';
 import { SessionsPageClient } from './SessionsPageClient.js';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../lib/prisma.js';
 
 export default async function SessionsPage({
   searchParams,

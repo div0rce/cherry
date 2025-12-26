@@ -1,15 +1,15 @@
 import type { JSX } from 'react';
-import { Shell } from '@/components/layout/Shell';
-import { Panel } from '@/components/layout/Panel';
-import { EmptyState } from '@/components/layout/EmptyState';
-import { ButtonLink } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { getDashboardStats } from '@/lib/dashboard';
-import { ROUTES } from '@/lib/routes';
-import { prisma } from '@/lib/prisma';
+import { Shell } from '../../../components/layout/Shell.js';
+import { Panel } from '../../../components/layout/Panel.js';
+import { EmptyState } from '../../../components/layout/EmptyState.js';
+import { ButtonLink } from '../../../components/ui/Button.js';
+import { Card } from '../../../components/ui/card.js';
+import { PageHeader } from '../../../components/ui/page-header.js';
+import { MetricCard } from '../../../components/ui/metric-card.js';
+import { getCurrentUserIdOrRedirect } from '../../../lib/auth.js';
+import { getDashboardStats } from '../../../lib/dashboard.js';
+import { ROUTES } from '../../../lib/routes.js';
+import { prisma } from '../../../lib/prisma.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

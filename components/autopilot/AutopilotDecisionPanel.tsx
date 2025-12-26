@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
-import { Button, ButtonLink } from '@/components/ui/Button';
+import { Button, ButtonLink } from '../ui/Button.js';
 import { AutopilotMonthImpactBar } from './AutopilotMonthImpactBar.js';
 import type { AutopilotPurchaseSummary } from './AutopilotShell.js';
-import type { AutopilotSimulationResult } from '@/lib/autopilot/runSimulation';
-import { formatCurrency } from '@/lib/formatCurrency';
-import type { AutopilotUiSpec } from '@/lib/autopilot/uiSpec';
+import type { AutopilotSimulationResult } from '../../lib/autopilot/runSimulation.js';
+import { formatCurrency } from '../../lib/formatCurrency.js';
+import type { AutopilotUiSpec } from '../../lib/autopilot/uiSpec.js';
 
 type AutopilotDecisionPanelProps = {
   hasPurchase: boolean;

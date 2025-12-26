@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../lib/prisma.js';
 
 async function run(): Promise<void> {
   await prisma.idempotencyKey.create({

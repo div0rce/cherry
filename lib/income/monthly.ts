@@ -1,5 +1,5 @@
 import type { HistoricalIncomeRegime } from '@prisma/client';
-import { prisma, isProduction } from '@/lib/prisma';
+import { prisma, isProduction } from '../prisma.js';
 import { classifyIncomeAndP2PForUser, getNetEarnedIncomeCents } from './classifier.js';
 import type { ClassifiedBankTransaction, IncomeRegimeDraft, MonthlyIncomeSnapshot } from './types.js';
 

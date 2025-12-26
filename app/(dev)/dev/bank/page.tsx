@@ -1,14 +1,14 @@
 import type { JSX } from 'react';
 import { notFound } from 'next/navigation';
-import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { PageHeader } from '@/components/ui/page-header';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
-import { ROUTES } from '@/lib/routes';
-import { getServerConfig } from '@/lib/config/store';
-import { asError } from '@/lib/errors';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth.js';
+import { prisma } from '../../../../lib/prisma.js';
+import { PageHeader } from '../../../../components/ui/page-header.js';
+import { Panel } from '../../../../components/ui/panel.js';
+import { EmptyState } from '../../../../components/ui/empty-state.js';
+import { BANK_TX_DEFAULT_ORDER } from '../../../../lib/bank/fields.js';
+import { ROUTES } from '../../../../lib/routes.js';
+import { getServerConfig } from '../../../../lib/config/store.js';
+import { asError } from '../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

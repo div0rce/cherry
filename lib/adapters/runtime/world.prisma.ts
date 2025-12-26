@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../prisma.js';
 import type { World } from '../world.js';
 import { SystemClock } from './clock.system.js';
 import { ServerConfigReader } from './config.env.js';

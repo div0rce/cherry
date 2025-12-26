@@ -3,7 +3,7 @@
 import type { JSX, ReactNode } from 'react';
 import { Card } from './card.js';
 import { Button, ButtonLink } from './Button.js';
-import { cn } from '@/lib/ui/cn';
+import { cn } from '../../lib/ui/cn.js';
 
 type EmptyStateProps = {
   title: string;

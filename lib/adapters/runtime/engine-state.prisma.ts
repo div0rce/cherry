@@ -1,6 +1,6 @@
-import { applyInMemoryRollover } from '@/lib/buckets/periods';
-import { toBucketRuntime } from '@/lib/buckets-runtime';
-import { prisma } from '@/lib/prisma';
+import { applyInMemoryRollover } from '../../buckets/periods.js';
+import { toBucketRuntime } from '../../buckets-runtime.js';
+import { prisma } from '../../prisma.js';
 import type {
   Bucket,
   DebtAccount,
@@ -12,10 +12,10 @@ import type {
   RewardRule,
   UserConstraints,
   WorldParams,
-} from '@/lib/engine/types';
-import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '@/lib/engine/objective';
-import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '@/lib/engine/runtime';
-import { asError } from '@/lib/errors';
+} from '../../engine/types.js';
+import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '../../engine/objective.js';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '../../engine/runtime.js';
+import { asError } from '../../errors.js';
 
 export async function fromPrismaUserToEngineState(
   userId: string,

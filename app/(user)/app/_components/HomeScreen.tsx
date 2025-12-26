@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { JSX } from 'react';
-import { ButtonLink } from '@/components/ui/Button';
-import type { HomeUiBundle, MonthStateBadgeTone } from '@/lib/home/ui-bundle';
+import { ButtonLink } from '../../../../components/ui/Button.js';
+import type { HomeUiBundle, MonthStateBadgeTone } from '../../../../lib/home/ui-bundle.js';
 
 type HomeScreenProps = {
   bundle: HomeUiBundle;

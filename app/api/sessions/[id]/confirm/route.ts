@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError } from '@/lib/logger';
-import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
-import { parseJsonBody } from '@/lib/validation';
-import { assertUserId, isPrismaP2003, logInvariant, resolveUserContext } from '@/lib/user-context';
-import { confirmRecommendationSession, SessionConfirmError } from '@/lib/sessions/confirm-service';
-import { asError, asLogMeta } from '@/lib/errors';
+import { logError } from '../../../../../lib/logger.js';
+import { ConfirmSessionSchema } from '../../../../../lib/schemas/sessions.js';
+import { parseJsonBody } from '../../../../../lib/validation.js';
+import { assertUserId, isPrismaP2003, logInvariant, resolveUserContext } from '../../../../../lib/user-context.js';
+import { confirmRecommendationSession, SessionConfirmError } from '../../../../../lib/sessions/confirm-service.js';
+import { asError, asLogMeta } from '../../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

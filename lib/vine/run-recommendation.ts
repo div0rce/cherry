@@ -5,26 +5,26 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
-import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
+import { prisma } from '../prisma.js';
+import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
+import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import type { World } from '@/lib/adapters/world';
+} from '../engine.js';
+import { safeSolveDecisionForWorld } from '../engine/run.js';
+import { fromPrismaUserToEngineState } from '../engine-state.js';
+import { runEngine as runLegacyEngine } from '../legacy-engine.js';
+import type { World } from '../adapters/world.js';
 import type { OrderContext } from './order-context.js';
-import { validateEngineDecision } from '@/lib/engine-invariants';
-import { assertUserId } from '@/lib/invariants';
-import { isPrismaP2003, logInvariant } from '@/lib/user-context';
+import { validateEngineDecision } from '../engine-invariants.js';
+import { assertUserId } from '../invariants.js';
+import { isPrismaP2003, logInvariant } from '../user-context.js';
 import type { RewardCategory } from '@prisma/client';
 import { deriveOrderToken } from './order-token.js';
-import { assertStableId } from '@/lib/identity/hash';
-import { asError } from '@/lib/errors';
+import { assertStableId } from '../identity/hash.js';
+import { asError } from '../errors.js';
 
 export async function runRecommendationFromOrderContext(
   world: World,

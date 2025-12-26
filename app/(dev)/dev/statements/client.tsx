@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition } from 'react';
-import { ROUTES } from '@/lib/routes';
+import { ROUTES } from '../../../../lib/routes.js';
 
 export default function MonthPicker({ initialMonth }: { initialMonth: string }): JSX.Element {
   const router = useRouter();

@@ -1,8 +1,8 @@
 import type { JSX, ReactNode } from 'react';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { SidebarNav } from '@/components/sidebar-nav';
-import { DevConsoleHeader } from '@/components/dev-console-header';
+import { authOptions } from '../api/auth/[...nextauth]/route.js';
+import { SidebarNav } from '../../components/sidebar-nav.js';
+import { DevConsoleHeader } from '../../components/dev-console-header.js';
 
 export default async function DevLayout({
   children,

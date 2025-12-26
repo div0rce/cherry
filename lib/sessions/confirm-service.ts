@@ -6,12 +6,12 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
-import { logInvariant } from '@/lib/user-context';
-import { logWarn } from '@/lib/logger';
-import { autoVerifySession } from '@/lib/verification/verify-session';
+import { prisma } from '../prisma.js';
+import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
+import { ConfirmSessionSchema } from '../schemas/sessions.js';
+import { logInvariant } from '../user-context.js';
+import { logWarn } from '../logger.js';
+import { autoVerifySession } from '../verification/verify-session.js';
 
 export type ConfirmSessionPayload = z.infer<typeof ConfirmSessionSchema>;
 

@@ -25,8 +25,8 @@ import type {
   ObjectiveWeights,
 } from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
-import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '@/lib/legacy-engine-types';
-import { asError } from '@/lib/errors';
+import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types.js';
+import { asError } from '../errors.js';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;

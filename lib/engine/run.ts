@@ -1,4 +1,4 @@
-import type { World } from '@/lib/adapters/world';
+import type { World } from '../adapters/world.js';
 import {
   safeSolveDecisionForUser,
   solveDecision,

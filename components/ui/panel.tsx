@@ -2,7 +2,7 @@
 
 import type { JSX, ReactNode } from 'react';
 import { Card } from './card.js';
-import { cn } from '@/lib/ui/cn';
+import { cn } from '../../lib/ui/cn.js';
 
 type PanelProps = {
   title?: string;

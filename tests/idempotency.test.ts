@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { withIdempotency } from '@/lib/idempotency';
+import { withIdempotency } from '../lib/idempotency.js';
 import { makeTestWorld } from './helpers/world.js';
 
 type Payload = { value: number };

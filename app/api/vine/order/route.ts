@@ -1,19 +1,19 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError } from '@/lib/logger';
-import { runRecommendationFromOrderContext } from '@/lib/vine/run-recommendation';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import type { OrderContext } from '@/lib/vine/order-context';
-import { mapTerminalEventToOrderContext } from '@/lib/vine/order-context';
-import { OrderContextSchema } from '@/lib/schemas/vine';
-import { VineOrderSource } from '@/lib/enums';
-import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
-import { isValidMcc } from '@/lib/mcc';
-import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
-import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '@/lib/user-context';
-import { parseJsonBody } from '@/lib/validation';
+import { logError } from '../../../../lib/logger.js';
+import { runRecommendationFromOrderContext } from '../../../../lib/vine/run-recommendation.js';
+import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
+import type { OrderContext } from '../../../../lib/vine/order-context.js';
+import { mapTerminalEventToOrderContext } from '../../../../lib/vine/order-context.js';
+import { OrderContextSchema } from '../../../../lib/schemas/vine.js';
+import { VineOrderSource } from '../../../../lib/enums.js';
+import { vineTerminalEventSchema } from '../../../../lib/schemas/vine-terminal.js';
+import { isValidMcc } from '../../../../lib/mcc.js';
+import { verifyVineSignature, type VineSignatureContext } from '../../../../lib/vine/security.js';
+import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '../../../../lib/user-context.js';
+import { parseJsonBody } from '../../../../lib/validation.js';
 import { z } from 'zod';
-import { asError, asLogMeta } from '@/lib/errors';
+import { asError, asLogMeta } from '../../../../lib/errors.js';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>

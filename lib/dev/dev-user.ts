@@ -1,6 +1,6 @@
-import { LAB_USER_EMAIL, LAB_USER_NAME } from '@/lib/user-context';
-import type { BankIngestConfig } from '@/lib/config/server';
-import { getServerConfig } from '@/lib/config/store';
+import { LAB_USER_EMAIL, LAB_USER_NAME } from '../user-context.js';
+import type { BankIngestConfig } from '../config/server.js';
+import { getServerConfig } from '../config/store.js';
 import type { PrismaClient } from '@prisma/client';
 
 export async function getDevIngestUser(

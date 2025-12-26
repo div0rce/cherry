@@ -1,12 +1,12 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getCurrentUserId } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { deriveDisplayStatus } from '@/lib/sessions/summaries';
-import { PageHeader } from '@/components/ui/page-header';
-import { Panel } from '@/components/ui/panel';
-import { Card } from '@/components/ui/card';
-import { ButtonLink } from '@/components/ui/Button';
+import { getCurrentUserId } from '../../../../lib/auth.js';
+import { prisma } from '../../../../lib/prisma.js';
+import { deriveDisplayStatus } from '../../../../lib/sessions/summaries.js';
+import { PageHeader } from '../../../../components/ui/page-header.js';
+import { Panel } from '../../../../components/ui/panel.js';
+import { Card } from '../../../../components/ui/card.js';
+import { ButtonLink } from '../../../../components/ui/Button.js';
 
 function formatCents(amount: number | null | undefined) {
   if (amount == null) return '—';

@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import type { UnifiedActivityRow } from '@/lib/unified-activity';
-import { getUnifiedActivityForUser } from '@/lib/unified-activity';
+import { prisma } from './prisma.js';
+import type { UnifiedActivityRow } from './unified-activity.js';
+import { getUnifiedActivityForUser } from './unified-activity.js';
 import { computeBucketBalanceFromNumbers } from './buckets-runtime.js';
 
 export type DashboardStats = {

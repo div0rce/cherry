@@ -60,7 +60,7 @@ function resetModules(): void {
 }
 
 function buildUiStub() {
-  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec') as typeof import('@/lib/autopilot/uiSpec');
+  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec.js');
   const spec = getAutopilotUiSpec();
 
   return {
