@@ -8,15 +8,11 @@ const tempFile = path.join(repoRoot, 'lib', '__entropy_violation_test.ts');
 try {
   fs.writeFileSync(tempFile, 'export const bad = Date.now();\n');
   const result = spawnSync(
-    process.execPath,
-    ['-r', 'ts-node/register', '-r', 'tsconfig-paths/register', 'scripts/check-no-server-entropy.mts'],
+    'npm',
+    ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-server-entropy.mts'],
     {
       cwd: repoRoot,
       stdio: 'ignore',
-      env: {
-        ...process.env,
-        TS_NODE_PROJECT: 'tsconfig.scripts.json',
-      },
     }
   );
 

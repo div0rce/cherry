@@ -1,11 +1,6 @@
-import { createRequire } from 'node:module';
 import { RecommendationStatus, RecommendationSource } from '@prisma/client';
-
-const requireFn = createRequire(import.meta.url);
-requireFn('ts-node/register/transpile-only');
-
-const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
-const { logInvariant } = requireFn('../lib/user-context.ts') as typeof import('../lib/user-context.ts');
+import { prisma } from '../lib/prisma.ts';
+import { logInvariant } from '../lib/user-context.ts';
 
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {

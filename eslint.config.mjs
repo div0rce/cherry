@@ -369,8 +369,6 @@ export default defineConfig([
   },
   {
     files: [
-      'scripts/check-guardrails.cjs',
-      'scripts/check-prisma-assumptions.cjs',
       'tests/api-rewards.validation.test.js',
     ],
     rules: {

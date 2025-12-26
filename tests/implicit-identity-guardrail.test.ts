@@ -12,15 +12,11 @@ fs.writeFileSync(tempFileA, 'export const bad = randomUUID();\n');
 fs.writeFileSync(tempFileB, "import { createHash } from 'crypto';\nexport const h = createHash('sha256').update(new Date().toISOString());\n");
 
 const result = spawnSync(
-  process.execPath,
-  ['-r', 'ts-node/register', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-identity.mts'],
+  'npm',
+  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-identity.mts'],
   {
     cwd: repoRoot,
     stdio: 'ignore',
-    env: {
-      ...process.env,
-      TS_NODE_PROJECT: 'tsconfig.scripts.json',
-    },
   }
 );
 

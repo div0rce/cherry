@@ -1,13 +1,13 @@
 /* Simple Prisma client mock for test runs (no external database). */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
+import * as Module from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 
 type Where = Record<string, unknown>;
 
 const requireFn = createRequire(import.meta.url);
-requireFn('ts-node/register/transpile-only');
 
 type ModuleWithInternals = {
   _resolveFilename: (...args: [string, unknown]) => string;
@@ -301,13 +301,13 @@ class MockPrismaClientKnownRequestError extends Error {
 }
 
 // Register mock in require cache for any import of '@prisma/client'.
-const Module = requireFn('module') as ModuleWithInternals;
-const originalResolveFilename = Module._resolveFilename;
-const originalLoad = Module._load;
+const ModuleInternal = Module as unknown as ModuleWithInternals;
+const originalResolveFilename = ModuleInternal._resolveFilename;
+const originalLoad = ModuleInternal._load;
 let resolvedPrismaPath = '@prisma/client';
 let resolvedLookup: unknown;
 try {
-  resolvedLookup = originalResolveFilename.call(Module, '@prisma/client', {
+  resolvedLookup = originalResolveFilename.call(ModuleInternal, '@prisma/client', {
     id: '',
     filename: '',
   });
@@ -336,10 +336,10 @@ const mockModule = {
   },
 } as unknown as NodeModuleType;
 
-require.cache['@prisma/client'] = mockModule;
-require.cache[resolvedPrismaPath] = mockModule;
+requireFn.cache['@prisma/client'] = mockModule;
+requireFn.cache[resolvedPrismaPath] = mockModule;
 
-Module._load = function (...args: [string, unknown, boolean]) {
+ModuleInternal._load = function (...args: [string, unknown, boolean]) {
   const [request] = args;
   if (request === '@prisma/client' || (typeof request === 'string' && request.includes('@prisma/client'))) {
     return mockModule.exports;

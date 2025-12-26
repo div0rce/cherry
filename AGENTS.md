@@ -151,15 +151,12 @@ Rules:
 - `.ts` files MUST NOT contain ESM syntax (`import`, `export`, `import.meta`, top-level await).
 
 Runtime access from scripts:
-- `.mts` scripts MUST NOT ESM-import from `lib/**`.
-- All runtime modules MUST be loaded via:
-  - `createRequire(import.meta.url)`
-  - `ts-node/register/transpile-only`
-  - `requireFn('../lib/foo.ts')`
+- `.mts` scripts MUST be executed via `npm run ts:esm -- <script>`.
+- Runtime modules may be imported with standard ESM `import` statements.
+- `ts-node/register` usage is forbidden.
 
 Forbidden:
 - `"type": "module"` in package.json
-- ESM imports from `lib/**` in scripts
 - Bare `require()` without `createRequire`
 - `.mts` outside `scripts/`
 

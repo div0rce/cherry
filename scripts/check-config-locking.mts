@@ -1,12 +1,10 @@
-import { createRequire } from 'node:module';
-
-const requireFn = createRequire(import.meta.url);
-requireFn('ts-node/register/transpile-only');
-
-const { assertServerConfig } = requireFn('../lib/config/server.ts') as typeof import('../lib/config/server.ts');
-const { getServerConfig, isServerConfigLocked, lockServerConfig, setServerConfig } = requireFn(
-  '../lib/config/store.ts'
-) as typeof import('../lib/config/store.ts');
+import { assertServerConfig } from '../lib/config/server.ts';
+import {
+  getServerConfig,
+  isServerConfigLocked,
+  lockServerConfig,
+  setServerConfig,
+} from '../lib/config/store.ts';
 
 function expectThrow(fn: () => void, message: string): void {
   let threw = false;

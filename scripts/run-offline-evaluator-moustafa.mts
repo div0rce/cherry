@@ -1,18 +1,12 @@
-import { createRequire } from 'node:module';
 import { Prisma } from '@prisma/client';
 
-const requireFn = createRequire(import.meta.url);
-requireFn('ts-node/register/transpile-only');
-
-const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
-const { evaluateTransactionOffline, defaultRunIdForUser } = requireFn(
-  '../lib/evaluator/offline-history.ts'
-) as typeof import('../lib/evaluator/offline-history.ts');
-const { LAB_USER_EMAIL, LAB_USER_NAME } = requireFn('../lib/user-context.ts') as typeof import('../lib/user-context.ts');
-const { getDevIngestUser } = requireFn('../lib/dev/dev-user.ts') as typeof import('../lib/dev/dev-user.ts');
-const { classifyIncomeAndP2PForUser } = requireFn('../lib/income/classifier.ts') as typeof import('../lib/income/classifier.ts');
-const { rebuildIncomeRegimesAndBuckets } = requireFn('../lib/buckets/regimes.ts') as typeof import('../lib/buckets/regimes.ts');
-const { RegimeBucketTracker } = requireFn('../lib/evaluator/regime-buckets.ts') as typeof import('../lib/evaluator/regime-buckets.ts');
+import { prisma } from '../lib/prisma.ts';
+import { defaultRunIdForUser, evaluateTransactionOffline } from '../lib/evaluator/offline-history.ts';
+import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
+import { getDevIngestUser } from '../lib/dev/dev-user.ts';
+import { classifyIncomeAndP2PForUser } from '../lib/income/classifier.ts';
+import { rebuildIncomeRegimesAndBuckets } from '../lib/buckets/regimes.ts';
+import { RegimeBucketTracker } from '../lib/evaluator/regime-buckets.ts';
 
 type ClassifiedBankTransaction = import('../lib/income/types.ts').ClassifiedBankTransaction;
 

@@ -219,21 +219,6 @@ function checkNoImplicitEsm(filePath: string, violations: Violation[]): void {
   }
 }
 
-function checkNoRuntimeImports(filePath: string, violations: Violation[]): void {
-  if (filePath.endsWith(".d.mts")) return;
-  const content = fs.readFileSync(filePath, "utf8");
-  const stripped = stripComments(content);
-  const runtimeImport = /import\s+[^;]*from\s+['"](\.\.\/lib\/|@\/lib\/)/.test(stripped);
-  const runtimeBareImport = /import\s+['"](\.\.\/lib\/|@\/lib\/)/.test(stripped);
-  if (runtimeImport || runtimeBareImport) {
-    const relative = normalizePath(filePath);
-    violations.push({
-      file: relative,
-      message: `${relative} imports runtime code via ESM. Use createRequire + ts-node/register/transpile-only instead.`,
-    });
-  }
-}
-
 function checkRequireUsage(filePath: string, violations: Violation[]): void {
   const content = fs.readFileSync(filePath, "utf8");
   const stripped = stripComments(content);
@@ -287,7 +272,6 @@ function main(): void {
     if (file.endsWith(".ts")) {
       checkNoImplicitEsm(file, violations);
     } else if (file.endsWith(".mts")) {
-      checkNoRuntimeImports(file, violations);
       checkRequireUsage(file, violations);
     }
   }

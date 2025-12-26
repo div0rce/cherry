@@ -14,8 +14,8 @@ function runGuardrail(file) {
     process.exit(1);
   }
   const res = spawnSync(
-    'node',
-    ['-r', 'ts-node/register/transpile-only', '-r', 'tsconfig-paths/register', file],
+    'npm',
+    ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', file],
     { stdio: 'inherit', env }
   );
   if (res.status !== 0) {

@@ -18,9 +18,8 @@
  *   npm run ingest:mcc [optional path]
  */
 
-import fs from 'fs';
-import path from 'path';
-import { createRequire } from 'node:module';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   MerchantVertical,
   MerchantChannel,
@@ -28,12 +27,9 @@ import {
   MerchantRiskProfile,
   MerchantLifeCategory,
 } from '@prisma/client';
-const requireFn = createRequire(import.meta.url);
-requireFn('ts-node/register/transpile-only');
-
-const { prisma } = requireFn('../lib/prisma.ts') as typeof import('../lib/prisma.ts');
-const { mapTagsToRewardCategory } = requireFn('../lib/mccCategoryMapper.ts') as typeof import('../lib/mccCategoryMapper.ts');
-const { logError, logInfo } = requireFn('../lib/logger.ts') as typeof import('../lib/logger.ts');
+import { prisma } from '../lib/prisma.ts';
+import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.ts';
+import { logError, logInfo } from '../lib/logger.ts';
 
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');

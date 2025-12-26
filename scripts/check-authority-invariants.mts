@@ -1,38 +1,12 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/client';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
-
-if (process.env['CHERRY_AUTHORITY_INVARIANTS_RUNNER'] !== '1') {
-  const scriptPath = fileURLToPath(import.meta.url);
-  const result = spawnSync('node', [scriptPath], {
-    env: { ...process.env, CHERRY_AUTHORITY_INVARIANTS_RUNNER: '1' },
-    stdio: 'inherit',
-  });
-  process.exit(result.status ?? 1);
-}
-
-const requireFn = createRequire(import.meta.url);
-process.env['TS_NODE_COMPILER_OPTIONS'] =
-  process.env['TS_NODE_COMPILER_OPTIONS'] ??
-  JSON.stringify({
-    module: 'CommonJS',
-    moduleResolution: 'node',
-    baseUrl: '.',
-    paths: { '@/*': ['./*'] },
-    allowJs: true,
-    jsx: 'react-jsx',
-  });
-requireFn('ts-node/register/transpile-only');
-requireFn('tsconfig-paths/register');
-
-const { simulateSpendAuthorityFromSnapshot, recordDecisionEventWithWriter } = requireFn(
-  '../lib/authority/simulateSpendAuthority.ts'
-) as typeof import('../lib/authority/simulateSpendAuthority.ts');
-const { initConfigFromEnv } = requireFn('../lib/config/init.ts') as typeof import('../lib/config/init.ts');
-const { getServerConfig } = requireFn('../lib/config/store.ts') as typeof import('../lib/config/store.ts');
-const { Sha256Digest } = requireFn('../lib/adapters/runtime/digest.sha256.ts') as typeof import('../lib/adapters/runtime/digest.sha256.ts');
+import {
+  recordDecisionEventWithWriter,
+  simulateSpendAuthorityFromSnapshot,
+} from '../lib/authority/simulateSpendAuthority.ts';
+import { initConfigFromEnv } from '../lib/config/init.ts';
+import { getServerConfig } from '../lib/config/store.ts';
+import { Sha256Digest } from '../lib/adapters/runtime/digest.sha256.ts';
 
 type AuthoritySnapshot = import('../lib/authority/simulateSpendAuthority.ts').AuthoritySnapshot;
 type SimulateSpendParams = import('../lib/authority/simulateSpendAuthority.ts').SimulateSpendParams;

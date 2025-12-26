@@ -10,15 +10,11 @@ fs.mkdirSync(tempDir, { recursive: true });
 fs.writeFileSync(tempFile, 'export const val = process.env.SECRET;\n');
 
 const result = spawnSync(
-  process.execPath,
-  ['-r', 'ts-node/register', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-config.mts'],
+  'npm',
+  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-config.mts'],
   {
     cwd: repoRoot,
     stdio: 'ignore',
-    env: {
-      ...process.env,
-      TS_NODE_PROJECT: 'tsconfig.scripts.json',
-    },
   }
 );
 

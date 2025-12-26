@@ -122,6 +122,18 @@ function run(): void {
     file: 'package.json',
   });
 
+  runFixture('ts-node-register', {
+    guardrail: 'ts-node-register-forbidden',
+    token: 'ts-node/register',
+    file: path.join('scripts', 'bad.ts'),
+  });
+
+  runFixture('esm-loader-direct', {
+    guardrail: 'esm-loader-bypass',
+    token: 'node scripts/*.mts',
+    file: path.join('tests', 'bad.test.ts'),
+  });
+
   console.warn('repo-guardrails: ok');
 }
 

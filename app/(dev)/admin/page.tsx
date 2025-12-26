@@ -56,12 +56,12 @@ export default async function AdminPage(): Promise<JSX.Element> {
     {
       name: 'Prisma assumptions',
       status: 'OK',
-      description: 'Schema invariants enforced by scripts/check-prisma-assumptions.cjs',
+      description: 'Schema invariants enforced by scripts/check-prisma-assumptions.mts',
     },
     {
       name: 'Guardrails + lint config',
       status: 'OK',
-      description: 'Static guardrail rules validated by scripts/check-guardrails.cjs',
+      description: 'Static guardrail rules validated by scripts/check-guardrails.mts',
     },
     {
       name: 'Dev UI parity',

@@ -13,6 +13,7 @@ const DEFAULT_EXTENSIONS = new Set([
   '.mjs',
   '.cjs',
 ]);
+const MARKDOWN_EXTENSIONS = new Set(['.md', '.mdx']);
 const DTS_EXT = '.d.ts';
 
 const REQUIRED_GUARDRAILS = [
@@ -51,6 +52,8 @@ const TIME_TOKENS = [
 const BAD_TS_NODE_MTS = /ts-node(?![^\n]*--loader\s+ts-node\/esm)[^\n]*\.mts\b/;
 const INLINE_ESM_LOADER = /node\s+--loader\s+ts-node\/esm/;
 const DIRECT_NODE_MTS = /node\b[^\n]*\bscripts\/[^\s'"]+\.mts\b/;
+const TS_NODE_MTS = /\bts-node\b[^\n]*\.mts\b/;
+const FORBIDDEN_TS_NODE_REGISTER = /\bts-node\/register\b|\bts-node\/register\/transpile-only\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
 const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asError\s*\(/;
@@ -91,6 +94,35 @@ function collectFiles(startDir) {
       }
       if (!DEFAULT_EXTENSIONS.has(path.extname(entry.name))) continue;
       if (entry.name.endsWith('.d.ts')) continue;
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+/**
+ * @param {string} startDir
+ * @param {Set<string>} extensions
+ * @returns {string[]}
+ */
+function collectFilesByExtensions(startDir, extensions) {
+  /** @type {string[]} */
+  const files = [];
+  if (!fs.existsSync(startDir)) return files;
+  /** @type {string[]} */
+  const stack = [startDir];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (typeof current !== 'string') continue;
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (IGNORE_DIRS.has(entry.name)) continue;
+        stack.push(fullPath);
+        continue;
+      }
+      if (!extensions.has(path.extname(entry.name))) continue;
       files.push(fullPath);
     }
   }
@@ -164,6 +196,15 @@ const apiFiles = collectFiles(apiDir);
 const userFiles = collectFiles(userDir);
 const scriptsDir = path.join(root, 'scripts');
 const scriptFiles = collectFiles(scriptsDir);
+const testsDir = path.join(root, 'tests');
+const testFiles = collectFiles(testsDir);
+const docsDir = path.join(root, 'docs');
+const docFiles = collectFilesByExtensions(docsDir, MARKDOWN_EXTENSIONS);
+const rootDocs = [path.join(root, 'README.md'), path.join(root, 'AGENTS.md')].filter((file) =>
+  fs.existsSync(file)
+);
+const guardrailFixturesPrefix =
+  path.normalize(path.join('tests', 'fixtures', 'guardrails')) + path.sep;
 const typesFiles = collectDtsFiles(path.join(root, 'types'));
 const migrationsDir = path.join(root, 'prisma', 'migrations');
 const migrationBaselinePath = path.join(
@@ -480,6 +521,10 @@ for (const file of commandFiles) {
     );
     process.exit(1);
   }
+  if (FORBIDDEN_TS_NODE_REGISTER.test(content)) {
+    console.error(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
+    process.exit(1);
+  }
   if (relPath === 'package.json') {
     /** @type {{ scripts?: Record<string, string> }} */
     const packageJson = JSON.parse(content);
@@ -504,6 +549,28 @@ for (const file of commandFiles) {
         process.exit(1);
       }
     }
+  }
+}
+
+const executionContractFiles = [...scriptFiles, ...testFiles, ...docFiles, ...rootDocs];
+for (const file of executionContractFiles) {
+  if (!fs.existsSync(file)) continue;
+  const relPath = path.normalize(path.relative(root, file));
+  if (relPath.startsWith(guardrailFixturesPrefix)) continue;
+  if (relPath === path.normalize(path.join('scripts', 'check-repo-guardrails.js'))) continue;
+  const content = fs.readFileSync(file, 'utf8');
+  const isDoc = MARKDOWN_EXTENSIONS.has(path.extname(relPath));
+  if (!isDoc && FORBIDDEN_TS_NODE_REGISTER.test(content)) {
+    console.error(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
+    process.exit(1);
+  }
+  if (DIRECT_NODE_MTS.test(content)) {
+    console.error(`esm-loader-bypass: ${relPath}: node scripts/*.mts`);
+    process.exit(1);
+  }
+  if (TS_NODE_MTS.test(content)) {
+    console.error(`esm-loader-bypass: ${relPath}: ts-node .mts`);
+    process.exit(1);
   }
 }
 
