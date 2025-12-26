@@ -1,4 +1,4 @@
-import type { RewardCategory } from '@prisma/client';
+import type { RewardCategory } from '@/lib/enums';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
 import type { EngineContext, EngineDecision, EngineState } from './types';
 import type { EngineDecision as LegacyEngineDecision } from './legacy';
@@ -40,12 +40,15 @@ export function mapSolverDecisionToLegacyDecision(input: {
 }): LegacyEngineDecision | null {
   const { solverDecision, state, ctx, category, fallback } = input;
   if (!solverDecision || ctx.amountCents == null) {
-    return fallback ?? null;
+    return fallback == null ? null : fallback;
   }
 
-  const isCardAction =
-    solverDecision.action.type === 'USE_CARD' ||
-    solverDecision.action.type === 'USE_CARD_WITH_PAYDOWN';
+  let isCardAction = false;
+  if (solverDecision.action.type === 'USE_CARD') {
+    isCardAction = true;
+  } else if (solverDecision.action.type === 'USE_CARD_WITH_PAYDOWN') {
+    isCardAction = true;
+  }
 
   if (!isCardAction && fallback) {
     return fallback;
@@ -54,9 +57,13 @@ export function mapSolverDecisionToLegacyDecision(input: {
   const amountCents = ctx.amountCents;
   const bucketProj = solverDecision.projections.buckets.at(0);
   const bucket = bucketProj ? state.buckets.find((b) => b.id === bucketProj.bucketId) : undefined;
-  const limitCents = bucket?.limitCents ?? null;
-  const committedAfterCents = bucketProj?.projectedCommittedCents ?? null;
-  const committedBeforeCents = bucket?.committedCents ?? null;
+  const limitCents = bucket && bucket.limitCents != null ? bucket.limitCents : null;
+  const committedAfterCents =
+    bucketProj && bucketProj.projectedCommittedCents != null
+      ? bucketProj.projectedCommittedCents
+      : null;
+  const committedBeforeCents =
+    bucket && bucket.committedCents != null ? bucket.committedCents : null;
   const remainingAfterCents =
     limitCents != null && committedAfterCents != null ? limitCents - committedAfterCents : null;
   const wouldExceed =
@@ -88,12 +95,24 @@ export function mapSolverDecisionToLegacyDecision(input: {
       ? state.cards.find((c) => c.id === solverDecision.action.cardId)
       : undefined;
 
-  const categoryKey = ctx.merchantCategoryKey ?? 'OTHER';
-  const rewardRule =
-    card?.rewardRules.find((r) => r.categoryKey === categoryKey) ??
-    card?.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE') ??
-    card?.rewardRules.find((r) => r.categoryKey === 'OTHER') ??
-    null;
+  const categoryKey = ctx.merchantCategoryKey == null ? 'OTHER' : ctx.merchantCategoryKey;
+  let rewardRule = null;
+  if (card) {
+    const byCategory = card.rewardRules.find((r) => r.categoryKey === categoryKey);
+    if (byCategory) {
+      rewardRule = byCategory;
+    } else {
+      const general = card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE');
+      if (general) {
+        rewardRule = general;
+      } else {
+        const fallback = card.rewardRules.find((r) => r.categoryKey === 'OTHER');
+        if (fallback) {
+          rewardRule = fallback;
+        }
+      }
+    }
+  }
 
   const dollars = amountCents / 100;
   const multiplier =
@@ -116,7 +135,7 @@ export function mapSolverDecisionToLegacyDecision(input: {
     verdict: budgetVerdict,
     coverageMode,
     hasBucket: Boolean(bucket),
-    strictMode: bucket?.strictMode ?? false,
+    strictMode: bucket && bucket.strictMode != null ? bucket.strictMode : false,
     wouldExceed,
   };
   if (bucket?.id !== undefined && bucket.id !== null && bucket.id !== '') {

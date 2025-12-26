@@ -1,4 +1,3 @@
-import { runEngine, type EngineDecision as LegacyEngineDecision } from './legacy';
 import { generateCandidateActions } from './candidates';
 import { simulateAction } from './simulate';
 import {
@@ -16,7 +15,7 @@ import {
   validateEngineContext,
   validateEngineState,
 } from './guardrails';
-import { ENGINE_VERSION, fromPrismaUserToEngineState } from './context';
+import { ENGINE_VERSION } from './context';
 import type {
   EngineAction,
   EngineContext,
@@ -26,11 +25,13 @@ import type {
   ObjectiveWeights,
 } from './types';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
+import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '@/lib/legacy-engine-types';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
   maxCandidates?: number;
   includeLegacyDecision?: boolean;
+  legacyDecisionProvider?: (input: LegacyEngineInput) => Promise<LegacyEngineDecision>;
   stateOverride?: EngineState;
   runtime?: EngineRuntime;
 };
@@ -59,7 +60,7 @@ export async function solveDecision(
   ctx: EngineContext,
   options: SolveDecisionOptions = {}
 ): Promise<SolveDecisionResult> {
-  const runtime = options.runtime ?? DEFAULT_ENGINE_RUNTIME;
+  const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
   const stateIssues = validateEngineState(state);
   const ctxIssues = validateEngineContext(ctx);
 
@@ -133,8 +134,8 @@ export async function solveDecision(
     },
     contextSummary: {
       surface: ctx.surface,
-      merchantCategoryKey: ctx.merchantCategoryKey ?? null,
-      amountCents: ctx.amountCents ?? null,
+      merchantCategoryKey: ctx.merchantCategoryKey == null ? null : ctx.merchantCategoryKey,
+      amountCents: ctx.amountCents == null ? null : ctx.amountCents,
     },
     candidates: filtered.map((d) => ({
       action: d.action,
@@ -146,18 +147,21 @@ export async function solveDecision(
 
   let legacyDecision: LegacyEngineDecision | undefined;
   if (options.includeLegacyDecision) {
+    if (!options.legacyDecisionProvider) {
+      throw new EngineError('legacyDecisionProvider required when includeLegacyDecision is true');
+    }
     const parsedMcc =
       ctx.mcc != null && ctx.mcc !== ''
         ? Number.parseInt(String(ctx.mcc), 10)
         : null;
 
-    legacyDecision = await runEngine({
+    legacyDecision = await options.legacyDecisionProvider({
       userId: state.userId,
-      amountCents: ctx.amountCents ?? 0,
-      category: ctx.merchantCategoryKey ?? null,
-      merchantName: ctx.merchantName ?? null,
+      amountCents: ctx.amountCents == null ? 0 : ctx.amountCents,
+      category: ctx.merchantCategoryKey == null ? null : ctx.merchantCategoryKey,
+      merchantName: ctx.merchantName == null ? null : ctx.merchantName,
       mccCode: Number.isInteger(parsedMcc) ? parsedMcc : null,
-      now: ctx.now,
+      nowMs: ctx.nowMs,
     });
   }
 
@@ -185,11 +189,15 @@ export async function safeSolveDecisionForUser(
   options: SolveDecisionOptions = {}
 ): Promise<SafeDecisionOutcome> {
   try {
-    const runtime = options.runtime ?? DEFAULT_ENGINE_RUNTIME;
-    const state = options.stateOverride ?? (await fromPrismaUserToEngineState(userId, ctx.now, runtime));
+    const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
+    const state = options.stateOverride;
+    if (!state) {
+      throw new EngineError('safeSolveDecisionForUser requires a stateOverride');
+    }
     const { decisions, trace, legacyDecision } = await solveDecision(state, ctx, {
       ...options,
-      includeLegacyDecision: options.includeLegacyDecision ?? true,
+      includeLegacyDecision:
+        options.includeLegacyDecision == null ? true : options.includeLegacyDecision,
       runtime,
     });
     const successResult: SafeDecisionOutcome = { ok: true, decisions, trace, state };
@@ -198,7 +206,7 @@ export async function safeSolveDecisionForUser(
     }
     return successResult;
   } catch (err) {
-    const runtime = options.runtime ?? DEFAULT_ENGINE_RUNTIME;
+    const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     if (err instanceof EngineError) {
       logEngineError(runtime, 'validation', { userId, err });
       return {
@@ -220,15 +228,19 @@ export async function safeSolveDecisionForUser(
 function buildActionId(action: EngineAction): string {
   switch (action.type) {
     case 'USE_CARD':
-      return `use_card:${action.cardId ?? 'unknown'}`;
+      return `use_card:${action.cardId == null ? 'unknown' : action.cardId}`;
     case 'USE_CARD_WITH_PAYDOWN':
-      return `use_card_with_paydown:${action.cardId ?? 'unknown'}:${action.debtId ?? 'none'}`;
+      return `use_card_with_paydown:${action.cardId == null ? 'unknown' : action.cardId}:${
+        action.debtId == null ? 'none' : action.debtId
+      }`;
     case 'PAY_DOWN_DEBT':
-      return `pay_down_debt:${action.debtId ?? 'unknown'}`;
+      return `pay_down_debt:${action.debtId == null ? 'unknown' : action.debtId}`;
     case 'SWITCH_MERCHANT':
-      return `switch_merchant:${action.altMerchantCategoryKey ?? 'unknown'}`;
+      return `switch_merchant:${
+        action.altMerchantCategoryKey == null ? 'unknown' : action.altMerchantCategoryKey
+      }`;
     case 'DELAY_PURCHASE':
-      return `delay_purchase:${action.delayDays ?? 0}`;
+      return `delay_purchase:${action.delayDays == null ? 0 : action.delayDays}`;
     case 'REJECT_PURCHASE':
       return 'reject_purchase';
     default:

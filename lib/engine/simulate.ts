@@ -32,9 +32,9 @@ function cloneDebts(debts: EngineState['debts']): EngineState['debts'] {
 }
 
 function recomputeBucketBalance(bucket: EngineState['buckets'][number]): void {
-  const limit = bucket.limitCents ?? 0;
-  const posted = bucket.postedSpendCents ?? 0;
-  const pending = bucket.pendingSpendCents ?? 0;
+  const limit = bucket.limitCents == null ? 0 : bucket.limitCents;
+  const posted = bucket.postedSpendCents == null ? 0 : bucket.postedSpendCents;
+  const pending = bucket.pendingSpendCents == null ? 0 : bucket.pendingSpendCents;
   bucket.committedCents = posted + pending;
   bucket.remainingCents = Math.max(0, limit - bucket.committedCents);
 }
@@ -99,7 +99,7 @@ export function simulateAction(
   debt: DebtProjection[];
   cash: CashProjection;
 } {
-  const amount = ctx.amountCents ?? 0;
+  const amount = ctx.amountCents == null ? 0 : ctx.amountCents;
   const clonedBuckets = cloneBuckets(state.buckets);
   clonedBuckets.forEach(recomputeBucketBalance);
   const clonedDebts = cloneDebts(state.debts);
@@ -137,7 +137,8 @@ export function simulateAction(
 
   const buckets: BucketProjection[] = clonedBuckets.map((b) => {
     const projectedCommitted = b.postedSpendCents + b.pendingSpendCents;
-    const projectedRemaining = Math.max(0, (b.limitCents ?? 0) - projectedCommitted);
+    const limitCents = b.limitCents == null ? 0 : b.limitCents;
+    const projectedRemaining = Math.max(0, limitCents - projectedCommitted);
     const projectedOverLimit =
       b.limitCents != null ? projectedCommitted > b.limitCents : false;
     return {
@@ -159,7 +160,8 @@ export function simulateAction(
         : null,
   }));
 
-  let projectedLiquid = state.cash?.liquidCents ?? null;
+  let projectedLiquid =
+    state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : null;
   if (
     projectedLiquid != null &&
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&

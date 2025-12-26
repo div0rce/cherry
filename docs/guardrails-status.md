@@ -9,8 +9,8 @@ Last updated: 2025-12-25
 | --- | --- | --- | --- | --- | --- |
 | 1 | Randomness ban in `lib/**` | script (`scripts/check-repo-guardrails.js`), tests, ci | neg only | yes | enforced in `lib/**` except `lib/adapters/runtime/**` |
 | 2 | Sorting without comparator | script (`scripts/check-no-implicit-ordering.mts`), tests, ci | neg only | yes | enforced via guardrail tests (no ESLint selector yet) |
-| 3 | Floating-point money math | none | none | no | not implemented |
-| 4 | No silent defaults in core | none | none | no | not implemented |
+| 3 | Floating-point money math | repo script, tests, ci | pos+neg | yes | enforced forward; legacy allowlist present |
+| 4 | No silent defaults in core | eslint, repo script, tests, ci | pos+neg | yes | enforced |
 | 5 | Exhaustive switches | eslint, ci | none | yes | enforced via ESLint `switch-exhaustiveness-check` |
 | 6 | Engine purity (no side effects) | scripts (`check-no-engine-date.mts`, `check-no-engine-prisma.mts`), repo backstop, ci | neg only | yes | partial (console/network not yet covered) |
 | 7 | Engine must not import Prisma | script (`check-no-engine-prisma.mts`), repo backstop, ci | neg only | yes | enforced |

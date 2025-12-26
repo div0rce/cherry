@@ -96,12 +96,14 @@ const schemasPrefix = path.normalize(path.join('lib', 'schemas')) + path.sep;
 const validationPrefix = path.normalize(path.join('lib', 'validation')) + path.sep;
 const moneyModulePath = path.normalize(path.join('lib', 'money.ts'));
 const engineDir = path.join(root, 'lib', 'engine');
+const bucketsDir = path.join(root, 'lib', 'buckets');
 const verificationDir = path.join(root, 'lib', 'verification');
 
 const libStart = path.join(root, 'lib');
 const libFiles = collectFiles(libStart);
 
 const engineFiles = collectFiles(engineDir);
+const bucketFiles = collectFiles(bucketsDir);
 
 const verificationFiles = collectFiles(verificationDir);
 
@@ -153,19 +155,21 @@ const MONEY_FLOAT_TOKENS = [
   { token: '.toFixed(2)', regex: /\.toFixed\s*\(\s*2\s*\)/ },
   { token: 'parseFloat(', regex: /parseFloat\s*\(/ },
 ];
-const MONEY_FLOAT_ALLOWLIST = new Set([
-  // TEMP: float money – pre-guardrail, must be migrated
-  'lib/dashboard.ts',
-  'lib/simulation.ts',
-  'lib/unified-activity.ts',
-  'lib/evaluator/offline-history.ts',
-  'lib/evaluator/stats.ts',
-  'lib/engine/legacy-mapper.ts',
-  'lib/engine/objective.ts',
-  'lib/engine/public.ts',
-  'lib/autopilot/runSimulation.ts',
-  'lib/autopilot/service.ts',
-  'lib/alerts/sendEmailAlert.ts',
+const SILENT_DEFAULT_TOKENS = [
+  { token: '??', regex: /\?\?/ },
+];
+const MONEY_FLOAT_ALLOWLIST = new Map([
+  ['lib/dashboard.ts', 'TEMP: UI aggregation, not core math'],
+  ['lib/simulation.ts', 'TEMP: legacy sim, migrate to Cents'],
+  ['lib/unified-activity.ts', 'TEMP: reporting layer'],
+  ['lib/evaluator/offline-history.ts', 'TEMP: legacy stats'],
+  ['lib/evaluator/stats.ts', 'TEMP: legacy stats'],
+  ['lib/engine/legacy-mapper.ts', 'TEMP: legacy mapper'],
+  ['lib/engine/objective.ts', 'TEMP: pre-Cents objective'],
+  ['lib/engine/public.ts', 'TEMP: public adapter'],
+  ['lib/autopilot/runSimulation.ts', 'TEMP: sim bridge'],
+  ['lib/autopilot/service.ts', 'TEMP: service layer'],
+  ['lib/alerts/sendEmailAlert.ts', 'TEMP: formatting only'],
 ]);
 
 for (const file of libFiles) {
@@ -216,6 +220,32 @@ for (const file of libFiles) {
     if (regex.test(content)) {
       console.error(`money-float-banned: ${relPath}: ${token}`);
       process.exit(1);
+    }
+  }
+}
+
+const silentDefaultFiles = [...engineFiles, ...bucketFiles, ...verificationFiles];
+for (const file of silentDefaultFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  if (relPath.startsWith(adaptersPrefix)) continue;
+  if (relPath.startsWith(schemasPrefix)) continue;
+  if (relPath.startsWith(validationPrefix)) continue;
+  const content = fs.readFileSync(file, 'utf8');
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    for (const { token, regex } of SILENT_DEFAULT_TOKENS) {
+      if (regex.test(line)) {
+        console.error(`silent-default-banned: ${relPath}: ${token}`);
+        process.exit(1);
+      }
+    }
+    if (line.includes('||')) {
+      const returnMatch = /\breturn\b[^;]*\|\|/.test(line);
+      const assignmentMatch = /(^|[^=!<>])=([^=]|$)/.test(line);
+      if (returnMatch || assignmentMatch) {
+        console.error(`silent-default-banned: ${relPath}: ||`);
+        process.exit(1);
+      }
     }
   }
 }

@@ -1,11 +1,13 @@
-import type { RewardCategory } from '@prisma/client';
+import type { RewardCategory } from '@/lib/enums';
 import { hasText } from '@/lib/text';
 import { isPositiveNumber } from '@/lib/numbers';
 import { resolveScanCategory } from '@/lib/scan-helpers';
-import { buildEngineContext, fromPrismaUserToEngineState } from './context';
-import { safeSolveDecisionForUser } from './solver';
+import { buildEngineContext } from './context';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { safeSolveDecisionForWorld } from './run';
 import type { EngineDecision, EngineState } from './types';
 import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types';
+import type { World } from '@/lib/adapters/world';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];
 
@@ -32,8 +34,8 @@ function selectCardDecisions(
 
   return filtered.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
-    const cardA = a.action.cardId ?? '';
-    const cardB = b.action.cardId ?? '';
+    const cardA = a.action.cardId == null ? '' : a.action.cardId;
+    const cardB = b.action.cardId == null ? '' : b.action.cardId;
     return cardA.localeCompare(cardB);
   });
 }
@@ -66,11 +68,14 @@ function estimateBenefitCents(
   const card = state.cards.find((candidate) => candidate.id === cardId);
   if (!card) return 0;
 
-  const category = merchantCategoryKey ?? 'OTHER';
-  const rewardRule =
-    card.rewardRules.find((rule) => rule.categoryKey === category) ??
-    card.rewardRules.find((rule) => rule.categoryKey === 'GENERAL_MERCHANDISE') ??
-    card.rewardRules.find((rule) => rule.categoryKey === 'OTHER');
+  const category = merchantCategoryKey == null ? 'OTHER' : merchantCategoryKey;
+  let rewardRule = card.rewardRules.find((rule) => rule.categoryKey === category);
+  if (!rewardRule) {
+    rewardRule = card.rewardRules.find((rule) => rule.categoryKey === 'GENERAL_MERCHANDISE');
+  }
+  if (!rewardRule) {
+    rewardRule = card.rewardRules.find((rule) => rule.categoryKey === 'OTHER');
+  }
 
   if (!rewardRule) return 0;
 
@@ -84,9 +89,19 @@ function estimateBenefitCents(
 }
 
 function classifyReasonCode(decision: EngineDecision, bucketDelta: AutopilotDecision['bucketDelta']): string {
-  const hasBudgetTension =
-    decision.constraintsBreached.some((constraint) => constraint.startsWith('SOFT:')) ||
-    (bucketDelta?.newRemainingCents != null && bucketDelta.newRemainingCents <= 0);
+  const softBreaches = decision.constraintsBreached.some((constraint) =>
+    constraint.startsWith('SOFT:')
+  );
+  let hasBudgetTension = softBreaches;
+  if (!hasBudgetTension) {
+    const remaining =
+      bucketDelta && bucketDelta.newRemainingCents != null
+        ? bucketDelta.newRemainingCents
+        : null;
+    if (remaining != null && remaining <= 0) {
+      hasBudgetTension = true;
+    }
+  }
 
   if (decision.action.type === 'USE_CARD_WITH_PAYDOWN') {
     return 'PAYDOWN_RECOMMENDED';
@@ -122,7 +137,8 @@ function renderUserFacingMessage(params: {
 
   if (bucketRemainingCents != null) {
     const remainingDollars = (bucketRemainingCents / 100).toFixed(2);
-    parts.push(`keeps ${bucketName ?? 'your budget'} on track ($${remainingDollars} left)`);
+    const bucketLabel = bucketName == null ? 'your budget' : bucketName;
+    parts.push(`keeps ${bucketLabel} on track ($${remainingDollars} left)`);
   }
 
   return `${parts.join(' – ')}.`;
@@ -151,11 +167,15 @@ function blockedDecision(reasonCode: string): AutopilotDecision {
 }
 
 export async function getAutopilotDecisionForUserSwipe(
+  world: World,
   input: SwipeInput
 ): Promise<AutopilotDecision> {
-  const { userId, merchant, amountCents } = input;
+  const { userId, merchant, amountCents, nowMs } = input;
   const normalizedMerchant = merchant.trim();
 
+  if (nowMs == null || Number.isNaN(nowMs)) {
+    throw new Error('Autopilot: nowMs required');
+  }
   if (!hasText(userId)) {
     throw new Error('Autopilot: userId required');
   }
@@ -166,12 +186,14 @@ export async function getAutopilotDecisionForUserSwipe(
     throw new Error('Autopilot: positive amount required');
   }
 
-  const cardUniverseIds = normalizeCardUniverseIds(input.cardUniverseIds ?? []);
+  const cardUniverseIds = normalizeCardUniverseIds(
+    input.cardUniverseIds == null ? [] : input.cardUniverseIds
+  );
   if (cardUniverseIds.length === 0) {
     return fallbackDecision('NO_CARDS_AVAILABLE');
   }
 
-  const state = await fromPrismaUserToEngineState(userId);
+  const state = await fromPrismaUserToEngineState(userId, nowMs);
   const allowedCards = state.cards.filter((card) => cardUniverseIds.includes(card.id));
   if (allowedCards.length === 0) {
     return fallbackDecision('NO_MATCHING_CARDS');
@@ -192,16 +214,17 @@ export async function getAutopilotDecisionForUserSwipe(
 
   const ctx = buildEngineContext({
     surface: 'web',
-    now: new Date(),
+    nowMs,
     merchantName: normalizedMerchant,
     merchantCategoryKey,
     mcc: null,
     amountCents,
   });
 
-  const engineResult = await safeSolveDecisionForUser(userId, ctx, {
+  const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
     maxCandidates: 64,
     stateOverride: filteredState,
+    includeLegacyDecision: false,
   });
 
   if (!engineResult.ok) {
@@ -222,9 +245,13 @@ export async function getAutopilotDecisionForUserSwipe(
   }
 
   const bucketDelta = pickBucketDelta(bestDecision, engineResult.state);
-  const bucketName = bucketDelta
-    ? engineResult.state.buckets.find((bucket) => bucket.id === bucketDelta.bucketId)?.name ?? null
-    : null;
+  let bucketName: string | null = null;
+  if (bucketDelta) {
+    const matched = engineResult.state.buckets.find(
+      (bucket) => bucket.id === bucketDelta.bucketId
+    );
+    bucketName = matched && matched.name != null ? matched.name : null;
+  }
 
   const expectedBest = estimateBenefitCents(
     bestDecision,
@@ -239,20 +266,29 @@ export async function getAutopilotDecisionForUserSwipe(
   const expectedMonetaryBenefitCents = Math.max(0, expectedBest - expectedRunnerUp);
 
   const reasonCode = classifyReasonCode(bestDecision, bucketDelta);
+  const matchedCard = engineResult.state.cards.find(
+    (card) => card.id === bestDecision.action.cardId
+  );
+  const cardLabel =
+    matchedCard && matchedCard.label != null
+      ? matchedCard.label
+      : bestDecision.action.cardId != null
+        ? bestDecision.action.cardId
+        : null;
   const userFacingMessage = renderUserFacingMessage({
     kind: 'OK',
-    cardLabel:
-      engineResult.state.cards.find((card) => card.id === bestDecision.action.cardId)?.label ??
-      bestDecision.action.cardId ??
-      null,
+    cardLabel,
     benefitCents: expectedMonetaryBenefitCents,
     bucketName,
-    bucketRemainingCents: bucketDelta?.newRemainingCents ?? null,
+    bucketRemainingCents:
+      bucketDelta && bucketDelta.newRemainingCents != null
+        ? bucketDelta.newRemainingCents
+        : null,
   });
 
   return {
     kind: 'OK',
-    cardId: bestDecision.action.cardId ?? null,
+    cardId: bestDecision.action.cardId == null ? null : bestDecision.action.cardId,
     reasonCode,
     userFacingMessage,
     expectedMonetaryBenefitCents,

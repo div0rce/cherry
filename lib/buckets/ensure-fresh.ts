@@ -14,10 +14,13 @@ export async function ensureBucketFresh(
   if (!bucket) return null;
 
   const rolled = applyInMemoryRollover(bucket, now);
-  const needsRollover =
-    rolled.isExpired ||
-    rolled.periodStart.getTime() !== bucket.periodStart.getTime() ||
-    rolled.periodEnd.getTime() !== bucket.periodEnd.getTime();
+  let needsRollover = rolled.isExpired;
+  if (!needsRollover) {
+    needsRollover = rolled.periodStart.getTime() !== bucket.periodStart.getTime();
+  }
+  if (!needsRollover) {
+    needsRollover = rolled.periodEnd.getTime() !== bucket.periodEnd.getTime();
+  }
 
   if (!needsRollover) return bucket;
 
@@ -30,7 +33,7 @@ export async function ensureBucketFresh(
       periodEnd: rolled.periodEnd,
       spentCents: rolled.spentCents,
       currentAmount: deriveLegacyCurrentAmount(balance),
-      lastResetAt: rolled.lastResetAt ?? now,
+      lastResetAt: rolled.lastResetAt == null ? now : rolled.lastResetAt,
     },
   });
 

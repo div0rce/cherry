@@ -8,7 +8,9 @@ function run(): void {
   const result = spawnSync('node', [scriptPath], { encoding: 'utf8' });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
 
-  assert.equal(result.status, 0, output.trim() || 'expected repo guardrail to pass');
+  const message = output.trim();
+  const fallback = message.length > 0 ? message : 'expected repo guardrail to pass';
+  assert.equal(result.status, 0, fallback);
   assert.ok(output.includes('check-repo-guardrails: ok'), 'missing success marker');
   console.warn('repo-guardrails-smoke: ok');
 }

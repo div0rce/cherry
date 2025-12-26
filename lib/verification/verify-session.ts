@@ -31,7 +31,9 @@ function merchantsMatch(signalMerchant?: string | null, targetMerchant?: string 
 }
 
 function isFinalStatus(status: RecommendationStatus): boolean {
-  return status === RecommendationStatus.VERIFIED || status === RecommendationStatus.REJECTED;
+  if (status === RecommendationStatus.VERIFIED) return true;
+  if (status === RecommendationStatus.REJECTED) return true;
+  return false;
 }
 
 export async function verifySessionFromSignal(signal: VerificationSignal): Promise<VerificationResult> {
@@ -58,15 +60,16 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
     };
   }
 
-  const targetAmount = session.confirmedAmountCents ?? session.amountCents;
-  const signalAmount = signal.amountCents ?? targetAmount;
-  const occurredAt = signal.occurredAt ?? new Date();
+  const targetAmount =
+    session.confirmedAmountCents == null ? session.amountCents : session.confirmedAmountCents;
+  const signalAmount = signal.amountCents == null ? targetAmount : signal.amountCents;
+  const occurredAt = signal.occurredAt == null ? session.createdAt : signal.occurredAt;
   const amountMatches = amountsMatch(signalAmount, targetAmount);
   const timeMatches = Math.abs(occurredAt.getTime() - session.createdAt.getTime()) <= TIME_TOLERANCE_MS;
   const merchantMatches = merchantsMatch(signal.merchantFingerprint, session.merchantName);
 
   const inferredVerified = amountMatches && timeMatches && merchantMatches;
-  const verified = signal.verified ?? inferredVerified;
+  const verified = signal.verified == null ? inferredVerified : signal.verified;
   const sessionStatus = verified ? RecommendationStatus.VERIFIED : RecommendationStatus.REJECTED;
   const ledgerStatus = verified ? CherryPointLedgerStatus.POSTED : CherryPointLedgerStatus.REVOKED;
   const anomalyCode =
@@ -78,16 +81,18 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
   const hasRecommendedBucketId = hasNonEmptyString(session.recommendedBucketId);
   if (!verified && hasRecommendedBucketId) {
     const recommendedBucketId = session.recommendedBucketId as string;
-    const freshBucket = await ensureBucketFresh(recommendedBucketId, new Date());
+    const freshBucket = await ensureBucketFresh(recommendedBucketId, occurredAt);
     if (freshBucket !== null && freshBucket !== undefined && freshBucket.userId !== userId) {
       return { ok: false, reason: 'INVALID', message: 'Bucket/user mismatch' };
     }
     reversalBucketUpdate = computeBucketReversal({
       verified,
-      confirmedAmountCents: session.confirmedAmountCents ?? null,
-      bucketSpendReversed: session.bucketSpendReversed ?? false,
-      bucketId: freshBucket?.id ?? null,
-      currentBucketSpentCents: freshBucket?.spentCents ?? null,
+      confirmedAmountCents:
+        session.confirmedAmountCents == null ? null : session.confirmedAmountCents,
+      bucketSpendReversed:
+        session.bucketSpendReversed == null ? false : session.bucketSpendReversed,
+      bucketId: freshBucket ? freshBucket.id : null,
+      currentBucketSpentCents: freshBucket ? freshBucket.spentCents : null,
     });
   }
 

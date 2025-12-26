@@ -11,6 +11,7 @@ import type {
   ObjectiveComponentScores,
   ObjectiveWeights,
 } from './types';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -81,9 +82,9 @@ export const DEFAULT_OBJECTIVE_WEIGHTS: ObjectiveWeights = {
   ...OBJECTIVE_PROFILES.BALANCED.weights,
 };
 
-function logObjectiveWarning(message: string, meta?: unknown) {
-  if (process.env.NODE_ENV === 'test') return;
-  console.warn('[engine] objective warning', { message, meta });
+function logObjectiveWarning(runtime: EngineRuntime, message: string, meta?: unknown) {
+  if (!runtime.enableLogs) return;
+  runtime.logger?.warn('[engine] objective warning', { message, meta });
 }
 
 function clampNonNegative(value: number): number {
@@ -101,10 +102,13 @@ export function normalizeObjectiveWeights(weights: ObjectiveWeights): ObjectiveW
   };
 }
 
-export function getObjectiveProfileById(id: EngineObjectiveProfileId): EngineObjectiveProfile {
-  const profile = OBJECTIVE_PROFILES[id] ?? null;
+export function getObjectiveProfileById(
+  id: EngineObjectiveProfileId,
+  runtime: EngineRuntime = DEFAULT_ENGINE_RUNTIME
+): EngineObjectiveProfile {
+  const profile = OBJECTIVE_PROFILES[id];
   if (profile == null) {
-    logObjectiveWarning('Unknown objective profile; using BALANCED', { id });
+    logObjectiveWarning(runtime, 'Unknown objective profile; using BALANCED', { id });
     return OBJECTIVE_PROFILES.BALANCED;
   }
   return profile;
@@ -115,29 +119,41 @@ export function mergeProfileWithOverrides(
   overrides?: Partial<ObjectiveWeights> | null
 ): ObjectiveWeights {
   const merged: ObjectiveWeights = {
-    rewards: overrides?.rewards ?? profile.weights.rewards,
-    runway: overrides?.runway ?? profile.weights.runway,
-    debtRelief: overrides?.debtRelief ?? profile.weights.debtRelief,
-    volatility: overrides?.volatility ?? profile.weights.volatility,
-    ruleViolations: overrides?.ruleViolations ?? profile.weights.ruleViolations,
+    rewards:
+      overrides && overrides.rewards != null ? overrides.rewards : profile.weights.rewards,
+    runway: overrides && overrides.runway != null ? overrides.runway : profile.weights.runway,
+    debtRelief:
+      overrides && overrides.debtRelief != null ? overrides.debtRelief : profile.weights.debtRelief,
+    volatility:
+      overrides && overrides.volatility != null ? overrides.volatility : profile.weights.volatility,
+    ruleViolations:
+      overrides && overrides.ruleViolations != null
+        ? overrides.ruleViolations
+        : profile.weights.ruleViolations,
   };
 
   return normalizeObjectiveWeights(merged);
 }
 
 export function getObjectiveWeightsForPreferences(
-  preferences: EngineUserPreferences | null | undefined
+  preferences: EngineUserPreferences | null | undefined,
+  runtime: EngineRuntime = DEFAULT_ENGINE_RUNTIME
 ): ObjectiveWeights {
   if (!preferences) {
-    logObjectiveWarning('Missing preferences; using defaults');
+    logObjectiveWarning(runtime, 'Missing preferences; using defaults');
     return normalizeObjectiveWeights(DEFAULT_OBJECTIVE_WEIGHTS);
   }
-  const profile = getObjectiveProfileById(preferences.profileId);
-  return mergeProfileWithOverrides(profile, preferences.customWeights ?? null);
+  const profile = getObjectiveProfileById(preferences.profileId, runtime);
+  const customWeights =
+    preferences.customWeights == null ? null : preferences.customWeights;
+  return mergeProfileWithOverrides(profile, customWeights);
 }
 
-export function getObjectiveWeightsForState(state: EngineState): ObjectiveWeights {
-  return getObjectiveWeightsForPreferences(state.preferences);
+export function getObjectiveWeightsForState(
+  state: EngineState,
+  runtime: EngineRuntime = DEFAULT_ENGINE_RUNTIME
+): ObjectiveWeights {
+  return getObjectiveWeightsForPreferences(state.preferences, runtime);
 }
 
 function scoreComponents(
@@ -159,12 +175,17 @@ function scoreComponents(
   ) {
     const card = state.cards.find((c) => c.id === action.cardId);
     if (card !== undefined) {
-      const categoryKey = ctx.merchantCategoryKey ?? 'ALL';
-      const rule =
-        card.rewardRules.find((r) => r.categoryKey === categoryKey) ??
-        card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE') ??
-        card.rewardRules.find((r) => r.categoryKey === 'OTHER') ??
-        card.rewardRules.find((r) => r.categoryKey === 'ALL');
+      const categoryKey = ctx.merchantCategoryKey == null ? 'ALL' : ctx.merchantCategoryKey;
+      let rule = card.rewardRules.find((r) => r.categoryKey === categoryKey);
+      if (!rule) {
+        rule = card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE');
+      }
+      if (!rule) {
+        rule = card.rewardRules.find((r) => r.categoryKey === 'OTHER');
+      }
+      if (!rule) {
+        rule = card.rewardRules.find((r) => r.categoryKey === 'ALL');
+      }
 
       if (rule) {
         const base = ctx.amountCents;
@@ -263,7 +284,7 @@ export function scoreDecision(
   weights?: ObjectiveWeights
 ): { score: number; reasons: string[]; components: ObjectiveComponentScores; weights: ObjectiveWeights } {
   const components = scoreComponents(state, ctx, action, projections);
-  const resolvedWeights = weights ?? getObjectiveWeightsForState(state);
+  const resolvedWeights = weights == null ? getObjectiveWeightsForState(state) : weights;
   const normalizedWeights = normalizeObjectiveWeights(resolvedWeights);
   const score = combineScores(components, normalizedWeights);
 

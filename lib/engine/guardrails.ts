@@ -123,7 +123,7 @@ export function evaluateConstraintsForDecision(
     }
   }
 
-  const amount = ctx.amountCents ?? 0;
+  const amount = ctx.amountCents == null ? 0 : ctx.amountCents;
 
   if (
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
@@ -132,7 +132,8 @@ export function evaluateConstraintsForDecision(
     !Number.isNaN(action.paydownAmountCents) &&
     action.paydownAmountCents !== 0
   ) {
-    const liquid = state.cash?.liquidCents ?? null;
+    const liquid =
+      state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : null;
     if (liquid != null && liquid < action.paydownAmountCents) {
       breaches.push('HARD:PAYDOWN_EXCEEDS_LIQUID');
     }

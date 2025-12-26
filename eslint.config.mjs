@@ -1,7 +1,63 @@
+import { createRequire } from 'node:module';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 import zodPlugin from 'eslint-plugin-zod';
+const requireJson = createRequire(import.meta.url);
+const serverEntropyAllowlist = requireJson('./scripts/guardrails/server-entropy.allowlist.json');
+
+const serverEntropyAllowlistFiles = (serverEntropyAllowlist.files ?? []);
+const libRestrictedSyntaxRules = [
+  {
+    selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+    message: '❌ new Date() is forbidden in lib/. Inject time explicitly via { now }.'
+  },
+  {
+    selector: "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+    message: '❌ Date.now() is forbidden in lib/. Inject time explicitly via { nowMs }.'
+  },
+  {
+    selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+    message: '❌ Math.random() is forbidden in lib/. Inject entropy explicitly.',
+  },
+  {
+    selector:
+      "CallExpression[callee.object.name='crypto'][callee.property.name=/^(randomUUID|getRandomValues|randomBytes)$/]",
+    message: '❌ crypto randomness is forbidden in lib/. Inject entropy explicitly.',
+  },
+  {
+    selector: "MemberExpression[object.name='process'][property.name='env']",
+    message: '❌ process.env is forbidden in lib/. Inject configuration explicitly.',
+  },
+  {
+    selector: "CallExpression[callee.property.name='sort'][arguments.length=0]",
+    message: '❌ Array.sort() without comparator is forbidden; provide a total, deterministic comparator.',
+  },
+  {
+    selector:
+      "CallExpression[callee.property.name='sort'][arguments.length=1] CallExpression[arguments.0.type='ArrowFunctionExpression'][arguments.0.body.type='BinaryExpression'][arguments.0.body.operator=/^[<>]=?$/]",
+    message: '❌ Comparator returning boolean is forbidden; return numeric ordering with equality handling.',
+  },
+];
+
+const coreSilentDefaultRules = [
+  {
+    selector: 'LogicalExpression[operator="??"]',
+    message: '❌ Nullish coalescing is forbidden in core logic; handle missing values explicitly.',
+  },
+  {
+    selector: 'AssignmentExpression > LogicalExpression[operator="||"]',
+    message: '❌ Silent defaults via || are forbidden in core logic; branch explicitly.',
+  },
+  {
+    selector: 'VariableDeclarator > LogicalExpression[operator="||"]',
+    message: '❌ Silent defaults via || are forbidden in core logic; branch explicitly.',
+  },
+  {
+    selector: 'ReturnStatement > LogicalExpression[operator="||"]',
+    message: '❌ Silent defaults via || are forbidden in core logic; branch explicitly.',
+  },
+];
 
 export default defineConfig([
   ...nextVitals,
@@ -19,7 +75,7 @@ export default defineConfig([
     plugins: { zod: zodPlugin },
     languageOptions: {
       parserOptions: {
-        project: './tsconfig.json',
+        project: ['./tsconfig.json', './tsconfig.scripts.json'],
       },
     },
     rules: {
@@ -68,6 +124,18 @@ export default defineConfig([
     },
   },
   {
+    files: ['scripts/**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    files: ['scripts/check-repo-guardrails.js'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
     files: ['app/api/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
@@ -75,6 +143,125 @@ export default defineConfig([
         {
           selector: 'CallExpression[callee.property.name="json"][callee.object.name=/^(request|req)$/]',
           message: 'Use parseJsonBody + Zod schema instead of calling request.json() directly.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['lib/**/*.ts', 'lib/**/*.tsx'],
+    ignores: serverEntropyAllowlistFiles.filter((f) => f.startsWith('lib/')),
+    rules: {
+      'no-restricted-syntax': ['error', ...libRestrictedSyntaxRules],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'process',
+          property: 'env',
+          message: '❌ process.env is forbidden in lib/. Inject configuration explicitly.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['lib/adapters/runtime/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "CallExpression[callee.property.name='sort'][arguments.length=0]",
+          message:
+            '❌ Array.sort() without comparator is forbidden; provide a total, deterministic comparator.',
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='sort'][arguments.length=1] CallExpression[arguments.0.type='ArrowFunctionExpression'][arguments.0.body.type='BinaryExpression'][arguments.0.body.operator=/^[<>]=?$/]",
+          message:
+            '❌ Comparator returning boolean is forbidden; return numeric ordering with equality handling.',
+        },
+      ],
+      'no-restricted-properties': 'off',
+      'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
+    },
+  },
+  {
+    files: [
+      'lib/engine/**/*.{ts,tsx}',
+      'lib/buckets/**/*.{ts,tsx}',
+      'lib/verification/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        ...libRestrictedSyntaxRules,
+        ...coreSilentDefaultRules,
+      ],
+    },
+  },
+  {
+    files: ['app/**/*.ts', 'app/**/*.tsx'],
+    ignores: [
+      'app/api/**/*',
+      'app/**/client.tsx',
+      'app/**/client.ts',
+      'app/**/*Client.tsx',
+      'app/**/*Client.ts',
+      'app/**/actions.ts',
+      ...serverEntropyAllowlistFiles.filter((f) => f.startsWith('app/')),
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message:
+            '❌ new Date() forbidden in server components. Capture once per request and thread.',
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='Date'][callee.property.name='now']",
+          message: '❌ Date.now() forbidden in server components.',
+        },
+        {
+          selector: "CallExpression[callee.property.name='sort'][arguments.length=0]",
+          message: '❌ Array.sort() without comparator is forbidden; provide a total, deterministic comparator.',
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='sort'][arguments.length=1] CallExpression[arguments.0.type='ArrowFunctionExpression'][arguments.0.body.type='BinaryExpression'][arguments.0.body.operator=/^[<>]=?$/]",
+          message: '❌ Comparator returning boolean is forbidden; return numeric ordering with equality handling.',
+        },
+        {
+          selector: "CallExpression[callee.object.name='Math'][callee.property.name='random']",
+          message: '❌ Math.random() forbidden in server components.',
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='crypto'][callee.property.name=/^(randomUUID|getRandomValues|randomBytes)$/]",
+          message: '❌ crypto randomness forbidden in server components.',
+        },
+        {
+          selector: "MemberExpression[object.name='process'][property.name='env']",
+          message: '❌ process.env forbidden in server components; inject via props.',
+        },
+        {
+          selector: "CallExpression[callee.name='headers']",
+          message: '❌ headers() forbidden in server components; pass values from boundary.',
+        },
+        {
+          selector: "CallExpression[callee.name='cookies']",
+          message: '❌ cookies() forbidden in server components; pass values from boundary.',
+        },
+        {
+          selector: "CallExpression[callee.name='draftMode']",
+          message: '❌ draftMode() forbidden in server components; pass values from boundary.',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'process',
+          property: 'env',
+          message: '❌ process.env forbidden in server components; inject via props.',
         },
       ],
     },

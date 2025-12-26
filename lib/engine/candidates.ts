@@ -5,13 +5,15 @@ function hasNonEmptyString(value?: string | null): value is string {
 }
 
 function surfaceSupportsAdvancedActions(ctx: EngineContext): boolean {
-  return ctx.surface === 'web' || ctx.surface === 'extension';
+  if (ctx.surface === 'web') return true;
+  if (ctx.surface === 'extension') return true;
+  return false;
 }
 
 function pickTopDebtAccounts(state: EngineState, max: number): string[] {
   const sorted = [...state.debts].sort((a, b) => {
-    const aprA = a.aprPercent ?? 0;
-    const aprB = b.aprPercent ?? 0;
+    const aprA = a.aprPercent == null ? 0 : a.aprPercent;
+    const aprB = b.aprPercent == null ? 0 : b.aprPercent;
     if (aprA !== aprB) return aprB - aprA;
     return b.balanceCents - a.balanceCents;
   });
@@ -19,14 +21,14 @@ function pickTopDebtAccounts(state: EngineState, max: number): string[] {
 }
 
 function computePaydownAmountCents(state: EngineState, ctx: EngineContext): number | null {
-  const amount = ctx.amountCents ?? 0;
+  const amount = ctx.amountCents == null ? 0 : ctx.amountCents;
   if (amount <= 0) return null;
 
   const base = Math.floor(amount * 0.5);
   const hardCap = 50_000;
   const paydown = Math.min(base, hardCap);
 
-  const liquid = state.cash?.liquidCents ?? null;
+  const liquid = state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : null;
   if (liquid != null) {
     const buffer = 0;
     if (paydown > liquid - buffer) {
@@ -40,7 +42,7 @@ function computePaydownAmountCents(state: EngineState, ctx: EngineContext): numb
 
 export function generateCandidateActions(state: EngineState, ctx: EngineContext): EngineAction[] {
   const actions: EngineAction[] = [];
-  const amount = ctx.amountCents ?? 0;
+  const amount = ctx.amountCents == null ? 0 : ctx.amountCents;
   const hasPositiveAmount = amount > 0;
   const advanced = surfaceSupportsAdvancedActions(ctx);
   const isZeroAmount = !hasPositiveAmount;
@@ -58,7 +60,8 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
     });
   }
 
-  if (advanced && state.debts.length > 0 && (state.cash?.liquidCents ?? 0) > 0) {
+  const liquidCents = state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : 0;
+  if (advanced && state.debts.length > 0 && liquidCents > 0) {
     const paydownAmount = computePaydownAmountCents(state, ctx);
     if (paydownAmount !== null && !Number.isNaN(paydownAmount) && paydownAmount > 0) {
       const debtIds = pickTopDebtAccounts(state, 2);
@@ -70,7 +73,10 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
             cardId: card.id,
             debtId,
             paydownAmountCents: paydownAmount,
-            paydownScheduledDate: state.cash?.nextPaycheckDate ?? null,
+            paydownScheduledDateMs:
+              state.cash && state.cash.nextPaycheckDateMs != null
+                ? state.cash.nextPaycheckDateMs
+                : null,
             meta: { reasonHint: 'CARD_PLUS_DEBT_RELIEF' },
           });
         }
@@ -81,7 +87,10 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
           type: 'PAY_DOWN_DEBT',
           debtId,
           paydownAmountCents: paydownAmount,
-          paydownScheduledDate: state.cash?.nextPaycheckDate ?? null,
+          paydownScheduledDateMs:
+            state.cash && state.cash.nextPaycheckDateMs != null
+              ? state.cash.nextPaycheckDateMs
+              : null,
           meta: { reasonHint: 'DEBT_ONLY_RELIEF' },
         });
       }
@@ -105,7 +114,8 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
     actions.push({
       type: 'SWITCH_MERCHANT',
       altMerchantName: 'cheaper alternative',
-      altMerchantCategoryKey: ctx.merchantCategoryKey ?? null,
+      altMerchantCategoryKey:
+        ctx.merchantCategoryKey == null ? null : ctx.merchantCategoryKey,
       meta: { reasonHint: 'ALT_MERCHANT_SAME_CATEGORY' },
     });
   }

@@ -45,11 +45,14 @@ function normalizeAmountMinor(amountMinor: number): number {
 }
 
 function directionOf(tx: Pick<ClassifiedBankTransaction, 'direction'>): 'credit' | 'debit' {
-  return (tx.direction ?? '').toLowerCase() === 'credit' ? 'credit' : 'debit';
+  const direction = tx.direction;
+  const normalized = typeof direction === 'string' ? direction : '';
+  return normalized.toLowerCase() === 'credit' ? 'credit' : 'debit';
 }
 
 function normalizeText(value: string | null | undefined): string {
-  return (value ?? '').toUpperCase();
+  const normalized = typeof value === 'string' ? value : '';
+  return normalized.toUpperCase();
 }
 
 function contains(text: string, needles: string[]): boolean {
@@ -57,7 +60,14 @@ function contains(text: string, needles: string[]): boolean {
 }
 
 function inferBucketKeyForTransaction(tx: ClassifiedBankTransaction): string {
-  const desc = normalizeText(tx.description ?? tx.rawDescription ?? tx.merchantName);
+  let descValue = tx.description;
+  if (descValue == null) {
+    descValue = tx.rawDescription;
+  }
+  if (descValue == null) {
+    descValue = tx.merchantName;
+  }
+  const desc = normalizeText(descValue);
   const mcc = typeof tx.mcc === 'number' ? tx.mcc : null;
   const p2pKind = tx.p2pKind;
 
@@ -110,16 +120,36 @@ function bucketSpendByMonth(
   regime: IncomeRegimeDraft,
 ): Map<string, Map<string, number>> {
   const monthKeys = new Set(regime.months.map((m) => monthStart(m).toISOString()));
+  let fallbackDate = regime.startMonth;
+  if (fallbackDate == null) {
+    fallbackDate = regime.months[0];
+  }
+  if (fallbackDate == null) {
+    fallbackDate = regime.endMonth;
+  }
+  const fallbackDateValue = fallbackDate == null ? null : fallbackDate;
   const spend = new Map<string, Map<string, number>>();
   for (const tx of txs) {
     const delta = deriveBucketDeltaCents(tx);
     if (delta === 0) continue;
-    const aligned = monthStart(tx.postedAt ?? tx.occurredAt ?? new Date());
+    let timestamp = tx.postedAt;
+    if (timestamp == null) {
+      timestamp = tx.occurredAt;
+    }
+    if (timestamp == null) {
+      timestamp = fallbackDateValue;
+    }
+    if (timestamp == null) continue;
+    const aligned = monthStart(timestamp);
     const alignedKey = aligned.toISOString();
     if (!monthKeys.has(alignedKey)) continue;
     const bucketKey = inferBucketKeyForTransaction(tx);
-    const bucketMap = spend.get(bucketKey) ?? new Map<string, number>();
-    const current = bucketMap.get(alignedKey) ?? 0;
+    let bucketMap = spend.get(bucketKey);
+    if (!bucketMap) {
+      bucketMap = new Map<string, number>();
+    }
+    const currentValue = bucketMap.get(alignedKey);
+    const current = typeof currentValue === 'number' ? currentValue : 0;
     bucketMap.set(alignedKey, current + delta);
     spend.set(bucketKey, bucketMap);
   }
@@ -129,6 +159,11 @@ function bucketSpendByMonth(
 function clamp(value: number, min: number, max: number): number {
   if (Number.isNaN(value)) return min;
   return Math.min(Math.max(value, min), max);
+}
+
+function getMapNumberOrZero(map: Map<string, number>, key: string): number {
+  const value = map.get(key);
+  return typeof value === 'number' ? value : 0;
 }
 
 function synthesizeTemplatesForRegime(
@@ -149,12 +184,12 @@ function synthesizeTemplatesForRegime(
   }
 
   const essentialSpend =
-    (avgSpendByBucket.get(REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES) ?? 0) +
-    (avgSpendByBucket.get(REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT) ?? 0) +
-    (avgSpendByBucket.get(REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE) ?? 0);
+    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES) +
+    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT) +
+    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE);
   const discretionarySpend =
-    (avgSpendByBucket.get(REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL) ?? 0) +
-    (avgSpendByBucket.get(REGIME_BUCKET_KEYS.DISCRETIONARY_SHOPPING) ?? 0);
+    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL) +
+    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.DISCRETIONARY_SHOPPING);
 
   const totalVariable = Math.max(essentialSpend + discretionarySpend, 1);
   const essentialShareRaw = essentialSpend / totalVariable;
@@ -184,7 +219,7 @@ function synthesizeTemplatesForRegime(
   const drafts: BucketTemplateDraft[] = [];
 
   for (const def of BUCKET_DEFINITIONS) {
-    const avgSpend = avgSpendByBucket.get(def.key) ?? 0;
+    const avgSpend = getMapNumberOrZero(avgSpendByBucket, def.key);
     let limit = 0;
     if (def.band === 'fixed') {
       limit = bandBudgets.fixed;
@@ -213,16 +248,17 @@ function synthesizeTemplatesForRegime(
   }
 
   // Savings buffer gets whatever is left after essentials+discretionary+fixed
-  const allocated =
-    drafts
-      .filter((d) => d.bucketKey !== REGIME_BUCKET_KEYS.SAVINGS_BUFFER)
-      .reduce((acc, d) => acc + d.monthlyLimitCents, 0) ?? 0;
+  const allocated = drafts
+    .filter((d) => d.bucketKey !== REGIME_BUCKET_KEYS.SAVINGS_BUFFER)
+    .reduce((acc, d) => acc + d.monthlyLimitCents, 0);
   const cap = Math.round(Math.max(regime.avgNetIncomeCents, usableFreeCash) * 1.2);
   const availableForSavings = Math.max(0, Math.min(cap - allocated, bandBudgets.savings));
   const savingsDraft = drafts.find((d) => d.bucketKey === REGIME_BUCKET_KEYS.SAVINGS_BUFFER);
   if (savingsDraft) {
     savingsDraft.monthlyLimitCents = availableForSavings;
-    savingsDraft.avgSpendCents = savingsDraft.avgSpendCents ?? 0;
+    if (savingsDraft.avgSpendCents == null) {
+      savingsDraft.avgSpendCents = 0;
+    }
     savingsDraft.targetShareBps =
       regime.avgNetIncomeCents > 0
         ? Math.round((availableForSavings / Math.max(regime.avgNetIncomeCents, 1)) * 10000)
@@ -301,8 +337,9 @@ export async function synthesizeBucketTemplatesForUser(
   await prisma.historicalBucketTemplate.deleteMany({ where: { userId } });
   const creations = [];
   for (const regime of regimes) {
-    const drafts = templatesByRegime[regime.id] ?? [];
-    for (const draft of drafts) {
+    const drafts = templatesByRegime[regime.id];
+    const resolvedDrafts = drafts == null ? [] : drafts;
+    for (const draft of resolvedDrafts) {
       creations.push(
         prisma.historicalBucketTemplate.create({
           data: {

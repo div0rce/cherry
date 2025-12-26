@@ -6,33 +6,33 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 const scriptPath = path.join(repoRoot, 'scripts', 'check-repo-guardrails.js');
-const fixturesRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'money');
+const fixturesRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'defaults', 'lib', 'engine');
 
 function runFixture(
   fixtureName: string,
   options: { expectFail: boolean; token?: string }
 ): void {
-  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cherry-money-'));
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cherry-defaults-'));
   try {
-    const libDir = path.join(tempRoot, 'lib');
-    fs.mkdirSync(libDir, { recursive: true });
+    const engineDir = path.join(tempRoot, 'lib', 'engine');
+    fs.mkdirSync(engineDir, { recursive: true });
     const sourcePath = path.join(fixturesRoot, fixtureName);
-    const destPath = path.join(libDir, fixtureName);
+    const destPath = path.join(engineDir, fixtureName);
     fs.copyFileSync(sourcePath, destPath);
 
     const result = spawnSync('node', [scriptPath, '--root', tempRoot], { encoding: 'utf8' });
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
 
     if (options.expectFail) {
-      assert.notEqual(result.status, 0, 'expected money guardrail to fail');
-      assert.ok(output.includes('money-float-banned'), 'missing guardrail name');
+      assert.notEqual(result.status, 0, 'expected silent-default guardrail to fail');
+      assert.ok(output.includes('silent-default-banned'), 'missing guardrail name');
       if (typeof options.token === 'string' && options.token.length > 0) {
         assert.ok(output.includes(options.token), 'missing matched token');
       }
-      assert.ok(output.includes(path.normalize(path.join('lib', fixtureName))), 'missing file path');
+      assert.ok(output.includes(path.normalize(path.join('lib', 'engine', fixtureName))), 'missing file path');
     } else {
       const message = output.trim();
-      const fallback = message.length > 0 ? message : 'expected money guardrail to pass';
+      const fallback = message.length > 0 ? message : 'expected silent-default guardrail to pass';
       assert.equal(result.status, 0, fallback);
       assert.ok(output.includes('check-repo-guardrails: ok'), 'missing success marker');
     }
@@ -42,9 +42,9 @@ function runFixture(
 }
 
 function run(): void {
-  runFixture('float.bad.ts', { expectFail: true, token: '* 100' });
-  runFixture('int.ok.ts', { expectFail: false });
-  console.warn('money-float-banned: ok');
+  runFixture('fixture-default.bad.ts', { expectFail: true, token: '??' });
+  runFixture('fixture-explicit.ok.ts', { expectFail: false });
+  console.warn('silent-defaults-banned: ok');
 }
 
 run();
