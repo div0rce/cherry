@@ -105,8 +105,8 @@ function run(): void {
   });
 
   runFixture('esm-loader-missing', {
-    guardrail: 'esm-loader-missing',
-    token: 'ts-node .mts without --loader ts-node/esm',
+    guardrail: 'esm-loader-macro-missing',
+    token: 'ts:esm',
     file: 'package.json',
   });
 

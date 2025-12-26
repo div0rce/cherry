@@ -1,5 +1,5 @@
 export function ensureTsEsm(): void {
-  if (!process.execArgv.some((arg) => arg.includes('ts-node/esm'))) {
+  if (process.env['CHERRY_TSESM'] !== '1') {
     throw new Error('This script must be executed via npm run ts:esm');
   }
 }

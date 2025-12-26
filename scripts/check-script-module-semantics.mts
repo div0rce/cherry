@@ -241,11 +241,11 @@ function checkPackageType(violations: Violation[]): void {
   const packagePath = path.join(ROOT, "package.json");
   const data = fs.readFileSync(packagePath, "utf8");
   const parsed = globalThis.JSON.parse(data) as { type?: string };
-  if (parsed.type === "module") {
+  if (parsed.type !== "module") {
     violations.push({
       file: "package.json",
       message:
-        "Root package.json must remain CommonJS. Script semantics are defined by extension only.",
+        "Root package.json must be ESM. Script semantics are defined by extension only.",
     });
   }
 }

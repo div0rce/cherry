@@ -1,7 +1,5 @@
-/** @type {typeof import('node:fs')} */
-const fs = require('node:fs');
-/** @type {typeof import('node:path')} */
-const path = require('node:path');
+import fs from 'node:fs';
+import path from 'node:path';
 
 const DEFAULT_EXTENSIONS = new Set([
   '.ts',
@@ -49,10 +47,11 @@ const TIME_TOKENS = [
   { token: 'new Date(', regex: /\bnew Date\s*\(/ },
   { token: 'Date.now(', regex: /\bDate\.now\s*\(/ },
 ];
-const BAD_TS_NODE_MTS = /ts-node(?![^\n]*--loader\s+ts-node\/esm)[^\n]*\.mts\b/;
-const INLINE_ESM_LOADER = /node\s+--loader\s+ts-node\/esm/;
+const INLINE_TS_NODE_LOADER = /node\s+--loader\s+ts-node\/esm/;
+const INLINE_TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
 const DIRECT_NODE_MTS = /node\b[^\n]*\bscripts\/[^\s'"]+\.mts\b/;
 const TS_NODE_MTS = /\bts-node\b[^\n]*\.mts\b/;
+const TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
 const FORBIDDEN_TS_NODE_REGISTER = /\bts-node\/register\b|\bts-node\/register\/transpile-only\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
@@ -515,10 +514,12 @@ for (const file of commandFiles) {
   if (!fs.existsSync(file)) continue;
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
-  if (BAD_TS_NODE_MTS.test(content)) {
-    console.error(
-      `esm-loader-missing: ${relPath}: ts-node .mts without --loader ts-node/esm`
-    );
+  if (TS_NODE_MTS.test(content)) {
+    console.error(`esm-loader-bypass: ${relPath}: ts-node .mts`);
+    process.exit(1);
+  }
+  if (INLINE_TS_NODE_LOADER.test(content)) {
+    console.error(`esm-loader-bypass: ${relPath}: node --loader ts-node/esm`);
     process.exit(1);
   }
   if (FORBIDDEN_TS_NODE_REGISTER.test(content)) {
@@ -534,17 +535,30 @@ for (const file of commandFiles) {
       process.exit(1);
     }
     const macro = scripts['ts:esm'];
-    if (typeof macro !== 'string' || !INLINE_ESM_LOADER.test(macro)) {
+    if (
+      typeof macro !== 'string' ||
+      !macro.includes('CHERRY_TSESM=1') ||
+      !macro.includes('tsx') ||
+      !macro.includes('--tsconfig tsconfig.scripts.json')
+    ) {
       console.error('esm-loader-macro-missing: package.json: ts:esm');
       process.exit(1);
     }
     for (const [name, command] of Object.entries(scripts)) {
       if (name === 'ts:esm') continue;
-      if (INLINE_ESM_LOADER.test(command)) {
+      if (INLINE_TS_NODE_LOADER.test(command)) {
+        console.error(`esm-loader-inline: package.json: ${name}`);
+        process.exit(1);
+      }
+      if (INLINE_TSX_MTS.test(command)) {
         console.error(`esm-loader-inline: package.json: ${name}`);
         process.exit(1);
       }
       if (DIRECT_NODE_MTS.test(command)) {
+        console.error(`esm-loader-bypass: package.json: ${name}`);
+        process.exit(1);
+      }
+      if (TSX_MTS.test(command)) {
         console.error(`esm-loader-bypass: package.json: ${name}`);
         process.exit(1);
       }
@@ -564,12 +578,20 @@ for (const file of executionContractFiles) {
     console.error(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
     process.exit(1);
   }
+  if (INLINE_TS_NODE_LOADER.test(content)) {
+    console.error(`esm-loader-bypass: ${relPath}: node --loader ts-node/esm`);
+    process.exit(1);
+  }
   if (DIRECT_NODE_MTS.test(content)) {
     console.error(`esm-loader-bypass: ${relPath}: node scripts/*.mts`);
     process.exit(1);
   }
   if (TS_NODE_MTS.test(content)) {
     console.error(`esm-loader-bypass: ${relPath}: ts-node .mts`);
+    process.exit(1);
+  }
+  if (TSX_MTS.test(content)) {
+    console.error(`esm-loader-bypass: ${relPath}: tsx .mts`);
     process.exit(1);
   }
 }

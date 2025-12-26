@@ -2,7 +2,7 @@
   "name": "fixture",
   "private": true,
   "scripts": {
-    "ts:esm": "TS_NODE_PROJECT=tsconfig.scripts.json node --loader ts-node/esm",
-    "check:side-effects": "node --loader ts-node/esm scripts/check-no-side-effects.mts"
+    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json",
+    "check:side-effects": "tsx --tsconfig tsconfig.scripts.json scripts/check-no-side-effects.mts"
   }
 }
