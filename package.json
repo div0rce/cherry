@@ -18,7 +18,7 @@
     "lint:eslint": "eslint .",
     "lint:scripts": "eslint scripts --max-warnings=0",
     "lint:tailwind": "node ./scripts/check-tailwind-conflicts.mjs",
-    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json",
+    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
     "typecheck": "tsc --noEmit",
     "typecheck:scripts": "tsc --project tsconfig.scripts.json --noEmit",
     "check:server-entropy": "npm run ts:esm -- scripts/check-no-server-entropy.mts",
@@ -89,7 +89,7 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.22.0",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }
