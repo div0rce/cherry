@@ -3,6 +3,7 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -51,8 +52,9 @@ export function AdminActionButton({
       setMessage(nextMessage);
       router.refresh();
     } catch (err) {
+      asError(err);
       setStatus('error');
-      setMessage(err instanceof Error ? err.message : 'Request failed');
+      setMessage(err.message);
     }
   }
 

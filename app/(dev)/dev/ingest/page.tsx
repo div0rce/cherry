@@ -8,6 +8,7 @@ import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorBanner } from '@/components/ErrorBanner';
+import { asError } from '@/lib/errors';
 
 type SourceSummary = {
   source: string;
@@ -38,7 +39,8 @@ export default async function IngestDashboardPage(): Promise<JSX.Element> {
   try {
     summaries = await loadSourceSummaries(userId);
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load ingest stats';
+    asError(err);
+    error = err.message;
   }
 
   const totalTx = summaries.reduce((sum, item) => sum + item.count, 0);

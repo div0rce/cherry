@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
@@ -23,6 +24,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(result);
   } catch (error) {
+    asError(error);
     logError('Error fetching MCCs', error);
     return new NextResponse('Failed to fetch MCCs', { status: 500 });
   }

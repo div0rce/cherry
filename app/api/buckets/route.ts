@@ -11,6 +11,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';
@@ -61,7 +62,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     const runtimeBuckets = buckets.map(toBucketRuntime);
     return NextResponse.json(runtimeBuckets);
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -82,7 +84,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets POST', error);
@@ -178,14 +181,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(toBucketRuntime(bucket), { status: 201 });
   } catch (error) {
+    asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets POST', {
         userId,
         mode,
-        meta: error.meta,
+        meta: asLogMeta(error.meta),
+        err: error,
       });
     } else {
-      logInvariant('Error in api/buckets POST', { userId, mode, error });
+      logInvariant('Error in api/buckets POST', { userId, mode, err: error });
       logError('Error creating bucket', error);
     }
     return NextResponse.json(
@@ -207,7 +212,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets DELETE', error);
@@ -234,14 +240,16 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets DELETE', {
         userId,
         mode,
-        meta: error.meta,
+        meta: asLogMeta(error.meta),
+        err: error,
       });
     } else {
-      logInvariant('Error in api/buckets DELETE', { userId, mode, error });
+      logInvariant('Error in api/buckets DELETE', { userId, mode, err: error });
       logError('Error deleting bucket', error);
     }
     return new NextResponse('Failed to delete bucket', { status: 500 });

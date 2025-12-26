@@ -4,6 +4,7 @@ import { withUser } from '@/lib/with-user';
 import { prisma } from '@/lib/prisma';
 import { generateCherryPass } from '@/lib/wallet/cherryPass';
 import { logError } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 import { getWalletPassConfigStatus } from '@/lib/wallet/config';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         },
       });
     } catch (error) {
+      asError(error);
       logError('Error generating Cherry Pass', error);
       return NextResponse.json(
         {
