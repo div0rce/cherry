@@ -1,0 +1,8 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "ts:esm": "TS_NODE_PROJECT=tsconfig.scripts.json node --loader ts-node/esm",
+    "check:side-effects": "node --loader ts-node/esm scripts/check-no-side-effects.mts"
+  }
+}

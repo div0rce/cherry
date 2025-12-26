@@ -49,6 +49,7 @@ const TIME_TOKENS = [
   { token: 'Date.now(', regex: /\bDate\.now\s*\(/ },
 ];
 const BAD_TS_NODE_MTS = /ts-node(?![^\n]*--loader\s+ts-node\/esm)[^\n]*\.mts\b/;
+const INLINE_ESM_LOADER = /node\s+--loader\s+ts-node\/esm/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
 const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asError\s*\(/;
@@ -477,6 +478,27 @@ for (const file of commandFiles) {
       `esm-loader-missing: ${relPath}: ts-node .mts without --loader ts-node/esm`
     );
     process.exit(1);
+  }
+  if (relPath === 'package.json') {
+    /** @type {{ scripts?: Record<string, string> }} */
+    const packageJson = JSON.parse(content);
+    const scripts = packageJson.scripts;
+    if (!scripts || typeof scripts !== 'object') {
+      console.error('esm-loader-macro-missing: package.json: ts:esm');
+      process.exit(1);
+    }
+    const macro = scripts['ts:esm'];
+    if (typeof macro !== 'string' || !INLINE_ESM_LOADER.test(macro)) {
+      console.error('esm-loader-macro-missing: package.json: ts:esm');
+      process.exit(1);
+    }
+    for (const [name, command] of Object.entries(scripts)) {
+      if (name === 'ts:esm') continue;
+      if (INLINE_ESM_LOADER.test(command)) {
+        console.error(`esm-loader-inline: package.json: ${name}`);
+        process.exit(1);
+      }
+    }
   }
 }
 

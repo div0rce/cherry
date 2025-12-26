@@ -110,6 +110,12 @@ function run(): void {
     file: 'package.json',
   });
 
+  runFixture('esm-loader-inline', {
+    guardrail: 'esm-loader-inline',
+    token: 'check:side-effects',
+    file: 'package.json',
+  });
+
   console.warn('repo-guardrails: ok');
 }
 
