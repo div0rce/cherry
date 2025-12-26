@@ -1,10 +1,12 @@
 import type { JSX } from 'react';
-import { resolveUserContext } from '@/lib/user-context';
+import { requireUserContext } from '@/app/(user)/_lib/api';
 import { getHomeUiBundle } from '@/lib/home/ui-bundle';
 import { HomeScreen } from './_components/HomeScreen';
+export const dynamic = 'force-dynamic';
+
 
 export default async function AppHome(): Promise<JSX.Element> {
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+  const { userId } = await requireUserContext();
   const homeBundle = await getHomeUiBundle(userId);
   return <HomeScreen bundle={homeBundle} />;
 }

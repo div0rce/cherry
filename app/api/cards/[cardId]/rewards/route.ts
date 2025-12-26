@@ -7,7 +7,11 @@ import { prisma } from '@/lib/prisma';
 import { RewardCategory } from '@prisma/client';
 import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '@/lib/user-context';
 import { asError, asLogMeta } from '@/lib/errors';
-import { RewardRuleCreateSchema, RewardRuleDeleteSchema } from '@/lib/schemas/cards';
+import {
+  RewardRuleCreateSchema,
+  RewardRuleDeleteSchema,
+  RewardRuleUpdateSchema,
+} from '@/lib/schemas/cards';
 import { hasText } from '@/lib/text';
 import { isPositiveNumber } from '@/lib/numbers';
 import { logGuardrailEvent } from '@/lib/log';
@@ -259,4 +263,113 @@ export async function DELETE(
   }
 
   return new NextResponse(null, { status: 204 });
+}
+
+/**
+ * PATCH /api/cards/[cardId]/rewards
+ *
+ * Updates a reward rule for the given card.
+ * Expected JSON body:
+ * {
+ *   rewardRuleId: string,
+ *   category: string,
+ *   multiplier?: number,
+ *   cashbackPercent?: number,
+ *   capAmountCents?: number | null
+ * }
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ cardId: string }> }
+): Promise<NextResponse> {
+  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  assertUserId(userId, 'api/cards/[cardId]/rewards PATCH');
+  const { cardId } = await params;
+
+  if (!hasText(cardId)) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'STOP',
+      reason: 'MISSING_CARD_ID',
+    });
+    return new NextResponse('Invalid request', { status: 400 });
+  }
+
+  const parsed = await parseJsonBody(request, RewardRuleUpdateSchema);
+  if (!parsed.ok) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'STOP',
+      reason: 'INVALID_PAYLOAD',
+    });
+    return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
+  }
+
+  const { rewardRuleId, category, multiplier, cashbackPercent, capAmountCents } = parsed.data;
+  const normalizedCategory = category.toUpperCase();
+  const allowed = Object.values(RewardCategory);
+  const hasValidCategory = allowed.includes(normalizedCategory as RewardCategory);
+  const hasValidMultiplier = isPositiveNumber(multiplier);
+  const hasValidCashback = isPositiveNumber(cashbackPercent);
+  const hasValidCap =
+    capAmountCents === undefined || capAmountCents === null || isPositiveNumber(capAmountCents);
+
+  if (!hasValidCategory || (!hasValidMultiplier && !hasValidCashback) || !hasValidCap) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'STOP',
+      reason: 'INVALID_FIELDS',
+      detail: { hasValidCategory, hasValidMultiplier, hasValidCashback, hasValidCap },
+    });
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+  }
+
+  const card = await assertCardForUser(cardId, userId);
+  if (!card) {
+    logGuardrailEvent({
+      userId,
+      surface: 'rewards',
+      outcome: 'STOP',
+      reason: 'CARD_NOT_FOUND',
+    });
+    return new NextResponse('Card not found for user', { status: 404 });
+  }
+
+  const rewardRule = await prisma.rewardRule.findFirst({
+    where: { id: rewardRuleId, cardId: card.id },
+  });
+  if (!rewardRule) {
+    return new NextResponse('Reward rule not found for card', { status: 404 });
+  }
+
+  try {
+    const numericMultiplier = hasValidMultiplier
+      ? Number(multiplier)
+      : Number(cashbackPercent) / 100;
+    const updated = await prisma.rewardRule.update({
+      where: { id: rewardRule.id },
+      data: {
+        category: normalizedCategory as RewardCategory,
+        multiplier: numericMultiplier,
+        capAmount: capAmountCents ?? null,
+      },
+    });
+
+    return NextResponse.json(updated);
+  } catch (err) {
+    asError(err);
+    if (isPrismaP2003(err)) {
+      logInvariant('P2003 in api/cards/[cardId]/rewards PATCH', {
+        userId,
+        mode,
+        meta: asLogMeta(err.meta),
+        err,
+      });
+      return new NextResponse('User context or FK error', { status: 500 });
+    }
+    throw err;
+  }
 }

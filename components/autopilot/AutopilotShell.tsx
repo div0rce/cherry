@@ -70,7 +70,7 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
     setPurchaseSummary(summary);
     setHasPurchase(true);
     try {
-      const result = await runSimulation(summary);
+      const result = await runSimulation(summary, { now: new Date() });
       setSimulationResult(result);
     } catch (error) {
       console.error('Autopilot simulation failed', error);

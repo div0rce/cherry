@@ -1,11 +1,13 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import { RewardRuleForm } from '../../../../../_components/RewardRuleForm';
 import { DeleteActionButton } from '../../../../../_components/DeleteActionButton';
 import { deleteRewardRule, updateRewardRule } from './actions';
+export const dynamic = 'force-dynamic';
+
+
 
 type PageParams = { cardId: string; ruleId: string };
 
@@ -16,25 +18,35 @@ export default async function EditRewardRulePage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId, ruleId } = resolvedParams;
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-
-  const rule = await prisma.rewardRule.findFirst({
-    where: { id: ruleId, card: { id: cardId, userId } },
-    select: {
-      id: true,
-      category: true,
-      multiplier: true,
-      cashbackPercent: true,
-      card: { select: { id: true, nickname: true } },
-    },
-  });
-
-  if (rule === null) {
+  await requireUserContext();
+  const ruleResponse = await fetchFromApi(`/api/cards/${cardId}/rewards`);
+  if (!ruleResponse.ok) {
+    redirect('/app/onboarding?missing=rules');
+    return null;
+  }
+  const rules = (await ruleResponse.json()) as Array<{
+    id: string;
+    category: string;
+    multiplier: number | null;
+    cashbackPercent: number | null;
+  }>;
+  const currentRule = rules.find((item) => item.id === ruleId) ?? null;
+  if (currentRule === null) {
     redirect('/app/onboarding?missing=rules');
     return null;
   }
 
-  const currentRule = rule;
+  const cardResponse = await fetchFromApi('/api/cards');
+  if (!cardResponse.ok) {
+    redirect('/app/onboarding?missing=cards');
+    return null;
+  }
+  const cards = (await cardResponse.json()) as Array<{ id: string; nickname: string }>;
+  const card = cards.find((item) => item.id === cardId) ?? null;
+  if (card === null) {
+    redirect('/app/onboarding?missing=cards');
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e2e8f0]">
@@ -44,7 +56,7 @@ export default async function EditRewardRulePage({
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#ff4d6d]">Reward rules</p>
             <h1 className="text-2xl font-semibold text-[#0f172a]">Edit reward rule</h1>
             <p className="text-sm text-slate-600">
-              Adjust the scope or rate for {currentRule.card.nickname}. Deleting the rule may block Autopilot if no other rules remain.
+              Adjust the scope or rate for {card.nickname}. Deleting the rule may block Autopilot if no other rules remain.
             </p>
           </div>
           <Link href="/app/onboarding" className="text-sm font-semibold text-[#ff4d6d]">
@@ -54,7 +66,7 @@ export default async function EditRewardRulePage({
 
         <RewardRuleForm
           action={updateRewardRule}
-          cardId={currentRule.card.id}
+          cardId={card.id}
           defaultValues={{
             ruleId: currentRule.id,
             category: currentRule.category,
@@ -65,7 +77,7 @@ export default async function EditRewardRulePage({
           footerSlot={
             <DeleteActionButton
               action={deleteRewardRule}
-              hiddenFields={{ cardId: currentRule.card.id, ruleId: currentRule.id }}
+              hiddenFields={{ cardId: card.id, ruleId: currentRule.id }}
               label="Delete rule"
             />
           }

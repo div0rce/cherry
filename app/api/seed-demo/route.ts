@@ -2,13 +2,13 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { logError, logInfo } from '@/lib/logger';
 import { seedDemoForUser } from '@/lib/demo-seeder';
-import { asError, asLogMeta } from '@/lib/errors';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
 } from '@/lib/user-context';
+import { asError } from '@/lib/errors';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -41,20 +41,28 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
 
   try {
     assertUserId(userId, 'api/seed-demo POST');
-    const summary = await seedDemoForUser(userId);
+    const now = new Date();
+    const summary = await seedDemoForUser(userId, { now });
     logInfo('Seeded demo data via API', { userId, mode, summary });
     return NextResponse.json({ message: 'Demo data seeded', summary });
   } catch (error: unknown) {
     asError(error);
+    const userIdValue = userId ?? undefined;
+    const modeValue = mode ?? undefined;
     if (isPrismaP2003(error)) {
+      const metaValue = error.meta == null ? null : String(error.meta);
       logInvariant('P2003 in api/seed-demo POST', {
-        userId,
-        mode,
-        meta: asLogMeta(error.meta),
+        userId: userIdValue,
+        mode: modeValue,
+        meta: metaValue,
         err: error,
       });
     } else {
-      logInvariant('Error in api/seed-demo POST', { userId, mode, err: error });
+      logInvariant('Error in api/seed-demo POST', {
+        userId: userIdValue,
+        mode: modeValue,
+        err: error,
+      });
     }
     logError('Failed to seed demo data via API', error);
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });

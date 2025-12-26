@@ -1,27 +1,38 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { seedCardsAndBucketsForUser } from '@/lib/demo-seeder';
-import { resolveUserContext } from '@/lib/user-context';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
+import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
 import type { ActionState } from './_lib/form-state';
-import { getAutopilotPrereqs } from './_lib/prereqs';
 
 export async function loadDemoDataset(
   _prevState: ActionState,
   _formData: FormData
 ): Promise<ActionState> {
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+  const { mode } = await requireUserContext();
 
   if (mode !== 'LAB_DEMO') {
     return { status: 'error', message: 'Demo dataset is only available in lab demo mode.' };
   }
 
-  const prereqs = await getAutopilotPrereqs(userId);
-  if (prereqs.state === 'READY') {
+  const now = resolveExplicitNow(_formData.get('now'));
+  const prereqResponse = await fetchFromApi('/api/autopilot/prereqs');
+  if (!prereqResponse.ok) {
+    return { status: 'error', message: 'Unable to verify onboarding prerequisites.' };
+  }
+  const prereqPayload = (await prereqResponse.json()) as { prereqs?: { state?: string } };
+  if (prereqPayload.prereqs?.state === 'READY') {
     return { status: 'error', message: 'Autopilot is already ready; no demo data loaded.' };
   }
 
-  await seedCardsAndBucketsForUser(userId, { includeCategoryPreference: true });
+  const response = await fetchFromApi('/api/seed-demo/cards-buckets', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ nowMs: now.getTime() }),
+  });
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to load demo dataset.' };
+  }
   revalidatePath('/app/onboarding');
 
   return {

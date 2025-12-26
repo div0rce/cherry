@@ -41,7 +41,8 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
 
   try {
     assertUserId(userId, 'api/seed-demo/cards-buckets POST');
-    const summary = await seedCardsAndBucketsForUser(userId);
+    const now = new Date();
+    const summary = await seedCardsAndBucketsForUser(userId, { now });
     logInfo('Seeded cards & buckets via API', { userId, mode, summary });
     return NextResponse.json({ message: 'Seeded cards and buckets', summary });
   } catch (error: unknown) {

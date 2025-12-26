@@ -1,11 +1,13 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import { BucketForm } from '../../../_components/BucketForm';
 import { DeleteActionButton } from '../../../_components/DeleteActionButton';
 import { deleteBucket, updateBucket } from './actions';
+export const dynamic = 'force-dynamic';
+
+
 
 type PageParams = { bucketId: string };
 
@@ -16,19 +18,24 @@ export default async function EditBucketPage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { bucketId } = resolvedParams;
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-
-  const bucket = await prisma.bucket.findFirst({
-    where: { id: bucketId, userId },
-    select: { id: true, name: true, budgetAmount: true, category: true, period: true },
-  });
-
-  if (bucket === null) {
+  await requireUserContext();
+  const response = await fetchFromApi('/api/buckets');
+  if (!response.ok) {
     redirect('/app/onboarding?missing=buckets');
     return null;
   }
-
-  const currentBucket = bucket;
+  const buckets = (await response.json()) as Array<{
+    id: string;
+    name: string;
+    budgetAmount: number;
+    category: string;
+    period: string;
+  }>;
+  const currentBucket = buckets.find((item) => item.id === bucketId) ?? null;
+  if (currentBucket === null) {
+    redirect('/app/onboarding?missing=buckets');
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e2e8f0]">

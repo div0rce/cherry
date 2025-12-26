@@ -2,9 +2,7 @@
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import type { ActionState } from '../../../_lib/form-state';
 
 const ALLOWED_NETWORKS = ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'OTHER'] as const;
@@ -66,17 +64,6 @@ export async function updateCard(
     return { status: 'error', message: error ?? null, fieldErrors: { annualFee: [error] } };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding updateCard');
-
-  const card = await prisma.card.findFirst({
-    where: { id: parsed.data.cardId, userId },
-    select: { id: true },
-  });
-  if (card === null) {
-    return { status: 'error', message: 'Card not found for this user.' };
-  }
-
   const issuerInput = parsed.data.issuer;
   const hasIssuer = typeof issuerInput === 'string' && issuerInput.trim().length > 0;
   const issuer = hasIssuer ? issuerInput.trim() : 'Custom issuer';
@@ -84,16 +71,24 @@ export async function updateCard(
   const hasNetwork = typeof networkInput === 'string' && networkInput.trim().length > 0;
   const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
-  await prisma.card.update({
-    where: { id: card.id },
-    data: {
+  await requireUserContext();
+  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
       nickname: parsed.data.nickname,
       issuer,
       network,
       isCredit: parsed.data.cardType === 'credit',
       annualFee: cents,
-    },
+    }),
   });
+  if (response.status === 404) {
+    return { status: 'error', message: 'Card not found for this user.' };
+  }
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to update card.' };
+  }
 
   redirect('/app/onboarding');
 }
@@ -111,24 +106,18 @@ export async function deleteCard(
     return { status: 'error', message: 'Card id is required.', fieldErrors };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding deleteCard');
-
-  const card = await prisma.card.findFirst({
-    where: { id: parsed.data.cardId, userId },
-    select: { id: true },
+  await requireUserContext();
+  const response = await fetchFromApi('/api/cards', {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cardId: parsed.data.cardId }),
   });
-
-  if (card === null) {
+  if (response.status === 404) {
     return { status: 'error', message: 'Card not found for this user.' };
   }
-
-  await prisma.simulatedTransaction.updateMany({
-    where: { chosenCardId: card.id, userId },
-    data: { chosenCardId: null },
-  });
-
-  await prisma.card.delete({ where: { id: card.id } });
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to delete card.' };
+  }
 
   redirect('/app/onboarding');
 }

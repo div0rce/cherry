@@ -3,9 +3,7 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import type { ActionState } from '../../../../_lib/form-state';
 
 const ALLOWED_CATEGORIES = [
@@ -71,34 +69,32 @@ export async function createRewardRule(
     };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding createRewardRule');
-
-  const card = await prisma.card.findFirst({
-    where: { id: parsed.data.cardId, userId },
-    select: { id: true },
+  await requireUserContext();
+  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}/rewards`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      category: allowedCategory,
+      multiplier: parsed.data.rateKind === 'points' ? rateValue : undefined,
+      cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : undefined,
+    }),
   });
 
-  if (card === null) {
+  if (response.status === 404) {
     redirect('/app/onboarding?missing=cards');
     return;
   }
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to create reward rule.' };
+  }
 
-  const cardIdForRule = card.id;
-  const categoryValue: RewardCategory = allowedCategory;
-
-  await prisma.rewardRule.create({
-    data: {
-      cardId: cardIdForRule,
-      category: categoryValue,
-      multiplier: parsed.data.rateKind === 'points' ? rateValue : null,
-      cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : null,
-    },
-  });
-
-  const bucketsCount = await prisma.bucket.count({ where: { userId } });
-  if (bucketsCount === 0) {
-    redirect('/app/onboarding/buckets/new');
+  const bucketsResponse = await fetchFromApi('/api/buckets');
+  if (bucketsResponse.ok) {
+    const buckets = (await bucketsResponse.json()) as Array<{ id?: string }>;
+    if (buckets.length === 0) {
+      redirect('/app/onboarding/buckets/new');
+      return;
+    }
   }
 
   redirect('/app/onboarding');

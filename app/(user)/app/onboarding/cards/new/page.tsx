@@ -1,11 +1,14 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { resolveUserContext } from '@/lib/user-context';
+import { requireUserContext } from '@/app/(user)/_lib/api';
 import { CardForm } from '../../_components/CardForm';
 import { createCard } from './actions';
+export const dynamic = 'force-dynamic';
+
+
 
 export default async function NewCardPage(): Promise<JSX.Element> {
-  await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+  await requireUserContext();
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e2e8f0]">

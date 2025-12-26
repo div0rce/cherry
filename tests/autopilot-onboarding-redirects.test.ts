@@ -26,11 +26,11 @@ const mockPrereqs: PrereqCounts = {
 
 function installMocks(): void {
   const userContextPath = requireModule.resolve('@/lib/user-context');
-  const prereqsPath = requireModule.resolve('../app/(user)/app/onboarding/_lib/prereqs');
+  const apiPath = requireModule.resolve('../app/(user)/_lib/api.ts');
   const navigationPath = requireModule.resolve('next/navigation');
 
   delete requireModule.cache[userContextPath];
-  delete requireModule.cache[prereqsPath];
+  delete requireModule.cache[apiPath];
   delete requireModule.cache[navigationPath];
 
   requireModule.cache[userContextPath] = {
@@ -42,24 +42,38 @@ function installMocks(): void {
     },
   } as NodeModule;
 
-  requireModule.cache[prereqsPath] = {
-    id: prereqsPath,
-    filename: prereqsPath,
+  requireModule.cache[apiPath] = {
+    id: apiPath,
+    filename: apiPath,
     loaded: true,
     exports: {
-      getAutopilotPrereqs: async () => ({
-        ...mockPrereqs,
-        cards: [],
-        buckets: [],
-        hasBaseRule: true,
-        state: 'READY',
-        warnings: [],
-      }),
-      getFirstMissingPrereq: (prereqs: PrereqCounts) => {
-        if (prereqs.cardsCount <= 0) return 'cards';
-        if (prereqs.rulesCount <= 0) return 'rules';
-        if (prereqs.bucketsCount <= 0) return 'buckets';
-        return null;
+      requireUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED' }),
+      fetchFromApi: async (path: string) => {
+        if (path !== '/api/autopilot/prereqs') {
+          throw new Error(`Unexpected fetchFromApi call: ${path}`);
+        }
+        const missing =
+          mockPrereqs.cardsCount <= 0
+            ? 'cards'
+            : mockPrereqs.rulesCount <= 0
+              ? 'rules'
+              : mockPrereqs.bucketsCount <= 0
+                ? 'buckets'
+                : null;
+        return {
+          ok: true,
+          json: async () => ({
+            prereqs: {
+              ...mockPrereqs,
+              cards: [],
+              buckets: [],
+              hasBaseRule: true,
+              state: 'READY',
+              warnings: [],
+            },
+            missing,
+          }),
+        };
       },
     },
   } as NodeModule;
