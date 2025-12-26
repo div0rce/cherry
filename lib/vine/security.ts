@@ -1,13 +1,12 @@
 import crypto from 'crypto';
 import { prisma } from '../prisma';
 import type { VineDevice, PrismaClient } from '@prisma/client';
+import { getServerConfig } from '../config/store';
+import type { VineSignatureMode } from '../config/server';
 
-export type VineSignatureMode = 'off' | 'warn' | 'enforce';
-
-export function getVineSignatureMode(): VineSignatureMode {
-  const raw = process.env['CHERRY_VINE_SIGNATURE_MODE']?.toLowerCase() ?? 'off';
-  if (raw === 'warn' || raw === 'enforce') return raw;
-  return 'off';
+export function getVineSignatureMode(mode?: VineSignatureMode): VineSignatureMode {
+  if (mode === 'warn' || mode === 'enforce' || mode === 'off') return mode;
+  return getServerConfig().vineSignatureMode;
 }
 
 export type VineSignatureContext = {
@@ -41,9 +40,10 @@ export function buildVineSignatureMessage(ctx: VineSignatureContext): string {
 
 export async function verifyVineSignature(
   ctx: VineSignatureContext,
-  providedSignature: string | null | undefined
+  providedSignature: string | null | undefined,
+  modeOverride?: VineSignatureMode
 ): Promise<VineSignatureVerificationResult> {
-  const mode = getVineSignatureMode();
+  const mode = getVineSignatureMode(modeOverride);
   if (mode === 'off') return { ok: true, mode };
 
   if (providedSignature === null || providedSignature === undefined || providedSignature === '') {

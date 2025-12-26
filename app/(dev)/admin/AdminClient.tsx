@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/Button';
 import { Alert } from '@/components/ui/alert';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -113,9 +114,10 @@ export default function AdminClient(): JSX.Element {
       setFeedback({ type: 'success', text: successText });
       router.refresh();
     } catch (error) {
+      asError(error);
       setFeedback({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Request failed',
+        text: error.message,
       });
     } finally {
       setLoading(false);
@@ -168,9 +170,10 @@ export default function AdminClient(): JSX.Element {
       });
       router.refresh();
     } catch (error) {
+      asError(error);
       setBankFeedback({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to ingest',
+        text: error.message,
       });
     } finally {
       setIsPostingBank(false);
@@ -188,9 +191,10 @@ export default function AdminClient(): JSX.Element {
       }
       setBankDump(JSON.stringify(data.transactions ?? [], null, 2));
     } catch (error) {
+      asError(error);
       setBankFeedback({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to fetch',
+        text: error.message,
       });
     } finally {
       setIsFetchingBank(false);

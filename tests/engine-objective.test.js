@@ -38,7 +38,7 @@ function buildStateForObjectives() {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: 5_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: 5_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -135,7 +135,7 @@ function testWeightsShiftRanking() {
   const state = buildStateForObjectives();
   const ctx = buildEngineContext({
     surface: 'web',
-    now: new Date('2024-02-01T00:00:00Z'),
+    nowMs: new Date('2024-02-01T00:00:00Z').getTime(),
     merchantCategoryKey: 'DINING',
     amountCents: 100,
   });

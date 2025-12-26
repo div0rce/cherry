@@ -2,9 +2,7 @@
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import type { ActionState } from '../../_lib/form-state';
 
 const ALLOWED_NETWORKS = ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'OTHER'] as const;
@@ -58,9 +56,6 @@ export async function createCard(
     return { status: 'error', message: error ?? null, fieldErrors: { annualFee: [error] } };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding createCard');
-
   const issuerInput = parsed.data.issuer;
   const hasIssuer = typeof issuerInput === 'string' && issuerInput.trim().length > 0;
   const issuer = hasIssuer ? issuerInput.trim() : 'Custom issuer';
@@ -68,17 +63,25 @@ export async function createCard(
   const hasNetwork = typeof networkInput === 'string' && networkInput.trim().length > 0;
   const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
-  const created = await prisma.card.create({
-    data: {
-      userId,
+  await requireUserContext();
+  const response = await fetchFromApi('/api/cards', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
       nickname: parsed.data.nickname,
       issuer,
       network,
       isCredit: parsed.data.cardType === 'credit',
       annualFee: cents,
-    },
-    select: { id: true },
+    }),
   });
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to create card.' };
+  }
+  const created = (await response.json()) as { id?: string };
+  if (typeof created.id !== 'string' || created.id.length === 0) {
+    return { status: 'error', message: 'Card created without an id.' };
+  }
 
   redirect(`/app/onboarding/cards/${created.id}/rules/new`);
 }

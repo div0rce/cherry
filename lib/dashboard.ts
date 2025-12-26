@@ -110,8 +110,8 @@ function deriveSimulationVerdict(input: {
   return 'HEALTHY';
 }
 
-export async function getDashboardStats(userId: string): Promise<DashboardStats> {
-  const now = new Date();
+export async function getDashboardStats(userId: string, options: { now: Date }): Promise<DashboardStats> {
+  const now = options.now;
   const { start: monthStart, end: monthEnd } = getMonthRange(now);
 
   const [

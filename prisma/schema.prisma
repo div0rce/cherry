@@ -481,20 +481,29 @@ model AlertEvent {
 }
 
 model DecisionEvent {
-  id            String   @id @default(cuid())
-  userId        String
-  surface       String
-  amountCents   Int
-  category      String
-  verdict       String
-  reasonCode    String
-  reasonCodes   Json
-  severity      Int
-  inputsVersion String
+  id              String   @id @default(cuid())
+  userId          String
+  surface         String
+  amountCents     Int
+  category        String
+  verdict         String
+  reasonCode      String
+  reasonCodes     Json
+  severity        Int
+  inputsVersion   String
   counterfactuals Json
-  createdAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+model IdempotencyKey {
+  userId    String
+  key       String
+  createdAt DateTime @default(now())
+  payload   Json
+
+  @@id([userId, key])
 }
 
 model VineDevice {

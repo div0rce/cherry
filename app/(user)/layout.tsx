@@ -1,5 +1,8 @@
 import type { JSX, ReactNode } from 'react';
 import { UserBottomNav } from '@/components/user/UserBottomNav';
+export const dynamic = 'force-dynamic';
+
+
 
 export default function UserLayout({ children }: { children: ReactNode }): JSX.Element {
   return (

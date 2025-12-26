@@ -19,10 +19,12 @@ Last updated: 2025-12-04
 ## Guardrails enforced
 - ESLint rules must stay strict (`eslint.config.mjs`): Zod strictness, unsafe-any rules, strict-boolean-expressions, and JSON.parse bans.
 - TypeScript strict flags in `tsconfig.json` must remain `true`.
-- No new `eslint-disable` outside the allowlist captured in `scripts/check-guardrails.ts`; fix the code instead of silencing rules.
+- No new `eslint-disable` outside the allowlist captured in `scripts/check-guardrails.mts`; fix the code instead of silencing rules.
 - Package scripts (`lint`, `typecheck`, `test`, `check:guardrails`, etc.) must exist and keep their chaining.
 - Guardrail files/tests must not be removed (offline evaluator, ingest, engine tests, Prisma assumptions).
-- `scripts/check-guardrails.ts` exits non-zero on any deviation; CI treats that as a hard failure.
+- Guardrail 5 (implicit config): `process.env` access is confined to `app/api/**` and `scripts/**`; load env into typed config via `initConfigFromEnv` and thread it explicitly. `npm run check:config` must pass without allowlists.
+- Guardrail 6 (config immutability): server config is deep-frozen and locked after boundary load; `setServerConfig` rejects writes post-lock and loader registration fails once locked. `npm run check:config-lock` must pass.
+- `scripts/check-guardrails.mts` exits non-zero on any deviation; CI treats that as a hard failure.
 
 ## How to run locally
 ```bash

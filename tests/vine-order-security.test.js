@@ -15,12 +15,19 @@ function mockModule(modulePath, exports) {
 mockModule('next-auth', { getServerSession: async () => null, default: () => ({}) });
 mockModule('next-auth/react', { signIn: async () => ({}) });
 mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+mockModule('../lib/engine-invariants', { validateEngineDecision: () => {} });
 
 const { prisma } = require('../lib/prisma');
 const { callApi } = require('../lib/client/api');
+const { getServerConfig, resetServerConfigForTests } = require('../lib/config/store');
 const { POST } = require('../app/api/vine/order/route');
 
 process.env.API_BASE_URL = 'http://localhost:3000';
+
+function setSignatureMode(mode) {
+  const current = getServerConfig();
+  resetServerConfigForTests({ ...current, vineSignatureMode: mode });
+}
 
 // Use the real route handler in-process so CHERRY_VINE_SIGNATURE_MODE applies during tests.
 global.fetch = async (url, init = {}) => {
@@ -37,6 +44,23 @@ function hmac(secret, message) {
   return crypto.createHmac('sha256', secret).update(message).digest('hex');
 }
 
+function stubDate(fixedMs) {
+  const OriginalDate = Date;
+  function PatchedDate(...args) {
+    if (args.length === 0) return new OriginalDate(fixedMs);
+    return new OriginalDate(...args);
+  }
+  PatchedDate.now = () => fixedMs;
+  PatchedDate.parse = OriginalDate.parse;
+  PatchedDate.UTC = OriginalDate.UTC;
+  PatchedDate.prototype = OriginalDate.prototype;
+  // @ts-expect-error - monkeypatch Date to enforce deterministic timestamps
+  global.Date = PatchedDate;
+  return () => {
+    global.Date = OriginalDate;
+  };
+}
+
 async function seedDevice() {
   return prisma.vineDevice.upsert({
     where: { deviceId: 'TEST-DEVICE-API' },
@@ -51,13 +75,15 @@ async function seedDevice() {
 }
 
 async function run() {
+  const fixedMs = new Date('2024-01-01T00:00:00Z').getTime();
+  const restoreDate = stubDate(fixedMs);
   const originalMode = process.env.CHERRY_VINE_SIGNATURE_MODE;
   await seedDevice();
   const ctx = {
     deviceId: 'TEST-DEVICE-API',
     amountCents: 1875,
     currency: 'USD',
-    timestamp: Date.now(),
+    timestamp: fixedMs,
     storeId: 'STORE-API',
     terminalId: 'TERM-API',
     orderId: 'ORDER-API',
@@ -75,6 +101,7 @@ async function run() {
 
   // Mode off: should allow missing signature
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'off';
+  setSignatureMode('off');
   let res = await callApi('/api/vine/order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -84,6 +111,7 @@ async function run() {
 
   // Enforce with good signature
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'enforce';
+  setSignatureMode('enforce');
   res = await callApi('/api/vine/order', {
     method: 'POST',
     headers: {
@@ -116,6 +144,7 @@ async function run() {
   assert.equal(res.status, 401);
 
   process.env.CHERRY_VINE_SIGNATURE_MODE = originalMode;
+  restoreDate();
   console.warn('vine order security: ok');
 }
 

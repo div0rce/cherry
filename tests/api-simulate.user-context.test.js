@@ -13,6 +13,7 @@ process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
 const Module = require('module');
 const path = require('path');
 const originalResolve = Module._resolveFilename;
+const { getServerConfig, resetServerConfigForTests } = require('../lib/config/store');
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (request.startsWith('@/')) {
     const mapped = path.join(__dirname, '..', request.slice(2));
@@ -101,6 +102,34 @@ function setupSimulationMocks() {
     overallVerdict: 'GREEN',
     cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
   };
+  const engineState = {
+    userId: 'lab-user-1',
+    cards: [
+      {
+        id: 'card-1',
+        userId: 'lab-user-1',
+        issuer: 'Test',
+        label: 'Demo Card',
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        productSlug: null,
+        last4: null,
+        creditLimitCents: null,
+        currentBalanceCents: null,
+        network: 'VISA',
+      },
+    ],
+    buckets: [],
+    debts: [],
+    constraints: {
+      hard: { minEssentialCoverageDays: 0, maxCardUtilization: null },
+      soft: { avoidInterest: false, avoidNewDebt: false },
+    },
+    world: { baseInterestRate: null, inflationEstimate: null },
+    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+  };
 
   mockModule('../lib/engine', {
     buildEngineContext: (input) => input,
@@ -125,36 +154,16 @@ function setupSimulationMocks() {
         candidates: [],
       },
       legacyDecision,
-      state: {
-        userId: 'lab-user-1',
-        cards: [
-          {
-            id: 'card-1',
-            userId: 'lab-user-1',
-            issuer: 'Test',
-            label: 'Demo Card',
-            rewardRules: [],
-            isCredit: true,
-            isActive: true,
-            isVirtual: false,
-            productSlug: null,
-            last4: null,
-            creditLimitCents: null,
-            currentBalanceCents: null,
-            network: 'VISA',
-          },
-        ],
-        buckets: [],
-        debts: [],
-        constraints: { hard: { minEssentialCoverageDays: 0, maxCardUtilization: null }, soft: { avoidInterest: false, avoidNewDebt: false } },
-        world: { baseInterestRate: null, inflationEstimate: null },
-        cash: { liquidCents: null, nextPaycheckDate: null, nextPaycheckNetCents: null },
-      },
+      state: engineState,
     }),
     validateEngineDecision: () => {},
   });
 
-  mockModule('../lib/authority/simulateSpendAuthority', {
+  mockModule('../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => engineState,
+  });
+
+  mockModule('../lib/adapters/runtime/authority.prisma', {
     simulateSpendAuthority: async () => authorityDecisionStub,
     recordDecisionEvent: async () => {},
   });
@@ -245,8 +254,17 @@ async function runSimulateMissingMerchant() {
   assert.equal(res.status, 400);
 }
 
+function setServerEnvironment(env) {
+  const priorNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'test';
+  const current = getServerConfig();
+  resetServerConfigForTests({ ...current, environment: env });
+  process.env.NODE_ENV = priorNodeEnv;
+}
+
 async function runSimulateProdUnauthorized() {
   process.env.NODE_ENV = 'production';
+  setServerEnvironment('production');
   mockNextAuth(null);
   mockNextServer();
   mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
@@ -267,6 +285,7 @@ async function runSimulateProdUnauthorized() {
 
 async function runSimulationsGetDev() {
   process.env.NODE_ENV = 'development';
+  setServerEnvironment('development');
   mockNextAuth(null);
   mockNextServer();
   mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
@@ -279,6 +298,7 @@ async function runSimulationsGetDev() {
 
 async function runSimulationsInvalidStatus() {
   process.env.NODE_ENV = 'development';
+  setServerEnvironment('development');
   mockNextAuth(null);
   mockNextServer();
   mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
@@ -291,6 +311,7 @@ async function runSimulationsInvalidStatus() {
 
 async function runSimulationsGetProdUnauthorized() {
   process.env.NODE_ENV = 'production';
+  setServerEnvironment('production');
   mockNextAuth(null);
   mockNextServer();
   mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });

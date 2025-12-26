@@ -1,3 +1,6 @@
+import type { WalletCertificateConfig } from '@/lib/config/server';
+import { getServerConfig } from '@/lib/config/store';
+
 export type WalletPassConfigStatus =
   | { ok: true }
   | { ok: false; reason: 'wallet_pass_disabled' | 'missing_env' };
@@ -6,30 +9,23 @@ function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
-export function getWalletPassConfigStatus(): WalletPassConfigStatus {
-  const {
-    APPLE_WALLET_TEAM_ID,
-    APPLE_WALLET_PASS_TYPE_ID,
-    APPLE_WALLET_ORG_NAME,
-    APPLE_WALLET_PASS_DESCRIPTION,
-    APPLE_WALLET_CERT_PASSWORD,
-    APPLE_WALLET_CERT_PATH,
-    APPLE_WALLET_WWDR_CERT_PATH,
-    CHERRY_WALLET_PASS_ENABLED,
-  } = process.env;
+export function getWalletPassConfigStatus(
+  walletConfig?: WalletCertificateConfig
+): WalletPassConfigStatus {
+  const config = walletConfig ?? getServerConfig().wallet;
 
-  if (CHERRY_WALLET_PASS_ENABLED !== 'true') {
+  if (!config.enabled) {
     return { ok: false, reason: 'wallet_pass_disabled' };
   }
 
   if (
-    !hasNonEmptyString(APPLE_WALLET_TEAM_ID) ||
-    !hasNonEmptyString(APPLE_WALLET_PASS_TYPE_ID) ||
-    !hasNonEmptyString(APPLE_WALLET_ORG_NAME) ||
-    !hasNonEmptyString(APPLE_WALLET_PASS_DESCRIPTION) ||
-    !hasNonEmptyString(APPLE_WALLET_CERT_PASSWORD) ||
-    !hasNonEmptyString(APPLE_WALLET_CERT_PATH) ||
-    !hasNonEmptyString(APPLE_WALLET_WWDR_CERT_PATH)
+    !hasNonEmptyString(config.teamId) ||
+    !hasNonEmptyString(config.passTypeId) ||
+    !hasNonEmptyString(config.orgName) ||
+    !hasNonEmptyString(config.passDescription) ||
+    !hasNonEmptyString(config.certPassword) ||
+    !hasNonEmptyString(config.certPath) ||
+    !hasNonEmptyString(config.wwdrCertPath)
   ) {
     return { ok: false, reason: 'missing_env' };
   }

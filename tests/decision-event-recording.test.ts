@@ -1,64 +1,12 @@
 import assert from 'node:assert/strict';
-import Module from 'node:module';
 import { RewardCategory } from '@prisma/client';
 import type {
+  DecisionEventWriter,
   SimulatedAuthorityDecision,
   SimulateSpendParams,
 } from '../lib/authority/simulateSpendAuthority';
+import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority';
 import { AuthorityReason } from '../lib/authority/reasonCodes';
-
-const requireModule = Module.createRequire(__filename);
-
-function resetModule(modulePath: string): void {
-  try {
-    const resolved = requireModule.resolve(modulePath);
-    delete requireModule.cache[resolved];
-  } catch {
-    // ignore
-  }
-}
-
-function installStubs({ withCreate }: { withCreate: boolean }) {
-  const prismaPath = requireModule.resolve('@/lib/prisma');
-  const logPath = requireModule.resolve('@/lib/log');
-
-  resetModule(prismaPath);
-  resetModule(logPath);
-  resetModule('../lib/authority/simulateSpendAuthority');
-
-  const calls: Array<{ args: unknown }> = [];
-  const logCalls: Array<Record<string, unknown>> = [];
-
-  requireModule.cache[prismaPath] = {
-    id: prismaPath,
-    filename: prismaPath,
-    loaded: true,
-    exports: {
-      prisma: {
-        decisionEvent: withCreate
-          ? {
-              create: async (args: unknown) => {
-                calls.push({ args });
-              },
-            }
-          : undefined,
-      },
-    },
-  } as NodeModule;
-
-  requireModule.cache[logPath] = {
-    id: logPath,
-    filename: logPath,
-    loaded: true,
-    exports: {
-      logInvariantViolation: (data: Record<string, unknown>) => {
-        logCalls.push(data);
-      },
-    },
-  } as NodeModule;
-
-  return { calls, logCalls };
-}
 
 function buildDecision(): SimulatedAuthorityDecision {
   return {
@@ -84,17 +32,19 @@ function buildParams(): SimulateSpendParams {
 }
 
 async function assertRecordsDecision() {
-  const { calls } = installStubs({ withCreate: true });
-  const mod = requireModule(
-    '../lib/authority/simulateSpendAuthority'
-  ) as unknown as typeof import('../lib/authority/simulateSpendAuthority');
-  const { recordDecisionEvent } = mod;
+  const calls: Array<{ args: unknown }> = [];
+  const writer: DecisionEventWriter = {
+    create: async (args) => {
+      calls.push({ args });
+    },
+  };
 
-  await recordDecisionEvent({
+  await recordDecisionEventWithWriter({
     userId: 'user-1',
     surface: 'simulate',
     params: buildParams(),
     decision: buildDecision(),
+    writer,
   });
 
   assert.equal(calls.length, 1, 'decisionEvent.create should be called once');
@@ -105,21 +55,22 @@ async function assertRecordsDecision() {
 }
 
 async function assertSkipsWhenClientMissing() {
-  const { calls, logCalls } = installStubs({ withCreate: false });
-  const mod = requireModule(
-    '../lib/authority/simulateSpendAuthority'
-  ) as unknown as typeof import('../lib/authority/simulateSpendAuthority');
-  const { recordDecisionEvent } = mod;
+  const logCalls: Array<Record<string, unknown>> = [];
 
-  await recordDecisionEvent({
+  await recordDecisionEventWithWriter({
     userId: 'user-2',
     surface: 'simulate',
     params: buildParams(),
     decision: buildDecision(),
-    db: {} as never,
+    logger: {
+      info: () => {},
+      warn: (message, meta) => {
+        logCalls.push({ message, meta });
+      },
+      error: () => {},
+    },
   });
 
-  assert.equal(calls.length, 0, 'should not attempt to call create without client');
   assert.ok(logCalls.length > 0, 'should log invariant when client missing');
 }
 

@@ -18,6 +18,9 @@ export async function runSimulation(
   input: RunSimulationInput,
   overrides?: { runEngineFn?: (i: EngineInput) => Promise<LegacyEngineDecision> }
 ): Promise<RunSimulationResult> {
+  if (input.nowMs == null || Number.isNaN(input.nowMs)) {
+    throw new Error('runSimulation requires explicit `nowMs`');
+  }
   const runner =
     overrides?.runEngineFn ??
     (await import('./engine')).runEngine;

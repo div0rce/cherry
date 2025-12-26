@@ -8,6 +8,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -30,7 +31,8 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/admin/clear-user', error);
@@ -62,10 +64,16 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ message: 'User data cleared', deleted: summary });
   } catch (error: unknown) {
+    asError(error);
     if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/admin/clear-user POST', { userId, mode, meta: error.meta });
+      logInvariant('P2003 in api/admin/clear-user POST', {
+        userId,
+        mode,
+        meta: asLogMeta((error as { meta?: unknown }).meta),
+        err: error,
+      });
     } else {
-      logInvariant('Error in api/admin/clear-user POST', { userId, mode, error });
+      logInvariant('Error in api/admin/clear-user POST', { userId, mode, err: error });
     }
     logError('Failed to clear user data', error);
     return new NextResponse('Failed to clear user data', { status: 500 });

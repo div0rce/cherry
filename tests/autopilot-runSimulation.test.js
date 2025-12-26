@@ -124,12 +124,15 @@ async function runHappyPath() {
   const { runSimulation } =
     requireModule('../lib/autopilot/runSimulation');
 
-  const result = await runSimulation({
-    amount: 12.34,
-    merchant: 'Test Shop',
-    category: 'dining',
-    timing: 'now',
-  });
+  const result = await runSimulation(
+    {
+      amount: 12.34,
+      merchant: 'Test Shop',
+      category: 'dining',
+      timing: 'now',
+    },
+    { now: new Date('2024-01-01T00:00:00Z') }
+  );
 
   const firstCall = calls[0];
   assert.equal(firstCall.body.amountCents, 1_234);
@@ -179,12 +182,15 @@ async function runWarningMapping() {
   const { runSimulation } =
     requireModule('../lib/autopilot/runSimulation');
 
-  const result = await runSimulation({
-    amount: 5,
-    merchant: 'Edge Shop',
-    category: 'other',
-    timing: 'now',
-  });
+  const result = await runSimulation(
+    {
+      amount: 5,
+      merchant: 'Edge Shop',
+      category: 'other',
+      timing: 'now',
+    },
+    { now: new Date('2024-02-01T00:00:00Z') }
+  );
 
   assert.equal(result.state, 'warning');
   assert.ok(result.riskBanner);
@@ -206,12 +212,15 @@ async function runAdapterHandlesError() {
     requireModule('../lib/autopilot/runSimulation');
 
   try {
-    await runSimulation({
-      amount: 10,
-      merchant: 'Err Shop',
-      category: 'other',
-      timing: 'now',
-    });
+    await runSimulation(
+      {
+        amount: 10,
+        merchant: 'Err Shop',
+        category: 'other',
+        timing: 'now',
+      },
+      { now: new Date('2024-03-01T00:00:00Z') }
+    );
     assert.fail('expected runSimulation to throw');
   } catch (err) {
     const error = err;

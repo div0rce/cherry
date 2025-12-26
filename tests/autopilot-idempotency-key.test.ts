@@ -11,6 +11,8 @@ import type {
   AutopilotPreviewInput,
   AutopilotPreviewOutput,
 } from '@/lib/autopilot/types';
+import type { World } from '@/lib/adapters/world';
+import { makeTestWorld } from './helpers/world';
 
 const requireModule = Module.createRequire(__filename);
 
@@ -446,12 +448,16 @@ async function runUpsertIdempotencySuite() {
     '@/lib/autopilot/service'
   ) as {
     commitAutopilotDecisionV2: (
+      world: World,
       userId: string,
-      input: AutopilotCommitInput
+      input: AutopilotCommitInput,
+      options: { now: Date }
     ) => Promise<{ decisionId: string; sessionId: string; bucket: unknown; status: string }>;
     getAutopilotPreview: (
+      world: World,
       userId: string,
-      input: AutopilotPreviewInput
+      input: AutopilotPreviewInput,
+      options: { now: Date }
     ) => Promise<AutopilotPreviewOutput>;
   };
 
@@ -463,12 +469,14 @@ async function runUpsertIdempotencySuite() {
     occurredAt: '2024-01-02T12:00:00.000Z',
     category: 'DINING',
   };
-  const preview = await getAutopilotPreview('user-1', input);
+  const now = new Date('2024-01-02T12:00:00.000Z');
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
+  const preview = await getAutopilotPreview(world, 'user-1', input, { now });
   input.decisionId = preview.decisionId;
 
-  const first = await commitAutopilotDecisionV2('user-1', input);
+  const first = await commitAutopilotDecisionV2(world, 'user-1', input, { now });
   input.decisionId = first.decisionId;
-  const second = await commitAutopilotDecisionV2('user-1', input);
+  const second = await commitAutopilotDecisionV2(world, 'user-1', input, { now });
 
   assert.equal(first.decisionId, second.decisionId, 'Decision ids should stay stable');
   assert.equal(first.sessionId, second.sessionId, 'Session upsert should reuse the same record');

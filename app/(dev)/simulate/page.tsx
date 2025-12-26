@@ -1,8 +1,6 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { RunSimulationForm, DeleteSimulationButton } from './client';
-import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import type { SimulationHistoryItem } from '@/components/simulations/simulation-history-list';
@@ -12,6 +10,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Panel } from '@/components/ui/panel';
 import { Card } from '@/components/ui/card';
 import { Button, ButtonLink } from '@/components/ui/Button';
+import { asError } from '@/lib/errors';
 
 type Simulation = {
   id: string;
@@ -176,19 +175,12 @@ async function fetchSimulations(query: {
   const queryString = params.toString();
   const url = queryString.length > 0 ? `/api/simulations?${queryString}` : '/api/simulations';
 
-  const baseUrl = getBaseUrl();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map(({ name, value }) => `${name}=${value}`)
-    .join('; ');
-  const init: RequestInit = { cache: 'no-store' };
-  if (hasText(cookieHeader)) {
-    init.headers = { cookie: cookieHeader };
-  }
-  const res = await fetch(`${baseUrl}${url}`, init);
+  const res = await fetch(url, { cache: 'no-store' });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED');
+    }
     const message = await res.text();
     throw new Error(hasText(message) ? message : 'Failed to load simulations');
   }
@@ -232,8 +224,12 @@ export default async function SimulatePage({
       ...(hasText(categoryParam) ? { category: categoryParam } : {}),
     };
     response = await fetchSimulations(query);
-  } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load simulations';
+  } catch (caught) {
+    asError(caught);
+    if (caught.message === 'UNAUTHORIZED') {
+      redirect(`/signin?callbackUrl=${encodeURIComponent('/simulate')}`);
+    }
+    error = caught.message;
   }
 
   const simulations = response?.data ?? [];

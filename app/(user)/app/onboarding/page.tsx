@@ -1,14 +1,10 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { resolveUserContext } from '@/lib/user-context';
-import {
-  getAutopilotPrereqs,
-  getFirstMissingPrereq,
-  type AutopilotOnboardingState,
-  type AutopilotPrereqs,
-} from './_lib/prereqs';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
+import type { AutopilotOnboardingState, AutopilotPrereqs } from '@/lib/autopilot/prereq-types';
 import { loadDemoDataset } from './actions';
 import { DemoDatasetButton } from './_components/DemoDatasetButton';
+export const dynamic = 'force-dynamic';
 
 type MissingKey = 'cards' | 'rules' | 'buckets' | null;
 
@@ -237,9 +233,17 @@ export default async function OnboardingPage({
   const missingParam = typeof rawMissing === 'string' ? rawMissing : '';
   const highlightedMissing = toMissingKey(missingParam);
 
-  const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  const prereqs = await getAutopilotPrereqs(userContext.userId);
-  const missing = getFirstMissingPrereq(prereqs);
+  const userContext = await requireUserContext();
+  const prereqResponse = await fetchFromApi('/api/autopilot/prereqs');
+  if (!prereqResponse.ok) {
+    throw new Error('Failed to load onboarding prerequisites');
+  }
+  const prereqPayload = (await prereqResponse.json()) as {
+    prereqs: AutopilotPrereqs;
+    missing: 'cards' | 'rules' | 'buckets' | null;
+  };
+  const prereqs = prereqPayload.prereqs;
+  const missing = prereqPayload.missing;
   const primaryCta = buildPrimaryCta(prereqs, missing);
 
   const chosenMissing = highlightedMissing !== null ? highlightedMissing : missing;

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const { resolveUserContext } = require('../lib/user-context');
 const { assertUserId } = require('../lib/invariants');
+const { getServerConfig, resetServerConfigForTests } = require('../lib/config/store');
 
 async function testAuthenticatedMode() {
   const ctx = await resolveUserContext({
@@ -17,8 +18,8 @@ async function testAuthenticatedMode() {
 }
 
 async function testLabModeInDev() {
-  const prevEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = 'development';
+  const currentConfig = getServerConfig();
+  resetServerConfigForTests({ ...currentConfig, environment: 'development' });
 
   let created = 0;
   const labUserFactory = async () => {
@@ -46,27 +47,27 @@ async function testLabModeInDev() {
   assert.equal(second.userId, 'lab-user-1');
   assert.ok(created >= 1);
 
-  process.env.NODE_ENV = prevEnv;
+  resetServerConfigForTests(currentConfig);
 }
 
 async function testLabModeDeniedInProd() {
-  const prevEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = 'production';
+  const currentConfig = getServerConfig();
+  resetServerConfigForTests({ ...currentConfig, environment: 'production' });
   let threw = false;
   try {
     await resolveUserContext({
-    requireAuth: false,
-    allowLabDemo: true,
-    sessionOverride: null,
-    getSession: async () => null,
-    labUserFactory: async () => ({ id: 'lab-prod' }),
-  });
+      requireAuth: false,
+      allowLabDemo: true,
+      sessionOverride: null,
+      getSession: async () => null,
+      labUserFactory: async () => ({ id: 'lab-prod' }),
+    });
   } catch (err) {
     threw = true;
     assert.match(String(err), /lab demo mode is disabled in production/);
   }
   assert.equal(threw, true);
-  process.env.NODE_ENV = prevEnv;
+  resetServerConfigForTests(currentConfig);
 }
 
 function testAssertUserId() {

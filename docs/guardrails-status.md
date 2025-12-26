@@ -12,17 +12,17 @@ Last updated: 2025-12-25
 | 3 | Floating-point money math | repo script, tests, ci | pos+neg | yes | enforced forward; legacy allowlist present |
 | 4 | No silent defaults in core | eslint, repo script, tests, ci | pos+neg | yes | enforced |
 | 5 | Exhaustive switches | eslint, ci | none | yes | enforced via ESLint `switch-exhaustiveness-check` |
-| 6 | Engine purity (no side effects) | scripts (`check-no-engine-date.mts`, `check-no-engine-prisma.mts`), repo backstop, ci | neg only | yes | partial (console/network not yet covered) |
+| 6 | Engine purity (no side effects) | scripts (`check-no-engine-date.mts`, `check-no-engine-prisma.mts`), repo backstop, tests, ci | pos+neg | yes | enforced (no side effects; pure compute) |
 | 7 | Engine must not import Prisma | script (`check-no-engine-prisma.mts`), repo backstop, ci | neg only | yes | enforced |
 | 8 | Idempotent writes | tests (`tests/idempotency*.test.*`), ci | neg only | yes | partial (session/ledger coverage pending) |
 | 9 | Time-free tests | script (`check-no-implicit-time.mts`), tests, ci | neg only | yes | partial (no global fake timers) |
 | 10 | SSR/user-page runtime purity | script (`check-user-pages-runtime-only.mts`), repo backstop, tests, ci | pos+neg | yes | enforced for `app/(user)` boundaries |
-| 11 | Migration safety | none | none | no | not implemented |
-| 12 | Policy totality | none | none | no | not implemented |
+| 11 | Migration safety | repo script, tests, ci | pos+neg | yes | enforced |
+| 12 | Policy totality | runtime assertion, tests, ci | pos+neg | yes | enforced (closed verdict set) |
 
 ## Backstops / Boundary Guardrails (non-numbered)
 
-- Repo backstop: `scripts/check-repo-guardrails.js` (randomness/time/engine-prisma + boundary checks)
+- Repo backstop: `scripts/check-repo-guardrails.js` (randomness/time/engine-prisma/engine-side-effects + boundary checks)
 - Side-effects boundary: `scripts/check-no-side-effects.mts` (allowlist-driven)
 - Script module semantics: `scripts/check-script-module-semantics.mts`
 - Config/identity/entropy backstops: `scripts/check-no-implicit-config.mts`, `scripts/check-no-implicit-identity.mts`, `scripts/check-no-server-entropy.mts`

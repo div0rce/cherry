@@ -52,6 +52,12 @@ jobs:
       - name: Check guardrails
         run: npm run check:guardrails
 
+      - name: Check repo guardrails
+        run: npm run check:repo-guardrails
+
+      - name: User pages runtime guardrail
+        run: npm run check:user-pages-runtime
+
       - name: Wait for Postgres
         run: |
           ready=0

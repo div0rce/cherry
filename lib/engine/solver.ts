@@ -26,6 +26,7 @@ import type {
 } from './types';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
 import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '@/lib/legacy-engine-types';
+import { asError } from '@/lib/errors';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
@@ -77,6 +78,7 @@ export async function solveDecision(
       ? normalizeObjectiveWeights({ ...baseWeights, ...options.weights })
       : baseWeights;
   } catch (err) {
+    asError(err);
     logEngineError(runtime, 'unexpected', { userId: state.userId, err, context: 'resolve_weights' });
     weights = options.weights
       ? normalizeObjectiveWeights({ ...DEFAULT_OBJECTIVE_WEIGHTS, ...options.weights })
@@ -206,6 +208,7 @@ export async function safeSolveDecisionForUser(
     }
     return successResult;
   } catch (err) {
+    asError(err);
     const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     if (err instanceof EngineError) {
       logEngineError(runtime, 'validation', { userId, err });

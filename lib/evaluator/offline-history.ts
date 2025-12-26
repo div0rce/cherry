@@ -1,10 +1,11 @@
 import type { BankTransaction } from '@prisma/client';
 import { fromExternalContextToEngineContext } from '@/lib/engine/context';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
 import { safeSolveDecisionForUser } from '@/lib/engine/solver';
 import type { EngineDecision } from '@/lib/engine/types';
 
-export function defaultRunIdForUser(userId: string): string {
-  const date = new Date().toISOString().slice(0, 10);
+export function defaultRunIdForUser(userId: string, now: Date): string {
+  const date = now.toISOString().slice(0, 10);
   return `offline-${userId}-${date}`;
 }
 
@@ -84,15 +85,31 @@ export async function evaluateTransactionOffline(
     };
   }
 
+  const txTimestamp = tx.postedAt ?? tx.occurredAt;
+  if (txTimestamp == null) {
+    return {
+      decisionType: 'NO_DECISION',
+      cardId: null,
+      bucketId: null,
+      rawDecision: null,
+      scores: null,
+    };
+  }
+
   const ctx = fromExternalContextToEngineContext({
     surface: 'web',
-    now: tx.postedAt ?? tx.occurredAt ?? new Date(),
+    nowMs: txTimestamp.getTime(),
     merchantName: tx.description ?? tx.rawDescription ?? null,
     mcc: tx.mcc != null ? String(tx.mcc) : null,
     amountCents: absAmount,
   });
 
-  const outcome = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
+  const state = await fromPrismaUserToEngineState(userId, ctx.nowMs);
+  const outcome = await safeSolveDecisionForUser(userId, ctx, {
+    maxCandidates: 64,
+    stateOverride: state,
+    includeLegacyDecision: false,
+  });
   if (!outcome.ok || outcome.decisions.length === 0) {
     return {
       decisionType: 'NO_DECISION',

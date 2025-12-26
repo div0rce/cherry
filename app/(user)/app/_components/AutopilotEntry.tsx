@@ -1,20 +1,11 @@
 import type { JSX } from 'react';
-import { redirect } from 'next/navigation';
 import { AutopilotShell } from '@/components/autopilot/AutopilotShell';
-import { resolveUserContext } from '@/lib/user-context';
-import { getAutopilotPrereqs, getFirstMissingPrereq } from '../onboarding/_lib/prereqs';
-import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
+import type { AutopilotUiSpec } from '@/lib/autopilot/uiSpec';
 
-export async function AutopilotEntry(): Promise<JSX.Element> {
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  const prereqs = await getAutopilotPrereqs(userId);
-  const missing = getFirstMissingPrereq(prereqs);
+type AutopilotEntryProps = {
+  uiSpec: AutopilotUiSpec;
+};
 
-  if (missing !== null) {
-    redirect(`/app/onboarding?missing=${missing}`);
-  }
-
-  const uiSpec = getAutopilotUiSpec();
-
+export function AutopilotEntry({ uiSpec }: AutopilotEntryProps): JSX.Element {
   return <AutopilotShell uiSpec={uiSpec} />;
 }

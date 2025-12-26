@@ -86,7 +86,8 @@ export function RunSimulationForm(): JSX.Element {
       mcc = parsedMcc;
     }
 
-    if (Object.keys(fieldErrors).length > 0) {
+    const hasErrors = Object.values(fieldErrors).length > 0;
+    if (hasErrors) {
       setErrors(fieldErrors);
       setStatus('Fix the errors above.');
       logGuardrailEvent({

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { ButtonLink } from '@/components/ui/Button';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { fetchActivityFeed } from '@/lib/activity/feed';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -26,7 +27,8 @@ export default async function ActivityPage(): Promise<JSX.Element> {
   try {
     feed = await fetchActivityFeed(userId, { limit: 100 });
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load activity';
+    asError(err);
+    error = err.message;
   }
 
   const items = feed?.items ?? [];

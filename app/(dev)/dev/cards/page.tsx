@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { PageHeader } from '@/components/ui/page-header';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
@@ -15,9 +14,9 @@ import {
   DeleteCardButton,
   DeleteRewardRuleButton,
 } from './client';
-import { getBaseUrl } from '@/lib/base-url';
 import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -73,19 +72,12 @@ function formatRuleDisplay(rule: RewardRule) {
 }
 
 async function fetchCards(): Promise<Card[]> {
-  const baseUrl = getBaseUrl();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map(({ name, value }) => `${name}=${value}`)
-    .join('; ');
-  const init: RequestInit = { cache: 'no-store' };
-  if (hasText(cookieHeader)) {
-    init.headers = { cookie: cookieHeader };
-  }
-  const res = await fetch(`${baseUrl}/api/cards`, init);
+  const res = await fetch('/api/cards', { cache: 'no-store' });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED');
+    }
     const message = (await res.text()).trim();
     throw new Error(hasText(message) ? message : 'Failed to load cards');
   }
@@ -107,7 +99,12 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
   try {
     cards = await fetchCards();
   } catch (err) {
-    error = err instanceof Error ? err.message : 'Failed to load cards';
+    asError(err);
+    if (err.message === 'UNAUTHORIZED') {
+      redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
+      return null;
+    }
+    error = err.message;
   }
 
   const totalRewardRules = cards.reduce((sum, card) => sum + card.rewardRules.length, 0);

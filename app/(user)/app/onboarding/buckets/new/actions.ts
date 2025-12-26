@@ -3,17 +3,15 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '@/lib/buckets-runtime';
+import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import type { ActionState } from '../../_lib/form-state';
 
 const BucketSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required').max(80),
     budgetAmount: z.string().trim(),
-  category: z.nativeEnum(RewardCategory),
+    category: z.nativeEnum(RewardCategory),
     period: z.enum(['WEEKLY', 'MONTHLY']),
   })
   .strict();
@@ -26,28 +24,6 @@ function parseBudget(raw: string): { cents: number | null; error?: string } {
     return { cents: null, error: 'Enter a positive budget amount.' };
   }
   return { cents: Math.round(value * 100) };
-}
-
-function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
-  const start = new Date(now);
-  const end = new Date(now);
-
-  if (period === 'WEEKLY') {
-    const day = start.getDay();
-    const diffToMonday = (day + 6) % 7;
-    start.setDate(start.getDate() - diffToMonday);
-    start.setHours(0, 0, 0, 0);
-    end.setTime(start.getTime());
-    end.setDate(start.getDate() + 7);
-  } else {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-    end.setTime(start.getTime());
-    end.setMonth(start.getMonth() + 1);
-  }
-
-  end.setHours(0, 0, 0, 0);
-  return { start, end };
 }
 
 export async function createBucket(
@@ -75,28 +51,25 @@ export async function createBucket(
     };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding createBucket');
-
-  const now = new Date();
-  const period = parsed.data.period as BucketPeriod;
-  const { start, end } = getPeriodWindow(period, now);
-  const balance = computeBucketBalanceFromNumbers(cents, 0, 0);
-
-  await prisma.bucket.create({
-    data: {
-      userId,
+  await requireUserContext();
+  const now = resolveExplicitNow(formData.get('now'));
+  const response = await fetchFromApi('/api/buckets', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
       name: parsed.data.name,
       period: parsed.data.period as BucketPeriod,
-      budgetAmount: cents,
-      currentAmount: deriveLegacyCurrentAmount(balance),
-      spentCents: balance.postedSpendCents,
+      budgetAmountCents: cents,
+      currentAmountCents: null,
       strictMode: true,
       category: parsed.data.category,
-      periodStart: start,
-      periodEnd: end,
-    },
+      nowMs: now.getTime(),
+    }),
   });
+
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to create bucket.' };
+  }
 
   redirect('/app/autopilot');
 }

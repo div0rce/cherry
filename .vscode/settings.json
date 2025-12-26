@@ -11,6 +11,7 @@
     "typescript",
     "typescriptreact"
   ],
+  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "eslint.run": "onType",
   "tailwindCSS.validate": true,
   "tailwindCSS.lint.cssConflict": "error"

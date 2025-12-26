@@ -2,6 +2,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -34,8 +35,8 @@ export default function BankSimulatorClient(): JSX.Element {
       const data = (await res.json()) as { sessions?: PendingSession[] };
       setSessions(data.sessions ?? []);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load sessions';
-      setError(message);
+      asError(err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -60,8 +61,8 @@ export default function BankSimulatorClient(): JSX.Element {
       }
       await loadSessions();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to verify session';
-      setError(message);
+      asError(err);
+      setError(err.message);
     } finally {
       setActioningId(null);
     }

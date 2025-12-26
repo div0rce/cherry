@@ -8,6 +8,7 @@ import { parseJsonBody } from '@/lib/validation';
 import { assertUserId } from '@/lib/invariants';
 import { logInvariant } from '@/lib/logging';
 import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -156,11 +157,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(card, { status: 201 });
   } catch (error) {
+    asError(error);
     if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
       return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
     }
     if (isPrismaP2003(error)) {
-      logInvariant('Card FK violation during create', { userId, mode, meta: error.meta ?? null });
+      logInvariant('Card FK violation during create', {
+        userId,
+        mode,
+        meta: asLogMeta(error.meta),
+        err: error,
+      });
       return NextResponse.json(
         { error: 'User foreign key violation while creating card' },
         { status: 500 }
@@ -200,8 +207,14 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         where: { id: card.id },
       });
     } catch (err) {
+      asError(err);
       if (isPrismaP2003(err)) {
-        logInvariant('Card FK violation during delete', { userId, mode, meta: err.meta ?? null });
+        logInvariant('Card FK violation during delete', {
+          userId,
+          mode,
+          meta: asLogMeta(err.meta),
+          err,
+        });
         return new NextResponse('User foreign key violation while deleting card', { status: 500 });
       }
       throw err;
@@ -209,7 +222,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+    asError(error);
+    if (error.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to delete card', { status: 500 });

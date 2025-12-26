@@ -1,11 +1,85 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
-const { prisma } = require('../lib/prisma');
+const { prisma, setPrismaClient } = require('../lib/prisma');
 const { upsertBankTransactions } = require('../lib/bank/ingest');
+
+function buildMockPrisma() {
+  const users = new Map();
+  const bankTxs = new Map();
+
+  const client = {
+    user: {
+      upsert: async ({ where, create, update }) => {
+        const existing = users.get(where.id);
+        if (existing) {
+          const next = { ...existing, ...update };
+          users.set(where.id, next);
+          return next;
+        }
+        const created = { id: where.id, ...create };
+        users.set(where.id, created);
+        return created;
+      },
+      deleteMany: async ({ where }) => {
+        let count = 0;
+        for (const key of Array.from(users.keys())) {
+          if (where.id === undefined || key === where.id) {
+            users.delete(key);
+            count += 1;
+          }
+        }
+        return { count };
+      },
+    },
+    bankTransaction: {
+      deleteMany: async ({ where }) => {
+        let count = 0;
+        for (const [key, value] of Array.from(bankTxs.entries())) {
+          if (
+            (where.userId === undefined || value.userId === where.userId) &&
+            (where.externalId === undefined || value.externalId === where.externalId)
+          ) {
+            bankTxs.delete(key);
+            count += 1;
+          }
+        }
+        return { count };
+      },
+      findUnique: async ({ where }) => {
+        const composite = where.userId_externalId;
+        if (composite) {
+          const key = `${composite.userId}:${composite.externalId}`;
+          return bankTxs.get(key) ?? null;
+        }
+        return null;
+      },
+      update: async ({ where, data }) => {
+        const composite = where.userId_externalId;
+        const key = `${composite.userId}:${composite.externalId}`;
+        const existing = bankTxs.get(key);
+        if (!existing) throw new Error('Record not found');
+        const next = { ...existing, ...data };
+        bankTxs.set(key, next);
+        return next;
+      },
+      create: async ({ data }) => {
+        const key = `${data.userId}:${data.externalId}`;
+        const record = { ...data, id: `tx-${bankTxs.size + 1}` };
+        bankTxs.set(key, record);
+        return record;
+      },
+    },
+    $disconnect: async () => {},
+  };
+
+  setPrismaClient(client);
+  return client;
+}
 
 async function testIdempotentOnCompositeKey() {
   const userId = 'test-user-bank-ingest';
   const externalId = 'csv-dev-test-123';
+  buildMockPrisma();
 
   await prisma.user.upsert({
     where: { id: userId },

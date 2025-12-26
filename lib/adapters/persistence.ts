@@ -78,11 +78,11 @@ export type BankTxnStore = {
 export type IdempotencyRecord = {
   key: string;
   userId: string;
-  createdAt: Date;
+  createdAtMs: number;
   payload: Record<string, unknown>;
 };
 
 export type IdempotencyStore = {
-  get(key: string): Promise<IdempotencyRecord | null>;
+  get(userId: string, key: string): Promise<IdempotencyRecord | null>;
   put(record: IdempotencyRecord): Promise<void>;
 };

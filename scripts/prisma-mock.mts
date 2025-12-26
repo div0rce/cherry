@@ -40,6 +40,15 @@ function matchesWhere(record: RecordShape, where?: Where): boolean {
       val !== null &&
       typeof val === 'object' &&
       'userId' in (val as Record<string, unknown>) &&
+      'key' in (val as Record<string, unknown>)
+    ) {
+      const composite = val as { userId: string; key: string };
+      return record['userId'] === composite.userId && record['key'] === composite.key;
+    }
+    if (
+      val !== null &&
+      typeof val === 'object' &&
+      'userId' in (val as Record<string, unknown>) &&
       'externalId' in (val as Record<string, unknown>)
     ) {
       const composite = val as { userId: string; externalId: string };
@@ -58,9 +67,21 @@ function createCollection(name: string) {
 
   function resolveKey(where: Where): string | null {
     if ('id' in where && typeof where['id'] === 'string') return where['id'] as string;
+    if ('userId_key' in where) {
+      const composite = where['userId_key'] as { userId: string; key: string };
+      return `${composite.userId}:${composite.key}`;
+    }
     if ('userId_externalId' in where) {
       const composite = where['userId_externalId'] as { userId: string; externalId: string };
       return `${composite.userId}:${composite.externalId}`;
+    }
+    if (
+      'userId' in where &&
+      'key' in where &&
+      typeof where['userId'] === 'string' &&
+      typeof where['key'] === 'string'
+    ) {
+      return `${where['userId']}:${where['key']}`;
     }
     if (
       'userId' in where &&
@@ -75,7 +96,19 @@ function createCollection(name: string) {
 
   const api = {
     create: async ({ data }: { data: RecordShape }) => {
-      const key = (data['id'] as string | undefined) ?? `${name}-${counter++}`;
+      const compositeKey =
+        typeof data['userId'] === 'string' && typeof data['key'] === 'string'
+          ? `${data['userId']}:${data['key']}`
+          : null;
+      const key =
+        (data['id'] as string | undefined) ?? compositeKey ?? `${name}-${counter++}`;
+      if (store.has(key)) {
+        const err = new Error(`Unique constraint failed on the fields: (${name}.id)`) as Error & {
+          code?: string;
+        };
+        err.code = 'P2002';
+        throw err;
+      }
       const record = { ...data, id: key };
       store.set(key, record);
       return record;
@@ -183,6 +216,7 @@ class MockPrismaClient {
   simulation = createCollection('simulation');
   vineDevice = createCollection('vineDevice');
   decisionEvent = createCollection('decisionEvent');
+  idempotencyKey = createCollection('idempotencyKey');
 
   async $disconnect(): Promise<void> {
     return;

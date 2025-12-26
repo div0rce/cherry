@@ -29,18 +29,6 @@
     ],
     "source": "legacy"
   },
-  "lib/authority/replayAuthority.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy"
-  },
-  "lib/authority/simulateSpendAuthority.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy"
-  },
   "lib/autopilot/engineDecisionId.ts": {
     "effects": [
       "crypto",
@@ -131,19 +119,6 @@
   "lib/dev/dev-user.ts": {
     "effects": [
       "console",
-      "prisma"
-    ],
-    "source": "legacy"
-  },
-  "lib/engine/context.ts": {
-    "effects": [
-      "console",
-      "prisma"
-    ],
-    "source": "legacy"
-  },
-  "lib/engine/legacy.ts": {
-    "effects": [
       "prisma"
     ],
     "source": "legacy"

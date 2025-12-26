@@ -9,6 +9,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
 import { getDashboardStats } from '@/lib/dashboard';
 import { ROUTES } from '@/lib/routes';
+import { prisma } from '@/lib/prisma';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -22,8 +23,7 @@ function formatMoney(amountCents: number | null | undefined, currency = 'USD'): 
   }).format(amountCents / 100);
 }
 
-function formatTimestamp(date: Date): string {
-  const now = new Date();
+function formatTimestamp(date: Date, now: Date): string {
   const isToday = date.toDateString() === now.toDateString();
   const formatter = new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -32,6 +32,27 @@ function formatTimestamp(date: Date): string {
     minute: '2-digit',
   });
   return isToday ? `Today ${formatter.format(date)}` : formatter.format(date);
+}
+
+async function deriveDataNow(userId: string): Promise<Date> {
+  const [latestSession, latestBankTx] = await Promise.all([
+    prisma.recommendationSession.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    }),
+    prisma.bankTransaction.findFirst({
+      where: { userId },
+      orderBy: { postedAt: 'desc' },
+      select: { postedAt: true },
+    }),
+  ]);
+
+  const timestamps = [latestSession?.createdAt, latestBankTx?.postedAt]
+    .filter((d): d is Date => d instanceof Date)
+    .map((d) => d.getTime());
+  const max = timestamps.length > 0 ? Math.max(...timestamps) : null;
+  return max !== null && Number.isFinite(max) ? new Date(max) : new Date(Date.UTC(1970, 0, 1));
 }
 
 function DevShortcut({ href, title, description }: { href: string; title: string; description: string }): JSX.Element {
@@ -60,7 +81,8 @@ function DevShortcut({ href, title, description }: { href: string; title: string
 
 export default async function DashboardPage(): Promise<JSX.Element> {
   const userId = await getCurrentUserIdOrRedirect();
-  const stats = await getDashboardStats(userId);
+  const dataNow = await deriveDataNow(userId);
+  const stats = await getDashboardStats(userId, { now: dataNow });
 
   const totalBuckets =
     stats.bucketHealth.onTrack + stats.bucketHealth.atRisk + stats.bucketHealth.overLimit;
@@ -177,7 +199,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
                         )}
                       </p>
                       <p className="mt-0.5 text-xs text-[#a5b0d0]">
-                        {formatTimestamp(item.occurredAt)}
+                        {formatTimestamp(item.occurredAt, dataNow)}
                       </p>
                     </div>
                     <span className="ml-3 inline-flex items-center rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-0.5 text-xs text-[#dbe4ff]">
@@ -224,7 +246,7 @@ export default async function DashboardPage(): Promise<JSX.Element> {
                         · {formatMoney(sim.amountCents, sim.currency)}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-xs text-[#a5b0d0]">{formatTimestamp(sim.occurredAt)}</p>
+                    <p className="mt-0.5 text-xs text-[#a5b0d0]">{formatTimestamp(sim.occurredAt, dataNow)}</p>
                   </div>
                   <div className="ml-3 flex flex-col items-end gap-1">
                     {hasText(sim.recommendedCardName) && (

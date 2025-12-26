@@ -3,10 +3,8 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from '@/lib/buckets-runtime';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
+import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
 import type { ActionState } from '../../../_lib/form-state';
 
 const UpdateBucketSchema = z
@@ -14,7 +12,7 @@ const UpdateBucketSchema = z
     bucketId: z.string().trim().min(1, 'Bucket id is required'),
     name: z.string().trim().min(1, 'Name is required').max(80),
     budgetAmount: z.string().trim(),
-  category: z.nativeEnum(RewardCategory),
+    category: z.nativeEnum(RewardCategory),
     period: z.enum(['WEEKLY', 'MONTHLY']),
   })
   .strict();
@@ -33,28 +31,6 @@ function parseBudget(raw: string): { cents: number | null; error?: string } {
     return { cents: null, error: 'Enter a positive budget amount.' };
   }
   return { cents: Math.round(value * 100) };
-}
-
-function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
-  const start = new Date(now);
-  const end = new Date(now);
-
-  if (period === 'WEEKLY') {
-    const day = start.getDay();
-    const diffToMonday = (day + 6) % 7;
-    start.setDate(start.getDate() - diffToMonday);
-    start.setHours(0, 0, 0, 0);
-    end.setTime(start.getTime());
-    end.setDate(start.getDate() + 7);
-  } else {
-    start.setDate(1);
-    start.setHours(0, 0, 0, 0);
-    end.setTime(start.getTime());
-    end.setMonth(start.getMonth() + 1);
-  }
-
-  end.setHours(0, 0, 0, 0);
-  return { start, end };
 }
 
 export async function updateBucket(
@@ -83,38 +59,29 @@ export async function updateBucket(
     };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding updateBucket');
+  await requireUserContext();
 
-  const bucket = await prisma.bucket.findFirst({
-    where: { id: parsed.data.bucketId, userId },
-    select: { id: true, spentCents: true, period: true },
+  const now = resolveExplicitNow(formData.get('now'));
+  const desiredPeriod = parsed.data.period as BucketPeriod;
+  const response = await fetchFromApi(`/api/buckets/${parsed.data.bucketId}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: parsed.data.name,
+      budgetAmountCents: cents,
+      category: parsed.data.category,
+      period: desiredPeriod,
+      nowMs: now.getTime(),
+    }),
   });
 
-  if (bucket === null) {
+  if (response.status === 404) {
     redirect('/app/onboarding?missing=buckets');
     return;
   }
-
-  const bucketRecord = bucket;
-  const now = new Date();
-  const desiredPeriod = parsed.data.period as BucketPeriod;
-  const { start, end } = getPeriodWindow(desiredPeriod, now);
-  const balance = computeBucketBalanceFromNumbers(cents, bucketRecord.spentCents, 0);
-
-  await prisma.bucket.update({
-    where: { id: parsed.data.bucketId },
-    data: {
-      name: parsed.data.name,
-      budgetAmount: cents,
-      category: parsed.data.category,
-      period: desiredPeriod,
-      currentAmount: deriveLegacyCurrentAmount(balance),
-      spentCents: balance.postedSpendCents,
-      periodStart: start,
-      periodEnd: end,
-    },
-  });
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to update bucket.' };
+  }
 
   redirect('/app/onboarding');
 }
@@ -132,19 +99,16 @@ export async function deleteBucket(
     return { status: 'error', message: 'Bucket id is required.', fieldErrors };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding deleteBucket');
-
-  const bucket = await prisma.bucket.findFirst({
-    where: { id: parsed.data.bucketId, userId },
-    select: { id: true },
+  await requireUserContext();
+  const response = await fetchFromApi(`/api/buckets/${parsed.data.bucketId}`, {
+    method: 'DELETE',
   });
-
-  if (bucket === null) {
+  if (response.status === 404) {
     redirect('/app/onboarding?missing=buckets');
     return;
   }
-
-  await prisma.bucket.delete({ where: { id: parsed.data.bucketId } });
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to delete bucket.' };
+  }
   redirect('/app/onboarding');
 }

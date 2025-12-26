@@ -92,7 +92,7 @@ function setupSessionMocks({ engineOk = true } = {}) {
     debts: [],
     constraints: { hard: { minEssentialCoverageDays: 0, maxCardUtilization: null }, soft: { avoidInterest: false, avoidNewDebt: false } },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
   };
 
   const solverDecision = {
@@ -164,6 +164,10 @@ function setupSessionMocks({ engineOk = true } = {}) {
             state: engineState,
           }
         : { ok: false, reason: 'ENGINE_ERROR', message: 'fail' },
+  });
+
+  mockModule('../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => engineState,
   });
 
   mockModule('../lib/user-context', {

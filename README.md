@@ -56,7 +56,7 @@ npm run check    # composite (lint + typecheck)
   - `npm run seed:demo` — seed demo cards/buckets/sessions/ledger rows
   - `npm run dev:ingest:moustafa-bank [userEmail|userId]` — DEV ONLY; ingest moustafa SafeBalance CSV into `BankTransaction` with `source="csv_dev"` (blocked in production)
   - `npm run dev:evaluator:moustafa [userEmail|userId]` — DEV ONLY; offline engine replay of csv_dev `BankTransaction` rows into `HistoricalEngineEvaluation`
-- Integrity: `npx ts-node --project tsconfig.scripts.json scripts/audit-integrity.ts`
+- Integrity: `npx ts-node --project tsconfig.scripts.json scripts/audit-integrity.mts`
 - Dev login (cookies): `./scripts/dev-login.sh [email]` → writes `cookies.txt`
 
 ---
@@ -129,5 +129,6 @@ Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in
 
 ## Editor/Tooling Notes
 - Use workspace TypeScript in VS Code; restart TS/ESLint servers after Prisma changes.
+- Third-party typing gaps must be patched via `types/compat/**` with a documented audit boundary.
 - Tailwind tokens live in `app/globals.css`; prefer semantic utilities.
 - Keep lint/typecheck green; add focused tests when touching engine/sessions/ledger logic.

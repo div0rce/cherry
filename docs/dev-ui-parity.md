@@ -14,6 +14,6 @@ Cherry policy: no important backend behavior is allowed to exist without a Dev C
 | VINE_CONTEXT_PIPELINE | Vine BLE/NFC ingest + run recommendation shim | lib/vine/run-recommendation.ts | Translates Vine device payloads into recommendation sessions | /vine-simulator | implemented |
 | BUCKET_RUNTIME_GUARDRAILS | Bucket runtime math and guardrails | lib/buckets-runtime.ts | Computes remaining/committed spend for guardrails | /buckets | implemented |
 | OFFLINE_EVALUATOR | Offline evaluator against historical spend | lib/evaluator/offline-history.ts | Scores historical spend snapshots for diagnostics | /dev/evaluator | implemented |
-| INVARIANTS_AND_ASSUMPTIONS | Engine invariants + guardrail enforcement checks | lib/engine-invariants.ts, scripts/check-guardrails.ts | Validates solver + session guardrails before deploy | /admin (Invariants panel) | implemented |
+| INVARIANTS_AND_ASSUMPTIONS | Engine invariants + guardrail enforcement checks | lib/engine-invariants.ts, scripts/check-guardrails.mts | Validates solver + session guardrails before deploy | /admin (Invariants panel) | implemented |
 
 Script hook: `npm run check:dev-ui-parity` logs the current implemented vs missing counts (non-blocking for now).

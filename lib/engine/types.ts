@@ -24,8 +24,8 @@ export type RewardRule = {
   rateValue: number;
   capAmountCents?: number | null;
   capPeriod?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | null;
-  promoStart?: Date | null;
-  promoEnd?: Date | null;
+  promoStartMs?: number | null;
+  promoEndMs?: number | null;
   source: 'STATIC_CONFIG' | 'SCRAPE_LLM' | 'INFERRED_FROM_TXN' | 'USER_OVERRIDE';
   confidence: number;
 };
@@ -100,7 +100,7 @@ export type EngineState = {
 
 export type UserLiquidityState = {
   liquidCents: number | null;
-  nextPaycheckDate: Date | null;
+  nextPaycheckDateMs: number | null;
   nextPaycheckNetCents: number | null;
 } | null;
 
@@ -108,7 +108,7 @@ export type UserDebtState = DebtAccount[];
 
 export type EngineContext = {
   surface: EngineSurface;
-  now: Date;
+  nowMs: number;
   merchantName?: string | null;
   merchantDomain?: string | null;
   merchantCategoryKey?: string | null;
@@ -139,7 +139,7 @@ export type EngineAction = {
   // Debt actions.
   debtId?: DebtAccountId;
   paydownAmountCents?: number;
-  paydownScheduledDate?: Date | null;
+  paydownScheduledDateMs?: number | null;
   // Additional hints for UI/telemetry.
   meta?: {
     reasonHint?: string;

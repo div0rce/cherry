@@ -127,7 +127,7 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Offline historical evaluation must run through `lib/evaluator/offline-history.ts` and write only to `HistoricalEngineEvaluation`.
 - It is read-only with respect to Sessions, CherryPointLedger, and Buckets; do not wire evaluator outputs into user-facing flows without updating legal/guardrail docs.
 - For usage and invariants see `docs/offline-evaluator.md`.
-- Do not hard-code runIds; derive with `defaultRunIdForUser(userId)` and align script/user with the bank ingest user.
+- Do not hard-code runIds; derive with `defaultRunIdForUser(userId, now)` and align script/user with the bank ingest user.
 - Income regime and bucket synthesis is heuristic, dev-only, and diagnostic; do not use it for credit decisions or live surfaces.
 - P2P allowance/repayment classification is approximate; default to conservative mappings and never promise outcomes to users based on it.
 - `/dev/evaluator` must call `assertOfflineEvaluatorModelsReady()` before touching evaluator tables; if you add/rename models, run `npx prisma migrate deploy` + `npx prisma generate` and restart dev before loading the page.
@@ -137,14 +137,47 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - CI runs on every push/PR via `.github/workflows/ci.yml` and must not be bypassed. Steps: `check:guardrails` → `lint` → `typecheck` → `typecheck:scripts` → `test` (includes `check:prisma-assumptions`) → `build`.
 - `check:guardrails` enforces ESLint rule presence/severity, TypeScript strict flags, package scripts, no new `eslint-disable`, guardrail files/tests existence. Any deviation is a hard error; fix code/tests, not the guardrails.
 - Agents may not relax lint rules, TS strictness, or remove guardrail tests to “fix” CI. Any change to guardrails must be explicitly documented and reviewed; weakening is prohibited.
-- Do not add new `eslint-disable` comments outside the allowlist encoded in `scripts/check-guardrails.ts`; fix the underlying code instead.
+- Do not add new `eslint-disable` comments outside the allowlist encoded in `scripts/check-guardrails.mts`; fix the underlying code instead.
+
+## Guardrails / Scripts
+### Script Module Semantics (Non-Negotiable)
+
+The repository is CommonJS by default. Script semantics are determined solely by file extension.
+
+Rules:
+- Runtime code (lib/**, app/**) MUST remain `.ts` and CommonJS.
+- Scripts using ESM syntax MUST be `.mts`.
+- `.mts` files are ONLY allowed under `scripts/`.
+- `.ts` files MUST NOT contain ESM syntax (`import`, `export`, `import.meta`, top-level await).
+
+Runtime access from scripts:
+- `.mts` scripts MUST NOT ESM-import from `lib/**`.
+- All runtime modules MUST be loaded via:
+  - `createRequire(import.meta.url)`
+  - `ts-node/register/transpile-only`
+  - `requireFn('../lib/foo.ts')`
+
+Forbidden:
+- `"type": "module"` in package.json
+- ESM imports from `lib/**` in scripts
+- Bare `require()` without `createRequire`
+- `.mts` outside `scripts/`
+
+Enforcement:
+- `npm run check:script-semantics` enforces these rules.
+- Any violation is a CI failure.
+- Do not weaken or bypass this guardrail.
+
+### Final Architecture (World + Idempotency)
+- World is the only runtime boundary; APIs build `World` and pass it into engine/authority paths.
+- Idempotency keys are per-user and persistent: uniqueness is `(userId, key)` via `IdempotencyStore`.
 
 ### Bank ingest invariants (MUST follow)
 - `BankTransaction.id` is internal (`@id @default(cuid())`) and must never be set from provider/CSV data.
 - Idempotency is enforced on `(userId, externalId)` only: schema `@@unique([userId, externalId], name: "BankTransaction_userId_externalId")`; code queries via `where: { userId_externalId: { userId, externalId } }`.
 - `upsertBankTransactions` is the only entrypoint for ingest writes; it must not accept or pass an `id` field and must upsert strictly on `(userId, externalId)`.
 - New providers (csv_dev, Plaid, Teller, etc.) must emit stable `externalId` values and call `upsertBankTransactions` instead of direct `create`/`update`.
-- Keep `scripts/check-prisma-assumptions.ts` and `tests/bank-ingest-idempotent.test.js` green when touching `BankTransaction`.
+- Keep `scripts/check-prisma-assumptions.mts` and `tests/bank-ingest-idempotent.test.js` green when touching `BankTransaction`.
 
 ### Prisma change workflow (required)
 - When editing `prisma/schema.prisma`, run `npx prisma format`, create a migration (`npx prisma migrate dev --name <desc>`), and regenerate the client (`npx prisma generate`).
@@ -215,7 +248,7 @@ Do not invent new audit formats or scoring schemes; extend `docs/audit-format.md
 ## Cherry Engine — Solver Architecture
 - Pure solver: `EngineState` (normalized user state) + `EngineContext` (payload) → ranked `EngineDecision[]` with scores, reasons, projections, and constraint tags.
 - State model lives in `lib/engine/types.ts`: `NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`, `WorldParams`. Do not leak Prisma models into solver logic.
-- State/Context builders: `fromPrismaUserToEngineState(userId)` maps DB → engine state; `fromExternalContextToEngineContext(payload)` maps HTTP/extension/Vine payloads → engine context.
+- State/Context builders: `fromPrismaUserToEngineState(userId, nowMs)` maps DB → engine state; `fromExternalContextToEngineContext(payload)` maps HTTP/extension/Vine payloads → engine context.
 - Pipeline: `generateCandidateActions` → `simulateAction` → `scoreDecision` (`objective.ts`) → `evaluateConstraintsForDecision`/`enforceHardConstraints` → sorted output. Orchestrated by `solveDecision`; API-safe wrapper is `safeSolveDecisionForUser`.
 - Legacy compatibility (`runEngine`, card/bucket verdicts) is isolated in `lib/engine/legacy.ts` for now; new surfaces must consume `safeSolveDecisionForUser` and map `EngineDecision` to their payloads.
 - Add new action types or scoring tweaks in `lib/engine/objective.ts`, `lib/engine/candidates.ts`, `lib/engine/simulate.ts`, and keep `lib/engine-invariants.ts` updated when outputs change. Engine failures must degrade gracefully (structured errors/no recommendation) rather than crashing routes.
@@ -248,7 +281,7 @@ Do not invent new audit formats or scoring schemes; extend `docs/audit-format.md
 ## Change Management Expectations
 - Keep diffs small and scoped; prefer follow-ups over mega-PRs.
 - When editing schema, document migration name, any backfill, and validation method.
-- When touching engine/sessions/ledger, add or update tests and run integrity scripts (`scripts/audit-integrity.ts`) if applicable.
+- When touching engine/sessions/ledger, add or update tests and run integrity scripts (`scripts/audit-integrity.mts`) if applicable.
 - Cross-link docs when you add new flows; update `docs/api.md` for any API shape changes.
 
 ---
@@ -277,20 +310,20 @@ Do not invent new audit formats or scoring schemes; extend `docs/audit-format.md
 - When adding migrations or data scripts, include a quick note on how you validated DB changes.
 - When touching the engine, sessions, or ledger:
   - Add unit tests that assert invariants such as “no double-award for the same session”, “points remain PENDING until verified”, and “anomalous sessions/ledger rows are flagged consistently”.
-  - Prefer narrow tests around `lib/engine.ts`, `lib/verification/verify-session.ts`, and `scripts/audit-integrity.ts` instead of broad end-to-end tests.
+  - Prefer narrow tests around `lib/engine.ts`, `lib/verification/verify-session.ts`, and `scripts/audit-integrity.mts` instead of broad end-to-end tests.
 
 ## Commit & Pull Request Guidelines
 - Commit messages follow `type: summary` from history (e.g., `feat: add bucket budgeting UI`, `chore: update prisma schema`). Keep them imperative and scoped.
 - PRs should include: what changed, why, how to test (`npm run lint`, migration commands, manual URLs), and any env var or schema impacts.
 - Attach screenshots or short notes for UI/UX changes; link issues or tickets. Keep diffs small and focused; prefer follow-ups over mega-PRs.
-- For schema changes (new enums/fields on sessions/ledger), document the migration name, any backfill strategy, and how you validated integrity (e.g., running `scripts/audit-integrity.ts` locally).
+- For schema changes (new enums/fields on sessions/ledger), document the migration name, any backfill strategy, and how you validated integrity (e.g., running `scripts/audit-integrity.mts` locally).
 
 ## Security & Configuration Tips
 - Keep secrets in `.env.local` (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`/`VERCEL_URL`). Never commit env files.
 - Run `npm run seed:demo` only against disposable data. After pulling new migrations, rerun `prisma migrate dev` and regenerate the client before local development.
 - Apple Wallet pass is scaffolded but disabled until certs are configured; `/api/wallet/cherry-pass` returns 501 by design.
 - Admin tools (`/admin`) that clear user data, sessions, or ledger entries are for local/sandbox environments only. Do not expose these endpoints in production without additional auth/role checks.
-- Integrity/audit scripts (`scripts/audit-integrity.ts`) are diagnostic; they should never mutate production data without explicit review.
+- Integrity/audit scripts (`scripts/audit-integrity.mts`) are diagnostic; they should never mutate production data without explicit review.
 
 ## Default Agent Workflow
 1. Read relevant docs (Vision, Legal Constraints, Vine, Wallet, API, System Map, Repo Structure, Auth).

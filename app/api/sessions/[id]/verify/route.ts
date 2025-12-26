@@ -9,6 +9,7 @@ import {
   resolveUserContext,
 } from '@/lib/user-context';
 import { verifySessionFromSignal } from '@/lib/verification/verify-session';
+import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -28,7 +29,8 @@ export async function POST(
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/sessions/[id]/verify POST', error);
@@ -74,7 +76,8 @@ export async function POST(
       ledgerStatus: result.ledgerStatus,
     });
   } catch (error) {
-    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, error });
+    asError(error);
+    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, err: error });
     logError('Error in /api/sessions/[id]/verify', error);
     return NextResponse.json({ error: 'Failed to verify session' }, { status: 500 });
   }

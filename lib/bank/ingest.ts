@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma, isProduction } from '@/lib/prisma';
 import { logInfo, logWarn } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 import { resolveUserIdForExternalIds } from './user-link';
 
 function hasNonEmptyString(value?: string | null): value is string {
@@ -109,8 +110,9 @@ async function upsertMerchantObservation(
       select: { id: true },
     });
     return created.id;
-  } catch (err) {
-    logWarn('bank_ingest_merchant_observation_failed', { err, userId, merchantName: safeName, mcc });
+  } catch (caught) {
+    asError(caught);
+    logWarn('bank_ingest_merchant_observation_failed', { err: caught, userId, merchantName: safeName, mcc });
     return null;
   }
 }
@@ -153,8 +155,8 @@ export async function ingestBankTransactions(txs: RawBankTransaction[]): Promise
 
     const { amount, direction, absoluteCents } = normalizeAmount(tx.amountCents);
     const amountMinor = Math.trunc(tx.amountCents);
-    const postedAtRaw = tx.postedAt ?? tx.occurredAt;
-    const postedAt = new Date(postedAtRaw ?? Date.now());
+    const postedAtSource = tx.postedAt ?? tx.occurredAt;
+    const postedAt = new Date(postedAtSource);
     const occurredAt = tx.occurredAt != null ? new Date(tx.occurredAt) : postedAt;
     const currency = hasNonEmptyString(tx.currency) ? tx.currency.toUpperCase() : 'USD';
     const mcc = tx.mcc != null ? Number.parseInt(String(tx.mcc), 10) : null;

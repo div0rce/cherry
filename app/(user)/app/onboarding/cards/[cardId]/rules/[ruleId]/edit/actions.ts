@@ -3,9 +3,7 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import type { ActionState } from '../../../../../_lib/form-state';
 
 const ALLOWED_CATEGORIES = [
@@ -46,13 +44,6 @@ function parseRate(raw: string): { value: number | null; error?: string } {
   return { value: parsed };
 }
 
-async function findRuleForUser(cardId: string, ruleId: string, userId: string) {
-  return prisma.rewardRule.findFirst({
-    where: { id: ruleId, card: { id: cardId, userId } },
-    select: { id: true },
-  });
-}
-
 export async function updateRewardRule(
   _state: ActionState,
   formData: FormData
@@ -87,25 +78,24 @@ export async function updateRewardRule(
     };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding updateRewardRule');
-
-  const rule = await findRuleForUser(parsed.data.cardId, parsed.data.ruleId, userId);
-  if (rule === null) {
+  await requireUserContext();
+  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}/rewards`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      rewardRuleId: parsed.data.ruleId,
+      category: allowedCategory,
+      multiplier: parsed.data.rateKind === 'points' ? rateValue : undefined,
+      cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : undefined,
+    }),
+  });
+  if (response.status === 404) {
     redirect('/app/onboarding?missing=rules');
     return;
   }
-
-  const categoryValue: RewardCategory = allowedCategory;
-
-  await prisma.rewardRule.update({
-    where: { id: parsed.data.ruleId },
-    data: {
-      category: categoryValue,
-      multiplier: parsed.data.rateKind === 'points' ? rateValue : null,
-      cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : null,
-    },
-  });
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to update reward rule.' };
+  }
 
   redirect('/app/onboarding');
 }
@@ -124,15 +114,19 @@ export async function deleteRewardRule(
     return { status: 'error', message: 'Rule id is required.', fieldErrors };
   }
 
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-  assertUserId(userId, 'onboarding deleteRewardRule');
-
-  const rule = await findRuleForUser(parsed.data.cardId, parsed.data.ruleId, userId);
-  if (rule === null) {
+  await requireUserContext();
+  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}/rewards`, {
+    method: 'DELETE',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ rewardRuleId: parsed.data.ruleId }),
+  });
+  if (response.status === 404) {
     redirect('/app/onboarding?missing=rules');
     return;
   }
+  if (!response.ok) {
+    return { status: 'error', message: 'Failed to delete reward rule.' };
+  }
 
-  await prisma.rewardRule.delete({ where: { id: parsed.data.ruleId } });
   redirect('/app/onboarding');
 }

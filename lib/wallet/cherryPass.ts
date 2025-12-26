@@ -1,37 +1,29 @@
 import fs from 'fs';
 import path from 'path';
 import { PKPass } from 'passkit-generator';
-
-const {
-  APPLE_WALLET_TEAM_ID,
-  APPLE_WALLET_PASS_TYPE_ID,
-  APPLE_WALLET_ORG_NAME,
-  APPLE_WALLET_PASS_DESCRIPTION,
-  APPLE_WALLET_CERT_PASSWORD,
-  APPLE_WALLET_CERT_PATH,
-  APPLE_WALLET_WWDR_CERT_PATH,
-} = process.env;
+import type { WalletCertificateConfig } from '@/lib/config/server';
+import { getServerConfig } from '@/lib/config/store';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
-function assertWalletEnv() {
+function assertWalletConfig(config: WalletCertificateConfig): void {
   const missing = [
-    ['APPLE_WALLET_TEAM_ID', APPLE_WALLET_TEAM_ID],
-    ['APPLE_WALLET_PASS_TYPE_ID', APPLE_WALLET_PASS_TYPE_ID],
-    ['APPLE_WALLET_ORG_NAME', APPLE_WALLET_ORG_NAME],
-    ['APPLE_WALLET_PASS_DESCRIPTION', APPLE_WALLET_PASS_DESCRIPTION],
-    ['APPLE_WALLET_CERT_PASSWORD', APPLE_WALLET_CERT_PASSWORD],
-    ['APPLE_WALLET_CERT_PATH', APPLE_WALLET_CERT_PATH],
-    ['APPLE_WALLET_WWDR_CERT_PATH', APPLE_WALLET_WWDR_CERT_PATH],
+    ['APPLE_WALLET_TEAM_ID', config.teamId],
+    ['APPLE_WALLET_PASS_TYPE_ID', config.passTypeId],
+    ['APPLE_WALLET_ORG_NAME', config.orgName],
+    ['APPLE_WALLET_PASS_DESCRIPTION', config.passDescription],
+    ['APPLE_WALLET_CERT_PASSWORD', config.certPassword],
+    ['APPLE_WALLET_CERT_PATH', config.certPath],
+    ['APPLE_WALLET_WWDR_CERT_PATH', config.wwdrCertPath],
   ]
     .filter(([, value]) => !hasNonEmptyString(value))
     .map(([key]) => key);
 
   if (missing.length > 0) {
     throw new Error(
-      `[Cherry Wallet] Missing Apple Wallet env vars: ${missing.join(
+      `[Cherry Wallet] Missing Apple Wallet config: ${missing.join(
         ', '
       )}. Pass generation cannot proceed.`
     );
@@ -48,35 +40,32 @@ type CherryPassPayload = {
 const TINY_RED_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YxKqW0AAAAASUVORK5CYII=';
 
-export async function generateCherryPass(payload: CherryPassPayload): Promise<Buffer> {
-  if (
-    !hasNonEmptyString(APPLE_WALLET_TEAM_ID) ||
-    !hasNonEmptyString(APPLE_WALLET_PASS_TYPE_ID) ||
-    !hasNonEmptyString(APPLE_WALLET_ORG_NAME) ||
-    !hasNonEmptyString(APPLE_WALLET_PASS_DESCRIPTION) ||
-    !hasNonEmptyString(APPLE_WALLET_CERT_PASSWORD) ||
-    !hasNonEmptyString(APPLE_WALLET_CERT_PATH) ||
-    !hasNonEmptyString(APPLE_WALLET_WWDR_CERT_PATH)
-  ) {
+export async function generateCherryPass(
+  payload: CherryPassPayload,
+  walletConfig?: WalletCertificateConfig
+): Promise<Buffer> {
+  const config = walletConfig ?? getServerConfig().wallet;
+
+  if (!config.enabled) {
     throw new Error(
       '[Cherry Wallet] Apple Wallet is not configured. Missing certs/ENV. This feature is disabled until Apple Developer setup is complete.'
     );
   }
 
-  assertWalletEnv();
+  assertWalletConfig(config);
 
-  const cert = fs.readFileSync(path.resolve(APPLE_WALLET_CERT_PATH));
-  const wwdr = fs.readFileSync(path.resolve(APPLE_WALLET_WWDR_CERT_PATH));
+  const cert = fs.readFileSync(path.resolve(config.certPath as string));
+  const wwdr = fs.readFileSync(path.resolve(config.wwdrCertPath as string));
   const authToken = payload.userId.slice(0, 32);
   const authenticationToken = authToken !== '' ? authToken : 'cherry-token';
 
   const passDefinition = {
     formatVersion: 1,
-    passTypeIdentifier: APPLE_WALLET_PASS_TYPE_ID,
-    serialNumber: `${payload.userId}-${Date.now()}`,
-    teamIdentifier: APPLE_WALLET_TEAM_ID,
-    organizationName: APPLE_WALLET_ORG_NAME,
-    description: APPLE_WALLET_PASS_DESCRIPTION,
+    passTypeIdentifier: config.passTypeId,
+    serialNumber: `${payload.userId}-${payload.cherryPoints}`,
+    teamIdentifier: config.teamId,
+    organizationName: config.orgName,
+    description: config.passDescription,
     logoText: 'Cherry',
     foregroundColor: 'rgb(255,255,255)',
     backgroundColor: 'rgb(210, 0, 80)',
@@ -117,7 +106,7 @@ export async function generateCherryPass(payload: CherryPassPayload): Promise<Bu
     wwdr,
     signerCert: cert,
     signerKey: cert,
-    signerKeyPassphrase: APPLE_WALLET_CERT_PASSWORD,
+    signerKeyPassphrase: config.certPassword ?? '',
   };
 
   const pass = new PKPass(

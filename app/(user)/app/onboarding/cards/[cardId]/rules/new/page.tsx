@@ -1,10 +1,12 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
+import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
 import { RewardRuleForm } from '../../../../_components/RewardRuleForm';
 import { createRewardRule } from './actions';
+export const dynamic = 'force-dynamic';
+
+
 
 type PageParams = { cardId: string };
 
@@ -15,19 +17,18 @@ export default async function NewRewardRulePage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
-
-  const card = await prisma.card.findFirst({
-    where: { id: cardId, userId },
-    select: { id: true, nickname: true },
-  });
-
-  if (card === null) {
+  await requireUserContext();
+  const response = await fetchFromApi('/api/cards');
+  if (!response.ok) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }
-
-  const targetCard = card;
+  const cards = (await response.json()) as Array<{ id: string; nickname: string }>;
+  const targetCard = cards.find((item) => item.id === cardId) ?? null;
+  if (targetCard === null) {
+    redirect('/app/onboarding?missing=cards');
+    return null;
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#f8fafc] to-[#e2e8f0]">

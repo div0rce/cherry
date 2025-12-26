@@ -14,6 +14,7 @@ import {
 } from '@/lib/evaluator/stats';
 import { defaultRunIdForUser } from '@/lib/evaluator/offline-history';
 import { ROUTES } from '@/lib/routes';
+import { getServerConfig } from '@/lib/config/store';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -26,12 +27,12 @@ function formatAmount(minor: number | null | undefined, direction: string): stri
 }
 
 export default async function OfflineEvaluatorPage(): Promise<JSX.Element> {
-  if (process.env.NODE_ENV === 'production') {
+  const serverConfig = getServerConfig();
+  if (serverConfig.environment === 'production') {
     notFound();
   }
 
-  const offlineEnabled =
-    String(process.env['CHERRY_OFFLINE_EVALUATOR_ENABLED'] ?? 'true').toLowerCase() !== 'false';
+  const offlineEnabled = serverConfig.offlineEvaluatorEnabled;
 
   if (!offlineEnabled) {
     return (
@@ -58,7 +59,15 @@ export default async function OfflineEvaluatorPage(): Promise<JSX.Element> {
 
   await assertOfflineEvaluatorModelsReady();
   const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.evaluator);
-  const defaultRunId = defaultRunIdForUser(userId);
+  const latestRunAnchor =
+    (await prisma.historicalEngineEvaluation.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    }))?.createdAt ?? null;
+  const defaultRunId = latestRunAnchor
+    ? defaultRunIdForUser(userId, latestRunAnchor)
+    : defaultRunIdForUser(userId, new Date(Date.UTC(1970, 0, 1)));
 
   let evaluations = (await prisma.historicalEngineEvaluation.findMany({
     where: { userId, runId: defaultRunId },
@@ -209,7 +218,7 @@ export default async function OfflineEvaluatorPage(): Promise<JSX.Element> {
               description="Top 200 offline engine decisions joined to historical bank transactions (csv_dev)."
             >
               <div className="space-y-3">
-                {String(process.env.NODE_ENV) !== 'production' && (
+                {serverConfig.enableDevTools && (
                   <div className="mb-1 text-xs text-slate-500">
                     <p>
                       Debug: {debug.totalForUser} evaluations across {debug.distinctRunIds.length} runIds. Latest:{' '}

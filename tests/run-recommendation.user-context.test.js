@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
 const { PrismaClientKnownRequestError } = require('@prisma/client/runtime/library');
+const { makeTestWorld } = require('./helpers/world');
 
 const authorityDecisionStub = {
   version: 'authority_v1',
@@ -12,6 +13,31 @@ const authorityDecisionStub = {
   engineVersion: 'test',
   counterfactuals: [],
 };
+const engineState = {
+  userId: 'user-1',
+  cards: [],
+  buckets: [],
+  debts: [],
+  constraints: { hard: { minEssentialCoverageDays: 0, maxCardUtilization: null }, soft: { avoidInterest: false, avoidNewDebt: false } },
+  world: { baseInterestRate: null, inflationEstimate: null },
+  cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+};
+const legacyDecision = {
+  category: 'DINING',
+  amountCents: 1000,
+  budget: {
+    verdict: 'HEALTHY',
+    coverageMode: 'UNCONFIGURED',
+    hasBucket: false,
+    strictMode: false,
+    wouldExceed: false,
+  },
+  card: {
+    verdict: 'GREEN',
+  },
+  overallVerdict: 'GREEN',
+  cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
+};
 
 function mockModule(modulePath, exports) {
   require.cache[require.resolve(modulePath)] = {
@@ -20,6 +46,29 @@ function mockModule(modulePath, exports) {
     loaded: true,
     exports,
   };
+}
+
+function mockEngine() {
+  mockModule('../lib/engine', {
+    buildEngineContext: (input) => input,
+    mapSolverDecisionToLegacyDecision: () => legacyDecision,
+    safeSolveDecisionForUser: async () => ({
+      ok: true,
+      decisions: [{ action: { type: 'USE_CARD', cardId: 'card-1' } }],
+      trace: {
+        engineVersion: 'test',
+        weights: {},
+        stateSummary: { bucketCount: 0, cardCount: 0, debtCount: 0 },
+        contextSummary: { surface: 'vine', amountCents: 1000 },
+        candidates: [],
+      },
+      legacyDecision,
+      state: engineState,
+    }),
+  });
+  mockModule('../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => engineState,
+  });
 }
 
 async function testNullUserIdThrows() {
@@ -34,51 +83,28 @@ async function testNullUserIdThrows() {
       },
     },
   });
-  mockModule('../lib/engine', {
-    runEngine: async () => ({
-      budget: {
-        wouldExceed: false,
-        strictMode: false,
-        limitCents: 10_000,
-        spentBeforeCents: 1_000,
-        remainingAfterCents: 9_000,
-        name: 'Demo Bucket',
-        bucketId: null,
-        coverageMode: 'UNCONFIGURED',
-        verdict: 'HEALTHY',
-      },
-      card: {
-        multiplier: 1,
-        estimatedRewards: 10,
-        cardId: 'card-1',
-        cardNickname: 'Demo Card',
-        verdict: 'GREEN',
-      },
-      category: 'DINING',
-      amountCents: 1000,
-      overallVerdict: 'GREEN',
-      cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
-    }),
-  });
+  mockEngine();
   mockModule('../lib/engine-invariants', {
     validateEngineDecision: () => {},
   });
-  mockModule('../lib/authority/simulateSpendAuthority', {
+  mockModule('../lib/adapters/runtime/authority.prisma', {
     simulateSpendAuthority: async () => authorityDecisionStub,
     recordDecisionEvent: async () => {},
   });
 
   delete require.cache[require.resolve('../lib/vine/run-recommendation')];
   const { runRecommendationFromOrderContext } = require('../lib/vine/run-recommendation');
+  const now = new Date();
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
   const ctx = {
     amountCents: 1000,
     deviceId: 'dev-1',
-    timestamp: Date.now(),
+    timestamp: now.getTime(),
     source: 'VINE_SIM',
   };
   let threw = false;
   try {
-    await runRecommendationFromOrderContext(ctx, null);
+    await runRecommendationFromOrderContext(world, ctx, null, { now });
   } catch (err) {
     threw = true;
     assert.match(String(err), /userId is missing or invalid/);
@@ -101,51 +127,28 @@ async function testP2003Logs() {
       },
     },
   });
-  mockModule('../lib/engine', {
-    runEngine: async () => ({
-      budget: {
-        wouldExceed: false,
-        strictMode: false,
-        limitCents: 10_000,
-        spentBeforeCents: 1_000,
-        remainingAfterCents: 9_000,
-        name: 'Demo Bucket',
-        bucketId: null,
-        coverageMode: 'UNCONFIGURED',
-        verdict: 'HEALTHY',
-      },
-      card: {
-        multiplier: 1,
-        estimatedRewards: 10,
-        cardId: 'card-1',
-        cardNickname: 'Demo Card',
-        verdict: 'GREEN',
-      },
-      category: 'DINING',
-      amountCents: 1000,
-      overallVerdict: 'GREEN',
-      cherryIncentive: { pointsIfFollowed: 5, expiryMinutes: 15 },
-    }),
-  });
+  mockEngine();
   mockModule('../lib/engine-invariants', {
     validateEngineDecision: () => {},
   });
-  mockModule('../lib/authority/simulateSpendAuthority', {
+  mockModule('../lib/adapters/runtime/authority.prisma', {
     simulateSpendAuthority: async () => authorityDecisionStub,
     recordDecisionEvent: async () => {},
   });
 
   delete require.cache[require.resolve('../lib/vine/run-recommendation')];
   const { runRecommendationFromOrderContext } = require('../lib/vine/run-recommendation');
+  const now = new Date();
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
   const ctx = {
     amountCents: 1000,
     deviceId: 'dev-1',
-    timestamp: Date.now(),
+    timestamp: now.getTime(),
     source: 'VINE_SIM',
   };
   let threw = false;
   try {
-    await runRecommendationFromOrderContext(ctx, 'user-1');
+    await runRecommendationFromOrderContext(world, ctx, 'user-1', { now });
   } catch {
     threw = true;
   }

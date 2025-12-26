@@ -1,35 +1,7 @@
-import { BucketPeriod, RewardCategory } from '@prisma/client';
+import { RewardCategory } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { assertUserId } from '@/lib/invariants';
-
-export type AutopilotOnboardingState = 'EMPTY' | 'NEED_RULES' | 'NEED_BUCKETS' | 'READY';
-
-export type PrereqCard = {
-  id: string;
-  nickname: string;
-  issuer: string;
-  network: string;
-  rewardRuleCount: number;
-};
-
-export type PrereqBucket = {
-  id: string;
-  name: string;
-  category: RewardCategory;
-  budgetAmount: number;
-  period: BucketPeriod;
-};
-
-export type AutopilotPrereqs = {
-  cardsCount: number;
-  rulesCount: number;
-  bucketsCount: number;
-  cards: PrereqCard[];
-  buckets: PrereqBucket[];
-  hasBaseRule: boolean;
-  state: AutopilotOnboardingState;
-  warnings: string[];
-};
+import type { AutopilotPrereqs, AutopilotOnboardingState } from '@/lib/autopilot/prereq-types';
 
 function deriveState(counts: {
   cardsCount: number;
@@ -57,15 +29,6 @@ function buildWarnings(
     warnings.push('Only one bucket is configured; bucket guardrails may be less informative.');
   }
   return warnings;
-}
-
-export function getFirstMissingPrereq(
-  prereqs: Pick<AutopilotPrereqs, 'cardsCount' | 'rulesCount' | 'bucketsCount'>
-): 'cards' | 'rules' | 'buckets' | null {
-  if (prereqs.cardsCount <= 0) return 'cards';
-  if (prereqs.rulesCount <= 0) return 'rules';
-  if (prereqs.bucketsCount <= 0) return 'buckets';
-  return null;
 }
 
 export async function getAutopilotPrereqs(userId: string): Promise<AutopilotPrereqs> {

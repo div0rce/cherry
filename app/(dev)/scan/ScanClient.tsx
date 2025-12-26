@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from 'react';
 import { PageHeader } from '@/components/ui/page-header';
@@ -67,7 +67,7 @@ function mapScanResponseToPreview(api: ScanResponse, request: { merchantName: st
   };
 }
 
-export default function ScanClient(): JSX.Element {
+export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
   const [merchantName, setMerchantName] = useState('');
   const [amount, setAmount] = useState<string>('');
   const [category, setCategory] = useState('');
@@ -79,6 +79,20 @@ export default function ScanClient(): JSX.Element {
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
   const merchantInputRef = useRef<HTMLInputElement | null>(null);
   const { isLoading: isScanning, run: runScan } = useApiAction<ScanResponse>();
+  const perfStartMsRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : 0);
+
+  const initialNowMs = useMemo(() => {
+    if (typeof nowMs === 'number') return nowMs;
+    if (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number') {
+      return performance.timeOrigin;
+    }
+    return 0;
+  }, [nowMs]);
+
+  const currentMs = useMemo(
+    () => () => initialNowMs + (typeof performance !== 'undefined' ? performance.now() - perfStartMsRef.current : 0),
+    [initialNowMs]
+  );
 
   const formattedCountdown = useMemo(() => {
     if (countdownSeconds == null) return '';
@@ -232,7 +246,7 @@ export default function ScanClient(): JSX.Element {
 
       const remainingSec = Math.max(
         0,
-        Math.floor((new Date(result.data.expiresAt).getTime() - Date.now()) / 1000),
+        Math.floor((new Date(result.data.expiresAt).getTime() - currentMs()) / 1000),
       );
 
       setSessionState({

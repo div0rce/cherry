@@ -8,15 +8,6 @@ import fg from 'fast-glob';
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '..');
 
-const require = createRequire(import.meta.url);
-process.env.TS_NODE_PROJECT = path.join(repoRoot, 'tsconfig.scripts.json');
-process.env.NODE_ENV = process.env.NODE_ENV ?? 'test';
-globalThis.__CHERRY_TEST_MODE__ = true;
-require('ts-node/register/transpile-only');
-require('tsconfig-paths/register');
-const { initConfigFromEnv } = require('../lib/config/init');
-initConfigFromEnv(process.env, { lockServerConfig: false, allowServerConfigOverwrite: true });
-
 const tsNodeCompilerOptions = JSON.stringify({
   module: 'CommonJS',
   moduleResolution: 'node',
@@ -25,6 +16,16 @@ const tsNodeCompilerOptions = JSON.stringify({
   allowJs: true,
   jsx: 'react-jsx',
 });
+
+const require = createRequire(import.meta.url);
+process.env.TS_NODE_PROJECT = path.join(repoRoot, 'tsconfig.scripts.json');
+process.env.TS_NODE_COMPILER_OPTIONS = tsNodeCompilerOptions;
+process.env.NODE_ENV = process.env.NODE_ENV ?? 'test';
+globalThis.__CHERRY_TEST_MODE__ = true;
+require('ts-node/register/transpile-only');
+require('tsconfig-paths/register');
+const { initConfigFromEnv } = require('../lib/config/init');
+initConfigFromEnv(process.env, { lockServerConfig: false, allowServerConfigOverwrite: true });
 
 const testFiles = fg
   .sync(['tests/**/*.test.{js,ts,tsx}'], {
@@ -51,9 +52,9 @@ for (const file of testFiles) {
       '-r',
       'tsconfig-paths/register',
       '-r',
-      './scripts/config-register.mts',
+      './scripts/config-register.cjs',
       '-r',
-      './scripts/prisma-mock.mts',
+      './scripts/prisma-mock.cjs',
       file,
     ],
     {

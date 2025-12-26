@@ -7,9 +7,15 @@ const {
   verifyVineSignature,
   getVineSignatureMode,
 } = require('../lib/vine/security');
+const { getServerConfig, resetServerConfigForTests } = require('../lib/config/store');
 
 function hmac(secret, message) {
   return crypto.createHmac('sha256', secret).update(message).digest('hex');
+}
+
+function setSignatureMode(mode) {
+  const current = getServerConfig();
+  resetServerConfigForTests({ ...current, vineSignatureMode: mode });
 }
 
 async function seedDevice() {
@@ -46,11 +52,13 @@ async function run() {
   const goodSig = hmac(device.secret, message);
 
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'off';
+  setSignatureMode('off');
   const offResult = await verifyVineSignature(ctx, null);
   assert.equal(offResult.ok, true);
   assert.equal(getVineSignatureMode(), 'off');
 
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'warn';
+  setSignatureMode('warn');
   const warnMissing = await verifyVineSignature(ctx, null);
   assert.equal(warnMissing.ok, true);
   assert.equal(warnMissing.reason, 'missing_signature');
@@ -59,6 +67,7 @@ async function run() {
   assert.equal(warnMismatch.reason, 'signature_mismatch');
 
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'enforce';
+  setSignatureMode('enforce');
   const enforceGood = await verifyVineSignature(ctx, goodSig);
   assert.equal(enforceGood.ok, true);
   const enforceMissing = await verifyVineSignature(ctx, null);
@@ -74,6 +83,7 @@ async function run() {
   assert.equal(unknownRes.ok, false);
   assert.equal(unknownRes.reason, 'unknown_device');
 
+  setSignatureMode(originalMode ?? 'off');
   process.env.CHERRY_VINE_SIGNATURE_MODE = originalMode;
   console.warn('vine security: ok');
 }
@@ -82,4 +92,3 @@ run().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-

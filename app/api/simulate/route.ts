@@ -11,23 +11,26 @@ import {
   logInvariant,
   isPrismaP2003,
 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 import {
   buildEngineContext,
-  safeSolveDecisionForUser,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
 } from '@/lib/engine';
+import { safeSolveDecisionForWorld } from '@/lib/engine/run';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
 import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import { hasText } from '@/lib/text';
 import { isPositiveNumber } from '@/lib/numbers';
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { buildSwipeIdempotencyKey } from '@/lib/ids';
 import { parseJsonBody } from '@/lib/validation';
-import {
-  recordDecisionEvent,
-  simulateSpendAuthority,
-  type SimulatedAuthorityDecision,
-  type SimulateSpendParams,
+import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
+import type {
+  SimulatedAuthorityDecision,
+  SimulateSpendParams,
 } from '@/lib/authority/simulateSpendAuthority';
 
 const validCategories = Object.values(RewardCategory) as string[];
@@ -104,6 +107,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const now = new Date();
+    const nowMs = now.getTime();
+    const world = buildPrismaWorld();
     const authorityParams: SimulateSpendParams = {
       userId,
       amountCents: body.amountCents,
@@ -111,7 +116,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       surface: 'simulate',
       counterfactuals: [],
     };
-    authorityDecision = await simulateSpendAuthority(authorityParams);
+    authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs });
     await recordDecisionEvent({
       userId,
       surface: 'simulate',
@@ -120,14 +125,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     const ctx = buildEngineContext({
       surface: 'web',
-      now,
+      nowMs,
       merchantName,
       merchantCategoryKey: normalizedCategory,
       mcc: mccCode != null ? String(mccCode) : null,
       amountCents: body.amountCents,
     });
 
-    const engineResult = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
+    const state = await fromPrismaUserToEngineState(userId, nowMs);
+    const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
+      maxCandidates: 64,
+      stateOverride: state,
+      legacyDecisionProvider: runLegacyEngine,
+    });
     if (!engineResult.ok) {
       logWarn('Engine failed in /api/simulate', { userId, mode, reason: engineResult.reason });
       logGuardrailEvent({
@@ -341,19 +351,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       authority: authorityDecision,
       committed: canCommit && !strictDecline,
     });
-  } catch (err: unknown) {
-    if (isPrismaP2003(err)) {
-      const meta = (err as { meta?: unknown }).meta ?? null;
-      logInvariant('P2003 while processing simulate', { meta });
+  } catch (caught: unknown) {
+    asError(caught);
+    if (isPrismaP2003(caught)) {
+      const meta = asLogMeta((caught as { meta?: unknown }).meta);
+      logInvariant('P2003 while processing simulate', { meta, err: caught });
       return NextResponse.json(
         { error: 'Failed to process simulation (FK violation)' },
         { status: 500 }
       );
     }
-    if (err instanceof Error && err.message?.includes('Unauthorized')) {
+    if (caught.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error in /api/simulate', err);
+    logError('Error in /api/simulate', caught);
     return NextResponse.json(
       { error: 'Failed to run simulation', ...(authorityDecision ? { authority: authorityDecision } : {}) },
       { status: 500 }

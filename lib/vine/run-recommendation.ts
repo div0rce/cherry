@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import {
   CategoryCoverageModeDb,
   RecommendationStatus,
@@ -7,26 +6,31 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import {
-  recordDecisionEvent,
-  simulateSpendAuthority,
-  type SimulatedAuthorityDecision,
-} from '@/lib/authority/simulateSpendAuthority';
+import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
+import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
-  safeSolveDecisionForUser,
   type LegacyEngineDecision,
 } from '@/lib/engine';
+import { safeSolveDecisionForWorld } from '@/lib/engine/run';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
+import type { World } from '@/lib/adapters/world';
 import type { OrderContext } from './order-context';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { assertUserId } from '@/lib/invariants';
 import { isPrismaP2003, logInvariant } from '@/lib/user-context';
 import type { RewardCategory } from '@prisma/client';
+import { deriveOrderToken } from './order-token';
+import { assertStableId } from '@/lib/identity/hash';
+import { asError } from '@/lib/errors';
 
 export async function runRecommendationFromOrderContext(
+  world: World,
   ctx: OrderContext,
-  userId: string
+  userId: string,
+  options: { now: Date }
 ): Promise<{
   sessionId: string;
   orderToken: string;
@@ -35,7 +39,9 @@ export async function runRecommendationFromOrderContext(
 }> {
   assertUserId(userId);
 
-  const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : Date.now();
+  const fallbackTimestamp = options.now.getTime();
+  const timestamp = Number.isFinite(ctx.timestamp) ? ctx.timestamp : fallbackTimestamp;
+  const engineNowMs = timestamp;
   const amountCents = Math.floor(ctx.amountCents);
 
   if (amountCents <= 0) {
@@ -44,14 +50,19 @@ export async function runRecommendationFromOrderContext(
 
   const engineCtx = buildEngineContext({
     surface: 'vine',
-    now: new Date(timestamp),
+    nowMs: engineNowMs,
     merchantName: ctx.merchantName ?? null,
     merchantCategoryKey: null,
     mcc: ctx.mccCode != null ? String(ctx.mccCode) : null,
     amountCents,
   });
 
-  const engineResult = await safeSolveDecisionForUser(userId, engineCtx, { maxCandidates: 64 });
+  const state = await fromPrismaUserToEngineState(userId, engineNowMs);
+  const engineResult = await safeSolveDecisionForWorld(world, userId, engineCtx, {
+    maxCandidates: 64,
+    stateOverride: state,
+    legacyDecisionProvider: runLegacyEngine,
+  });
 
   if (!engineResult.ok || engineResult.decisions.length === 0) {
     throw new Error(engineResult.ok ? 'No viable decisions' : engineResult.message);
@@ -84,7 +95,7 @@ export async function runRecommendationFromOrderContext(
     surface: 'vine' as const,
     counterfactuals: [],
   };
-  const authorityDecision = await simulateSpendAuthority(authorityParams);
+  const authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs: engineNowMs });
   await recordDecisionEvent({
     userId,
     surface: 'vine',
@@ -92,16 +103,35 @@ export async function runRecommendationFromOrderContext(
     decision: authorityDecision,
   });
 
-  const expiresAt = new Date(Math.max(timestamp, Date.now()) + 15 * 60 * 1000);
-  const orderToken = ctx.nonce ?? randomUUID();
+  const expiresAt = new Date(Math.max(timestamp, options.now.getTime()) + 15 * 60 * 1000);
+  const derivedOrderToken =
+    ctx.nonce ??
+    ctx.orderId ??
+    deriveOrderToken({
+      userId,
+      amountCents,
+      mccCode: ctx.mccCode ?? null,
+      merchantName: ctx.merchantName ?? null,
+      timestamp,
+      deviceId: ctx.deviceId ?? null,
+      terminalId: ctx.terminalId ?? null,
+      storeId: ctx.storeId ?? null,
+      orderId: ctx.orderId ?? null,
+      nonce: ctx.nonce ?? null,
+    });
+  if (ctx.nonce == null && ctx.orderId == null) {
+    assertStableId(derivedOrderToken);
+  }
+  const orderToken = derivedOrderToken;
   const source: RecommendationSource =
     ctx.source === RecommendationSource.VINE_DEVICE
       ? RecommendationSource.VINE_DEVICE
       : RecommendationSource.VINE_SIM;
 
   try {
-    const session = await prisma.recommendationSession.create({
-      data: {
+    const session = await prisma.recommendationSession.upsert({
+      where: { orderToken },
+      create: {
         userId,
         merchantName: ctx.merchantName ?? null,
         mccCode: ctx.mccCode ?? null,
@@ -133,16 +163,19 @@ export async function runRecommendationFromOrderContext(
         anomalyDetails: null,
         expiresAt,
       },
+      update: {
+        expiresAt,
+        status: RecommendationStatus.RECOMMENDED,
+        verificationStatus: VerificationStatus.UNVERIFIED,
+      },
       select: { id: true },
     });
 
     return { sessionId: session.id, orderToken, decision, authority: authorityDecision };
   } catch (err: unknown) {
+    asError(err);
     if (isPrismaP2003(err)) {
-      logInvariant('FK failure in recommendationSession.create', {
-        userId,
-        meta: err.meta ?? null,
-      });
+      logInvariant('FK failure in recommendationSession.create', { userId, err });
       throw new Error('Internal error: failed to persist recommendation session (FK violation)');
     }
     logInvariant('Error creating recommendation session from Vine', { userId, err });

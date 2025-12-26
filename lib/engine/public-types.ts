@@ -18,4 +18,5 @@ export interface SwipeInput {
   merchant: string;
   amountCents: number;
   cardUniverseIds: string[];
+  nowMs: number;
 }

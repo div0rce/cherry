@@ -57,7 +57,7 @@ function resetModules() {
     '@/lib/user-context',
     '@/lib/metrics/autopilot',
     '@/lib/autopilot/uiSpec',
-    '@/lib/authority/simulateSpendAuthority',
+    '@/lib/adapters/runtime/authority.prisma',
   ];
   for (const target of targets) {
     try {
@@ -151,7 +151,7 @@ async function runPreviewValid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => authorityStub,
     recordDecisionEvent: async () => {},
   });
@@ -200,7 +200,7 @@ async function runPreviewInvalid() {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => authorityStub,
     recordDecisionEvent: async () => {},
   });
@@ -247,7 +247,7 @@ async function runPreviewUnauthorized() {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => authorityStub,
     recordDecisionEvent: async () => {},
   });
@@ -294,7 +294,7 @@ async function runPreviewUnexpectedError() {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/authority/simulateSpendAuthority'), {
+  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => authorityStub,
     recordDecisionEvent: async () => {},
   });

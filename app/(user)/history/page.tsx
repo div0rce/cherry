@@ -1,9 +1,12 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { resolveUserContext } from '@/lib/user-context';
+import { requireUserContext } from '@/app/(user)/_lib/api';
+export const dynamic = 'force-dynamic';
+
+
 
 export default async function HistoryPage(): Promise<JSX.Element> {
-  await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+  await requireUserContext();
 
   return (
     <div className="space-y-4 pb-8">

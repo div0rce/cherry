@@ -30,13 +30,13 @@ export function mapTerminalEventToOrderContext(event: {
   orderId?: string | null;
   nonce?: string | null;
   source?: VineOrderSource | null;
-}): OrderContext {
+}, options: { fallbackTimestampMs: number }): OrderContext {
   const ctx: OrderContext = {
     deviceId: hasNonEmptyString(event.deviceId) ? event.deviceId : 'VINE-SIM',
     amountCents: Math.floor(event.amountCents),
     currency: (hasNonEmptyString(event.currency) ? event.currency : 'USD') as 'USD',
     mccCode: event.mccCode ?? null,
-    timestamp: Number.isFinite(event.timestamp) ? event.timestamp : Date.now(),
+    timestamp: Number.isFinite(event.timestamp) ? event.timestamp : options.fallbackTimestampMs,
     source: (event.source ?? 'VINE_SIM') as VineOrderSource,
   };
 

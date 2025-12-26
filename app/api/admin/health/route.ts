@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 import {
   assertUserId,
   logInvariant,
@@ -25,7 +26,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     });
     assertUserId(userId, 'api/admin/health GET');
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/admin/health', error);
@@ -35,8 +37,9 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ message: 'Database OK' });
-  } catch (err) {
-    logError('Admin health check failed', err);
+  } catch (caught) {
+    asError(caught);
+    logError('Admin health check failed', caught);
     return NextResponse.json({ message: 'Database error' }, { status: 500 });
   }
 }

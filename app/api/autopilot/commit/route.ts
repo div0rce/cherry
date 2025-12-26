@@ -4,6 +4,8 @@ import { AutopilotCommitInputSchema, AutopilotServiceError } from '@/lib/autopil
 import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
 import { resolveUserContext } from '@/lib/user-context';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
+import { asError } from '@/lib/errors';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
@@ -12,6 +14,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
     userId = userContext.userId;
+    // Boundary layer: wall-clock capture allowed; downstream must receive injected time.
+    const requestNow = new Date();
 
     const parsed = await parseJsonBody(request, AutopilotCommitInputSchema);
     if (!parsed.ok) {
@@ -25,37 +29,42 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return parsed.response;
     }
 
+    const world = buildPrismaWorld();
     const result = AUTOPILOT_COMMIT_V2_ENABLED
-      ? await commitAutopilotDecisionV2(userContext.userId, parsed.data)
-      : await commitAutopilotDecision(userContext.userId, parsed.data);
+      ? await commitAutopilotDecisionV2(world, userContext.userId, parsed.data, { now: requestNow })
+      : await commitAutopilotDecision(world, userContext.userId, parsed.data, { now: requestNow });
 
     return NextResponse.json(result, { status: 200 });
-  } catch (err) {
-    if (err instanceof AutopilotServiceError) {
+  } catch (caught) {
+    asError(caught);
+    if (caught instanceof AutopilotServiceError) {
       const kind =
-        err.code === 'DECISION_BLOCKED' || err.code === 'CARD_MISMATCH'
+        caught.code === 'DECISION_BLOCKED' || caught.code === 'CARD_MISMATCH'
           ? 'DECISION_BLOCKED'
-          : err.status >= 500
+          : caught.status >= 500
             ? 'ENGINE_ERROR'
             : 'INPUT_INVALID';
-      const severity = kind === 'DECISION_BLOCKED' ? 'hard' : err.status >= 500 ? 'soft' : 'hard';
+      const severity = kind === 'DECISION_BLOCKED' ? 'hard' : caught.status >= 500 ? 'soft' : 'hard';
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
         kind,
         severity,
-        reason: err.code,
+        reason: caught.code,
       });
-      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+      return NextResponse.json(
+        { error: caught.message, code: caught.code },
+        { status: caught.status }
+      );
     }
 
-    if (err instanceof Error && err.message.includes('Unauthorized')) {
+    if (caught.message.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot commit failed unexpectedly',
-      data: { userId, error: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
+      data: { userId, error: caught.message },
     });
     return NextResponse.json(
       { error: 'Failed to commit swipe', code: 'AUTOPILOT_COMMIT_UNEXPECTED' },

@@ -2,6 +2,7 @@
 
 import { signIn } from 'next-auth/react';
 import { z } from 'zod';
+import { getPublicConfig } from '../config/store';
 
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }
@@ -77,19 +78,29 @@ function resolveRequestInput(input: RequestInfo | URL, baseUrl?: string): Reques
 }
 
 function resolveBaseUrl(explicitBaseUrl?: string): string {
-  if (explicitBaseUrl) return explicitBaseUrl;
-  if (typeof window !== 'undefined' && window?.location?.origin) {
+  if (explicitBaseUrl !== undefined && explicitBaseUrl !== null && explicitBaseUrl !== '') {
+    return explicitBaseUrl;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.location !== 'undefined' &&
+    typeof window.location.origin === 'string' &&
+    window.location.origin !== ''
+  ) {
     return window.location.origin;
   }
-  if (typeof process !== 'undefined' && process?.env?.API_BASE_URL) {
-    return process.env.API_BASE_URL;
+
+  try {
+    return getPublicConfig().appBaseUrl;
+  } catch {
+    // fall through
   }
-  throw new Error('API base URL is not configured; set API_BASE_URL or pass baseUrl to callApi.');
+
+  throw new Error('API base URL is not configured; pass baseUrl or initialize PublicConfig at the boundary.');
 }
 
 function isAbsoluteUrl(value: string): boolean {
   try {
-    // eslint-disable-next-line no-new
     new URL(value);
     return true;
   } catch {

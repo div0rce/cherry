@@ -153,7 +153,7 @@ Goal: a new agent can recompute or challenge scores from concrete evidence inste
 
 #### 3.3 Data Ingestion & Modeling
 - Prisma models cover cards/reward rules, buckets with period windows, simulations, recommendation sessions, CherryPointLedger, VineDevice, MerchantObservation, and BankTransaction (`prisma/schema.prisma`).
-- MCC ingestion/backfill scripts (`scripts/ingest-mcc.ts`, `scripts/backfill_category_preference_enum.ts`) and rollover utilities (`lib/buckets/ensure-fresh.ts`, `lib/buckets/periods.ts`) normalize data; integrity script logs anomalies (`scripts/audit-integrity.ts`).
+- MCC ingestion/backfill scripts (`scripts/ingest-mcc.mts`, `scripts/backfill_category_preference_enum.mts`) and rollover utilities (`lib/buckets/ensure-fresh.ts`, `lib/buckets/periods.ts`) normalize data; integrity script logs anomalies (`scripts/audit-integrity.mts`).
 - Bank and Vine data are stubbed/simulated: unified activity reads `prisma.bankTransaction` and ledger/simulation rows (`lib/unified-activity.ts`), and bank verification is mimicked in `app/bank-simulator/client.tsx`.
 
 #### 3.4 User-facing Web UI
@@ -200,7 +200,7 @@ Goal: a new agent can recompute or challenge scores from concrete evidence inste
    - Impact:
      - Beta: +3 points (approx.)
      - v1: +5 points (approx.)
-   - Pointers: `app/api/vine/order/route.ts`, `lib/vine/security.ts`, `scripts/cleanup_expired_vine_sessions.ts`
+   - Pointers: `app/api/vine/order/route.ts`, `lib/vine/security.ts`, `scripts/cleanup_expired_vine_sessions.mts`
 
 3. **Core Engine — Expand constraints and unify solver usage**
    - Description: Model debts/liquid buffers in `lib/engine/context.ts`, tighten hard/soft guardrails in `lib/engine/guardrails.ts`, and route Vine/session mapping through solver traces instead of legacy `runEngine` to avoid drift.
@@ -384,7 +384,7 @@ Goal: a new agent can recompute or challenge scores from concrete evidence inste
    - Impact:
      - Beta: +3 points (approx.)
      - v1: +5 points (approx.)
-   - Pointers: `lib/vine/security.ts`, `app/api/vine/order/route.ts`, `scripts/cleanup_expired_vine_sessions.ts`
+   - Pointers: `lib/vine/security.ts`, `app/api/vine/order/route.ts`, `scripts/cleanup_expired_vine_sessions.mts`
 
 4. **Data Ingestion — Real bank feed webhook**
    - Description: Add authenticated provider webhook/polling to populate `BankTransaction`/`MerchantObservation` and flow into verification/history.

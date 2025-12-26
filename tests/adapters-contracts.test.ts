@@ -45,8 +45,10 @@ const world: World = {
     error: () => {},
   },
   entropy: {
-    randomUUID: () => 'uuid-1',
     randomBytes: (length) => new Uint8Array(length),
+  },
+  digest: {
+    sha256: () => 'hash',
   },
   config: { get: () => undefined },
   stores: {

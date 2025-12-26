@@ -40,8 +40,6 @@ type LedgerRow = {
   createdAt: Date;
 };
 
-const idempotencyCache = new Map<string, IdempotencyRecord>();
-
 function mapSessionStatus(status: RecommendationStatus): SessionStatus {
   switch (status) {
     case 'RECOMMENDED':
@@ -122,8 +120,8 @@ function mapBankTxn(row: BankTransaction): BankTxn {
     direction: normalizeBankTxnDirection(row.direction),
     description: row.description ?? '',
     rawDescription: row.rawDescription ?? null,
-    postedAtMs: row.postedAt ? row.postedAt.getTime() : null,
-    occurredAtMs: row.occurredAt ? row.occurredAt.getTime() : null,
+    postedAtMs: row.postedAt !== null ? row.postedAt.getTime() : null,
+    occurredAtMs: row.occurredAt !== null ? row.occurredAt.getTime() : null,
     mcc: row.mcc !== null && row.mcc !== undefined ? String(row.mcc) : null,
     source: row.source,
   };
@@ -156,6 +154,7 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
     create: async (input: SessionCreateInput) => {
       const metadata = (input.metadata ?? {}) as Record<string, unknown>;
       const { user: _user, ...rest } = metadata;
+      void _user;
       const data = rest as Prisma.RecommendationSessionUncheckedCreateInput;
       const created = await prisma.recommendationSession.create({
         data: {
@@ -170,12 +169,14 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
     update: async (id: string, input: SessionUpdateInput) => {
       const metadata = (input.metadata ?? {}) as Record<string, unknown>;
       const { user: _user, userId: _userId, ...rest } = metadata;
+      void _user;
+      void _userId;
       const data = rest as Prisma.RecommendationSessionUncheckedUpdateInput;
       const updated = await prisma.recommendationSession.update({
         where: { id },
         data: {
           ...data,
-          ...(input.status ? { status: mapSessionStatusToDb(input.status) } : {}),
+          ...(input.status !== undefined ? { status: mapSessionStatusToDb(input.status) } : {}),
         },
         select: { id: true, userId: true, status: true, createdAt: true, updatedAt: true },
       });
@@ -187,6 +188,8 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
     append: async (input: LedgerAppendInput) => {
       const metadata = (input.metadata ?? {}) as Record<string, unknown>;
       const { user: _user, session: _session, ...rest } = metadata;
+      void _user;
+      void _session;
       const data = rest as Prisma.CherryPointLedgerUncheckedCreateInput;
       const created = await prisma.cherryPointLedger.create({
         data: {
@@ -222,21 +225,40 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
       if (options?.source && options.source.length > 0) {
         where.source = { in: options.source };
       }
-      const orderBy = options?.orderByPostedAt
-        ? { postedAt: options.orderByPostedAt }
-        : undefined;
+      const orderBy =
+        options?.orderByPostedAt !== undefined
+          ? { postedAt: options.orderByPostedAt }
+          : undefined;
       const rows = await prisma.bankTransaction.findMany({
         where,
-        ...(orderBy ? { orderBy } : {}),
+        ...(orderBy !== undefined ? { orderBy } : {}),
       });
       return rows.map(mapBankTxn);
     },
   };
 
   const idempotency: IdempotencyStore = {
-    get: async (key: string) => idempotencyCache.get(key) ?? null,
+    get: async (userId: string, key: string) => {
+      const row = await prisma.idempotencyKey.findUnique({
+        where: { userId_key: { userId, key } },
+      });
+      if (!row) return null;
+      return {
+        key: row.key,
+        userId: row.userId,
+        createdAtMs: row.createdAt.getTime(),
+        payload: row.payload as Record<string, unknown>,
+      };
+    },
     put: async (record: IdempotencyRecord) => {
-      idempotencyCache.set(record.key, record);
+      await prisma.idempotencyKey.create({
+        data: {
+          key: record.key,
+          userId: record.userId,
+          createdAt: new Date(record.createdAtMs),
+          payload: record.payload as Prisma.InputJsonValue,
+        },
+      });
     },
   };
 

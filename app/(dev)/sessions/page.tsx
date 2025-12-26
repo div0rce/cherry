@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserId } from '@/lib/auth';
 import { fetchSessionSummaries } from '@/lib/sessions/summaries';
 import { SessionsPageClient } from './SessionsPageClient';
+import { prisma } from '@/lib/prisma';
 
 export default async function SessionsPage({
   searchParams,
@@ -21,10 +22,24 @@ export default async function SessionsPage({
   const rawStatus = typeof params['status'] === 'string' ? params['status'] : undefined;
   const statusParam = (rawStatus ?? 'all') as 'all' | 'active' | 'expired' | 'confirmed';
 
-  const { items } = await fetchSessionSummaries(userId, {
-    status: statusParam,
-    limit: 50,
+  const latestSession = await prisma.recommendationSession.findFirst({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true, expiresAt: true },
   });
+  const now =
+    latestSession?.expiresAt ??
+    latestSession?.createdAt ??
+    new Date(Date.UTC(1970, 0, 1));
+
+  const { items } = await fetchSessionSummaries(
+    userId,
+    {
+      status: statusParam,
+      limit: 50,
+    },
+    { now }
+  );
 
   return <SessionsPageClient initialSummaries={items} initialStatus={statusParam} />;
 }

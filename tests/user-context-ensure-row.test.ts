@@ -29,7 +29,7 @@ async function testEnsuresUserRowExists() {
   const prismaUser = getPrismaUser();
   const resolveUserContext = getResolveUserContext();
 
-  const tempId = `user-ensure-row-${Date.now()}`;
+  const tempId = 'user-ensure-row-fixed';
   const tempEmail = `${tempId}@example.com`;
   await prismaUser.deleteMany({ where: { OR: [{ id: tempId }, { email: tempEmail }] } });
 

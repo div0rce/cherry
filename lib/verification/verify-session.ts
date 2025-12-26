@@ -9,6 +9,7 @@ import { prisma } from '@/lib/prisma';
 import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import { computeBucketReversal } from '@/lib/sessions/reversal';
 import { logError, logWarn } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 import type { VerificationResult, VerificationSignal } from './types';
 
 const AMOUNT_TOLERANCE_RATIO = 0.05;
@@ -138,8 +139,9 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
         }
       }
     });
-  } catch (err) {
-    logError('verify_session_failed', { err, sessionId: session.id, userId });
+  } catch (caught) {
+    asError(caught);
+    logError('verify_session_failed', { err: caught, sessionId: session.id, userId });
     return { ok: false, reason: 'INVALID', message: 'Failed to verify session' };
   }
 

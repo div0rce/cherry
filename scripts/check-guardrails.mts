@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
+import { readTsConfig } from './lib/read-tsconfig.mts';
 
 const jsonParse = JSON.parse;
 
@@ -8,14 +9,6 @@ function fail(message: string): never {
   process.stderr.write(`[guardrails] ${message}\n`);
   process.exit(1);
 }
-
-const TsconfigSchema = z
-  .object({
-    compilerOptions: z.record(z.string(), z.unknown()).optional(),
-    include: z.array(z.string()).optional(),
-    exclude: z.array(z.string()).optional(),
-  })
-  .strict();
 
 const PackageJsonSchema = z
   .object({
@@ -159,9 +152,8 @@ function assertTsconfigStrict(): void {
     'useUnknownInCatchVariables',
   ];
   const tsconfigPath = path.join(process.cwd(), 'tsconfig.json');
-  const tsconfig = readJson(tsconfigPath, TsconfigSchema);
-  const compilerOptions = tsconfig.compilerOptions;
-  if (!compilerOptions) fail('tsconfig.json missing compilerOptions');
+  const tsconfig = readTsConfig(tsconfigPath);
+  const compilerOptions = tsconfig.options;
   requiredTrueFlags.forEach((flag) => {
     if ((compilerOptions as Record<string, unknown>)[flag] !== true) {
       fail(`tsconfig compilerOptions.${flag} must be true`);

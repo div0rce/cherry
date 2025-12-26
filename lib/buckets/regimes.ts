@@ -120,19 +120,23 @@ function bucketSpendByMonth(
   regime: IncomeRegimeDraft,
 ): Map<string, Map<string, number>> {
   const monthKeys = new Set(regime.months.map((m) => monthStart(m).toISOString()));
-  let fallbackDate = regime.startMonth;
-  if (fallbackDate == null) {
+  let fallbackDate: Date | null = null;
+  if (regime.startMonth != null) {
+    fallbackDate = regime.startMonth;
+  } else if (regime.months[0] != null) {
     fallbackDate = regime.months[0];
-  }
-  if (fallbackDate == null) {
+  } else if (regime.endMonth != null) {
     fallbackDate = regime.endMonth;
   }
-  const fallbackDateValue = fallbackDate == null ? null : fallbackDate;
+  if (fallbackDate == null) {
+    throw new Error('bucket-regime: missing fallback date');
+  }
+  const fallbackDateValue = fallbackDate;
   const spend = new Map<string, Map<string, number>>();
   for (const tx of txs) {
     const delta = deriveBucketDeltaCents(tx);
     if (delta === 0) continue;
-    let timestamp = tx.postedAt;
+    let timestamp: Date | null = tx.postedAt;
     if (timestamp == null) {
       timestamp = tx.occurredAt;
     }

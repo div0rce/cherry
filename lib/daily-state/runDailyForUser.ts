@@ -7,12 +7,8 @@ import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
 import { toBucketRuntime } from '@/lib/buckets-runtime';
 import { processDailyStateAlert } from '@/lib/alerts/processDailyStateAlert';
 import { logError } from '@/lib/logger';
-
-const ENGINE_VERSION =
-  process.env['VERCEL_GIT_COMMIT_SHA'] ??
-  process.env['COMMIT_SHA'] ??
-  process.env['NEXT_PUBLIC_SITE_VERSION'] ??
-  null;
+import { asError } from '@/lib/errors';
+import { getServerConfig } from '@/lib/config/store';
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -29,14 +25,17 @@ export async function runDailyForUser(params: {
   userId: string;
   date: Date;
   source: DailyStateSource;
+  engineVersion?: string | null;
 }): Promise<{
   status: DailyStateStatus;
   inputsVersion: string | null;
   engineVersion: string | null;
 }> {
-  const { userId, date, source } = params;
+  const { userId, date, source, engineVersion: engineVersionOverride } = params;
+  const { engineVersion } = getServerConfig();
+  const resolvedEngineVersion = engineVersionOverride ?? engineVersion;
   const targetDate = startOfUtcDay(date);
-  const now = new Date();
+  const now = targetDate;
 
   const existing = await prisma.dailyState.findUnique({
     where: { userId_date: { userId, date: targetDate } },
@@ -166,7 +165,7 @@ export async function runDailyForUser(params: {
         summary,
         computedAt: now,
         source,
-        engineVersion: ENGINE_VERSION,
+        engineVersion: resolvedEngineVersion,
         inputsVersion,
         errors: null,
       },
@@ -179,7 +178,7 @@ export async function runDailyForUser(params: {
         summary,
         computedAt: now,
         source,
-        engineVersion: ENGINE_VERSION,
+        engineVersion: resolvedEngineVersion,
         inputsVersion,
         errors: null,
       },
@@ -190,6 +189,7 @@ export async function runDailyForUser(params: {
     resultInputsVersion = dailyState.inputsVersion;
     resultEngineVersion = dailyState.engineVersion;
   } catch (error) {
+    asError(error);
     const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
     await prisma.dailyState.upsert({
       where: { userId_date: { userId, date: targetDate } },
@@ -197,7 +197,7 @@ export async function runDailyForUser(params: {
         status: fallbackStatus,
         computedAt: now,
         source,
-        errors: error instanceof Error ? error.message : 'unknown_error',
+        errors: error.message,
       },
       create: {
         userId,
@@ -205,23 +205,24 @@ export async function runDailyForUser(params: {
         status: fallbackStatus,
         computedAt: now,
         source,
-        engineVersion: ENGINE_VERSION,
+        engineVersion: resolvedEngineVersion,
         inputsVersion: null,
         summary: Prisma.JsonNull,
         safeToSpendCents: null,
         nextRiskEvent: Prisma.JsonNull,
-        errors: error instanceof Error ? error.message : 'unknown_error',
+        errors: error.message,
       },
     });
 
-    return { status: fallbackStatus, inputsVersion: null, engineVersion: ENGINE_VERSION };
+    return { status: fallbackStatus, inputsVersion: null, engineVersion: resolvedEngineVersion };
   }
 
   if (dailyStateRecord !== null) {
     try {
       await processDailyStateAlert({ prev: prevForAlert, curr: dailyStateRecord });
-    } catch (err) {
-      logError('daily_state_alert_unhandled', { userId, err });
+    } catch (caught) {
+      asError(caught);
+      logError('daily_state_alert_unhandled', { userId, err: caught });
     }
   }
 

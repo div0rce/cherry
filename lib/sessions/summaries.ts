@@ -70,19 +70,21 @@ export function deriveDisplayStatus(
 
 export async function fetchSessionSummaries(
   userId: string,
-  filters: SessionListFilters = {}
+  filters: SessionListFilters = {},
+  options: { now: Date }
 ): Promise<{ items: SessionSummary[]; hasMore: boolean; limit: number; offset: number }> {
   const limit = Math.min(filters.limit ?? 20, 100);
   const offset = Math.max(filters.offset ?? 0, 0);
-  const now = new Date();
+  const now = options.now;
 
   const createdAtFilter: { gte?: Date; lte?: Date } = {};
   if (filters.from) createdAtFilter.gte = filters.from;
   if (filters.to) createdAtFilter.lte = filters.to;
+  const hasCreatedBounds = createdAtFilter.gte !== undefined || createdAtFilter.lte !== undefined;
 
   const where: Prisma.RecommendationSessionWhereInput = {
     userId,
-    ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {}),
+    ...(hasCreatedBounds ? { createdAt: createdAtFilter } : {}),
     ...(Array.isArray(filters.source) && filters.source.length > 0 ? { source: { in: filters.source } } : {}),
     ...(Array.isArray(filters.verdict) && filters.verdict.length > 0 ? { verdict: { in: filters.verdict } } : {}),
   };

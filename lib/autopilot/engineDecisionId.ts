@@ -90,7 +90,7 @@ function normalizeObjectiveWeights(raw: unknown): Record<string, number> | null 
     }
   }
 
-  return Object.keys(weights).length > 0 ? weights : null;
+  return Object.values(weights).length > 0 ? weights : null;
 }
 
 function normalizeRate(value: number | null | undefined): string | null {

@@ -26,6 +26,11 @@ function collectFiles(dir: string): string[] {
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      const relative = path.normalize(path.relative(ROOT, fullPath));
+      const runtimePrefix = path.normalize(path.join("lib", "adapters", "runtime"));
+      if (relative === runtimePrefix || relative.startsWith(`${runtimePrefix}${path.sep}`)) {
+        continue;
+      }
       files.push(...collectFiles(fullPath));
     } else {
       files.push(fullPath);

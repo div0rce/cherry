@@ -76,9 +76,12 @@ function mockPrisma(): void {
 
 mockPrisma();
 
-const { getAutopilotPrereqs, getFirstMissingPrereq } = requireModule(
-  '../app/(user)/app/onboarding/_lib/prereqs'
-) as typeof import('../app/(user)/app/onboarding/_lib/prereqs');
+const { getAutopilotPrereqs } = requireModule(
+  '../lib/adapters/runtime/autopilot-prereqs'
+) as typeof import('../lib/adapters/runtime/autopilot-prereqs');
+const { getFirstMissingPrereq } = requireModule(
+  '../lib/autopilot/prereq-types'
+) as typeof import('../lib/autopilot/prereq-types');
 
 async function testEmptyState(): Promise<void> {
   scenario.cardsCount = 0;

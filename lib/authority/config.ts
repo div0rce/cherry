@@ -1,5 +1,5 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from '@/lib/authority/reasonCodes';
+import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from './reasonCodes.ts';
 
 export const authorityVersion = 'authority_v1' as const;
 export type AuthorityVersion = typeof authorityVersion;

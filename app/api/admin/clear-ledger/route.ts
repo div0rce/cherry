@@ -7,6 +7,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 
 export async function POST(_req: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -29,7 +30,8 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('Unauthorized')) {
+    asError(error);
+    if (error.message.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to resolve user context', { status: 500 });
@@ -47,10 +49,16 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
       deletedLedger: ledgerResult.count,
     });
   } catch (error: unknown) {
+    asError(error);
     if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/admin/clear-ledger POST', { userId, mode, meta: error.meta });
+      logInvariant('P2003 in api/admin/clear-ledger POST', {
+        userId,
+        mode,
+        meta: asLogMeta((error as { meta?: unknown }).meta),
+        err: error,
+      });
     } else {
-      logInvariant('Error in api/admin/clear-ledger POST', { userId, mode, error });
+      logInvariant('Error in api/admin/clear-ledger POST', { userId, mode, err: error });
     }
     return new NextResponse('Failed to clear ledger', { status: 500 });
   }

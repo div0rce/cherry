@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import Module from 'node:module';
+import { makeTestWorld } from './helpers/world';
 
 const requireModule = Module.createRequire(__filename);
 
@@ -50,13 +51,15 @@ async function runTimeoutTest() {
   const { getAutopilotPreview } =
     requireModule('@/lib/autopilot/service');
   const { AutopilotServiceError } = requireModule('@/lib/autopilot/types');
+  const now = new Date('2024-01-01T00:00:00.000Z');
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
 
   try {
-    await getAutopilotPreview('user-timeout', {
+    await getAutopilotPreview(world, 'user-timeout', {
       merchant: 'Slow Shop',
       amountCents: 1000,
       category: 'OTHER',
-    });
+    }, { now });
     assert.fail('Expected getAutopilotPreview to time out');
   } catch (err) {
     assert.ok(err instanceof AutopilotServiceError);

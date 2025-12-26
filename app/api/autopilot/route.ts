@@ -5,6 +5,8 @@ import { getAutopilotDecisionForUserSwipe } from '@/lib/engine';
 import { resolveUserContext } from '@/lib/user-context';
 import { logGuardrailEvent } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
+import { asError } from '@/lib/errors';
 
 const AutopilotRequestSchema = z
   .object({
@@ -49,12 +51,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderBy: { createdAt: 'asc' },
     });
     const cardUniverseIds = cards.map((card) => card.id);
+    const nowMs = Date.now();
+    const world = buildPrismaWorld();
 
-    const decision = await getAutopilotDecisionForUserSwipe({
+    const decision = await getAutopilotDecisionForUserSwipe(world, {
       userId,
       merchant: merchant.trim(),
       amountCents,
       cardUniverseIds,
+      nowMs,
     });
 
     const cardName =
@@ -89,7 +94,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       bucketDelta,
     });
   } catch (err) {
-    if (err instanceof Error && err.message.includes('Unauthorized')) {
+    asError(err);
+    if (err.message.includes('Unauthorized')) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     logGuardrailEvent({
@@ -97,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       userId,
       kind: 'ENGINE_ERROR',
       severity: 'hard',
-      detail: { message: err instanceof Error ? err.message : 'UNKNOWN_ERROR' },
+      detail: { message: err.message },
     });
     return NextResponse.json({ message: 'Failed to fetch recommendation' }, { status: 500 });
   }

@@ -13,16 +13,13 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { ButtonLink } from '@/components/ui/Button';
 import AdminClient from './AdminClient';
 import { Alert } from '@/components/ui/alert';
+import { getServerConfig } from '@/lib/config/store';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
-async function getHealth() {
-  const base =
-    process.env['NEXT_PUBLIC_BASE_URL'] ??
-    process.env.NEXTAUTH_URL ??
-    '';
-  const url = hasText(base) ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
+async function getHealth(appBaseUrl: string) {
+  const url = hasText(appBaseUrl) ? `${appBaseUrl.replace(/\/$/, '')}/api/health` : '/api/health';
   try {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return { ok: false };
@@ -33,6 +30,7 @@ async function getHealth() {
 }
 
 export default async function AdminPage(): Promise<JSX.Element> {
+  const serverConfig = getServerConfig();
   let userId: string;
   try {
     userId = await getCurrentUserId();
@@ -43,7 +41,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
     getCherryPointsBalance(userId),
     getSessionStats(userId),
     getLedgerStats(userId),
-    getHealth(),
+    getHealth(serverConfig.appBaseUrl),
     prisma.recommendationSession.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },

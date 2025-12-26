@@ -368,18 +368,6 @@ export async function getUnifiedActivityForUser(
 
   filtered.sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
 
-  if (process.env.NODE_ENV === 'development') {
-    const kindCounts = filtered.reduce<Record<ActivityKind, number>>(
-      (acc, row) => {
-        acc[row.kind] = (acc[row.kind] ?? 0) + 1;
-        return acc;
-      },
-      { REAL_TRANSACTION: 0, SIMULATED_TRANSACTION: 0, POINTS_EVENT: 0, OTHER: 0 },
-    );
-    // eslint-disable-next-line no-console
-    console.log('[activity:kindCounts]', kindCounts);
-  }
-
   return filtered.slice(0, limit);
 }
 

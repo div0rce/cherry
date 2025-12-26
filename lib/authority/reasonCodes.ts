@@ -1,12 +1,14 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-export enum AuthorityReason {
-  DAILY_STATE_RISKY = 'DAILY_STATE_RISKY',
-  BUCKET_EXHAUSTED = 'BUCKET_EXHAUSTED',
-  ESSENTIAL_BUFFER_LOW = 'ESSENTIAL_BUFFER_LOW',
-  CATEGORY_RESTRICTED = 'CATEGORY_RESTRICTED',
-  VERIFICATION_PENDING = 'VERIFICATION_PENDING',
-  AMOUNT_SPIKE = 'AMOUNT_SPIKE',
-}
+export const AuthorityReason = {
+  DAILY_STATE_RISKY: 'DAILY_STATE_RISKY',
+  BUCKET_EXHAUSTED: 'BUCKET_EXHAUSTED',
+  ESSENTIAL_BUFFER_LOW: 'ESSENTIAL_BUFFER_LOW',
+  CATEGORY_RESTRICTED: 'CATEGORY_RESTRICTED',
+  VERIFICATION_PENDING: 'VERIFICATION_PENDING',
+  AMOUNT_SPIKE: 'AMOUNT_SPIKE',
+} as const;
+
+export type AuthorityReason = (typeof AuthorityReason)[keyof typeof AuthorityReason];
 
 export const AUTHORITY_REASON_SEVERITY: Record<AuthorityReason, number> = {
   [AuthorityReason.CATEGORY_RESTRICTED]: 3,
