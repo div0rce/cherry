@@ -4,7 +4,7 @@ import type { DailyState } from '@prisma/client';
 import { evaluateDailyStateTransition } from './alertPolicy.js';
 import { sendEmailAlert } from './sendEmailAlert.js';
 import { logError, logInfo } from '../logger.js';
-import { asError } from '../errors.js';
+import { asAppError } from '../errors.js';
 
 export async function processDailyStateAlert(params: {
   prev: DailyState | null;
@@ -60,7 +60,7 @@ export async function processDailyStateAlert(params: {
       date: curr.date.toISOString(),
     });
   } catch (error: unknown) {
-    asError(error);
-    logError('daily_state_alert_failed', { userId: curr.userId, err: error });
+    const appError = asAppError(error);
+    logError('daily_state_alert_failed', { userId: curr.userId, err: appError });
   }
 }

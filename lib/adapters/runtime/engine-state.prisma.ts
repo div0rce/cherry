@@ -15,7 +15,7 @@ import type {
 } from '../../engine/types.js';
 import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '../../engine/objective.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '../../engine/runtime.js';
-import { asError } from '../../errors.js';
+import { asAppError } from '../../errors.js';
 
 export async function fromPrismaUserToEngineState(
   userId: string,
@@ -232,10 +232,10 @@ async function loadUserPreferences(
     try {
       customWeights = coerceObjectiveWeights(user.engineObjectiveWeights ?? undefined);
     } catch (err: unknown) {
-      asError(err);
+      const appError = asAppError(err);
       logPreferencesWarning(runtime, 'Failed to parse engineObjectiveWeights; ignoring overrides', {
         userId,
-        err,
+        err: appError,
       });
     }
 
@@ -245,10 +245,10 @@ async function loadUserPreferences(
 
     return preferences;
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     logPreferencesWarning(runtime, 'Unexpected error loading preferences; using defaults', {
       userId,
-      err,
+      err: appError,
     });
     return { ...DEFAULT_ENGINE_USER_PREFERENCES };
   }

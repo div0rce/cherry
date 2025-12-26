@@ -8,7 +8,7 @@ import { Card } from '../../../components/ui/card.js';
 import { ButtonLink } from '../../../components/ui/Button.js';
 import { getCurrentUserIdOrRedirect } from '../../../lib/auth.js';
 import { fetchActivityFeed } from '../../../lib/activity/feed.js';
-import { asError } from '../../../lib/errors.js';
+import { asAppError } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -27,8 +27,8 @@ export default async function ActivityPage(): Promise<JSX.Element> {
   try {
     feed = await fetchActivityFeed(userId, { limit: 100 });
   } catch (err: unknown) {
-    asError(err);
-    error = err.message;
+    const appError = asAppError(err);
+    error = appError.message;
   }
 
   const items = feed?.items ?? [];

@@ -6,7 +6,7 @@ import { resolveUserContext } from '../../../lib/user-context.js';
 import { logGuardrailEvent } from '../../../lib/log.js';
 import { parseJsonBody } from '../../../lib/validation.js';
 import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
-import { asError } from '../../../lib/errors.js';
+import { asAppError } from '../../../lib/errors.js';
 
 const AutopilotRequestSchema = z
   .object({
@@ -94,8 +94,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       bucketDelta,
     });
   } catch (err: unknown) {
-    asError(err);
-    if (err.message.includes('Unauthorized')) {
+    const appError = asAppError(err);
+    if (appError.message.includes('Unauthorized')) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     logGuardrailEvent({
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       userId,
       kind: 'ENGINE_ERROR',
       severity: 'hard',
-      detail: { message: err.message },
+      detail: { message: appError.message },
     });
     return NextResponse.json({ message: 'Failed to fetch recommendation' }, { status: 500 });
   }

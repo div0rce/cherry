@@ -11,7 +11,7 @@ import {
   logInvariant,
   isPrismaP2003,
 } from '../../../lib/user-context.js';
-import { asError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../lib/errors.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       committed: canCommit && !strictDecline,
     });
   } catch (caught: unknown) {
-    asError(caught);
+    const appError = asAppError(caught);
     if (isPrismaP2003(caught)) {
       const meta = asLogMeta((caught as { meta?: unknown }).meta);
       logInvariant('P2003 while processing simulate', { meta, err: caught });
@@ -361,10 +361,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-    if (caught.message?.includes('Unauthorized')) {
+    if (appError.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error in /api/simulate', caught);
+    logError('Error in /api/simulate', appError);
     return NextResponse.json(
       { error: 'Failed to run simulation', ...(authorityDecision ? { authority: authorityDecision } : {}) },
       { status: 500 }

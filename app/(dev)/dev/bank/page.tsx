@@ -8,7 +8,7 @@ import { EmptyState } from '../../../../components/ui/empty-state.js';
 import { BANK_TX_DEFAULT_ORDER } from '../../../../lib/bank/fields.js';
 import { ROUTES } from '../../../../lib/routes.js';
 import { getServerConfig } from '../../../../lib/config/store.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -36,8 +36,8 @@ export default async function DevBankPage(): Promise<JSX.Element> {
       take: 100,
     });
   } catch (err: unknown) {
-    asError(err);
-    console.error('DevBankPage Prisma error:', err);
+    const appError = asAppError(err);
+    console.error('DevBankPage Prisma error:', appError);
     loadError =
       'Failed to load bank rows (likely Prisma schema/client mismatch). Rerun prisma generate and align queries.';
   }

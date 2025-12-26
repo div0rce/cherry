@@ -6,7 +6,7 @@ import { parseJsonBody } from '../../../../lib/validation.js';
 import { assertUserId } from '../../../../lib/invariants.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../../lib/user-context.js';
 import { logInvariant } from '../../../../lib/logging.js';
-import { asError, asLogMeta } from '../../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../../lib/errors.js';
 
 export async function PATCH(
   request: NextRequest,
@@ -43,7 +43,7 @@ export async function PATCH(
     });
     return NextResponse.json(updated);
   } catch (error: unknown) {
-    asError(error);
+    asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('Card FK violation during update', {
         userId,

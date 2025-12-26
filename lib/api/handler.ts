@@ -2,6 +2,7 @@ import { asAppError } from '../errors.js';
 
 type ApiHandlerResult<T> = T | Response;
 
+// apiHandler is the error normalization boundary for API routes.
 export async function apiHandler<T>(
   fn: () => Promise<ApiHandlerResult<T>> | ApiHandlerResult<T>
 ): Promise<Response> {

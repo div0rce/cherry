@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-25
+Last updated: 2025-12-26
 
 # Cherry API Reference (App Router)
 
@@ -30,6 +30,11 @@ This file documents the server routes under `app/api/*` and how they align with 
 - Auth guard: `withUser` (`lib/with-user.ts`) wraps all stateful routes; unauthenticated calls return `401`.
 - Client rule: on `401`, prompt sign-in (`signIn()`); server components redirect to `/signin?callbackUrl=...`.
 - `GET /api/user/context` — returns `{ userId, mode }` for authenticated requests (used by server components to avoid direct config access).
+
+## Error handling boundary
+- Canonical error type: `AppError` (`lib/errors.ts`). Normalize in catch blocks with `asAppError` before logging or branching.
+- Transport boundary throws: `fetchJSON` throws `AppError`; API routes either use `apiHandler` or catch + map `AppError` to responses.
+- UI boundary is value-based: `fetchApiResult`/`callApi` return `ApiResult<T>`; components switch on `ok` and never inspect raw errors.
 
 ---
 

@@ -9,7 +9,7 @@ import {
   resolveUserContext,
 } from '../../../../../lib/user-context.js';
 import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session.js';
-import { asError } from '../../../../../lib/errors.js';
+import { asAppError } from '../../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -29,11 +29,11 @@ export async function POST(
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error: unknown) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/sessions/[id]/verify POST', error);
+    logError('Error resolving user context in api/sessions/[id]/verify POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -76,9 +76,9 @@ export async function POST(
       ledgerStatus: result.ledgerStatus,
     });
   } catch (error: unknown) {
-    asError(error);
-    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, err: error });
-    logError('Error in /api/sessions/[id]/verify', error);
+    const appError = asAppError(error);
+    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, err: appError });
+    logError('Error in /api/sessions/[id]/verify', appError);
     return NextResponse.json({ error: 'Failed to verify session' }, { status: 500 });
   }
 }

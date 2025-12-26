@@ -13,7 +13,7 @@ import { verifyVineSignature, type VineSignatureContext } from '../../../../lib/
 import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '../../../../lib/user-context.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { z } from 'zod';
-import { asError, asLogMeta } from '../../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../../lib/errors.js';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         authority: result.authority,
       });
     } catch (err: unknown) {
-      asError(err);
+      const appError = asAppError(err);
       if (isPrismaP2003(err)) {
         logInvariant('P2003 in api/vine/order POST', {
           userId,
@@ -123,26 +123,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           err,
         });
       } else {
-        logInvariant('Error in api/vine/order POST', { userId, mode, err });
+        logInvariant('Error in api/vine/order POST', { userId, mode, err: appError });
       }
       return NextResponse.json({ error: 'User context or FK error' }, { status: 500 });
     }
   } catch (error: unknown) {
-    asError(error);
-    if (error instanceof Error && error.message?.includes('lab demo mode is disabled in production')) {
+    const appError = asAppError(error);
+    if (appError.message?.includes('lab demo mode is disabled in production')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+    if (appError.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error instanceof Error && error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
+    if (appError.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
       return NextResponse.json(
-        { error: 'vine_user_missing', message: error.message },
+        { error: 'vine_user_missing', message: appError.message },
         { status: 500 }
       );
     }
-    asError(error);
-    logError('Error in /api/vine/order', error);
+    logError('Error in /api/vine/order', appError);
     return NextResponse.json({ error: 'Failed to process order' }, { status: 500 });
   }
 }

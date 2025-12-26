@@ -6,7 +6,7 @@ import { BankIngestRequestSchema } from '../../../../../lib/schemas/bank-ingest.
 import { ingestBankTransactions } from '../../../../../lib/bank/ingest.js';
 import { prisma } from '../../../../../lib/prisma.js';
 import { logError } from '../../../../../lib/logger.js';
-import { asError } from '../../../../../lib/errors.js';
+import { asAppError } from '../../../../../lib/errors.js';
 import { BANK_TX_DEFAULT_ORDER } from '../../../../../lib/bank/fields.js';
 
 const hasText = (value?: string | null): value is string =>
@@ -37,8 +37,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const stats = await ingestBankTransactions(parsed.data.transactions);
       return NextResponse.json({ ok: true, ...stats });
     } catch (error: unknown) {
-      asError(error);
-      logError('bank_ingest_failed', error);
+      const appError = asAppError(error);
+      logError('bank_ingest_failed', appError);
       return NextResponse.json({ ok: false, error: 'bank_ingest_failed' }, { status: 500 });
     }
   });

@@ -4,7 +4,7 @@ import { withUser } from '../../../../lib/with-user.js';
 import { prisma } from '../../../../lib/prisma.js';
 import { generateCherryPass } from '../../../../lib/wallet/cherryPass.js';
 import { logError } from '../../../../lib/logger.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 import { getWalletPassConfigStatus } from '../../../../lib/wallet/config.js';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -46,8 +46,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         },
       });
     } catch (error: unknown) {
-      asError(error);
-      logError('Error generating Cherry Pass', error);
+      const appError = asAppError(error);
+      logError('Error generating Cherry Pass', appError);
       return NextResponse.json(
         {
           error:

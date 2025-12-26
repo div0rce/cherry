@@ -8,7 +8,7 @@ import { Panel } from '../../../../components/ui/panel.js';
 import { EmptyState } from '../../../../components/ui/empty-state.js';
 import { Alert } from '../../../../components/ui/alert.js';
 import { getServerConfig } from '../../../../lib/config/store.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -46,8 +46,8 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
       sourceFilter: ['BANK_FEED', 'STATEMENT_VIEW'],
     });
   } catch (err: unknown) {
-    asError(err);
-    error = err.message;
+    const appError = asAppError(err);
+    error = appError.message;
   }
 
   const debitRows = rows.filter((r) => (r.cashDeltaCents ?? 0) < 0);

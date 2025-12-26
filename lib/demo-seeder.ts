@@ -17,7 +17,7 @@ import { runEngine } from './engine/index.js';
 import { assertUserId } from './invariants.js';
 import { isPrismaP2003, logInvariant } from './user-context.js';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime.js';
-import { asError } from './errors.js';
+import { asAppError } from './errors.js';
 
 const cardDefinitions = [
   {
@@ -246,13 +246,13 @@ export async function seedCardsAndBucketsForUser(
 
     return { cards: cardsSeeded, buckets: bucketsSeeded };
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in seedCardsAndBucketsForUser', { userId, err });
     } else {
-      logInvariant('Error in seedCardsAndBucketsForUser', { userId, err });
+      logInvariant('Error in seedCardsAndBucketsForUser', { userId, err: appError });
     }
-    throw err;
+    throw appError;
   }
 }
 
@@ -370,12 +370,12 @@ export async function seedDemoForUser(
       ledgerEntries: ledgerCreated,
     };
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in seedDemoForUser', { userId, err });
     } else {
-      logInvariant('Error in seedDemoForUser', { userId, err });
+      logInvariant('Error in seedDemoForUser', { userId, err: appError });
     }
-    throw err;
+    throw appError;
   }
 }

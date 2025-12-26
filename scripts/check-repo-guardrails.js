@@ -55,8 +55,9 @@ const TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
 const FORBIDDEN_TS_NODE_REGISTER = /\bts-node\/register\b|\bts-node\/register\/transpile-only\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
-const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:asError|asAppError)\s*\(/;
-const AS_ERROR_CALL = /\b(?:asError|asAppError)\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asAppError\s*\(/;
+const AS_ERROR_CALL = /\basAppError\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const FORBIDDEN_AS_ERROR = /\basError\b/;
 const CATCH_HEADER = /\bcatch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/;
 
 const IGNORE_DIRS = new Set([
@@ -414,6 +415,16 @@ for (const file of timeFiles) {
 }
 
 const errorLogFiles = [...appFiles, ...libFiles];
+const asErrorFiles = [...appFiles, ...libFiles, ...scriptFiles, ...testFiles];
+
+for (const file of asErrorFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  if (FORBIDDEN_AS_ERROR.test(content)) {
+    console.error(`as-error-banned: ${relPath}`);
+    process.exit(1);
+  }
+}
 for (const file of errorLogFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
@@ -469,7 +480,7 @@ for (const file of errorLogFiles) {
       if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
         if (!justEnteredCatch) {
           const usesVar = new RegExp(`\\b${currentCatchVar}\\b`).test(line);
-          if (usesVar && !line.includes('asError(') && !line.includes('asAppError(')) {
+          if (usesVar && !line.includes('asAppError(')) {
             console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
             process.exit(1);
           }
@@ -477,7 +488,7 @@ for (const file of errorLogFiles) {
       }
 
       if (RAW_LOG_CALL.test(line)) {
-        if (!line.includes('asError(') && !line.includes('asAppError(')) {
+        if (!line.includes('asAppError(')) {
           const matches = line.matchAll(RAW_ERROR_IDENTIFIER);
           for (const match of matches) {
             const identifier = match[1];

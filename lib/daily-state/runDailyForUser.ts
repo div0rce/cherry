@@ -7,7 +7,7 @@ import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
 import { toBucketRuntime } from '../buckets-runtime.js';
 import { processDailyStateAlert } from '../alerts/processDailyStateAlert.js';
 import { logError } from '../logger.js';
-import { asError } from '../errors.js';
+import { asAppError } from '../errors.js';
 import { getServerConfig } from '../config/store.js';
 
 function startOfUtcDay(date: Date): Date {
@@ -189,7 +189,7 @@ export async function runDailyForUser(params: {
     resultInputsVersion = dailyState.inputsVersion;
     resultEngineVersion = dailyState.engineVersion;
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
     await prisma.dailyState.upsert({
       where: { userId_date: { userId, date: targetDate } },
@@ -197,7 +197,7 @@ export async function runDailyForUser(params: {
         status: fallbackStatus,
         computedAt: now,
         source,
-        errors: error.message,
+        errors: appError.message,
       },
       create: {
         userId,
@@ -210,7 +210,7 @@ export async function runDailyForUser(params: {
         summary: Prisma.JsonNull,
         safeToSpendCents: null,
         nextRiskEvent: Prisma.JsonNull,
-        errors: error.message,
+        errors: appError.message,
       },
     });
 
@@ -221,8 +221,8 @@ export async function runDailyForUser(params: {
     try {
       await processDailyStateAlert({ prev: prevForAlert, curr: dailyStateRecord });
     } catch (caught: unknown) {
-      asError(caught);
-      logError('daily_state_alert_unhandled', { userId, err: caught });
+      const appError = asAppError(caught);
+      logError('daily_state_alert_unhandled', { userId, err: appError });
     }
   }
 

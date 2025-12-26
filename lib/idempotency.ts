@@ -1,5 +1,5 @@
 import type { World } from './adapters/world.js';
-import { asError } from './errors.js';
+import { asAppError } from './errors.js';
 
 export async function withIdempotency<T>(
   world: World,
@@ -26,7 +26,7 @@ export async function withIdempotency<T>(
   try {
     await world.stores.idempotency.put(record);
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     const code = (err as { code?: string }).code;
     if (code === 'P2002') {
       const fallback = await world.stores.idempotency.get(userId, key);
@@ -34,7 +34,7 @@ export async function withIdempotency<T>(
         return deserialize(fallback.payload);
       }
     }
-    throw err;
+    throw appError;
   }
 
   return value;

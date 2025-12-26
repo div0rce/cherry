@@ -26,7 +26,7 @@ import type {
 } from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types.js';
-import { asError } from '../errors.js';
+import { asAppError } from '../errors.js';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
@@ -78,8 +78,12 @@ export async function solveDecision(
       ? normalizeObjectiveWeights({ ...baseWeights, ...options.weights })
       : baseWeights;
   } catch (err: unknown) {
-    asError(err);
-    logEngineError(runtime, 'unexpected', { userId: state.userId, err, context: 'resolve_weights' });
+    const appError = asAppError(err);
+    logEngineError(runtime, 'unexpected', {
+      userId: state.userId,
+      err: appError,
+      context: 'resolve_weights',
+    });
     weights = options.weights
       ? normalizeObjectiveWeights({ ...DEFAULT_OBJECTIVE_WEIGHTS, ...options.weights })
       : DEFAULT_OBJECTIVE_WEIGHTS;
@@ -208,7 +212,7 @@ export async function safeSolveDecisionForUser(
     }
     return successResult;
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     if (err instanceof EngineError) {
       logEngineError(runtime, 'validation', { userId, err });
@@ -219,7 +223,7 @@ export async function safeSolveDecisionForUser(
       };
     }
 
-    logEngineError(runtime, 'unexpected', { userId, err });
+    logEngineError(runtime, 'unexpected', { userId, err: appError });
     return {
       ok: false,
       reason: 'ENGINE_ERROR',

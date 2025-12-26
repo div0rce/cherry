@@ -8,7 +8,7 @@ import { parseJsonBody } from '../../../lib/validation.js';
 import { assertUserId } from '../../../lib/invariants.js';
 import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
-import { asError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../lib/errors.js';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(card, { status: 201 });
   } catch (error: unknown) {
-    asError(error);
+    asAppError(error);
     if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
       return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
     }
@@ -207,7 +207,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         where: { id: card.id },
       });
     } catch (err: unknown) {
-      asError(err);
+      const appError = asAppError(err);
       if (isPrismaP2003(err)) {
         logInvariant('Card FK violation during delete', {
           userId,
@@ -217,13 +217,13 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         });
         return new NextResponse('User foreign key violation while deleting card', { status: 500 });
       }
-      throw err;
+      throw appError;
     }
 
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to delete card', { status: 500 });

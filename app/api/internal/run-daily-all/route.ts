@@ -7,7 +7,7 @@ import { DailyStateSource } from '@prisma/client';
 import { prisma } from '../../../../lib/prisma.js';
 import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
 import { logInfo, logError } from '../../../../lib/logger.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
 
 const RunAllSchema = z
@@ -60,8 +60,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           succeeded += 1;
         } catch (error: unknown) {
           failed += 1;
-          asError(error);
-          logError('daily_state_user_failed', { userId: user.id, err: error });
+          const appError = asAppError(error);
+          logError('daily_state_user_failed', { userId: user.id, err: appError });
         } finally {
           processed += 1;
         }

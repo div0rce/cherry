@@ -6,7 +6,7 @@ import { safeSolveDecisionForWorld } from '../../../../../lib/engine/run.js';
 import { fromPrismaUserToEngineState } from '../../../../../lib/engine-state.js';
 import { buildPrismaWorld } from '../../../../../lib/adapters/runtime/world.prisma.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
-import { asError } from '../../../../../lib/errors.js';
+import { asAppError } from '../../../../../lib/errors.js';
 
 const InspectRequestSchema = z
   .object({
@@ -81,8 +81,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       topDecision: decisions[0] ?? null,
     });
   } catch (error: unknown) {
-    asError(error);
-    const message = error.message ?? 'Engine inspect failed';
+    const appError = asAppError(error);
+    const message = appError.message ?? 'Engine inspect failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

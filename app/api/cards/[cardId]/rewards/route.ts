@@ -6,7 +6,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '../../../../../lib/prisma.js';
 import { RewardCategory } from '@prisma/client';
 import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../../lib/user-context.js';
-import { asError, asLogMeta } from '../../../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../../../lib/errors.js';
 import {
   RewardRuleCreateSchema,
   RewardRuleDeleteSchema,
@@ -157,7 +157,7 @@ export async function POST(
 
     return NextResponse.json(rewardRule, { status: 201 });
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards POST', {
         userId,
@@ -167,7 +167,7 @@ export async function POST(
       });
       return new NextResponse('User context or FK error', { status: 500 });
     }
-    throw err;
+    throw appError;
   }
 }
 
@@ -249,7 +249,7 @@ export async function DELETE(
       where: { id: rule.id },
     });
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards DELETE', {
         userId,
@@ -259,7 +259,7 @@ export async function DELETE(
       });
       return new NextResponse('User context or FK error', { status: 500 });
     }
-    throw err;
+    throw appError;
   }
 
   return new NextResponse(null, { status: 204 });
@@ -360,7 +360,7 @@ export async function PATCH(
 
     return NextResponse.json(updated);
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards PATCH', {
         userId,
@@ -370,6 +370,6 @@ export async function PATCH(
       });
       return new NextResponse('User context or FK error', { status: 500 });
     }
-    throw err;
+    throw appError;
   }
 }

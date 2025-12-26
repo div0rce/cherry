@@ -8,7 +8,7 @@ import { Panel } from '../../../../components/ui/panel.js';
 import { Card } from '../../../../components/ui/card.js';
 import { EmptyState } from '../../../../components/ui/empty-state.js';
 import { ErrorBanner } from '../../../../components/ErrorBanner.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 
 type SourceSummary = {
   source: string;
@@ -39,8 +39,8 @@ export default async function IngestDashboardPage(): Promise<JSX.Element> {
   try {
     summaries = await loadSourceSummaries(userId);
   } catch (err: unknown) {
-    asError(err);
-    error = err.message;
+    const appError = asAppError(err);
+    error = appError.message;
   }
 
   const totalTx = summaries.reduce((sum, item) => sum + item.count, 0);

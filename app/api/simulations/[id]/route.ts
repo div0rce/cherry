@@ -4,7 +4,7 @@ import { prisma } from '../../../../lib/prisma.js';
 import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../lib/user-context.js';
 import { hasText } from '../../../../lib/text.js';
 import { logGuardrailEvent } from '../../../../lib/log.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 
 /**
  * DELETE /api/simulations/[id]
@@ -48,7 +48,7 @@ export async function DELETE(
         where: { id: simulation.id },
       });
     } catch (err: unknown) {
-      asError(err);
+      const appError = asAppError(err);
       if (isPrismaP2003(err)) {
         const metaValue = err.meta == null ? null : String(err.meta);
         logInvariant('P2003 in api/simulations DELETE', {
@@ -59,13 +59,13 @@ export async function DELETE(
         });
         return new NextResponse('User context or FK error', { status: 500 });
       }
-      throw err;
+      throw appError;
     }
 
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to delete simulation', { status: 500 });

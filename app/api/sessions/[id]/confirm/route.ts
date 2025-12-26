@@ -5,7 +5,7 @@ import { ConfirmSessionSchema } from '../../../../../lib/schemas/sessions.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
 import { assertUserId, isPrismaP2003, logInvariant, resolveUserContext } from '../../../../../lib/user-context.js';
 import { confirmRecommendationSession, SessionConfirmError } from '../../../../../lib/sessions/confirm-service.js';
-import { asError, asLogMeta } from '../../../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -25,11 +25,11 @@ export async function POST(
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error: unknown) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/sessions/[id]/confirm POST', error);
+    logError('Error resolving user context in api/sessions/[id]/confirm POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -72,7 +72,7 @@ export async function POST(
       message: outcome.message,
     });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (error instanceof SessionConfirmError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
     }
@@ -84,8 +84,8 @@ export async function POST(
         err: error,
       });
     } else {
-      logInvariant('Error in api/sessions/[id]/confirm POST', { userId, mode, err: error });
-      logError('Error in /api/sessions/[id]/confirm POST', error);
+      logInvariant('Error in api/sessions/[id]/confirm POST', { userId, mode, err: appError });
+      logError('Error in /api/sessions/[id]/confirm POST', appError);
     }
     return NextResponse.json({ error: 'Failed to confirm session' }, { status: 500 });
   }

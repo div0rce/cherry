@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma.js';
 import { logError } from '../../../../lib/logger.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 import {
   assertUserId,
   logInvariant,
@@ -26,11 +26,11 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     });
     assertUserId(userId, 'api/admin/health GET');
   } catch (error: unknown) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/admin/health', error);
+    logError('Error resolving user context in api/admin/health', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -38,8 +38,8 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ message: 'Database OK' });
   } catch (caught: unknown) {
-    asError(caught);
-    logError('Admin health check failed', caught);
+    const appError = asAppError(caught);
+    logError('Admin health check failed', appError);
     return NextResponse.json({ message: 'Database error' }, { status: 500 });
   }
 }

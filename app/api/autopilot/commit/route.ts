@@ -5,7 +5,7 @@ import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log.js
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { resolveUserContext } from '../../../../lib/user-context.js';
 import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(result, { status: 200 });
   } catch (caught: unknown) {
-    asError(caught);
+    const appError = asAppError(caught);
     if (caught instanceof AutopilotServiceError) {
       const kind =
         caught.code === 'DECISION_BLOCKED' || caught.code === 'CARD_MISMATCH'
@@ -58,13 +58,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    if (caught.message.includes('Unauthorized')) {
+    if (appError.message.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot commit failed unexpectedly',
-      data: { userId, error: caught.message },
+      data: { userId, error: appError.message },
     });
     return NextResponse.json(
       { error: 'Failed to commit swipe', code: 'AUTOPILOT_COMMIT_UNEXPECTED' },

@@ -28,7 +28,7 @@ import { fetchSessionSummaries } from '../../../lib/sessions/summaries.js';
 import { assertUserId } from '../../../lib/invariants.js';
 import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
-import { asError, asLogMeta } from '../../../lib/errors.js';
+import { asAppError, asLogMeta } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -42,11 +42,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error: unknown) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in /api/sessions POST', error);
+    logError('Error resolving user context in /api/sessions POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       decision,
     });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('FK violation while creating recommendation session', {
         userId,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-    logError('Error in /api/sessions POST', error);
+    logError('Error in /api/sessions POST', appError);
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
   }
 }
@@ -210,11 +210,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     userId = ctx.userId;
   } catch (error: unknown) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in /api/sessions GET', error);
+    logError('Error resolving user context in /api/sessions GET', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -271,8 +271,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error: unknown) {
-    asError(error);
-    logError('Error in /api/sessions GET', error);
+    const appError = asAppError(error);
+    logError('Error in /api/sessions GET', appError);
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
   }
 }

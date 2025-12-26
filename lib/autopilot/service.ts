@@ -19,7 +19,7 @@ import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime
 import type { World } from '../adapters/world.js';
 import { resolveScanCategory } from '../scan-helpers.js';
 import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
-import { asError } from '../errors.js';
+import { asAppError } from '../errors.js';
 import {
   computeBucketBalance,
   computeBucketBalanceFromNumbers,
@@ -265,7 +265,7 @@ async function evaluateAutopilot(
         ? await withTimeout(engineCall, options.timeoutMs, 'ENGINE_TIMEOUT')
         : await engineCall;
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (error instanceof AutopilotServiceError) {
       throw error;
     }
@@ -273,7 +273,7 @@ async function evaluateAutopilot(
       'Unable to evaluate Autopilot right now',
       500,
       'ENGINE_ERROR',
-      error instanceof Error ? error.message : 'UNKNOWN_ENGINE_ERROR'
+      appError.message
     );
   }
 
@@ -303,12 +303,12 @@ async function evaluateAutopilot(
       stateSnapshotHash,
     });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     throw new AutopilotServiceError(
       'Unable to build decision fingerprint',
       400,
       'INVALID_IDEMPOTENCY',
-      error.message
+      appError.message
     );
   }
 
@@ -653,7 +653,7 @@ export async function commitAutopilotDecisionV2(
       now: evaluation.occurredAt,
     });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (error instanceof SessionConfirmError) {
       throw new AutopilotServiceError(
         error.message,
@@ -662,7 +662,7 @@ export async function commitAutopilotDecisionV2(
         error.detail ?? error.code
       );
     }
-    throw error;
+    throw appError;
   }
 
   const createdCommit = await prisma.autopilotCommit.create({

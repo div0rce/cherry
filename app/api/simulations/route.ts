@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma.js';
 import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
 import { logError } from '../../../lib/logger.js';
-import { asError } from '../../../lib/errors.js';
+import { asAppError } from '../../../lib/errors.js';
 import { resolveUserContext, assertUserId } from '../../../lib/user-context.js';
 import { hasText } from '../../../lib/text.js';
 import { logGuardrailEvent } from '../../../lib/log.js';
@@ -118,11 +118,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       pageSize,
     });
   } catch (error: unknown) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
-    logError('Error fetching simulations', error);
+    logError('Error fetching simulations', appError);
     return new NextResponse('Failed to fetch simulations', { status: 500 });
   }
 }

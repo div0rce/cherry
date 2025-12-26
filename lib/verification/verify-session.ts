@@ -9,7 +9,7 @@ import { prisma } from '../prisma.js';
 import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
 import { computeBucketReversal } from '../sessions/reversal.js';
 import { logError, logWarn } from '../logger.js';
-import { asError } from '../errors.js';
+import { asAppError } from '../errors.js';
 import type { VerificationResult, VerificationSignal } from './types.js';
 
 const AMOUNT_TOLERANCE_RATIO = 0.05;
@@ -140,8 +140,8 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
       }
     });
   } catch (caught: unknown) {
-    asError(caught);
-    logError('verify_session_failed', { err: caught, sessionId: session.id, userId });
+    const appError = asAppError(caught);
+    logError('verify_session_failed', { err: appError, sessionId: session.id, userId });
     return { ok: false, reason: 'INVALID', message: 'Failed to verify session' };
   }
 

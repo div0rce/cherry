@@ -1,6 +1,7 @@
 import { AppError, asAppError, type AppErrorCode } from '../errors.js';
 import type { ApiResult } from './result.js';
 
+// Transport boundary helpers: fetchJSON throws AppError, fetchApiResult returns ApiResult for UI use.
 const APP_ERROR_CODES: AppErrorCode[] = [
   'UNAUTHORIZED',
   'NOT_FOUND',

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { withUser } from '../../../../lib/with-user.js';
 import { prisma } from '../../../../lib/prisma.js';
 import { logError } from '../../../../lib/logger.js';
-import { asError } from '../../../../lib/errors.js';
+import { asAppError } from '../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -70,8 +70,8 @@ export async function GET(
         pointsPending: pendingPoints,
       });
     } catch (error: unknown) {
-      asError(error);
-      logError('Error in GET /api/sessions/[id]', error);
+      const appError = asAppError(error);
+      logError('Error in GET /api/sessions/[id]', appError);
       return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 });
     }
   });

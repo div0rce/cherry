@@ -8,7 +8,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '../../../lib/user-context.js';
-import { asError } from '../../../lib/errors.js';
+import { asAppError } from '../../../lib/errors.js';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -31,11 +31,11 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error: unknown) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+    const appError = asAppError(error);
+    if (appError.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/seed-demo POST', error);
+    logError('Error resolving user context in api/seed-demo POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -46,7 +46,7 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     logInfo('Seeded demo data via API', { userId, mode, summary });
     return NextResponse.json({ message: 'Demo data seeded', summary });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     const userIdValue = userId ?? undefined;
     const modeValue = mode ?? undefined;
     if (isPrismaP2003(error)) {
@@ -61,10 +61,10 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
       logInvariant('Error in api/seed-demo POST', {
         userId: userIdValue,
         mode: modeValue,
-        err: error,
+        err: appError,
       });
     }
-    logError('Failed to seed demo data via API', error);
+    logError('Failed to seed demo data via API', appError);
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });
   }
 }

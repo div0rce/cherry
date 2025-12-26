@@ -24,12 +24,6 @@ export function asAppError(err: unknown): AppError {
   return new AppError('INTERNAL', 'Unknown error', 500, err);
 }
 
-export function asError(err: unknown): asserts err is Error {
-  if (!(err instanceof Error)) {
-    throw new AppError('INTERNAL', String(err), 500, err);
-  }
-}
-
 export function asLogMeta(value: unknown): string | null {
   return value == null ? null : String(value);
 }

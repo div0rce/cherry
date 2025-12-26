@@ -24,7 +24,7 @@ import { isPrismaP2003, logInvariant } from '../user-context.js';
 import type { RewardCategory } from '@prisma/client';
 import { deriveOrderToken } from './order-token.js';
 import { assertStableId } from '../identity/hash.js';
-import { asError } from '../errors.js';
+import { AppError, asAppError } from '../errors.js';
 
 export async function runRecommendationFromOrderContext(
   world: World,
@@ -173,12 +173,16 @@ export async function runRecommendationFromOrderContext(
 
     return { sessionId: session.id, orderToken, decision, authority: authorityDecision };
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('FK failure in recommendationSession.create', { userId, err });
-      throw new Error('Internal error: failed to persist recommendation session (FK violation)');
+      throw new AppError(
+        'INTERNAL',
+        'Internal error: failed to persist recommendation session (FK violation)',
+        500
+      );
     }
-    logInvariant('Error creating recommendation session from Vine', { userId, err });
-    throw err;
+    logInvariant('Error creating recommendation session from Vine', { userId, err: appError });
+    throw appError;
   }
 }
