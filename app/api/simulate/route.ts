@@ -11,6 +11,7 @@ import {
   logInvariant,
   isPrismaP2003,
 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 import {
   buildEngineContext,
   safeSolveDecisionForUser,
@@ -341,19 +342,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       authority: authorityDecision,
       committed: canCommit && !strictDecline,
     });
-  } catch (err: unknown) {
-    if (isPrismaP2003(err)) {
-      const meta = (err as { meta?: unknown }).meta ?? null;
-      logInvariant('P2003 while processing simulate', { meta });
+  } catch (caught: unknown) {
+    asError(caught);
+    if (isPrismaP2003(caught)) {
+      const meta = asLogMeta((caught as { meta?: unknown }).meta);
+      logInvariant('P2003 while processing simulate', { meta, err: caught });
       return NextResponse.json(
         { error: 'Failed to process simulation (FK violation)' },
         { status: 500 }
       );
     }
-    if (err instanceof Error && err.message?.includes('Unauthorized')) {
+    if (caught.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error in /api/simulate', err);
+    logError('Error in /api/simulate', caught);
     return NextResponse.json(
       { error: 'Failed to run simulation', ...(authorityDecision ? { authority: authorityDecision } : {}) },
       { status: 500 }

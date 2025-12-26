@@ -5,6 +5,7 @@ import { ConfirmSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
 import { assertUserId, isPrismaP2003, logInvariant, resolveUserContext } from '@/lib/user-context';
 import { confirmRecommendationSession, SessionConfirmError } from '@/lib/sessions/confirm-service';
+import { asError, asLogMeta } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -24,7 +25,8 @@ export async function POST(
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/sessions/[id]/confirm POST', error);
@@ -68,13 +70,19 @@ export async function POST(
       message: outcome.message,
     });
   } catch (error) {
+    asError(error);
     if (error instanceof SessionConfirmError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
     }
     if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/sessions/[id]/confirm POST', { userId, mode, meta: error.meta });
+      logInvariant('P2003 in api/sessions/[id]/confirm POST', {
+        userId,
+        mode,
+        meta: asLogMeta(error.meta),
+        err: error,
+      });
     } else {
-      logInvariant('Error in api/sessions/[id]/confirm POST', { userId, mode, error });
+      logInvariant('Error in api/sessions/[id]/confirm POST', { userId, mode, err: error });
       logError('Error in /api/sessions/[id]/confirm POST', error);
     }
     return NextResponse.json({ error: 'Failed to confirm session' }, { status: 500 });

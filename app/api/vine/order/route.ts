@@ -10,6 +10,7 @@ import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
 import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
 import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '@/lib/user-context';
+import { asError, asLogMeta } from '@/lib/errors';
 import { parseJsonBody } from '@/lib/validation';
 import { z } from 'zod';
 
@@ -107,21 +108,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         authority: result.authority,
       });
     } catch (err: unknown) {
+      asError(err);
       if (isPrismaP2003(err)) {
-        logInvariant('P2003 in api/vine/order POST', { userId, mode, meta: err.meta ?? null });
+        logInvariant('P2003 in api/vine/order POST', {
+          userId,
+          mode,
+          meta: asLogMeta(err.meta),
+          err,
+        });
       } else {
         logInvariant('Error in api/vine/order POST', { userId, mode, err });
       }
       return NextResponse.json({ error: 'User context or FK error' }, { status: 500 });
     }
   } catch (error) {
-    if (error instanceof Error && error.message?.includes('lab demo mode is disabled in production')) {
+    asError(error);
+    if (error.message?.includes('lab demo mode is disabled in production')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
+    if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error instanceof Error && error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
+    if (error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
       return NextResponse.json(
         { error: 'vine_user_missing', message: error.message },
         { status: 500 }

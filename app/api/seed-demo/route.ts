@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { logError, logInfo } from '@/lib/logger';
 import { seedDemoForUser } from '@/lib/demo-seeder';
+import { asError, asLogMeta } from '@/lib/errors';
 import {
   assertUserId,
   isPrismaP2003,
@@ -30,7 +31,8 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/seed-demo POST', error);
@@ -43,10 +45,16 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     logInfo('Seeded demo data via API', { userId, mode, summary });
     return NextResponse.json({ message: 'Demo data seeded', summary });
   } catch (error: unknown) {
+    asError(error);
     if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/seed-demo POST', { userId, mode, meta: error.meta });
+      logInvariant('P2003 in api/seed-demo POST', {
+        userId,
+        mode,
+        meta: asLogMeta(error.meta),
+        err: error,
+      });
     } else {
-      logInvariant('Error in api/seed-demo POST', { userId, mode, error });
+      logInvariant('Error in api/seed-demo POST', { userId, mode, err: error });
     }
     logError('Failed to seed demo data via API', error);
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });

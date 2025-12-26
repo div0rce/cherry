@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logError } from '@/lib/logger';
+import { asError, asLogMeta } from '@/lib/errors';
 import {
   assertUserId,
   isPrismaP2003,
@@ -29,7 +30,8 @@ export async function DELETE(
     userId = ctx.userId;
     mode = ctx.mode;
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+    asError(error);
+    if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     logError('Error resolving user context in api/buckets/[bucketId] DELETE', error);
@@ -61,14 +63,16 @@ export async function DELETE(
     });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets/[bucketId] DELETE', {
         userId,
         mode,
-        meta: error.meta,
+        meta: asLogMeta(error.meta),
+        err: error,
       });
     } else {
-      logInvariant('Error in api/buckets/[bucketId] DELETE', { userId, mode, error });
+      logInvariant('Error in api/buckets/[bucketId] DELETE', { userId, mode, err: error });
       logError('Error deleting bucket', error);
     }
     return new NextResponse('Failed to delete bucket', { status: 500 });
