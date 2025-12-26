@@ -56,19 +56,22 @@ export async function fetchActivityFeed(
   const sessionCreatedFilter: { gte?: Date; lte?: Date } = {};
   if (from) sessionCreatedFilter.gte = from;
   if (to) sessionCreatedFilter.lte = to;
+  const hasSessionCreatedBounds = sessionCreatedFilter.gte !== undefined || sessionCreatedFilter.lte !== undefined;
 
   const sessionWhere: Prisma.RecommendationSessionWhereInput = {
     userId,
-    ...(Object.keys(sessionCreatedFilter).length > 0 ? { createdAt: sessionCreatedFilter } : {}),
+    ...(hasSessionCreatedBounds ? { createdAt: sessionCreatedFilter } : {}),
   };
 
   const ledgerAwardedFilter: { gte?: Date; lte?: Date } = {};
   if (from) ledgerAwardedFilter.gte = from;
   if (to) ledgerAwardedFilter.lte = to;
+  const hasLedgerAwardedBounds =
+    ledgerAwardedFilter.gte !== undefined || ledgerAwardedFilter.lte !== undefined;
 
   const ledgerWhere: Prisma.CherryPointLedgerWhereInput = {
     userId,
-    ...(Object.keys(ledgerAwardedFilter).length > 0 ? { awardedAt: ledgerAwardedFilter } : {}),
+    ...(hasLedgerAwardedBounds ? { awardedAt: ledgerAwardedFilter } : {}),
   };
 
   const sessions = (await prisma.recommendationSession.findMany({
