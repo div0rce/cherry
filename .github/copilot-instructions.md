@@ -34,10 +34,10 @@ Read this alongside `AGENTS.md`, `docs/legal-constraints.md`, `docs/cherry-visio
   - `/api/wallet/cherry-pass` — gated by `CHERRY_WALLET_PASS_ENABLED` + Apple env; returns 501 JSON when disabled; generates `storeCard` pass when fully configured.
 
 ## Seed, MCC ingest, and Admin flows
-- MCC ingest: `npm run ingest:mcc [path]` → `scripts/ingest-mcc.ts`.
-- Demo seeding: `npm run seed:demo` → `scripts/seed-demo.ts` (also via `/api/seed-demo`).
+- MCC ingest: `npm run ingest:mcc [path]` → `scripts/ingest-mcc.mts`.
+- Demo seeding: `npm run seed:demo` → `scripts/seed-demo.mts` (also via `/api/seed-demo`).
 - Admin tools (local-only): `/admin` links to `/api/admin/clear-user`, `/api/admin/clear-sessions`, `/api/admin/clear-ledger`, `/api/admin/health`, `/api/health`.
-- Integrity: `scripts/audit-integrity.ts` flags session/ledger anomalies.
+- Integrity: `scripts/audit-integrity.mts` flags session/ledger anomalies.
 
 ## UI Conventions
 - Server components fetching data should use `{ cache: 'no-store' }` and await async `params`.

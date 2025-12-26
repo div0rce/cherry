@@ -27,7 +27,7 @@ Last updated: 2025-12-04
 - `HistoricalBucketTemplate` stores monthly limits, avg spend, and target share bps; rebuilt per user per evaluator run.
 
 ## Offline evaluator integration
-- `scripts/run-offline-evaluator-moustafa.ts` now: classify income/P2P → rebuild regimes/templates → replay transactions.
+- `scripts/run-offline-evaluator-moustafa.mts` now: classify income/P2P → rebuild regimes/templates → replay transactions.
 - `HistoricalEngineEvaluation` rows store `regimeId`, `bucketKey`, and bucket usage before/after (bps). Stats are computed on regime-aware buckets, not flat heuristics.
 - `/dev/evaluator` is read-only and shows instructions when regimes/templates are missing; no writes on page render.
 

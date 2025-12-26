@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-17
+Last updated: 2025-12-25
 
 # Cherry API Reference (App Router)
 
@@ -29,6 +29,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 - Auth stack: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`.
 - Auth guard: `withUser` (`lib/with-user.ts`) wraps all stateful routes; unauthenticated calls return `401`.
 - Client rule: on `401`, prompt sign-in (`signIn()`); server components redirect to `/signin?callbackUrl=...`.
+- `GET /api/user/context` — returns `{ userId, mode }` for authenticated requests (used by server components to avoid direct config access).
 
 ---
 
@@ -133,13 +134,15 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 
 ## Cards, Buckets, Simulation, MCCs
 - `/api/cards` — CRUD for cards (auth required).
-- `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card.
+- `/api/cards/[cardId]` — update a specific card (PATCH).
+- `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card (includes PATCH for updates).
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
-- `/api/buckets/[bucketId]` — Delete a specific bucket.
+- `/api/buckets/[bucketId]` — Update or delete a specific bucket (PATCH/DELETE).
 - `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
+- `/api/autopilot/prereqs` — returns Autopilot onboarding prerequisites (`cards/rules/buckets` counts + warnings) and the first missing step.
 
 All use Zod validation in `lib/schemas/*` and `withUser` guard.
 

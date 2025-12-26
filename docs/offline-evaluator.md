@@ -20,7 +20,7 @@ Schema: `HistoricalEngineEvaluation` (`runId`, `bankTransactionId` unique; store
 - `lib/income/classifier.ts` classifies income/P2P (payroll, allowance, refunds, internal transfers, pseudo-merchant Zelle/Venmo).  
 - `lib/income/monthly.ts` builds monthly income snapshots and segments regimes when rolling median income shifts.  
 - `lib/buckets/regimes.ts` synthesizes regime-specific bucket templates (essentials/discretionary/savings + fixed obligations) and caps totals to ≤1.2× income.  
-- `scripts/run-offline-evaluator-moustafa.ts` now rebuilds regimes/templates before replaying history and records `regimeId`, `bucketKey`, and bucket usage (before/after, bps) on each `HistoricalEngineEvaluation`.
+- `scripts/run-offline-evaluator-moustafa.mts` now rebuilds regimes/templates before replaying history and records `regimeId`, `bucketKey`, and bucket usage (before/after, bps) on each `HistoricalEngineEvaluation`.
 
 ## Guardrails
 - Evaluator uses `evaluateTransactionOffline` (engine only) and **never** creates Sessions, Ledger rows, or mutates Buckets.
@@ -65,8 +65,8 @@ Env controls:
 - Re-running ingest should update, not duplicate; unstable `externalId` values will corrupt evaluator metrics.
 
 ### Writer/Reader contract
-- Evaluator scripts must target the same users that own ingested transactions (csv_dev/Plaid/Teller) and use a stable `runId` such as `defaultRunIdForUser(userId)`.
-- `/dev/evaluator` derives `userId` from the signed-in user and defaults `runId` to `defaultRunIdForUser(userId)`, falling back to the latest run if empty.
+- Evaluator scripts must target the same users that own ingested transactions (csv_dev/Plaid/Teller) and use a stable `runId` such as `defaultRunIdForUser(userId, now)`, where `now` is explicitly passed from the caller.
+- `/dev/evaluator` derives `userId` from the signed-in user and defaults `runId` to `defaultRunIdForUser(userId, now)`, falling back to the latest run if empty (callers must provide a deterministic `now`).
 - If you point evaluator scripts at a different user (via env/CLI), also sign in as that user to view results.
 
 ### Debugging an empty /dev/evaluator
