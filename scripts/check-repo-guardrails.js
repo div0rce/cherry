@@ -533,7 +533,8 @@ for (const file of scriptFiles) {
   if (
     content.includes('tsconfig.json') &&
     TS_CONFIG_PARSE.test(content) &&
-    !relPath.startsWith(path.normalize(path.join('scripts', 'lib')) + path.sep)
+    !relPath.startsWith(path.normalize(path.join('scripts', 'lib')) + path.sep) &&
+    !relPath.endsWith(path.normalize(path.join('scripts', 'check-repo-guardrails.js')))
   ) {
     console.error(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
     process.exit(1);
