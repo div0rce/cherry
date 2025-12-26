@@ -47,7 +47,7 @@ export async function DELETE(
       await prisma.simulatedTransaction.delete({
         where: { id: simulation.id },
       });
-    } catch (err) {
+    } catch (err: unknown) {
       asError(err);
       if (isPrismaP2003(err)) {
         const metaValue = err.meta == null ? null : String(err.meta);
@@ -63,7 +63,7 @@ export async function DELETE(
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });

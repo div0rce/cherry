@@ -77,7 +77,7 @@ export async function solveDecision(
     weights = options.weights
       ? normalizeObjectiveWeights({ ...baseWeights, ...options.weights })
       : baseWeights;
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     logEngineError(runtime, 'unexpected', { userId: state.userId, err, context: 'resolve_weights' });
     weights = options.weights
@@ -207,7 +207,7 @@ export async function safeSolveDecisionForUser(
       successResult.legacyDecision = legacyDecision;
     }
     return successResult;
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     if (err instanceof EngineError) {

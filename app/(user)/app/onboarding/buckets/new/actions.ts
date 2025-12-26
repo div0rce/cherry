@@ -53,7 +53,7 @@ export async function createBucket(
 
   await requireUserContext();
   const now = resolveExplicitNow(formData.get('now'));
-  const response = await fetchFromApi('/api/buckets', {
+  const response = await fetchFromApi<unknown>('/api/buckets', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({

@@ -27,7 +27,7 @@ export default async function CardDetailPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent(`${ROUTES.dev.cards}/${cardId}`)}`);
     return null;
   }

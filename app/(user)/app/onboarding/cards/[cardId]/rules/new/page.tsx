@@ -18,12 +18,12 @@ export default async function NewRewardRulePage({
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
   await requireUserContext();
-  const response = await fetchFromApi('/api/cards');
+  const response = await fetchFromApi<Array<{ id: string; nickname: string }>>('/api/cards');
   if (!response.ok) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }
-  const cards = (await response.json()) as Array<{ id: string; nickname: string }>;
+  const cards = response.data;
   const targetCard = cards.find((item) => item.id === cardId) ?? null;
   if (targetCard === null) {
     redirect('/app/onboarding?missing=cards');

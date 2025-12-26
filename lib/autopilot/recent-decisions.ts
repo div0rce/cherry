@@ -41,7 +41,7 @@ export async function loadRecentAutopilotDecisions(
     const parsed = StoredDecisionListSchema.safeParse(parsedJson);
     if (!parsed.success) return [];
     return parsed.data;
-  } catch {
+  } catch (_error: unknown) {
     return [];
   }
 }
@@ -53,7 +53,7 @@ function persistRecentDecisions(
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(getStorageKey(userId), JSON.stringify(decisions));
-  } catch {
+  } catch (_error: unknown) {
     // Ignore storage failures silently; recent decisions are best-effort.
   }
 }

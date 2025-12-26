@@ -9,14 +9,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function AutopilotPage(): Promise<JSX.Element> {
   await requireUserContext();
-  const prereqResponse = await fetchFromApi('/api/autopilot/prereqs');
-  if (!prereqResponse.ok) {
-    throw new Error('Failed to load Autopilot prerequisites');
-  }
-  const prereqPayload = (await prereqResponse.json()) as {
+  const prereqResponse = await fetchFromApi<{
     prereqs: AutopilotPrereqs;
     missing: 'cards' | 'rules' | 'buckets' | null;
-  };
+  }>('/api/autopilot/prereqs');
+  if (!prereqResponse.ok) {
+    throw new Error(prereqResponse.message);
+  }
+  const prereqPayload = prereqResponse.data;
   const missing = prereqPayload.missing;
 
   if (missing !== null) {

@@ -63,7 +63,7 @@ export async function updateBucket(
 
   const now = resolveExplicitNow(formData.get('now'));
   const desiredPeriod = parsed.data.period as BucketPeriod;
-  const response = await fetchFromApi(`/api/buckets/${parsed.data.bucketId}`, {
+  const response = await fetchFromApi<unknown>(`/api/buckets/${parsed.data.bucketId}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -75,7 +75,7 @@ export async function updateBucket(
     }),
   });
 
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=buckets');
     return;
   }
@@ -100,10 +100,10 @@ export async function deleteBucket(
   }
 
   await requireUserContext();
-  const response = await fetchFromApi(`/api/buckets/${parsed.data.bucketId}`, {
+  const response = await fetchFromApi<unknown>(`/api/buckets/${parsed.data.bucketId}`, {
     method: 'DELETE',
   });
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=buckets');
     return;
   }

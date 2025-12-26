@@ -82,7 +82,7 @@ function exists(candidate: string): 'file' | 'dir' | 'none' {
     if (stat.isFile()) return 'file';
     if (stat.isDirectory()) return 'dir';
     return 'none';
-  } catch {
+  } catch (_error: unknown) {
     return 'none';
   }
 }
@@ -119,7 +119,7 @@ function findForbiddenToken(entryFile: string): ScanResult | null {
     let content = '';
     try {
       content = fs.readFileSync(current, 'utf8');
-    } catch {
+    } catch (_error: unknown) {
       continue;
     }
 

@@ -13,7 +13,7 @@ export default async function SessionsPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/sessions')}`);
     return null;
   }

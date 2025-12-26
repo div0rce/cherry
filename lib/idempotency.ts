@@ -25,7 +25,7 @@ export async function withIdempotency<T>(
 
   try {
     await world.stores.idempotency.put(record);
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     const code = (err as { code?: string }).code;
     if (code === 'P2002') {

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       const stats = await ingestBankTransactions(parsed.data.transactions);
       return NextResponse.json({ ok: true, ...stats });
-    } catch (error) {
+    } catch (error: unknown) {
       asError(error);
       logError('bank_ingest_failed', error);
       return NextResponse.json({ ok: false, error: 'bank_ingest_failed' }, { status: 500 });

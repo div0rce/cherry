@@ -6,7 +6,7 @@ export async function GET(): Promise<NextResponse> {
   try {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
     return NextResponse.json({ userId: ctx.userId, mode: ctx.mode });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error instanceof Error && error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

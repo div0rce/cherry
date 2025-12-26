@@ -188,7 +188,7 @@ export async function runDailyForUser(params: {
     resultStatus = dailyState.status;
     resultInputsVersion = dailyState.inputsVersion;
     resultEngineVersion = dailyState.engineVersion;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
     await prisma.dailyState.upsert({
@@ -220,7 +220,7 @@ export async function runDailyForUser(params: {
   if (dailyStateRecord !== null) {
     try {
       await processDailyStateAlert({ prev: prevForAlert, curr: dailyStateRecord });
-    } catch (caught) {
+    } catch (caught: unknown) {
       asError(caught);
       logError('daily_state_alert_unhandled', { userId, err: caught });
     }

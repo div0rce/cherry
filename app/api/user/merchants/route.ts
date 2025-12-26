@@ -28,7 +28,7 @@ export async function GET(request: Request): Promise<Response> {
     );
 
     return NextResponse.json({ names });
-  } catch {
+  } catch (_error: unknown) {
     return NextResponse.json({ names: [] });
   }
 }

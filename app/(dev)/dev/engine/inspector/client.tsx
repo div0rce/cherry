@@ -7,7 +7,7 @@ import { Card } from '../../../../../components/ui/card.js';
 import { EmptyState } from '../../../../../components/ui/empty-state.js';
 import { LoadingRows } from '../../../../../components/ui/loading-skeleton.js';
 import { ErrorBanner } from '../../../../../components/ErrorBanner.js';
-import { asError } from '../../../../../lib/errors.js';
+import { callApi } from '../../../../../lib/client/api.js';
 
 type Decision = {
   id: string;
@@ -50,29 +50,23 @@ export default function InspectorClient(): JSX.Element {
       return;
     }
 
-    try {
-      const res = await fetch('/api/dev/engine/inspect', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          merchant: merchant.trim(),
-          amount: amountNumber,
-          category: category.trim().length > 0 ? category.trim() : undefined,
-        }),
-      });
+    const result = await callApi<InspectResponse>('/api/dev/engine/inspect', {
+      method: 'POST',
+      body: JSON.stringify({
+        merchant: merchant.trim(),
+        amount: amountNumber,
+        category: category.trim().length > 0 ? category.trim() : undefined,
+      }),
+    });
 
-      const payload = (await res.json()) as InspectResponse & { error?: string };
-      if (!res.ok) {
-        throw new Error(payload.error ?? 'Engine inspector failed');
-      }
-
-      setResult(payload);
-      setStatus('ready');
-    } catch (err) {
-      asError(err);
-      setError(err.message);
+    if (!result.ok) {
+      setError(result.message);
       setStatus('error');
+      return;
     }
+
+    setResult(result.data);
+    setStatus('ready');
   }
 
   return (

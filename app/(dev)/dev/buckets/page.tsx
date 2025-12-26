@@ -10,7 +10,8 @@ import { EmptyState } from '../../../../components/ui/empty-state.js';
 import { getCurrentUserId } from '../../../../lib/auth.js';
 import { ROUTES } from '../../../../lib/routes.js';
 import { DeleteBucketButton, AddBucketForm } from './client.js';
-import { asError } from '../../../../lib/errors.js';
+import { fetchApiResult } from '../../../../lib/api/fetch-json.js';
+import type { ApiResult } from '../../../../lib/api/result.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -35,37 +36,28 @@ function formatCents(cents: number | null | undefined) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-async function fetchBuckets(): Promise<Bucket[]> {
-  const res = await fetch('/api/buckets', { cache: 'no-store' });
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('UNAUTHORIZED');
-    }
-    const message = (await res.text()).trim();
-    throw new Error(hasText(message) ? message : 'Failed to load buckets');
-  }
-  const data = (await res.json()) as Bucket[];
-  return data;
+async function fetchBuckets(): Promise<ApiResult<Bucket[]>> {
+  return fetchApiResult<Bucket[]>('/api/buckets', { cache: 'no-store' });
 }
 
 export default async function BucketsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
   }
 
   let buckets: Bucket[] = [];
   let error: string | null = null;
 
-  try {
-    buckets = await fetchBuckets();
-  } catch (err) {
-    asError(err);
-    if (err.message === 'UNAUTHORIZED') {
+  const bucketsResult = await fetchBuckets();
+  if (!bucketsResult.ok) {
+    if (bucketsResult.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
     }
-    error = err.message;
+    error = bucketsResult.message;
+  } else {
+    buckets = bucketsResult.data;
   }
 
   const totalBudgetCents = buckets.reduce((sum, b) => sum + (b.budgetAmount ?? 0), 0);

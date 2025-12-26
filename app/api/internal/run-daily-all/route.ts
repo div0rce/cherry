@@ -58,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             source: DailyStateSource.NIGHTLY,
           });
           succeeded += 1;
-        } catch (error) {
+        } catch (error: unknown) {
           failed += 1;
           asError(error);
           logError('daily_state_user_failed', { userId: user.id, err: error });

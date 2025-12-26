@@ -11,7 +11,7 @@ export default async function SimulationsPage(): Promise<JSX.Element | null> {
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/simulations')}`);
     return null;
   }

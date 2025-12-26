@@ -52,7 +52,7 @@ export async function PATCH(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -100,7 +100,7 @@ export async function PATCH(
     });
 
     return NextResponse.json(toBucketRuntime(updated));
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets/[bucketId] PATCH', {
@@ -136,7 +136,7 @@ export async function DELETE(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -169,7 +169,7 @@ export async function DELETE(
       where: { id: bucket.id, userId },
     });
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets/[bucketId] DELETE', {

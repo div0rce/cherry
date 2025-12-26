@@ -93,7 +93,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       savingsDollars: (decision.expectedMonetaryBenefitCents ?? 0) / 100,
       bucketDelta,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     if (err.message.includes('Unauthorized')) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

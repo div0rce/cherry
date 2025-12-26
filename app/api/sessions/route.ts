@@ -41,7 +41,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     userId = ctx.userId;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -270,7 +270,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         hasMore,
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     logError('Error in /api/sessions GET', error);
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });

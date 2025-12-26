@@ -117,7 +117,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       page,
       pageSize,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });

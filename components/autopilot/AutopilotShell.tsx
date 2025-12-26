@@ -11,6 +11,7 @@ import type {
   AutopilotCategoryOptionValue,
   AutopilotTimingOption,
 } from '../../lib/autopilot/uiSpec.js';
+import { asAppError } from '../../lib/errors.js';
 import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.js';
 import { AutopilotDecisionPanel } from './AutopilotDecisionPanel.js';
 
@@ -72,8 +73,9 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
     try {
       const result = await runSimulation(summary, { now: new Date() });
       setSimulationResult(result);
-    } catch (error) {
-      console.error('Autopilot simulation failed', error);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
+      console.error('Autopilot simulation failed', appError);
       setSimulationError(uiSpec.simulationErrorMessage);
       setSimulationResult(null);
     } finally {

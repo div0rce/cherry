@@ -208,7 +208,7 @@ export async function getAutopilotDecisionForUserSwipe(
       mccCode: null,
       explicitCategory: null,
     });
-  } catch {
+  } catch (_error: unknown) {
     merchantCategoryKey = null;
   }
 

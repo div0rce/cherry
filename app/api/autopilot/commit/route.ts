@@ -35,7 +35,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       : await commitAutopilotDecision(world, userContext.userId, parsed.data, { now: requestNow });
 
     return NextResponse.json(result, { status: 200 });
-  } catch (caught) {
+  } catch (caught: unknown) {
     asError(caught);
     if (caught instanceof AutopilotServiceError) {
       const kind =

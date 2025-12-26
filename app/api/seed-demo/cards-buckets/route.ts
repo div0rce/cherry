@@ -30,7 +30,7 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

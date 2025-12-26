@@ -29,7 +29,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });

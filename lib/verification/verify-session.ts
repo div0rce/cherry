@@ -139,7 +139,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
         }
       }
     });
-  } catch (caught) {
+  } catch (caught: unknown) {
     asError(caught);
     logError('verify_session_failed', { err: caught, sessionId: session.id, userId });
     return { ok: false, reason: 'INVALID', message: 'Failed to verify session' };

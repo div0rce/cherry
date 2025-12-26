@@ -24,7 +24,7 @@ export async function POST(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -71,7 +71,7 @@ export async function POST(
       pointsPending: outcome.pointsPending,
       message: outcome.message,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error instanceof SessionConfirmError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });

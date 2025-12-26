@@ -80,7 +80,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       guardrails,
       topDecision: decisions[0] ?? null,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     const message = error.message ?? 'Engine inspect failed';
     return NextResponse.json({ error: message }, { status: 500 });

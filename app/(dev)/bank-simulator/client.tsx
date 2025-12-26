@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
-import { asError } from '../../../lib/errors.js';
+import { callApi } from '../../../lib/client/api.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -29,17 +29,14 @@ export default function BankSimulatorClient(): JSX.Element {
   async function loadSessions() {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch('/api/dev/pending-sessions');
-      if (!res.ok) throw new Error('Failed to load sessions');
-      const data = (await res.json()) as { sessions?: PendingSession[] };
-      setSessions(data.sessions ?? []);
-    } catch (err) {
-      asError(err);
-      setError(err.message);
-    } finally {
+    const res = await callApi<{ sessions?: PendingSession[] }>('/api/dev/pending-sessions');
+    if (!res.ok) {
+      setError(res.message);
       setLoading(false);
+      return;
     }
+    setSessions(res.data.sessions ?? []);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -49,23 +46,17 @@ export default function BankSimulatorClient(): JSX.Element {
   async function handleVerify(id: string, verified: boolean) {
     setActioningId(id);
     setError(null);
-    try {
-      const res = await fetch(`/api/sessions/${id}/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verified }),
-      });
-      if (!res.ok) {
-        const message = (await res.text()).trim();
-        throw new Error(hasText(message) ? message : 'Failed to verify session');
-      }
-      await loadSessions();
-    } catch (err) {
-      asError(err);
-      setError(err.message);
-    } finally {
+    const res = await callApi<unknown>(`/api/sessions/${id}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ verified }),
+    });
+    if (!res.ok) {
+      setError(hasText(res.message) ? res.message : 'Failed to verify session');
       setActioningId(null);
+      return;
     }
+    await loadSessions();
+    setActioningId(null);
   }
 
   return (

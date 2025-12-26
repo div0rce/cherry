@@ -110,7 +110,7 @@ async function upsertMerchantObservation(
       select: { id: true },
     });
     return created.id;
-  } catch (caught) {
+  } catch (caught: unknown) {
     asError(caught);
     logWarn('bank_ingest_merchant_observation_failed', { err: caught, userId, merchantName: safeName, mcc });
     return null;

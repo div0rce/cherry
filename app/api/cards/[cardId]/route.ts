@@ -42,7 +42,7 @@ export async function PATCH(
       },
     });
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('Card FK violation during update', {

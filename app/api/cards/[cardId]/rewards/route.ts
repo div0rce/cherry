@@ -156,7 +156,7 @@ export async function POST(
     });
 
     return NextResponse.json(rewardRule, { status: 201 });
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards POST', {
@@ -248,7 +248,7 @@ export async function DELETE(
     await prisma.rewardRule.delete({
       where: { id: rule.id },
     });
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards DELETE', {
@@ -359,7 +359,7 @@ export async function PATCH(
     });
 
     return NextResponse.json(updated);
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards PATCH', {

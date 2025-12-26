@@ -45,7 +45,7 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
       limit: 200,
       sourceFilter: ['BANK_FEED', 'STATEMENT_VIEW'],
     });
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     error = err.message;
   }

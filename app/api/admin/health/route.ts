@@ -25,7 +25,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       allowLabDemo: false,
     });
     assertUserId(userId, 'api/admin/health GET');
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -37,7 +37,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ message: 'Database OK' });
-  } catch (caught) {
+  } catch (caught: unknown) {
     asError(caught);
     logError('Admin health check failed', caught);
     return NextResponse.json({ message: 'Database error' }, { status: 500 });

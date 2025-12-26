@@ -234,11 +234,14 @@ export default async function OnboardingPage({
   const highlightedMissing = toMissingKey(missingParam);
 
   const userContext = await requireUserContext();
-  const prereqResponse = await fetchFromApi('/api/autopilot/prereqs');
+  const prereqResponse = await fetchFromApi<{
+    prereqs: AutopilotPrereqs;
+    missing: 'cards' | 'rules' | 'buckets' | null;
+  }>('/api/autopilot/prereqs');
   if (!prereqResponse.ok) {
-    throw new Error('Failed to load onboarding prerequisites');
+    throw new Error(prereqResponse.message);
   }
-  const prereqPayload = (await prereqResponse.json()) as {
+  const prereqPayload = prereqResponse.data;
     prereqs: AutopilotPrereqs;
     missing: 'cards' | 'rules' | 'buckets' | null;
   };

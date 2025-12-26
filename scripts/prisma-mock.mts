@@ -315,7 +315,7 @@ try {
     id: '',
     filename: '',
   });
-} catch {
+} catch (_error: unknown) {
   resolvedLookup = '@prisma/client';
 }
 if (typeof resolvedLookup === 'string' && resolvedLookup.length > 0) {

@@ -21,7 +21,7 @@ export default async function SessionDetailPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect('/signin');
     return null;
   }

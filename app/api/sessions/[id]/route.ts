@@ -69,7 +69,7 @@ export async function GET(
         pointsPosted: postedPoints,
         pointsPending: pendingPoints,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       asError(error);
       logError('Error in GET /api/sessions/[id]', error);
       return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 });

@@ -3,10 +3,11 @@
 import { signIn } from 'next-auth/react';
 import { z } from 'zod';
 import { getPublicConfig } from '../config/store.js';
+import { fetchJSON } from '../api/fetch-json.js';
+import { asAppError } from '../errors.js';
+import type { ApiResult } from '../api/result.js';
 
-export type ApiResult<T> =
-  | { ok: true; status: number; data: T }
-  | { ok: false; status: number; error: string };
+export type { ApiResult };
 
 export async function callApi<TResponse>(
   input: RequestInfo | URL,
@@ -15,48 +16,28 @@ export async function callApi<TResponse>(
   const { responseSchema, baseUrl, ...rest } = init;
   const resolvedInput = resolveRequestInput(input, baseUrl);
 
-  const res = await fetch(resolvedInput, {
-    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
-    ...rest,
-  });
-
-  if (res.status === 401) {
-    await signIn();
-    return { ok: false, status: 401, error: 'unauthorized' };
-  }
-
-  if (!res.ok) {
-    let msg = `request_failed_${res.status}`;
-    try {
-      const body: unknown = await res.json();
-      if (body !== null && typeof body === 'object') {
-        const maybeError = (body as Record<string, unknown>)['error'];
-        const maybeMessage = (body as Record<string, unknown>)['message'];
-        if (typeof maybeError === 'string') msg = maybeError;
-        if (typeof maybeMessage === 'string') msg = maybeMessage;
-      }
-    } catch {
-      // ignore parse issues
-    }
-    return { ok: false, status: res.status, error: msg };
-  }
-
-  let parsed: unknown;
   try {
-    parsed = await res.json();
-  } catch {
-    return { ok: false, status: res.status, error: 'invalid_json' };
-  }
+    const parsed = await fetchJSON<unknown>(resolvedInput, {
+      headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+      ...rest,
+    });
 
-  if (responseSchema) {
-    const check = responseSchema.safeParse(parsed);
-    if (!check.success) {
-      return { ok: false, status: res.status, error: 'invalid_shape' };
+    if (responseSchema) {
+      const check = responseSchema.safeParse(parsed);
+      if (!check.success) {
+        return { ok: false, error: 'INTERNAL', message: 'invalid_shape' };
+      }
+      return { ok: true, data: check.data };
     }
-    return { ok: true, status: res.status, data: check.data };
-  }
 
-  return { ok: true, status: res.status, data: parsed as TResponse };
+    return { ok: true, data: parsed as TResponse };
+  } catch (err: unknown) {
+    const error = asAppError(err);
+    if (error.code === 'UNAUTHORIZED') {
+      await signIn();
+    }
+    return { ok: false, error: error.code, message: error.message };
+  }
 }
 
 function resolveRequestInput(input: RequestInfo | URL, baseUrl?: string): RequestInfo {
@@ -92,7 +73,7 @@ function resolveBaseUrl(explicitBaseUrl?: string): string {
 
   try {
     return getPublicConfig().appBaseUrl;
-  } catch {
+  } catch (_error: unknown) {
     // fall through
   }
 
@@ -103,7 +84,7 @@ function isAbsoluteUrl(value: string): boolean {
   try {
     new URL(value);
     return true;
-  } catch {
+  } catch (_error: unknown) {
     return false;
   }
 }

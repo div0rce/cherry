@@ -28,7 +28,8 @@ async function run() {
   });
   const failure = await callApi('/api/test');
   assert.equal(failure.ok, false);
-  assert.equal(failure.error, 'boom');
+  assert.equal(failure.error, 'INTERNAL');
+  assert.equal(failure.message, 'boom');
 
   console.warn('client api: ok');
 }

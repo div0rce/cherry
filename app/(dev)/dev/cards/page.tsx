@@ -16,7 +16,8 @@ import {
 } from './client.js';
 import { getCurrentUserId } from '../../../../lib/auth.js';
 import { ROUTES } from '../../../../lib/routes.js';
-import { asError } from '../../../../lib/errors.js';
+import { fetchApiResult } from '../../../../lib/api/fetch-json.js';
+import type { ApiResult } from '../../../../lib/api/result.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -71,40 +72,29 @@ function formatRuleDisplay(rule: RewardRule) {
   return `${multiplier}x points`;
 }
 
-async function fetchCards(): Promise<Card[]> {
-  const res = await fetch('/api/cards', { cache: 'no-store' });
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('UNAUTHORIZED');
-    }
-    const message = (await res.text()).trim();
-    throw new Error(hasText(message) ? message : 'Failed to load cards');
-  }
-
-  const data = (await res.json()) as Card[];
-  return data;
+async function fetchCards(): Promise<ApiResult<Card[]>> {
+  return fetchApiResult<Card[]>('/api/cards', { cache: 'no-store' });
 }
 
 export default async function CardsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
   }
 
   let cards: Card[] = [];
   let error: string | null = null;
 
-  try {
-    cards = await fetchCards();
-  } catch (err) {
-    asError(err);
-    if (err.message === 'UNAUTHORIZED') {
+  const cardsResult = await fetchCards();
+  if (!cardsResult.ok) {
+    if (cardsResult.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
       return null;
     }
-    error = err.message;
+    error = cardsResult.message;
+  } else {
+    cards = cardsResult.data;
   }
 
   const totalRewardRules = cards.reduce((sum, card) => sum + card.rewardRules.length, 0);

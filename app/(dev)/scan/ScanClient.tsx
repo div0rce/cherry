@@ -184,13 +184,13 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     );
 
     if (!result.ok) {
-      setError(result.error);
+      setError(result.message);
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
         outcome: 'FALLBACK',
         reason: 'SCAN_API_ERROR',
-        detail: result.error,
+        detail: { code: result.error, message: result.message },
       });
       return;
     }
@@ -222,47 +222,41 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     setIsStartingSession(true);
     setError(null);
 
-    try {
-      const result = await callApi<{
-        sessionId: string;
-        orderToken: string;
-        expiresAt: string;
-      }>('/api/sessions', {
-        method: 'POST',
-        body: JSON.stringify({
-          merchantName:
-            scanPreview.merchantName ??
-            (hasText(merchantName) ? merchantName.trim() : undefined),
-          amountCents: scanPreview.amountCents,
-          category: scanPreview.category ?? undefined,
-        }),
-      });
+    const result = await callApi<{
+      sessionId: string;
+      orderToken: string;
+      expiresAt: string;
+    }>('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({
+        merchantName:
+          scanPreview.merchantName ?? (hasText(merchantName) ? merchantName.trim() : undefined),
+        amountCents: scanPreview.amountCents,
+        category: scanPreview.category ?? undefined,
+      }),
+    });
 
-      if (!result.ok) {
-        setError(result.error);
-        setIsStartingSession(false);
-        return;
-      }
-
-      const remainingSec = Math.max(
-        0,
-        Math.floor((new Date(result.data.expiresAt).getTime() - currentMs()) / 1000),
-      );
-
-      setSessionState({
-        id: result.data.sessionId,
-        orderToken: result.data.orderToken,
-        expiresAt: result.data.expiresAt,
-        pointsPending: scanPreview.advisoryPoints,
-        pointsPosted: 0,
-        status: 'OPEN',
-      });
-      setCountdownSeconds(remainingSec);
-    } catch {
-      setError('Failed to start session');
-    } finally {
+    if (!result.ok) {
+      setError(result.message);
       setIsStartingSession(false);
+      return;
     }
+
+    const remainingSec = Math.max(
+      0,
+      Math.floor((new Date(result.data.expiresAt).getTime() - currentMs()) / 1000),
+    );
+
+    setSessionState({
+      id: result.data.sessionId,
+      orderToken: result.data.orderToken,
+      expiresAt: result.data.expiresAt,
+      pointsPending: scanPreview.advisoryPoints,
+      pointsPosted: 0,
+      status: 'OPEN',
+    });
+    setCountdownSeconds(remainingSec);
+    setIsStartingSession(false);
   }
 
   async function confirmSession() {
@@ -305,31 +299,26 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     }
     setIsConfirming(true);
     setError(null);
-    try {
-      const result = await callApi<{ sessionStatus: string; ledgerStatus: string }>(
-        `/api/sessions/${sessionState.id}/confirm`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            actualAmountCents: scanPreview.amountCents,
-            usedCardId: scanPreview.decision.card.cardId,
-            followedRecommendation: true,
-          }),
-        }
-      );
-
-      if (!result.ok) {
-        setError(result.error);
-        setIsConfirming(false);
-        return;
+    const result = await callApi<{ sessionStatus: string; ledgerStatus: string }>(
+      `/api/sessions/${sessionState.id}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          actualAmountCents: scanPreview.amountCents,
+          usedCardId: scanPreview.decision.card.cardId,
+          followedRecommendation: true,
+        }),
       }
+    );
 
-      setSessionState((prev) => (prev !== null ? { ...prev, status: 'CLAIMED' } : prev));
-    } catch {
-      setError('Failed to confirm session');
-    } finally {
+    if (!result.ok) {
+      setError(result.message);
       setIsConfirming(false);
+      return;
     }
+
+    setSessionState((prev) => (prev !== null ? { ...prev, status: 'CLAIMED' } : prev));
+    setIsConfirming(false);
   }
 
   const formatCents = (cents: number | null | undefined) => {

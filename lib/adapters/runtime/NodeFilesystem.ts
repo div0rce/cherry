@@ -20,7 +20,7 @@ export class NodeFilesystem implements Filesystem {
       const result: unknown = accessSync(path);
       void result;
       return true;
-    } catch {
+    } catch (_error: unknown) {
       return false;
     }
   }

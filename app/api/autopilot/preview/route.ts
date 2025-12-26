@@ -103,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return respond(200, validatedPreview.data);
-  } catch (caught) {
+  } catch (caught: unknown) {
     asError(caught);
     if (caught instanceof AutopilotServiceError) {
       previewStatusLabel = 'invalid';

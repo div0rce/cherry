@@ -35,7 +35,7 @@ export default async function DevBankPage(): Promise<JSX.Element> {
       orderBy: BANK_TX_DEFAULT_ORDER,
       take: 100,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     console.error('DevBankPage Prisma error:', err);
     loadError =

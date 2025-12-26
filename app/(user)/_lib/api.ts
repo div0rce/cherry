@@ -1,6 +1,9 @@
 'use server';
 
 import { cookies, headers } from 'next/headers';
+import { fetchApiResult } from '../../../lib/api/fetch-json.js';
+import type { ApiResult } from '../../../lib/api/result.js';
+import { AppError } from '../../../lib/errors.js';
 
 type UserContextResponse = {
   userId: string;
@@ -18,10 +21,10 @@ async function getApiBaseUrl(): Promise<string> {
   return `${protocol}://${trimmedHost}`;
 }
 
-export async function fetchFromApi(
+export async function fetchFromApi<T>(
   path: string,
   init: RequestInit = {}
-): Promise<Response> {
+): Promise<ApiResult<T>> {
   const base = await getApiBaseUrl();
   const url = base.length > 0 ? `${base}${path}` : path;
   const nextHeaders = new Headers(init.headers);
@@ -31,7 +34,7 @@ export async function fetchFromApi(
     nextHeaders.set('cookie', cookieHeader);
   }
 
-  return fetch(url, {
+  return fetchApiResult<T>(url, {
     ...init,
     cache: 'no-store',
     headers: nextHeaders,
@@ -39,9 +42,9 @@ export async function fetchFromApi(
 }
 
 export async function requireUserContext(): Promise<UserContextResponse> {
-  const response = await fetchFromApi('/api/user/context');
-  if (!response.ok) {
-    throw new Error('Unauthorized');
+  const result = await fetchFromApi<UserContextResponse>('/api/user/context');
+  if (!result.ok) {
+    throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
   }
-  return response.json() as Promise<UserContextResponse>;
+  return result.data;
 }

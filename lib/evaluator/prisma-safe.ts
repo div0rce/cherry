@@ -28,7 +28,7 @@ export async function assertOfflineEvaluatorModelsReady(): Promise<void> {
       prisma.historicalIncomeRegime.count({ take: 0 }),
       prisma.historicalBucketTemplate.count({ take: 0 }),
     ]);
-  } catch {
+  } catch (_error: unknown) {
     throw new Error(
       [
         'Offline evaluator tables are not available. Ensure migrations are applied:',

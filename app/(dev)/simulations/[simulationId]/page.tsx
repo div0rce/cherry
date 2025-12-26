@@ -19,7 +19,7 @@ export default async function SimulationDetailPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent(`/simulations/${simulationId}`)}`);
     return null;
   }

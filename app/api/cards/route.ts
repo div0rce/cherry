@@ -156,7 +156,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return NextResponse.json(card, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
       return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
@@ -206,7 +206,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       await prisma.card.delete({
         where: { id: card.id },
       });
-    } catch (err) {
+    } catch (err: unknown) {
       asError(err);
       if (isPrismaP2003(err)) {
         logInvariant('Card FK violation during delete', {
@@ -221,7 +221,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message?.includes('Unauthorized')) {
       return new NextResponse('Unauthorized', { status: 401 });

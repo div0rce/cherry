@@ -19,19 +19,21 @@ export default async function EditCardPage({
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
   await requireUserContext();
-  const response = await fetchFromApi('/api/cards');
+  const response = await fetchFromApi<
+    Array<{
+      id: string;
+      nickname: string;
+      issuer: string;
+      network: string;
+      isCredit: boolean;
+      annualFee: number | null;
+    }>
+  >('/api/cards');
   if (!response.ok) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }
-  const cards = (await response.json()) as Array<{
-    id: string;
-    nickname: string;
-    issuer: string;
-    network: string;
-    isCredit: boolean;
-    annualFee: number | null;
-  }>;
+  const cards = response.data;
   const currentCard = cards.find((item) => item.id === cardId) ?? null;
   if (currentCard === null) {
     redirect('/app/onboarding?missing=cards');

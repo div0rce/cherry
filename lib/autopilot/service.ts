@@ -264,7 +264,7 @@ async function evaluateAutopilot(
       typeof options.timeoutMs === 'number'
         ? await withTimeout(engineCall, options.timeoutMs, 'ENGINE_TIMEOUT')
         : await engineCall;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error instanceof AutopilotServiceError) {
       throw error;
@@ -302,7 +302,7 @@ async function evaluateAutopilot(
       effectiveAt: occurredAt,
       stateSnapshotHash,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     throw new AutopilotServiceError(
       'Unable to build decision fingerprint',
@@ -652,7 +652,7 @@ export async function commitAutopilotDecisionV2(
       allowZeroPoints: true,
       now: evaluation.occurredAt,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error instanceof SessionConfirmError) {
       throw new AutopilotServiceError(

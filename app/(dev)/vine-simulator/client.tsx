@@ -11,6 +11,7 @@ import type { VineTerminalEventInput } from '../../../lib/schemas/vine-terminal.
 import { hasText } from '../../../lib/text.js';
 import { isPositiveNumber } from '../../../lib/numbers.js';
 import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';
+import { callApi } from '../../../lib/client/api.js';
 import { Card } from '../../../components/ui/card.js';
 import { Button, ButtonLink } from '../../../components/ui/Button.js';
 import { Alert } from '../../../components/ui/alert.js';
@@ -184,13 +185,12 @@ export function VineSimulatorClient(): JSX.Element {
       return;
     }
 
-    const res = await fetch('/api/vine/order', {
+    const res = await callApi<VineOrderResponse>('/api/vine/order', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
-    if (res.status === 401) {
+    if (!res.ok && res.error === 'UNAUTHORIZED') {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
@@ -203,32 +203,19 @@ export function VineSimulatorClient(): JSX.Element {
     }
 
     if (!res.ok) {
-      let friendly = 'Failed to create recommendation.';
-      try {
-        const json = (await res.json()) as unknown;
-        if (json !== null && typeof json === 'object' && 'error' in (json as Record<string, unknown>)) {
-          const maybeError = (json as { error?: unknown }).error;
-          if (typeof maybeError === 'string') {
-            friendly = maybeError;
-          }
-        }
-      } catch {
-        // ignore parse errors; keep friendly default
-      }
-
+      const friendly = hasText(res.message) ? res.message : 'Failed to create recommendation.';
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
         outcome: 'FALLBACK',
         reason: 'VINE_ORDER_FAILED',
-        detail: { status: res.status },
+        detail: { error: res.error },
       });
       setTransientStatus({ type: 'error', message: friendly }, 6000);
       return;
     }
 
-    const data = (await res.json()) as VineOrderResponse;
-    setOrderResult(data);
+    setOrderResult(res.data);
     setTransientStatus({ type: 'success', message: 'Recommendation ready.' }, 3000);
   }
 
@@ -263,9 +250,8 @@ export function VineSimulatorClient(): JSX.Element {
     }
     setTransientStatus({ type: 'submitting' });
 
-    const res = await fetch(`/api/sessions/${orderResult.sessionId}/confirm`, {
+    const res = await callApi<ConfirmResponse>(`/api/sessions/${orderResult.sessionId}/confirm`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         followedRecommendation: true,
         actualAmountCents: orderResult.decision.amountCents,
@@ -273,7 +259,7 @@ export function VineSimulatorClient(): JSX.Element {
       }),
     });
 
-    if (res.status === 401) {
+    if (!res.ok && res.error === 'UNAUTHORIZED') {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
@@ -286,15 +272,14 @@ export function VineSimulatorClient(): JSX.Element {
     }
 
     if (!res.ok) {
-      const message = await res.text();
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
         outcome: 'FALLBACK',
         reason: 'SESSION_CONFIRM_FAILED',
-        detail: { status: res.status },
+        detail: { error: res.error },
       });
-      const friendlyMessage = hasText(message) ? message : 'Failed to confirm session';
+      const friendlyMessage = hasText(res.message) ? res.message : 'Failed to confirm session';
       setTransientStatus(
         { type: 'error', message: friendlyMessage },
         6000
@@ -302,8 +287,7 @@ export function VineSimulatorClient(): JSX.Element {
       return;
     }
 
-    const data = (await res.json()) as ConfirmResponse;
-    setConfirmResult(data);
+    setConfirmResult(res.data);
     setTransientStatus({ type: 'success', message: 'Session confirmed.' }, 3000);
   }
 

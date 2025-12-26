@@ -14,19 +14,16 @@ import { ButtonLink } from '../../../components/ui/Button.js';
 import AdminClient from './AdminClient.js';
 import { Alert } from '../../../components/ui/alert.js';
 import { getServerConfig } from '../../../lib/config/store.js';
+import { fetchApiResult } from '../../../lib/api/fetch-json.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
 async function getHealth(appBaseUrl: string) {
   const url = hasText(appBaseUrl) ? `${appBaseUrl.replace(/\/$/, '')}/api/health` : '/api/health';
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) return { ok: false };
-    return (await res.json()) as { ok: boolean };
-  } catch {
-    return { ok: false };
-  }
+  const res = await fetchApiResult<{ ok: boolean }>(url, { cache: 'no-store' });
+  if (!res.ok) return { ok: false };
+  return res.data;
 }
 
 export default async function AdminPage(): Promise<JSX.Element> {
@@ -34,7 +31,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/admin')}`);
   }
   const [points, sessionStats, ledgerStats, health, lastSession, lastLedger] = await Promise.all([

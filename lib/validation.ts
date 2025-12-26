@@ -11,7 +11,7 @@ export async function parseJsonBody<T>(
   let json: unknown;
   try {
     json = await req.json();
-  } catch {
+  } catch (_error: unknown) {
     return {
       ok: false,
       response: NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }),

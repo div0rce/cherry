@@ -26,7 +26,7 @@ export default async function ActivityPage(): Promise<JSX.Element> {
   let feed = null;
   try {
     feed = await fetchActivityFeed(userId, { limit: 100 });
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     error = err.message;
   }

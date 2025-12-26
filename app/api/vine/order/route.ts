@@ -127,7 +127,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
       return NextResponse.json({ error: 'User context or FK error' }, { status: 500 });
     }
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error instanceof Error && error.message?.includes('lab demo mode is disabled in production')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

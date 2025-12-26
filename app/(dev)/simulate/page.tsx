@@ -10,7 +10,8 @@ import { PageHeader } from '../../../components/ui/page-header.js';
 import { Panel } from '../../../components/ui/panel.js';
 import { Card } from '../../../components/ui/card.js';
 import { Button, ButtonLink } from '../../../components/ui/Button.js';
-import { asError } from '../../../lib/errors.js';
+import { fetchApiResult } from '../../../lib/api/fetch-json.js';
+import type { ApiResult } from '../../../lib/api/result.js';
 
 type Simulation = {
   id: string;
@@ -161,7 +162,7 @@ async function fetchSimulations(query: {
   category?: string;
   page?: number;
   pageSize?: number;
-}): Promise<SimulationResponse> {
+}): Promise<ApiResult<SimulationResponse>> {
   const params = new URLSearchParams();
   if (hasText(query.status)) params.set('status', query.status);
   if (hasText(query.category)) params.set('category', query.category);
@@ -175,18 +176,7 @@ async function fetchSimulations(query: {
   const queryString = params.toString();
   const url = queryString.length > 0 ? `/api/simulations?${queryString}` : '/api/simulations';
 
-  const res = await fetch(url, { cache: 'no-store' });
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('UNAUTHORIZED');
-    }
-    const message = await res.text();
-    throw new Error(hasText(message) ? message : 'Failed to load simulations');
-  }
-
-  const data = (await res.json()) as SimulationResponse;
-  return data;
+  return fetchApiResult<SimulationResponse>(url, { cache: 'no-store' });
 }
 
 export default async function SimulatePage({
@@ -197,7 +187,7 @@ export default async function SimulatePage({
   const resolvedParams = (await searchParams) ?? {};
   try {
     await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/simulate')}`);
   }
 
@@ -216,20 +206,20 @@ export default async function SimulatePage({
   let response: SimulationResponse | null = null;
   let error: string | null = null;
 
-  try {
-    const query = {
-      page,
-      pageSize: 10,
-      ...(hasText(statusParam) ? { status: statusParam } : {}),
-      ...(hasText(categoryParam) ? { category: categoryParam } : {}),
-    };
-    response = await fetchSimulations(query);
-  } catch (caught) {
-    asError(caught);
-    if (caught.message === 'UNAUTHORIZED') {
+  const query = {
+    page,
+    pageSize: 10,
+    ...(hasText(statusParam) ? { status: statusParam } : {}),
+    ...(hasText(categoryParam) ? { category: categoryParam } : {}),
+  };
+  const result = await fetchSimulations(query);
+  if (!result.ok) {
+    if (result.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent('/simulate')}`);
     }
-    error = caught.message;
+    error = result.message;
+  } else {
+    response = result.data;
   }
 
   const simulations = response?.data ?? [];

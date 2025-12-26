@@ -59,7 +59,7 @@ export async function processDailyStateAlert(params: {
       kind: policy.reason,
       date: curr.date.toISOString(),
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     logError('daily_state_alert_failed', { userId: curr.userId, err: error });
   }

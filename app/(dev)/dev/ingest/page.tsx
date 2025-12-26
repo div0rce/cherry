@@ -38,7 +38,7 @@ export default async function IngestDashboardPage(): Promise<JSX.Element> {
   let error: string | null = null;
   try {
     summaries = await loadSourceSummaries(userId);
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     error = err.message;
   }

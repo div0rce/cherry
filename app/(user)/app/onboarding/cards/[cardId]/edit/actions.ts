@@ -72,7 +72,7 @@ export async function updateCard(
   const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
   await requireUserContext();
-  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}`, {
+  const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -83,7 +83,7 @@ export async function updateCard(
       annualFee: cents,
     }),
   });
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     return { status: 'error', message: 'Card not found for this user.' };
   }
   if (!response.ok) {
@@ -107,12 +107,12 @@ export async function deleteCard(
   }
 
   await requireUserContext();
-  const response = await fetchFromApi('/api/cards', {
+  const response = await fetchFromApi<unknown>('/api/cards', {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cardId: parsed.data.cardId }),
   });
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     return { status: 'error', message: 'Card not found for this user.' };
   }
   if (!response.ok) {

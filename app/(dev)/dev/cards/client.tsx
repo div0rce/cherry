@@ -4,6 +4,7 @@ import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useState, FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
+import { callApi } from '../../../../lib/client/api.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -78,9 +79,8 @@ export function AddCardForm(): JSX.Element {
         ? null
         : Math.round(Number.parseFloat(annualFeeDollars) * 100);
 
-    const res = await fetch('/api/cards', {
+    const res = await callApi<{ id: string }>('/api/cards', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         nickname: nicknameTrimmed,
         issuer: issuerTrimmed,
@@ -90,18 +90,16 @@ export function AddCardForm(): JSX.Element {
       }),
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = (await res.text()).trim();
-      setStatus(hasText(message) ? message : 'Failed to create card');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to create card');
       return;
     }
 
-    const createdCard = (await res.json()) as { id: string };
+    const createdCard = res.data;
 
     if (knowsRewards) {
       const ruleCapCents =
@@ -112,9 +110,8 @@ export function AddCardForm(): JSX.Element {
       const multiplier =
         ruleType === 'CASH' ? Number((parsedMultiplier / 100).toFixed(6)) : parsedMultiplier;
 
-      const ruleRes = await fetch(`/api/cards/${createdCard.id}/rewards`, {
+      const ruleRes = await callApi<unknown>(`/api/cards/${createdCard.id}/rewards`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           category: ruleCategory,
           multiplier,
@@ -122,14 +119,16 @@ export function AddCardForm(): JSX.Element {
         }),
       });
 
-      if (ruleRes.status === 401) {
-        promptSignIn(setStatus);
-        return;
-      }
-
       if (!ruleRes.ok) {
-        const message = (await ruleRes.text()).trim();
-        setStatus(hasText(message) ? message : 'Card created, but failed to add reward rule.');
+        if (ruleRes.error === 'UNAUTHORIZED') {
+          promptSignIn(setStatus);
+          return;
+        }
+        setStatus(
+          hasText(ruleRes.message)
+            ? ruleRes.message
+            : 'Card created, but failed to add reward rule.'
+        );
         router.refresh();
         return;
       }
@@ -365,9 +364,8 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
         ? Number((parsedMultiplier / 100).toFixed(6))
         : parsedMultiplier;
 
-    const res = await fetch(`/api/cards/${cardId}/rewards`, {
+    const res = await callApi<unknown>(`/api/cards/${cardId}/rewards`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         category: trimmedCategory,
         multiplier: numericMultiplier,
@@ -375,14 +373,12 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
       }),
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = (await res.text()).trim();
-      setStatus(hasText(message) ? message : 'Failed to create reward rule');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to create reward rule');
       return;
     }
 
@@ -463,20 +459,17 @@ export function DeleteCardButton({ cardId }: { cardId: string }): JSX.Element {
     if (!confirmed) return;
 
     setStatus('Removing…');
-    const res = await fetch('/api/cards', {
+    const res = await callApi<unknown>('/api/cards', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cardId }),
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = (await res.text()).trim();
-      setStatus(hasText(message) ? message : 'Failed to delete card');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to delete card');
       return;
     }
 
@@ -511,20 +504,17 @@ export function DeleteRewardRuleButton({
     if (!confirmed) return;
 
     setStatus('Removing…');
-    const res = await fetch(`/api/cards/${cardId}/rewards`, {
+    const res = await callApi<unknown>(`/api/cards/${cardId}/rewards`, {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rewardRuleId }),
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = (await res.text()).trim();
-      setStatus(hasText(message) ? message : 'Failed to delete');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to delete');
       return;
     }
 

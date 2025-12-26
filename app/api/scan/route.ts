@@ -162,7 +162,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       };
 
       return NextResponse.json(response);
-    } catch (error) {
+    } catch (error: unknown) {
       asError(error);
       logError('Error in /api/scan', error);
       return NextResponse.json(
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -36,7 +36,7 @@ export async function fromPrismaUserToEngineState(
   ]);
 
   const cash =
-    (await loadCashSnapshot(userId).catch(() => ({
+    (await loadCashSnapshot(userId).catch((_error: unknown) => ({
       liquidCents: null,
       nextPaycheckDateMs: null,
       nextPaycheckNetCents: null,
@@ -231,7 +231,7 @@ async function loadUserPreferences(
     let customWeights: Partial<ObjectiveWeights> | undefined;
     try {
       customWeights = coerceObjectiveWeights(user.engineObjectiveWeights ?? undefined);
-    } catch (err) {
+    } catch (err: unknown) {
       asError(err);
       logPreferencesWarning(runtime, 'Failed to parse engineObjectiveWeights; ignoring overrides', {
         userId,
@@ -244,7 +244,7 @@ async function loadUserPreferences(
       : { profileId: profile.id };
 
     return preferences;
-  } catch (err) {
+  } catch (err: unknown) {
     asError(err);
     logPreferencesWarning(runtime, 'Unexpected error loading preferences; using defaults', {
       userId,

@@ -20,7 +20,7 @@ export async function getCurrentUserId(): Promise<string> {
 export async function getCurrentUserIdOrRedirect(callbackUrl = '/'): Promise<string> {
   try {
     return await getCurrentUserId();
-  } catch {
+  } catch (_error: unknown) {
     redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 }

@@ -55,8 +55,8 @@ const TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
 const FORBIDDEN_TS_NODE_REGISTER = /\bts-node\/register\b|\bts-node\/register\/transpile-only\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
-const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asError\s*\(/;
-const AS_ERROR_CALL = /\basError\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:asError|asAppError)\s*\(/;
+const AS_ERROR_CALL = /\b(?:asError|asAppError)\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
 const CATCH_HEADER = /\bcatch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/;
 
 const IGNORE_DIRS = new Set([
@@ -469,7 +469,7 @@ for (const file of errorLogFiles) {
       if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
         if (!justEnteredCatch) {
           const usesVar = new RegExp(`\\b${currentCatchVar}\\b`).test(line);
-          if (usesVar && !line.includes('asError(')) {
+          if (usesVar && !line.includes('asError(') && !line.includes('asAppError(')) {
             console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
             process.exit(1);
           }
@@ -477,7 +477,7 @@ for (const file of errorLogFiles) {
       }
 
       if (RAW_LOG_CALL.test(line)) {
-        if (!line.includes('asError(')) {
+        if (!line.includes('asError(') && !line.includes('asAppError(')) {
           const matches = line.matchAll(RAW_ERROR_IDENTIFIER);
           for (const match of matches) {
             const identifier = match[1];

@@ -28,7 +28,7 @@ export async function POST(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -75,7 +75,7 @@ export async function POST(
       sessionStatus: result.sessionStatus,
       ledgerStatus: result.ledgerStatus,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, err: error });
     logError('Error in /api/sessions/[id]/verify', error);

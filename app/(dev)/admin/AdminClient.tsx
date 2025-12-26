@@ -7,7 +7,8 @@ import { z } from 'zod';
 import { Card } from '../../../components/ui/card.js';
 import { Button } from '../../../components/ui/Button.js';
 import { Alert } from '../../../components/ui/alert.js';
-import { asError } from '../../../lib/errors.js';
+import { callApi } from '../../../lib/client/api.js';
+import { asAppError } from '../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -104,24 +105,18 @@ export default function AdminClient(): JSX.Element {
   ) {
     setLoading(true);
     setFeedback(null);
-    try {
-      const res = await fetch(url, { method: 'POST' });
-      if (!res.ok) {
-        const err = (await res.text()).trim();
-        const message = hasText(err) ? err : 'Request failed';
-        throw new Error(message);
-      }
-      setFeedback({ type: 'success', text: successText });
-      router.refresh();
-    } catch (error) {
-      asError(error);
+    const res = await callApi<unknown>(url, { method: 'POST' });
+    if (!res.ok) {
       setFeedback({
         type: 'error',
-        text: error.message,
+        text: hasText(res.message) ? res.message : 'Request failed',
       });
-    } finally {
       setLoading(false);
+      return;
     }
+    setFeedback({ type: 'success', text: successText });
+    router.refresh();
+    setLoading(false);
   }
 
   async function ingestBankTransactions() {
@@ -142,40 +137,48 @@ export default function AdminClient(): JSX.Element {
         throw new Error('Provide a non-empty array of transactions.');
       }
       const transactions = transactionsResult.data;
-      const res = await fetch('/api/dev/bank/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions }),
-      });
-      const data: unknown = await res.json();
+
+      const res = await callApi<{ ok?: boolean; ingested?: number; error?: string }>(
+        '/api/dev/bank/ingest',
+        {
+          method: 'POST',
+          body: JSON.stringify({ transactions }),
+        }
+      );
+
       if (!res.ok) {
-        throw new Error('Ingest failed');
+        setBankFeedback({
+          type: 'error',
+          text: hasText(res.message) ? res.message : 'Ingest failed',
+        });
+        setIsPostingBank(false);
+        return;
       }
-      const isObject = data !== null && typeof data === 'object';
-      const ok = isObject && (data as { ok?: boolean }).ok === true;
-      const ingested =
-        isObject && typeof (data as { ingested?: number }).ingested === 'number'
-          ? (data as { ingested?: number }).ingested ?? 0
-          : 0;
-      const error =
-        isObject && typeof (data as { error?: string }).error === 'string'
-          ? (data as { error?: string }).error
-          : null;
+
+      const ok = res.data.ok === true;
+      const ingested = typeof res.data.ingested === 'number' ? res.data.ingested : 0;
+      const errorText = typeof res.data.error === 'string' ? res.data.error : null;
       if (!ok) {
-        throw new Error(error ?? 'Ingest failed');
+        setBankFeedback({
+          type: 'error',
+          text: errorText ?? 'Ingest failed',
+        });
+        setIsPostingBank(false);
+        return;
       }
+
       setBankFeedback({
         type: 'success',
         text: `Ingested ${ingested} transaction(s)`,
       });
       router.refresh();
-    } catch (error) {
-      asError(error);
+      setIsPostingBank(false);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
       setBankFeedback({
         type: 'error',
-        text: error.message,
+        text: appError.message,
       });
-    } finally {
       setIsPostingBank(false);
     }
   }
@@ -183,22 +186,19 @@ export default function AdminClient(): JSX.Element {
   async function fetchRecentBankTransactions() {
     setIsFetchingBank(true);
     setBankFeedback(null);
-    try {
-      const res = await fetch('/api/dev/bank/ingest?limit=5');
-      const data = (await res.json()) as { transactions?: unknown[]; error?: string };
-      if (!res.ok) {
-        throw new Error(data.error ?? 'Failed to fetch');
-      }
-      setBankDump(JSON.stringify(data.transactions ?? [], null, 2));
-    } catch (error) {
-      asError(error);
+    const res = await callApi<{ transactions?: unknown[]; error?: string }>(
+      '/api/dev/bank/ingest?limit=5'
+    );
+    if (!res.ok) {
       setBankFeedback({
         type: 'error',
-        text: error.message,
+        text: hasText(res.message) ? res.message : 'Failed to fetch',
       });
-    } finally {
       setIsFetchingBank(false);
+      return;
     }
+    setBankDump(JSON.stringify(res.data.transactions ?? [], null, 2));
+    setIsFetchingBank(false);
   }
 
   return (

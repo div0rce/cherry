@@ -61,7 +61,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
     const runtimeBuckets = buckets.map(toBucketRuntime);
     return NextResponse.json(runtimeBuckets);
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return NextResponse.json(toBucketRuntime(bucket), { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets POST', {
@@ -211,7 +211,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -239,7 +239,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     });
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
+  } catch (error: unknown) {
     asError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets DELETE', {

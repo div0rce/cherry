@@ -24,7 +24,7 @@ function readJson<T>(filePath: string, schema: z.ZodType<T>): T {
   try {
     const raw = fs.readFileSync(filePath, 'utf8');
     return schema.parse(jsonParse(raw));
-  } catch (err) {
+  } catch (err: unknown) {
     fail(`Failed to read JSON file ${filePath}: ${(err as Error).message}`);
   }
 }

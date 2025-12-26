@@ -11,7 +11,7 @@ export async function withUser(
     const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     assertUserId(userId);
     return handler(userId, request);
-  } catch {
+  } catch (_error: unknown) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 }

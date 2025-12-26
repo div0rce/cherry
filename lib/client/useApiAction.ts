@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { ApiResult } from './api.js';
+import type { ApiResult } from '../api/result.js';
+import { asAppError } from '../errors.js';
 
 type ApiActionState<T> = {
   data: T | null;
@@ -13,9 +14,7 @@ export function useApiAction<TResponse>(): {
   data: TResponse | null;
   error: string | null;
   isLoading: boolean;
-  run: (
-    fn: () => Promise<ApiResult<TResponse>>
-  ) => Promise<{ ok: true; data: TResponse } | { ok: false; error: string }>;
+  run: (fn: () => Promise<ApiResult<TResponse>>) => Promise<ApiResult<TResponse>>;
 } {
   const [state, setState] = useState<ApiActionState<TResponse>>({
     data: null,
@@ -29,14 +28,15 @@ export function useApiAction<TResponse>(): {
       try {
         const result = await fn();
         if (!result.ok) {
-          setState({ data: null, error: result.error, isLoading: false });
-          return { ok: false as const, error: result.error };
+          setState({ data: null, error: result.message, isLoading: false });
+          return result;
         }
         setState({ data: result.data, error: null, isLoading: false });
-        return { ok: true as const, data: result.data };
-      } catch {
-        setState({ data: null, error: 'unexpected_error', isLoading: false });
-        return { ok: false as const, error: 'unexpected_error' };
+        return result;
+      } catch (err: unknown) {
+        const error = asAppError(err);
+        setState({ data: null, error: error.message, isLoading: false });
+        return { ok: false, error: error.code, message: error.message };
       }
     },
     []

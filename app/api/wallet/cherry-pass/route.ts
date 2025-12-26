@@ -45,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           'Cache-Control': 'no-store',
         },
       });
-    } catch (error) {
+    } catch (error: unknown) {
       asError(error);
       logError('Error generating Cherry Pass', error);
       return NextResponse.json(
