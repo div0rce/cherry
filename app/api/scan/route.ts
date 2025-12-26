@@ -2,22 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
-  safeSolveDecisionForUser,
   type LegacyEngineDecision,
 } from '@/lib/engine';
-import {
-  recordDecisionEvent,
-  simulateSpendAuthority,
-  type SimulatedAuthorityDecision,
-} from '@/lib/authority/simulateSpendAuthority';
+import { safeSolveDecisionForWorld } from '@/lib/engine/run';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
+import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
+import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
 import { resolveScanCategory } from '@/lib/scan-helpers';
 import type { ScanResponseBody } from '@/lib/scan-types';
 import { logError } from '@/lib/logger';
+import { asError } from '@/lib/errors';
 import { ScanRequestSchema } from '@/lib/schemas/scan';
 import { parseJsonBody } from '@/lib/validation';
 import { validateEngineDecision } from '@/lib/engine-invariants';
 import { resolveUserContext } from '@/lib/user-context';
-import { asError } from '@/lib/errors';
 import type { RewardCategory } from '@prisma/client';
 
 const hasText = (value?: string | null): value is string =>
@@ -51,6 +51,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ? Math.floor(body.expectedAmountCents)
         : 0;
 
+    const now = new Date();
+    const nowMs = now.getTime();
+    const world = buildPrismaWorld();
+
     let authorityDecision: SimulatedAuthorityDecision | null = null;
     try {
       const authorityParams = {
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'scan' as const,
         counterfactuals: [],
       };
-      authorityDecision = await simulateSpendAuthority(authorityParams);
+      authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs });
       await recordDecisionEvent({
         userId,
         surface: 'scan',
@@ -70,14 +74,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const ctx = buildEngineContext({
         surface: 'web',
-        now: new Date(),
+        nowMs,
         merchantName: body.merchantName,
         merchantCategoryKey: category,
         mcc: typeof body.mccCode === 'number' ? String(body.mccCode) : null,
         amountCents,
       });
 
-      const engineResult = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
+      const state = await fromPrismaUserToEngineState(userId, nowMs);
+      const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
+        maxCandidates: 64,
+        stateOverride: state,
+        legacyDecisionProvider: runLegacyEngine,
+      });
 
       if (!engineResult.ok) {
         return NextResponse.json(

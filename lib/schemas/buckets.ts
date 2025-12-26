@@ -17,3 +17,13 @@ export const BucketDeleteSchema = z
     bucketId: z.string().min(1),
   })
   .strict();
+
+export const BucketUpdateSchema = z
+  .object({
+    name: z.string().min(1),
+    period: z.enum(['WEEKLY', 'MONTHLY']),
+    budgetAmountCents: CentsSchema.positive(),
+    category: RewardCategorySchema,
+    nowMs: z.number().int().nonnegative(),
+  })
+  .strict();

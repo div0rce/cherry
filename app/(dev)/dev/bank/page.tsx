@@ -7,6 +7,7 @@ import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
 import { ROUTES } from '@/lib/routes';
+import { getServerConfig } from '@/lib/config/store';
 import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
@@ -20,7 +21,8 @@ function formatAmount(cents: number | null | undefined, direction: string): stri
 }
 
 export default async function DevBankPage(): Promise<JSX.Element> {
-  if (process.env.NODE_ENV === 'production') {
+  const serverConfig = getServerConfig();
+  if (serverConfig.environment === 'production') {
     notFound();
   }
   const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.bank);

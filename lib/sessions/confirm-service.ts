@@ -55,7 +55,7 @@ type ConfirmSessionParams = {
   payload: ConfirmSessionPayload;
   mode?: string | null;
   allowZeroPoints?: boolean;
-  now?: Date;
+  now: Date;
 };
 
 export async function confirmRecommendationSession({
@@ -64,7 +64,7 @@ export async function confirmRecommendationSession({
   payload,
   mode = null,
   allowZeroPoints = false,
-  now = new Date(),
+  now,
 }: ConfirmSessionParams): Promise<ConfirmSessionResult> {
   const session = await prisma.recommendationSession.findFirst({
     where: { id: sessionId, userId },
@@ -160,12 +160,10 @@ export async function confirmRecommendationSession({
   if (hasText(session.recommendedBucketId)) {
     freshBucket = await ensureBucketFresh(session.recommendedBucketId, now);
     if (freshBucket !== null && freshBucket.userId !== userId) {
-      logInvariant('Bucket/user mismatch during session confirm', {
-        userId,
-        mode,
-        bucketId: session.recommendedBucketId,
-        bucketUserId: freshBucket.userId,
-      });
+      logInvariant(
+        `Bucket/user mismatch during session confirm (mode=${mode}, bucketId=${session.recommendedBucketId}, bucketUserId=${freshBucket.userId})`,
+        { userId }
+      );
       throw new SessionConfirmError('Bucket not found for user', 404, 'BUCKET_NOT_FOUND');
     }
   }

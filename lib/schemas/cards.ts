@@ -27,6 +27,16 @@ export const CardDeleteSchema = z
   })
   .strict();
 
+export const CardUpdateSchema = z
+  .object({
+    nickname: z.string().min(1),
+    issuer: z.string().min(1),
+    network: z.string().min(1),
+    isCredit: z.boolean(),
+    annualFee: z.number().nullable().optional(),
+  })
+  .strict();
+
 export const RewardRuleCreateSchema = RewardRuleSchema.extend({
   capAmountCents: z.number().int().positive().optional(),
 }).strict();
@@ -36,3 +46,7 @@ export const RewardRuleDeleteSchema = z
     rewardRuleId: z.string().min(1),
   })
   .strict();
+
+export const RewardRuleUpdateSchema = RewardRuleSchema.extend({
+  rewardRuleId: z.string().min(1),
+}).strict();

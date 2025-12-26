@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { assertUserId } from '@/lib/invariants';
 import { isPrismaP2003, logInvariant } from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+import { asError } from '@/lib/errors';
 import { hasText } from '@/lib/text';
 
 export interface AggregatorTransaction {
@@ -60,7 +60,7 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
               city: tx.merchantCity ?? null,
               region: tx.merchantRegion ?? null,
               country: tx.merchantCountry ?? null,
-              updatedAt: new Date(),
+              updatedAt: tx.occurredAt,
             },
             create: {
               userId: tx.userId,
@@ -115,7 +115,6 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in ingestBankTransaction', {
         userId: tx.userId,
-        meta: asLogMeta(err.meta),
         err,
       });
     } else {

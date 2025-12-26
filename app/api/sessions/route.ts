@@ -13,9 +13,12 @@ import { prisma } from '@/lib/prisma';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
-  safeSolveDecisionForUser,
   type LegacyEngineDecision,
 } from '@/lib/engine';
+import { safeSolveDecisionForWorld } from '@/lib/engine/run';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
 import { logError } from '@/lib/logger';
 import { CreateSessionSchema } from '@/lib/schemas/sessions';
 import { parseJsonBody } from '@/lib/validation';
@@ -68,17 +71,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       typeof body.mccCode === 'number' && Number.isInteger(body.mccCode)
         ? body.mccCode
         : null;
+    const requestNow = new Date();
+    const requestNowMs = requestNow.getTime();
+    const world = buildPrismaWorld();
 
     const ctxForEngine = buildEngineContext({
       surface: 'web',
-      now: new Date(),
+      nowMs: requestNowMs,
       merchantName,
       merchantCategoryKey: categoryHint ?? null,
       mcc: mccCode != null ? String(mccCode) : null,
       amountCents,
     });
 
-    const engineResult = await safeSolveDecisionForUser(userId, ctxForEngine, { maxCandidates: 64 });
+    const state = await fromPrismaUserToEngineState(userId, requestNowMs);
+    const engineResult = await safeSolveDecisionForWorld(world, userId, ctxForEngine, {
+      maxCandidates: 64,
+      stateOverride: state,
+      legacyDecisionProvider: runLegacyEngine,
+    });
 
     if (!engineResult.ok) {
       return NextResponse.json(
@@ -124,7 +135,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const decision: LegacyEngineDecision = mappedDecision;
     validateEngineDecision(decision);
 
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAt = new Date(requestNow.getTime() + 15 * 60 * 1000);
     const currency = typeof body.currency === 'string' && body.currency.trim().length > 0
       ? body.currency.trim().toUpperCase()
       : 'USD';
@@ -193,6 +204,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   let userId: string | null = null;
+  const requestNow = new Date();
 
   try {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
@@ -236,15 +248,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const fromDate = hasText(fromParam) ? new Date(fromParam) : null;
     const toDate = hasText(toParam) ? new Date(toParam) : null;
 
-    const { items, hasMore } = await fetchSessionSummaries(userId, {
-      limit,
-      offset,
-      status: (statusParam as 'all' | 'active' | 'expired' | 'confirmed') ?? 'all',
-      verdict: verdicts.length > 0 ? (verdicts as RecommendationSession['verdict'][]) : null,
-      from: fromDate,
-      to: toDate,
-      source: sources ?? null,
-    });
+    const { items, hasMore } = await fetchSessionSummaries(
+      userId,
+      {
+        limit,
+        offset,
+        status: (statusParam as 'all' | 'active' | 'expired' | 'confirmed') ?? 'all',
+        verdict: verdicts.length > 0 ? (verdicts as RecommendationSession['verdict'][]) : null,
+        from: fromDate,
+        to: toDate,
+        source: sources ?? null,
+      },
+      { now: requestNow }
+    );
 
     return NextResponse.json({
       items,
@@ -255,6 +271,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
+    asError(error);
     logError('Error in /api/sessions GET', error);
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
   }

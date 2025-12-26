@@ -1,5 +1,4 @@
 import type { JSX } from 'react';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ButtonLink } from '@/components/ui/Button';
 import { Card } from '@/components/ui/card';
@@ -12,7 +11,6 @@ import { getCurrentUserId } from '@/lib/auth';
 import { ROUTES } from '@/lib/routes';
 import { DeleteBucketButton, AddBucketForm } from './client';
 import { asError } from '@/lib/errors';
-import { getBaseUrl } from '@/lib/base-url';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -38,20 +36,11 @@ function formatCents(cents: number | null | undefined) {
 }
 
 async function fetchBuckets(): Promise<Bucket[]> {
-  const baseUrl = getBaseUrl();
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore
-    .getAll()
-    .map(({ name, value }) => `${name}=${value}`)
-    .join('; ');
-  const init: RequestInit = {
-    cache: 'no-store',
-  };
-  if (hasText(cookieHeader)) {
-    init.headers = { cookie: cookieHeader };
-  }
-  const res = await fetch(`${baseUrl}/api/buckets`, init);
+  const res = await fetch('/api/buckets', { cache: 'no-store' });
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('UNAUTHORIZED');
+    }
     const message = (await res.text()).trim();
     throw new Error(hasText(message) ? message : 'Failed to load buckets');
   }
@@ -73,6 +62,9 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
     buckets = await fetchBuckets();
   } catch (err) {
     asError(err);
+    if (err.message === 'UNAUTHORIZED') {
+      redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
+    }
     error = err.message;
   }
 

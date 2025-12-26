@@ -64,7 +64,10 @@ export class RegimeBucketTracker {
   }
 
   apply(tx: ClassifiedBankTransaction): AppliedBucketResult {
-    const date = tx.postedAt ?? tx.occurredAt ?? new Date();
+    const date = tx.postedAt ?? tx.occurredAt;
+    if (date == null) {
+      return { regimeId: null, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
+    }
     const regimeId = this.findRegimeIdForDate(date);
     if (regimeId === null || regimeId === undefined || regimeId === '') {
       return { regimeId: null, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };

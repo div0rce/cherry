@@ -7,6 +7,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Alert } from '@/components/ui/alert';
+import { getServerConfig } from '@/lib/config/store';
 import { asError } from '@/lib/errors';
 
 const hasText = (value?: string | null): value is string =>
@@ -34,6 +35,7 @@ function formatTimestamp(date: Date): string {
 
 export default async function SpendHistoryPage(): Promise<JSX.Element> {
   const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.history);
+  const serverConfig = getServerConfig();
 
   let rows: UnifiedActivityRow[] = [];
   let error: string | null = null;
@@ -134,7 +136,7 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
                           <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#dbe4ff]">
                             {(row.source ?? 'unknown').replace('_', ' ').toLowerCase()}
                           </span>
-                          {process.env.NODE_ENV !== 'production' && hasText(row.providerSource) ? (
+                          {serverConfig.enableDevTools && hasText(row.providerSource) ? (
                             <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(255,77,109,0.15)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#ffe6ee]">
                               {row.providerSource}
                             </span>

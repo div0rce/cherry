@@ -5,6 +5,7 @@ import { getAutopilotDecisionForUserSwipe } from '@/lib/engine';
 import { resolveUserContext } from '@/lib/user-context';
 import { logGuardrailEvent } from '@/lib/log';
 import { parseJsonBody } from '@/lib/validation';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
 import { asError } from '@/lib/errors';
 
 const AutopilotRequestSchema = z
@@ -50,12 +51,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderBy: { createdAt: 'asc' },
     });
     const cardUniverseIds = cards.map((card) => card.id);
+    const nowMs = Date.now();
+    const world = buildPrismaWorld();
 
-    const decision = await getAutopilotDecisionForUserSwipe({
+    const decision = await getAutopilotDecisionForUserSwipe(world, {
       userId,
       merchant: merchant.trim(),
       amountCents,
       cardUniverseIds,
+      nowMs,
     });
 
     const cardName =

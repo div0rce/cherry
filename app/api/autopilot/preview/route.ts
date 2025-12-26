@@ -10,17 +10,19 @@ import {
 import { resolveUserContext } from '@/lib/user-context';
 import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
 import { parseJsonBody } from '@/lib/validation';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
 import { asError } from '@/lib/errors';
 
 // Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const startedAt = Date.now();
+  const requestStartedAt = new Date();
+  const requestStartedMs = requestStartedAt.getTime();
   let userId: string | null = null;
   let previewStatusLabel: 'ok' | 'blocked' | 'fallback' | 'invalid' | 'none' = 'none';
 
   const respond = (status: number, body: Record<string, unknown>): NextResponse => {
-    const durationMs = Date.now() - startedAt;
+    const durationMs = new Date().getTime() - requestStartedMs;
     incrementCounter('autopilot_preview_requests_total', {
       http_status: status,
       preview_status: previewStatusLabel,
@@ -48,10 +50,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const normalizedInput: AutopilotPreviewEngineContext = {
       ...parsedInput.data,
-      occurredAt: parsedInput.data.occurredAt ?? new Date().toISOString(),
+      occurredAt: parsedInput.data.occurredAt ?? requestStartedAt.toISOString(),
     };
 
-    const preview = await getAutopilotPreview(userContext.userId, normalizedInput);
+    const world = buildPrismaWorld();
+    const preview = await getAutopilotPreview(world, userContext.userId, normalizedInput, {
+      now: requestStartedAt,
+    });
     const validatedPreview = AutopilotPreviewOutputSchema.safeParse(preview);
     if (!validatedPreview.success) {
       previewStatusLabel = 'invalid';
@@ -98,21 +103,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return respond(200, validatedPreview.data);
-  } catch (err) {
-    asError(err);
-    if (err instanceof AutopilotServiceError) {
+  } catch (caught) {
+    asError(caught);
+    if (caught instanceof AutopilotServiceError) {
       previewStatusLabel = 'invalid';
       logGuardrailEvent({
         surface: 'autopilot',
         userId,
-        kind: err.status >= 500 ? 'ENGINE_ERROR' : 'INPUT_INVALID',
-        severity: err.status >= 500 ? 'soft' : 'hard',
-        reason: err.code,
+        kind: caught.status >= 500 ? 'ENGINE_ERROR' : 'INPUT_INVALID',
+        severity: caught.status >= 500 ? 'soft' : 'hard',
+        reason: caught.code,
       });
-      return respond(err.status, { error: err.message, code: err.code });
+      return respond(caught.status, { error: caught.message, code: caught.code });
     }
 
-    if (err.message.includes('Unauthorized')) {
+    if (caught.message.includes('Unauthorized')) {
       previewStatusLabel = 'invalid';
       return respond(401, { error: 'Unauthorized', code: 'UNAUTHORIZED' });
     }
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot preview failed unexpectedly',
-      data: { userId, error: err.message },
+      data: { userId, error: caught.message },
     });
     return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
   }

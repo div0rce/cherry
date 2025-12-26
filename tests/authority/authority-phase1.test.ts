@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/client';
 import {
-  simulateSpendAuthority,
-  type AuthorityPrismaClient,
+  simulateSpendAuthorityFromSnapshot,
+  type AuthoritySnapshot,
 } from '@/lib/authority/simulateSpendAuthority';
 import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from '@/lib/authority/reasonCodes';
+import { getServerConfig } from '@/lib/config/store';
 
-const fixedNow = new Date('2024-01-02T00:00:00Z');
+const fixedNowMs = new Date('2024-01-02T00:00:00Z').getTime();
+const digest = {
+  sha256: (payload: string) => crypto.createHash('sha256').update(payload).digest('hex'),
+};
 
 type StubOptions = {
   dailyStateStatus?: DailyStateStatus;
@@ -14,107 +19,88 @@ type StubOptions = {
   categoryPreferenceMode?: CategoryBudgetMode | null;
   pendingSessions?: number;
   pendingPoints?: number;
-  buckets?: Array<Record<string, unknown>>;
+  buckets?: AuthoritySnapshot['buckets'];
 };
 
-function buildBucket(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  const start = new Date('2024-01-01T00:00:00Z');
-  const end = new Date('2024-02-01T00:00:00Z');
+function buildBucket(
+  overrides: Partial<AuthoritySnapshot['buckets'][number]> = {}
+): AuthoritySnapshot['buckets'][number] {
   return {
     id: 'bucket-1',
-    userId: 'user-1',
-    name: 'Dining',
-    period: 'MONTHLY',
     budgetAmount: 10_000,
-    currentAmount: 9_000,
-    spentCents: 1_000,
+    remainingCents: 9_000,
     strictMode: true,
     category: RewardCategory.DINING,
-    periodStart: start,
-    periodEnd: end,
-    lastResetAt: null,
-    simulations: [],
-    recommendationSessions: [],
-    createdAt: start,
-    updatedAt: start,
+    periodEndMs: new Date('2024-02-01T00:00:00Z').getTime(),
     ...overrides,
   };
 }
 
-function buildClient(options: StubOptions = {}): AuthorityPrismaClient {
+function buildSnapshot(options: StubOptions = {}): AuthoritySnapshot {
   const buckets = options.buckets ?? [buildBucket()];
   return {
-    dailyState: {
-      findFirst: async () =>
-        options.dailyStateStatus !== undefined
-          ? {
-              status: options.dailyStateStatus,
-              safeToSpendCents:
-                options.safeToSpendCents === undefined ? 15_000 : options.safeToSpendCents,
-              inputsVersion: 'ds-hash',
-            }
-          : null,
-    },
-    bucket: {
-      findMany: async () => buckets,
-    },
-    categoryPreference: {
-      findUnique: async () =>
-        options.categoryPreferenceMode !== undefined
-          ? { mode: options.categoryPreferenceMode }
-          : null,
-    },
-    recommendationSession: {
-      count: async () => options.pendingSessions ?? 0,
-    },
-    cherryPointLedger: {
-      aggregate: async () => ({
-        _sum: { points: options.pendingPoints ?? 0 },
-      }),
-    },
-  } as unknown as AuthorityPrismaClient;
+    dailyState:
+      options.dailyStateStatus !== undefined
+        ? {
+            status: options.dailyStateStatus,
+            safeToSpendCents:
+              options.safeToSpendCents === undefined ? 15_000 : options.safeToSpendCents,
+            inputsVersion: 'ds-hash',
+          }
+        : null,
+    buckets,
+    categoryPreferenceMode:
+      options.categoryPreferenceMode !== undefined ? options.categoryPreferenceMode : null,
+    pendingSessions: options.pendingSessions ?? 0,
+    pendingPoints: options.pendingPoints ?? 0,
+  };
 }
 
 async function scenarioDecision(overrides: Partial<StubOptions> = {}, amountCents = 2_000) {
-  const client = buildClient({
+  const snapshot = buildSnapshot({
     dailyStateStatus: DailyStateStatus.SAFE,
     ...overrides,
   });
-  return simulateSpendAuthority(
+  return simulateSpendAuthorityFromSnapshot(
     {
       userId: 'user-1',
       amountCents,
       category: RewardCategory.DINING,
       surface: 'simulate',
     },
-    { prisma: client, now: fixedNow }
+    {
+      nowMs: fixedNowMs,
+      snapshot,
+      engineVersion: getServerConfig().engineVersion,
+      digest,
+    }
   );
 }
 
 async function testReasonExhaustiveness() {
-  const expectations: Array<{ reason: AuthorityReason; client: AuthorityPrismaClient; amount?: number }> =
+  const expectations: Array<{ reason: AuthorityReason; snapshot: AuthoritySnapshot; amount?: number }> =
     [
       {
         reason: AuthorityReason.CATEGORY_RESTRICTED,
-        client: buildClient({
+        snapshot: buildSnapshot({
           dailyStateStatus: DailyStateStatus.SAFE,
           categoryPreferenceMode: CategoryBudgetMode.UNBUDGETED,
         }),
       },
       {
         reason: AuthorityReason.DAILY_STATE_RISKY,
-        client: buildClient({ dailyStateStatus: DailyStateStatus.RISKY }),
+        snapshot: buildSnapshot({ dailyStateStatus: DailyStateStatus.RISKY }),
       },
       {
         reason: AuthorityReason.BUCKET_EXHAUSTED,
-        client: buildClient({
+        snapshot: buildSnapshot({
           dailyStateStatus: DailyStateStatus.SAFE,
-          buckets: [buildBucket({ budgetAmount: 1_000, spentCents: 1_000 })],
+          buckets: [buildBucket({ budgetAmount: 1_000, remainingCents: 0 })],
         }),
       },
       {
         reason: AuthorityReason.VERIFICATION_PENDING,
-        client: buildClient({
+        snapshot: buildSnapshot({
           dailyStateStatus: DailyStateStatus.SAFE,
           pendingSessions: 1,
           pendingPoints: 50,
@@ -122,31 +108,36 @@ async function testReasonExhaustiveness() {
       },
       {
         reason: AuthorityReason.ESSENTIAL_BUFFER_LOW,
-        client: buildClient({
+        snapshot: buildSnapshot({
           dailyStateStatus: DailyStateStatus.TIGHT,
           safeToSpendCents: 1_500,
         }),
       },
       {
         reason: AuthorityReason.AMOUNT_SPIKE,
-        client: buildClient({
+        snapshot: buildSnapshot({
           dailyStateStatus: DailyStateStatus.SAFE,
           safeToSpendCents: 12_000,
-          buckets: [buildBucket({ budgetAmount: 20_000, spentCents: 2_000 })],
+          buckets: [buildBucket({ budgetAmount: 20_000, remainingCents: 18_000 })],
         }),
         amount: 15_000,
       },
     ];
 
-  for (const { reason, client, amount } of expectations) {
-    const decision = await simulateSpendAuthority(
+  for (const { reason, snapshot, amount } of expectations) {
+    const decision = await simulateSpendAuthorityFromSnapshot(
       {
         userId: 'user-1',
         amountCents: amount ?? 2_000,
         category: RewardCategory.DINING,
         surface: 'simulate',
       },
-      { prisma: client, now: fixedNow }
+      {
+        nowMs: fixedNowMs,
+        snapshot,
+        engineVersion: getServerConfig().engineVersion,
+        digest,
+      }
     );
     const codes = decision.reasons.map((r) => r.code);
     assert.ok(
@@ -158,7 +149,7 @@ async function testReasonExhaustiveness() {
 
 async function testSeverityLattice() {
   const decision = await scenarioDecision({
-    buckets: [buildBucket({ budgetAmount: 2_000, spentCents: 2_000 })],
+    buckets: [buildBucket({ budgetAmount: 2_000, remainingCents: 0 })],
   });
 
   const maxSeverity = decision.reasons.reduce((acc, r) => Math.max(acc, r.severity), 0);
@@ -170,7 +161,7 @@ async function testSeverityLattice() {
     assert.equal(counterfactual.severity, cfMaxSeverity, 'Counterfactual severity must match reasons');
   }
 
-  const reducedAmountDecision = await simulateSpendAuthority(
+  const reducedAmountDecision = await simulateSpendAuthorityFromSnapshot(
     {
       userId: 'user-1',
       amountCents: 20_000,
@@ -179,12 +170,14 @@ async function testSeverityLattice() {
       counterfactuals: [{ amountCents: 5_000 }],
     },
     {
-      prisma: buildClient({
+      snapshot: buildSnapshot({
         dailyStateStatus: DailyStateStatus.SAFE,
         safeToSpendCents: 15_000,
-        buckets: [buildBucket({ budgetAmount: 25_000, spentCents: 2_000 })],
+        buckets: [buildBucket({ budgetAmount: 25_000, remainingCents: 23_000 })],
       }),
-      now: fixedNow,
+      nowMs: fixedNowMs,
+      engineVersion: getServerConfig().engineVersion,
+      digest,
     }
   );
 
@@ -197,7 +190,7 @@ async function testSeverityLattice() {
 }
 
 async function testDeterminismAndHashing() {
-  const client = buildClient();
+  const snapshot = buildSnapshot();
   const baseParams = {
     userId: 'user-1',
     amountCents: 2_500,
@@ -205,25 +198,52 @@ async function testDeterminismAndHashing() {
     surface: 'simulate' as const,
   };
 
-  const first = await simulateSpendAuthority(baseParams, { prisma: client, now: fixedNow });
-  const second = await simulateSpendAuthority(baseParams, { prisma: client, now: fixedNow });
+  const first = await simulateSpendAuthorityFromSnapshot(baseParams, {
+    snapshot,
+    nowMs: fixedNowMs,
+    engineVersion: getServerConfig().engineVersion,
+    digest,
+  });
+  const second = await simulateSpendAuthorityFromSnapshot(baseParams, {
+    snapshot,
+    nowMs: fixedNowMs,
+    engineVersion: getServerConfig().engineVersion,
+    digest,
+  });
   assert.deepEqual(first, second, 'Same inputs must yield identical decisions');
+  assert.equal(first.inputsVersion.length, 64, 'inputsVersion should be a sha256 hex string');
+  assert.match(first.inputsVersion, /^[0-9a-f]{64}$/);
 
-  const amountChanged = await simulateSpendAuthority(
+  const amountChanged = await simulateSpendAuthorityFromSnapshot(
     { ...baseParams, amountCents: baseParams.amountCents + 1 },
-    { prisma: client, now: fixedNow }
+    {
+      snapshot,
+      nowMs: fixedNowMs,
+      engineVersion: getServerConfig().engineVersion,
+      digest,
+    }
   );
   assert.notEqual(first.inputsVersion, amountChanged.inputsVersion, 'Amount change must alter hash');
 
-  const categoryChanged = await simulateSpendAuthority(
+  const categoryChanged = await simulateSpendAuthorityFromSnapshot(
     { ...baseParams, category: RewardCategory.GROCERIES },
-    { prisma: client, now: fixedNow }
+    {
+      snapshot,
+      nowMs: fixedNowMs,
+      engineVersion: getServerConfig().engineVersion,
+      digest,
+    }
   );
   assert.notEqual(first.inputsVersion, categoryChanged.inputsVersion, 'Category change must alter hash');
 
-  const surfaceChanged = await simulateSpendAuthority(
+  const surfaceChanged = await simulateSpendAuthorityFromSnapshot(
     { ...baseParams, surface: 'scan' },
-    { prisma: client, now: fixedNow }
+    {
+      snapshot,
+      nowMs: fixedNowMs,
+      engineVersion: getServerConfig().engineVersion,
+      digest,
+    }
   );
   assert.notEqual(first.inputsVersion, surfaceChanged.inputsVersion, 'Surface change must alter hash');
 }

@@ -27,7 +27,7 @@ function buildStubState(overrides = {}) {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: 10_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -82,7 +82,7 @@ function buildStubState(overrides = {}) {
 function buildStubContext(overrides = {}) {
   return buildEngineContext({
     surface: 'web',
-    now: new Date('2024-01-01T00:00:00Z'),
+    nowMs: new Date('2024-01-01T00:00:00Z').getTime(),
     merchantCategoryKey: 'DINING',
     amountCents: 1000,
     ...overrides,
@@ -95,6 +95,64 @@ async function testSolveDecisionSorts() {
   const result = await solveDecision(state, ctx);
 
   assert.equal(result.decisions[0]?.action.cardId, 'card-strong');
+}
+
+async function testDeterministicOrderingForEqualScores() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-b',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'B Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-b',
+            cardId: 'card-b',
+            categoryKey: 'DINING',
+            rateType: 'POINTS_PER_DOLLAR',
+            rateValue: 1,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+      {
+        id: 'card-a',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'A Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-a',
+            cardId: 'card-a',
+            categoryKey: 'DINING',
+            rateType: 'POINTS_PER_DOLLAR',
+            rateValue: 1,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext({ amountCents: 1_000 });
+  const result = await solveDecision(state, ctx);
+  const useCardDecisions = result.decisions.filter((d) => d.action.type === 'USE_CARD');
+
+  assert.ok(useCardDecisions.length >= 2);
+  assert.equal(useCardDecisions[0]?.action.cardId, 'card-a');
+  assert.equal(useCardDecisions[1]?.action.cardId, 'card-b');
 }
 
 async function testSolveDecisionValidation() {
@@ -139,6 +197,7 @@ async function testSafeSolveDecisionFailure() {
   const outcome = await safeSolveDecisionForUser('user-1', ctx, {
     stateOverride: state,
     includeLegacyDecision: false,
+    runtime: { enableLogs: false },
   });
 
   assert.equal(outcome.ok, false);
@@ -228,7 +287,7 @@ function testGenerateCandidatesAddsAdvancedActions() {
     ],
     cash: {
       liquidCents: 250_000,
-      nextPaycheckDate: new Date('2024-01-15T00:00:00Z'),
+      nextPaycheckDateMs: new Date('2024-01-15T00:00:00Z').getTime(),
       nextPaycheckNetCents: null,
     },
   });
@@ -257,7 +316,7 @@ function testPaydownGuardrailBlocksExcess() {
         dueDayOfMonth: 10,
       },
     ],
-    cash: { liquidCents: 2_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: 2_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
   });
   const ctx = buildStubContext({ amountCents: 10_000 });
   const action = { type: 'PAY_DOWN_DEBT', debtId: 'debt-1', paydownAmountCents: 5_000 };
@@ -294,7 +353,7 @@ async function testCompositeActionImprovesDebtRelief() {
     ],
     cash: {
       liquidCents: 120_000,
-      nextPaycheckDate: new Date('2024-01-15T00:00:00Z'),
+      nextPaycheckDateMs: new Date('2024-01-15T00:00:00Z').getTime(),
       nextPaycheckNetCents: null,
     },
   });
@@ -374,7 +433,7 @@ async function testSolveDecisionRespondsToProfiles() {
         dueDayOfMonth: 5,
       },
     ],
-    cash: { liquidCents: 20_000, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: 20_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
   });
 
   const ctx = buildStubContext({ amountCents: 10_000, surface: 'web' });
@@ -404,6 +463,7 @@ async function testSolveDecisionRespondsToProfiles() {
 
 async function run() {
   await testSolveDecisionSorts();
+  await testDeterministicOrderingForEqualScores();
   await testSolveDecisionValidation();
   await testSafeSolveDecisionSuccess();
   await testSafeSolveDecisionFailure();

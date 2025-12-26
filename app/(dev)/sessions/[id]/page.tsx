@@ -41,7 +41,11 @@ export default async function SessionDetailPage({
     return null;
   }
 
-  const now = new Date();
+  const now =
+    session.expiresAt ??
+    session.updatedAt ??
+    session.createdAt ??
+    new Date(Date.UTC(1970, 0, 1));
   const status = deriveDisplayStatus(session, session.ledgerEntries ?? [], now);
   const pointsPosted =
     session.ledgerEntries

@@ -15,9 +15,11 @@ import type { AutopilotDecision } from '@/lib/engine/public-types';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '@/lib/engine/public';
 import { logInvariantViolation } from '@/lib/log';
 import { prisma } from '@/lib/prisma';
-import { simulateSpendAuthority, recordDecisionEvent } from '@/lib/authority/simulateSpendAuthority';
+import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
+import type { World } from '@/lib/adapters/world';
 import { resolveScanCategory } from '@/lib/scan-helpers';
 import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
+import { asError } from '@/lib/errors';
 import {
   computeBucketBalance,
   computeBucketBalanceFromNumbers,
@@ -83,9 +85,8 @@ type EvaluatedAutopilotContext = {
 
 const ENGINE_TIMEOUT_MS = 1500;
 
-function parseOccurredAt(raw?: string): Date {
-  if (raw === undefined) return new Date();
-  const date = new Date(raw);
+function parseOccurredAt(raw: string | undefined, fallback: Date): Date {
+  const date = raw === undefined ? fallback : new Date(raw);
   if (!Number.isFinite(date.getTime())) {
     throw new AutopilotServiceError('Invalid occurredAt timestamp', 400, 'INVALID_OCCURRED_AT');
   }
@@ -215,9 +216,10 @@ async function buildBucketImpact(
 }
 
 async function evaluateAutopilot(
+  world: World,
   userId: string,
   input: AutopilotPreviewEngineContext,
-  options: { timeoutMs?: number } = {}
+  options: { timeoutMs?: number; now: Date }
 ): Promise<EvaluatedAutopilotContext> {
   if (!hasText(userId)) {
     throw new AutopilotServiceError('User is required', 400, 'INVALID_USER');
@@ -240,7 +242,7 @@ async function evaluateAutopilot(
     throw new AutopilotServiceError('Amount must be positive', 400, 'INVALID_AMOUNT');
   }
 
-  const occurredAt = parseOccurredAt(input.occurredAt);
+  const occurredAt = parseOccurredAt(input.occurredAt, options.now);
 
   const cards = await prisma.card.findMany({
     where: { userId },
@@ -251,11 +253,12 @@ async function evaluateAutopilot(
 
   let decision: AutopilotDecision;
   try {
-    const engineCall = runEngineAutopilot({
+    const engineCall = runEngineAutopilot(world, {
       userId,
       merchant,
       amountCents,
       cardUniverseIds,
+      nowMs: occurredAt.getTime(),
     });
     decision =
       typeof options.timeoutMs === 'number'
@@ -270,7 +273,7 @@ async function evaluateAutopilot(
       'Unable to evaluate Autopilot right now',
       500,
       'ENGINE_ERROR',
-      error.message
+      error instanceof Error ? error.message : 'UNKNOWN_ENGINE_ERROR'
     );
   }
 
@@ -358,6 +361,7 @@ async function findOrCreateAutopilotSession(options: {
   evaluation: EvaluatedAutopilotContext;
   userId: string;
   resolvedCategory: RewardCategory;
+  now: Date;
 }): Promise<{ id: string; recommendedBucketId: string | null }> {
   const { evaluation, userId, resolvedCategory } = options;
 
@@ -410,7 +414,7 @@ async function findOrCreateAutopilotSession(options: {
           : RecommendationVerdict.HEALTHY,
       cherryPointsOffered: 0,
       status: RecommendationStatus.RECOMMENDED,
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      expiresAt: new Date(options.now.getTime() + 15 * 60 * 1000),
       verifiedAt: null,
       rejectedAt: null,
       budgetVerdict,
@@ -476,19 +480,31 @@ function computeRewardStrengthLevel(
 }
 
 export async function getAutopilotPreview(
+  world: World,
   userId: string,
-  input: AutopilotPreviewEngineContext
+  input: AutopilotPreviewEngineContext,
+  options: { now: Date }
 ): Promise<AutopilotPreviewOutput> {
   // Preview: read-only engine wrapper (no bucket/session/ledger writes). Contract documented in docs/autopilot-master-spec.md.
-  const startedAt = Date.now();
-  const evaluation = await evaluateAutopilot(userId, input, { timeoutMs: ENGINE_TIMEOUT_MS });
-  const { __authorityPure: _authorityBrand, ...authorityDecision } = await simulateSpendAuthority({
-    userId,
-    amountCents: evaluation.amountCents,
-    category: evaluation.resolvedCategory,
-    surface: 'autopilot',
-    counterfactuals: [],
+  const evaluation = await evaluateAutopilot(world, userId, input, {
+    timeoutMs: ENGINE_TIMEOUT_MS,
+    now: options.now,
   });
+  // Invariant: authority time represents the economic event time,
+  // which must never be after request-time.
+  if (evaluation.occurredAt.getTime() > options.now.getTime()) {
+    throw new Error('Invariant violation: occurredAt > request now');
+  }
+  const { __authorityPure: _authorityBrand, ...authorityDecision } = await simulateSpendAuthority(
+    {
+      userId,
+      amountCents: evaluation.amountCents,
+      category: evaluation.resolvedCategory,
+      surface: 'autopilot',
+      counterfactuals: [],
+    },
+    { nowMs: evaluation.occurredAt.getTime() }
+  );
   void _authorityBrand;
   await recordDecisionEvent({
     userId,
@@ -548,22 +564,29 @@ export async function getAutopilotPreview(
     });
   }
 
-  const durationMs = Date.now() - startedAt;
+  const durationMs = 0;
   observeDuration('autopilot_preview_total_ms', durationMs, { status: parsed.data.status });
 
   return parsed.data;
 }
 
 export async function commitAutopilotDecisionV2(
+  world: World,
   userId: string,
-  input: AutopilotCommitInput
+  input: AutopilotCommitInput,
+  options: { now: Date }
 ): Promise<AutopilotCommitResult> {
-  const evaluation = await evaluateAutopilot(userId, {
-    merchant: input.merchant,
-    amountCents: input.amountCents,
-    occurredAt: input.occurredAt,
-    category: input.category ?? ('OTHER' as AutopilotRewardCategory),
-  });
+  const evaluation = await evaluateAutopilot(
+    world,
+    userId,
+    {
+      merchant: input.merchant,
+      amountCents: input.amountCents,
+      occurredAt: input.occurredAt,
+      category: input.category ?? ('OTHER' as AutopilotRewardCategory),
+    },
+    { now: options.now }
+  );
 
   if (evaluation.decisionId !== input.decisionId) {
     throw new AutopilotServiceError('Decision fingerprint mismatch', 400, 'DECISION_MISMATCH');
@@ -613,6 +636,7 @@ export async function commitAutopilotDecisionV2(
     evaluation,
     userId,
     resolvedCategory: evaluation.resolvedCategory,
+    now: options.now,
   });
 
   try {
@@ -663,15 +687,22 @@ export async function commitAutopilotDecisionV2(
 }
 
 export async function commitAutopilotDecision(
+  world: World,
   userId: string,
-  input: AutopilotCommitInput
+  input: AutopilotCommitInput,
+  options: { now: Date }
 ): Promise<AutopilotCommitResult> {
-  const evaluation = await evaluateAutopilot(userId, {
-    merchant: input.merchant,
-    amountCents: input.amountCents,
-    occurredAt: input.occurredAt,
-    category: input.category ?? ('OTHER' as AutopilotRewardCategory),
-  });
+  const evaluation = await evaluateAutopilot(
+    world,
+    userId,
+    {
+      merchant: input.merchant,
+      amountCents: input.amountCents,
+      occurredAt: input.occurredAt,
+      category: input.category ?? ('OTHER' as AutopilotRewardCategory),
+    },
+    { now: options.now }
+  );
 
   if (evaluation.decisionId !== input.decisionId) {
     throw new AutopilotServiceError('Decision fingerprint mismatch', 400, 'DECISION_MISMATCH');

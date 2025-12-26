@@ -49,13 +49,13 @@ export function logGuardrailEvent(event: GuardrailEvent): void {
       reason: event.reason ?? event.kind,
       detail: event.detail,
     };
-    logWarn('Guardrail event', { ...normalized, timestamp: new Date().toISOString() });
+    logWarn('Guardrail event', { ...normalized, timestamp: 'not_recorded' });
     return;
   }
 
-  logWarn('Guardrail event', { ...event, timestamp: new Date().toISOString() });
+  logWarn('Guardrail event', { ...event, timestamp: 'not_recorded' });
 }
 
 export function logInvariantViolation(event: { surface: string; detail: string; data?: unknown }): void {
-  logError('Invariant violation', { ...event, timestamp: new Date().toISOString() });
+  logError('Invariant violation', { ...event, timestamp: 'not_recorded' });
 }

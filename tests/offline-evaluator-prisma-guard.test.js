@@ -1,31 +1,45 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const assert = require('node:assert/strict');
-const { prisma } = require('../lib/prisma');
-const { assertOfflineEvaluatorModelsReady } = require('../lib/evaluator/prisma-safe');
+
+function mockPrismaWithoutOfflineModels(prismaModulePath) {
+  const exports = { prisma: {} };
+  require.cache[prismaModulePath] = {
+    id: prismaModulePath,
+    filename: prismaModulePath,
+    loaded: true,
+    exports,
+  };
+  return exports.prisma;
+}
 
 async function run() {
-  const originalIncome = prisma.historicalIncomeRegime;
-  const originalBucket = prisma.historicalBucketTemplate;
+  const prismaModulePath = require.resolve('../lib/prisma');
+  const helperPath = require.resolve('../lib/evaluator/prisma-safe');
+  const originalPrismaModule = require.cache[prismaModulePath];
+  const originalHelperModule = require.cache[helperPath];
 
+  delete require.cache[helperPath];
+  mockPrismaWithoutOfflineModels(prismaModulePath);
+
+  let threw = false;
   try {
-    // @ts-expect-error test mutation
-    prisma.historicalIncomeRegime = undefined;
-    // @ts-expect-error test mutation
-    prisma.historicalBucketTemplate = undefined;
+    const { assertOfflineEvaluatorModelsReady } = require('../lib/evaluator/prisma-safe');
+    await assertOfflineEvaluatorModelsReady();
+  } catch {
+    threw = true;
+  }
+  assert.ok(threw, 'expected guard to throw when offline evaluator models are missing on the client');
 
-    let threw = false;
-    try {
-      await assertOfflineEvaluatorModelsReady();
-    } catch {
-      threw = true;
-    }
-    assert.ok(threw, 'expected guard to throw when offline evaluator models are missing on the client');
-  } finally {
-    // restore for other tests
-    // @ts-expect-error restore
-    prisma.historicalIncomeRegime = originalIncome;
-    // @ts-expect-error restore
-    prisma.historicalBucketTemplate = originalBucket;
+  // restore original modules for other tests
+  if (originalPrismaModule) {
+    require.cache[prismaModulePath] = originalPrismaModule;
+  } else {
+    delete require.cache[prismaModulePath];
+  }
+  if (originalHelperModule) {
+    require.cache[helperPath] = originalHelperModule;
+  } else {
+    delete require.cache[helperPath];
   }
 
   console.warn('offline-evaluator-prisma-guard: ok');

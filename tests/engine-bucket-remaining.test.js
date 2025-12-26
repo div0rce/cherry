@@ -30,7 +30,7 @@ async function testUsesRemainingNotLimit() {
       soft: { avoidInterest: false, avoidNewDebt: false },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -63,7 +63,7 @@ async function testUsesRemainingNotLimit() {
 
   const ctx = buildEngineContext({
     surface: 'web',
-    now: new Date('2024-01-01T00:00:00Z'),
+    nowMs: new Date('2024-01-01T00:00:00Z').getTime(),
     merchantCategoryKey: 'DINING',
     amountCents: 5_000,
   });

@@ -1,19 +1,10 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-import { createHash } from 'crypto';
-import {
-  CategoryBudgetMode,
-  CherryPointLedgerStatus,
-  DailyStateStatus,
-  RewardCategory,
-  VerificationStatus,
-  type Bucket,
-  type CategoryPreference,
-} from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { logInvariantViolation } from '@/lib/log';
-import { applyInMemoryRollover } from '@/lib/buckets/periods';
-import { toBucketRuntime, type BucketRuntime } from '@/lib/buckets-runtime';
-import { AuthorityReason } from '@/lib/authority/reasonCodes';
+import type { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '../enums.ts';
+import type { Digest } from '../adapters/digest.ts';
+import type { Logger } from '../adapters/logger.ts';
+import { assertPolicyTotal } from '../policy/assert-total.ts';
+import type { AuthorityVerdict } from '../policy/verdicts.ts';
+import { AuthorityReason } from './reasonCodes.ts';
 import {
   authorityPureBrand,
   authorityVersion,
@@ -21,15 +12,9 @@ import {
   type AuthorityPure,
   type AuthoritySurface,
   type AuthorityVersion,
-} from '@/lib/authority/config';
+} from './config.ts';
 
-const ENGINE_VERSION =
-  process.env['VERCEL_GIT_COMMIT_SHA'] ??
-  process.env['COMMIT_SHA'] ??
-  process.env['NEXT_PUBLIC_SITE_VERSION'] ??
-  null;
-
-export type SimulatedAuthorityVerdict = 'ALLOW_SIMULATED' | 'WARN_SIMULATED' | 'FLAG_SIMULATED';
+export type SimulatedAuthorityVerdict = AuthorityVerdict;
 
 export type SimulatedAuthorityReason = {
   code: AuthorityReason;
@@ -72,28 +57,46 @@ export type CounterfactualAuthorityResult = {
   explanation: string;
 };
 
-export type AuthorityPrismaClient = {
-  dailyState: {
-    findFirst: typeof prisma.dailyState.findFirst;
-  };
-  bucket: {
-    findMany: typeof prisma.bucket.findMany;
-  };
-  categoryPreference: {
-    findUnique: typeof prisma.categoryPreference.findUnique;
-  };
-  recommendationSession: {
-    count: typeof prisma.recommendationSession.count;
-  };
-  cherryPointLedger: {
-    aggregate: typeof prisma.cherryPointLedger.aggregate;
+export type AuthorityBucket = {
+  id: string;
+  category: RewardCategory;
+  budgetAmount: number;
+  remainingCents: number;
+  strictMode: boolean;
+  periodEndMs: number | null;
+};
+
+export type AuthoritySnapshot = {
+  dailyState:
+    | {
+        status: DailyStateStatus;
+        safeToSpendCents: number | null;
+        inputsVersion: string | null;
+      }
+    | null;
+  buckets: AuthorityBucket[];
+  categoryPreferenceMode: CategoryBudgetMode | null;
+  pendingSessions: number;
+  pendingPoints: number;
+};
+
+export type DecisionEventCreateArgs = {
+  data: {
+    userId: string;
+    surface: SimulateSpendParams['surface'];
+    amountCents: number;
+    category: RewardCategory;
+    verdict: SimulatedAuthorityVerdict;
+    reasonCode: string;
+    reasonCodes: string[];
+    severity: number;
+    inputsVersion: string;
+    counterfactuals: CounterfactualAuthorityResult[];
   };
 };
 
-export type DecisionEventClient = {
-  decisionEvent: {
-    create: (args: Parameters<typeof prisma.decisionEvent.create>[0]) => Promise<unknown>;
-  };
+export type DecisionEventWriter = {
+  create: (args: DecisionEventCreateArgs) => Promise<unknown>;
 };
 
 type AuthorityInputs = {
@@ -108,7 +111,7 @@ type AuthorityInputs = {
         inputsVersion: string | null;
       }
     | null;
-  categoryPreferenceMode: CategoryPreference['mode'] | null;
+  categoryPreferenceMode: CategoryBudgetMode | null;
   pendingSessions: number;
   pendingPoints: number;
   counterfactuals: CounterfactualAuthorityRequest[];
@@ -118,53 +121,56 @@ type AuthorityInputs = {
     budgetAmount: number;
     remainingCents: number;
     strictMode: boolean;
-    periodEnd: string | null;
+    periodEndMs: number | null;
   }>;
 };
 
 type EvaluationContext = {
   amountCents: number;
   category: RewardCategory;
-  bucket: BucketRuntime | null;
+  bucket: AuthorityBucket | null;
   dailyStateStatus: DailyStateStatus;
   safeToSpendCents: number | null;
-  categoryPreferenceMode: CategoryPreference['mode'] | null;
+  categoryPreferenceMode: CategoryBudgetMode | null;
   pendingSessions: number;
   pendingPoints: number;
   delayDays: number;
   surface: AuthoritySurface;
 };
 
-function computeInputsVersion(inputs: AuthorityInputs): string {
-  const hash = createHash('sha256');
-  hash.update(
-    JSON.stringify({
-      ...inputs,
-      buckets: inputs.buckets
-        .map((bucket) => ({
-          ...bucket,
-          budgetAmount: Math.max(0, Math.floor(bucket.budgetAmount)),
-          remainingCents: Math.max(0, Math.floor(bucket.remainingCents)),
-        }))
-        .sort((a, b) => a.id.localeCompare(b.id)),
-      counterfactuals: inputs.counterfactuals.map((c) => ({
-        amountCents: c.amountCents ?? null,
-        delayDays: c.delayDays ?? null,
-        bucketId: c.bucketId ?? null,
-      })),
-    })
-  );
-  return hash.digest('hex');
+function computeInputsVersion(
+  inputs: AuthorityInputs,
+  engineVersion: string,
+  digest: Digest
+): string {
+  const payload = JSON.stringify({
+    engineVersion,
+    ...inputs,
+    buckets: inputs.buckets
+      .map((bucket) => ({
+        ...bucket,
+        budgetAmount: Math.max(0, Math.floor(bucket.budgetAmount)),
+        remainingCents: Math.max(0, Math.floor(bucket.remainingCents)),
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    counterfactuals: inputs.counterfactuals.map((c) => ({
+      amountCents: c.amountCents ?? null,
+      delayDays: c.delayDays ?? null,
+      bucketId: c.bucketId ?? null,
+    })),
+  });
+
+  return digest.sha256(payload);
 }
 
 function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   const reasons: SimulatedAuthorityReason[] = [];
   const remainingBaseline = ctx.bucket?.remainingCents ?? ctx.safeToSpendCents ?? null;
-  const categoryRestricted = ctx.categoryPreferenceMode === CategoryBudgetMode.UNBUDGETED;
+  const categoryRestricted = ctx.categoryPreferenceMode === 'UNBUDGETED';
   const bucketExhausted = ctx.bucket !== null && ctx.bucket.remainingCents <= 0;
   const verificationPending = ctx.pendingSessions > 0 || ctx.pendingPoints > 0;
   const essentialBufferLow =
-    ctx.dailyStateStatus === DailyStateStatus.TIGHT ||
+    ctx.dailyStateStatus === 'TIGHT' ||
     (ctx.bucket !== null && ctx.bucket.remainingCents > 0 && ctx.bucket.remainingCents <= 2000);
   const amountSpike =
     remainingBaseline !== null &&
@@ -179,13 +185,13 @@ function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
     });
   }
 
-  if (ctx.dailyStateStatus === DailyStateStatus.RISKY) {
+  if (ctx.dailyStateStatus === 'RISKY') {
     reasons.push({
       code: AuthorityReason.DAILY_STATE_RISKY,
       severity: getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, ctx.surface),
       detail: 'DailyState is risky; simulator recommends caution.',
     });
-  } else if (ctx.dailyStateStatus === DailyStateStatus.TIGHT) {
+  } else if (ctx.dailyStateStatus === 'TIGHT') {
     reasons.push({
       code: AuthorityReason.DAILY_STATE_RISKY,
       severity: getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, ctx.surface),
@@ -248,79 +254,68 @@ function buildExplanation(reasons: SimulatedAuthorityReason[]): string {
   return top ? top.detail : 'Simulator could not derive an explanation.';
 }
 
-export async function simulateSpendAuthority(
+export async function simulateSpendAuthorityFromSnapshot(
   params: SimulateSpendParams,
-  options: { prisma?: AuthorityPrismaClient; now?: Date } = {}
+  options: {
+    nowMs: number;
+    engineVersion: string | null;
+    snapshot: AuthoritySnapshot;
+    digest: Digest;
+  }
 ): Promise<AuthorityDecision> {
-  const client = options.prisma ?? prisma;
-  const now = options.now ?? new Date();
+  if (options.nowMs == null || Number.isNaN(options.nowMs)) {
+    throw new Error('simulateSpendAuthorityFromSnapshot requires explicit `nowMs`');
+  }
+  if (options.engineVersion == null || options.engineVersion === '') {
+    throw new Error('simulateSpendAuthorityFromSnapshot requires explicit `engineVersion`');
+  }
+
   const amountCents = Math.max(0, Math.floor(params.amountCents));
 
-  const [dailyState, buckets, categoryPreference, pendingSessions, pendingLedger] =
-    await Promise.all([
-      client.dailyState.findFirst({
-        where: { userId: params.userId },
-        orderBy: { computedAt: 'desc' },
-      }),
-      client.bucket.findMany({
-        where: { userId: params.userId },
-        orderBy: { createdAt: 'asc' },
-      }),
-      client.categoryPreference.findUnique({
-        where: {
-          userId_category: { userId: params.userId, category: params.category },
-        },
-      }),
-      client.recommendationSession.count({
-        where: { userId: params.userId, verificationStatus: VerificationStatus.PENDING },
-      }),
-      client.cherryPointLedger.aggregate({
-        where: { userId: params.userId, status: CherryPointLedgerStatus.PENDING },
-        _sum: { points: true },
-      }),
-    ]);
-
-  const pendingPoints = pendingLedger._sum.points ?? 0;
-  const runtimeBuckets = buckets
-    .map((bucket) => applyInMemoryRollover(bucket as Bucket, now))
-    .map((bucket) => toBucketRuntime(bucket));
+  const snapshot = options.snapshot;
+  const pendingPoints = snapshot.pendingPoints;
+  const runtimeBuckets = snapshot.buckets;
   const categoryBucket =
     runtimeBuckets.find((bucket) => bucket.category === params.category) ?? null;
 
-  const inputsVersion = computeInputsVersion({
-    userId: params.userId,
-    amountCents,
-    category: params.category,
-    surface: params.surface,
-    dailyState: dailyState
-      ? {
-          status: dailyState.status,
-          safeToSpendCents: dailyState.safeToSpendCents ?? null,
-          inputsVersion: dailyState.inputsVersion ?? null,
-        }
-      : null,
-    categoryPreferenceMode: categoryPreference?.mode ?? null,
-    pendingSessions,
-    pendingPoints,
-    counterfactuals: params.counterfactuals ?? [],
-    buckets: runtimeBuckets.map((bucket) => ({
-      id: bucket.id,
-      category: bucket.category,
-      budgetAmount: bucket.budgetAmount,
-      remainingCents: bucket.remainingCents,
-      strictMode: bucket.strictMode,
-      periodEnd: bucket.periodEnd?.toISOString() ?? null,
-    })),
-  });
+  const inputsVersion = computeInputsVersion(
+    {
+      userId: params.userId,
+      amountCents,
+      category: params.category,
+      surface: params.surface,
+      dailyState: snapshot.dailyState
+        ? {
+            status: snapshot.dailyState.status,
+            safeToSpendCents: snapshot.dailyState.safeToSpendCents ?? null,
+            inputsVersion: snapshot.dailyState.inputsVersion ?? null,
+          }
+        : null,
+      categoryPreferenceMode: snapshot.categoryPreferenceMode ?? null,
+      pendingSessions: snapshot.pendingSessions,
+      pendingPoints,
+      counterfactuals: params.counterfactuals ?? [],
+      buckets: runtimeBuckets.map((bucket) => ({
+        id: bucket.id,
+        category: bucket.category,
+        budgetAmount: bucket.budgetAmount,
+        remainingCents: bucket.remainingCents,
+        strictMode: bucket.strictMode,
+        periodEndMs: bucket.periodEndMs,
+      })),
+    },
+    options.engineVersion,
+    options.digest
+  );
 
   const ctx: EvaluationContext = {
     amountCents,
     category: params.category,
     bucket: categoryBucket,
-    dailyStateStatus: dailyState?.status ?? DailyStateStatus.INSUFFICIENT_DATA,
-    safeToSpendCents: dailyState?.safeToSpendCents ?? null,
-    categoryPreferenceMode: categoryPreference?.mode ?? null,
-    pendingSessions,
+    dailyStateStatus: snapshot.dailyState?.status ?? 'INSUFFICIENT_DATA',
+    safeToSpendCents: snapshot.dailyState?.safeToSpendCents ?? null,
+    categoryPreferenceMode: snapshot.categoryPreferenceMode ?? null,
+    pendingSessions: snapshot.pendingSessions,
     pendingPoints,
     delayDays: 0,
     surface: params.surface,
@@ -372,9 +367,14 @@ export async function simulateSpendAuthority(
     reasons,
     explanation,
     inputsVersion,
-    engineVersion: ENGINE_VERSION,
+    engineVersion: options.engineVersion,
     counterfactuals,
   };
+
+  assertPolicyTotal({ kind: decision.verdict });
+  for (const cf of decision.counterfactuals) {
+    assertPolicyTotal({ kind: cf.verdict });
+  }
 
   return {
     ...decision,
@@ -382,25 +382,24 @@ export async function simulateSpendAuthority(
   };
 }
 
-export async function recordDecisionEvent(options: {
+export async function recordDecisionEventWithWriter(options: {
   userId: string;
   surface: SimulateSpendParams['surface'];
   params: SimulateSpendParams;
   decision: SimulatedAuthorityDecision;
-  db?: DecisionEventClient;
+  writer?: DecisionEventWriter;
+  logger?: Logger;
 }): Promise<void> {
-  const client = options.db ?? prisma;
-  const decisionEventClient = (client as { decisionEvent?: DecisionEventClient['decisionEvent'] }).decisionEvent;
-  if (!decisionEventClient || typeof decisionEventClient.create !== 'function') {
-    logInvariantViolation({
+  const writer = options.writer;
+  if (!writer || typeof writer.create !== 'function') {
+    options.logger?.warn('DecisionEvent writer missing create; skipping record', {
+      userId: options.userId,
       surface: options.surface,
-      detail: 'DecisionEvent client missing create; skipping record',
-      data: { userId: options.userId },
     });
     return;
   }
 
-  await decisionEventClient.create({
+  await writer.create({
     data: {
       userId: options.userId,
       surface: options.surface,

@@ -14,10 +14,10 @@ import {
 } from '@prisma/client';
 import type { OverallVerdict } from './enums';
 import { runEngine } from './engine';
-import { randomUUID } from 'crypto';
 import { assertUserId } from './invariants';
 import { isPrismaP2003, logInvariant } from './user-context';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime';
+import { asError } from './errors';
 
 const cardDefinitions = [
   {
@@ -211,6 +211,7 @@ export async function seedCardsAndBucketsForUser(
     periodStart?: Date;
     periodEnd?: Date;
     includeCategoryPreference?: boolean;
+    now?: Date;
   },
 ): Promise<SeedCardsBucketsSummary> {
   assertUserId(userId, 'seedCardsAndBucketsForUser');
@@ -218,9 +219,23 @@ export async function seedCardsAndBucketsForUser(
   try {
     await assertUserExists(userId);
 
-    const now = new Date();
-    const periodStart = options?.periodStart ?? new Date(now.getFullYear(), now.getMonth(), 1);
-    const periodEnd = options?.periodEnd ?? new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const baseNow = options?.now;
+    const periodStart =
+      options?.periodStart ??
+      (() => {
+        if (!baseNow) {
+          throw new Error('seedCardsAndBucketsForUser requires now when periodStart is not provided');
+        }
+        return new Date(Date.UTC(baseNow.getUTCFullYear(), baseNow.getUTCMonth(), 1));
+      })();
+    const periodEnd =
+      options?.periodEnd ??
+      (() => {
+        if (!baseNow) {
+          throw new Error('seedCardsAndBucketsForUser requires now when periodEnd is not provided');
+        }
+        return new Date(Date.UTC(baseNow.getUTCFullYear(), baseNow.getUTCMonth() + 1, 1));
+      })();
 
     const cardsSeeded = await seedDemoCardsForUser(userId);
     const bucketsSeeded = await seedDemoBucketsForUser(userId, periodStart, periodEnd);
@@ -233,7 +248,7 @@ export async function seedCardsAndBucketsForUser(
   } catch (err: unknown) {
     asError(err);
     if (isPrismaP2003(err)) {
-      logInvariant('P2003 in seedCardsAndBucketsForUser', { userId, meta: asLogMeta(err.meta), err });
+      logInvariant('P2003 in seedCardsAndBucketsForUser', { userId, err });
     } else {
       logInvariant('Error in seedCardsAndBucketsForUser', { userId, err });
     }
@@ -241,7 +256,10 @@ export async function seedCardsAndBucketsForUser(
   }
 }
 
-export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> {
+export async function seedDemoForUser(
+  userId: string,
+  options: { now: Date }
+): Promise<SeedDemoSummary> {
   assertUserId(userId, 'seedDemoForUser');
 
   try {
@@ -255,9 +273,13 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
     await prisma.card.deleteMany({ where: { userId } });
     await prisma.categoryPreference.deleteMany({ where: { userId } });
 
-    const now = new Date();
-    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const now = options.now;
+    const periodStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)
+    );
+    const periodEnd = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    );
 
     const { cards: cardCount, buckets } = await seedCardsAndBucketsForUser(userId, {
       periodStart,
@@ -265,7 +287,7 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
       includeCategoryPreference: true,
     });
 
-    const cards = await prisma.card.findMany({ where: { userId } });
+    const cards = await prisma.card.findMany({ where: { userId }, orderBy: { nickname: 'asc' } });
     const cardMap = cards.reduce<Record<string, string>>((acc, card) => {
       acc[card.nickname] = card.id;
       return acc;
@@ -287,6 +309,7 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
         merchantName: demo.merchantName,
         category: demo.category,
         amountCents: demo.amountCents,
+        nowMs: now.getTime(),
       });
 
       const session = await prisma.recommendationSession.create({
@@ -298,7 +321,7 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
           currency: 'USD',
           recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
           recommendedBucketId: decision.budget.bucketId ?? null,
-          orderToken: randomUUID(),
+          orderToken: `demo-order-${sessionsCreated}`,
           source: RecommendationSource.APP_SCAN,
           verdict:
             decision.budget.verdict === 'BREAKS_BUDGET'
@@ -316,8 +339,8 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
           verificationStatus: VerificationStatus.VERIFIED,
           anomalyCode: SessionAnomalyCode.NONE,
           anomalyDetails: null,
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-          verifiedAt: new Date(),
+          expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+          verifiedAt: new Date(now),
           cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
         },
       });
@@ -333,8 +356,8 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
           status: CherryPointLedgerStatus.POSTED,
           isAnomalous: false,
           anomalyCode: LedgerAnomalyCode.NONE,
-          awardedAt: new Date(),
-          postedAt: new Date(),
+          awardedAt: new Date(now),
+          postedAt: new Date(now),
         },
       });
       ledgerCreated += 1;
@@ -349,7 +372,7 @@ export async function seedDemoForUser(userId: string): Promise<SeedDemoSummary> 
   } catch (err: unknown) {
     asError(err);
     if (isPrismaP2003(err)) {
-      logInvariant('P2003 in seedDemoForUser', { userId, meta: asLogMeta(err.meta), err });
+      logInvariant('P2003 in seedDemoForUser', { userId, err });
     } else {
       logInvariant('Error in seedDemoForUser', { userId, err });
     }

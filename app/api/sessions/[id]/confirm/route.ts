@@ -44,12 +44,14 @@ export async function POST(
     const parsed = await parseJsonBody(request, ConfirmSessionSchema);
     if (!parsed.ok) return parsed.response;
     const body = parsed.data;
+    const requestNow = new Date();
 
     const outcome = await confirmRecommendationSession({
       sessionId: id,
       userId,
       payload: body,
       mode,
+      now: requestNow,
     });
 
     if (outcome.kind === 'insufficient') {

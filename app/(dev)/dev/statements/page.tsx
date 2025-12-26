@@ -4,8 +4,9 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { Panel } from '@/components/ui/panel';
 import { EmptyState } from '@/components/ui/empty-state';
 import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
+import { getUnifiedActivityForUser, getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
 import { ROUTES } from '@/lib/routes';
+import { getServerConfig } from '@/lib/config/store';
 import MonthPicker from './client';
 
 type SearchParams = Promise<{ month?: string }>;
@@ -149,15 +150,20 @@ export default async function StatementsPage({
   searchParams: SearchParams;
 }): Promise<JSX.Element> {
   const params = await searchParams;
-  const now = new Date();
-  const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.statements);
+  const latestActivity = await getUnifiedActivityForUser(userId, {
+    limit: 1,
+    sourceFilter: ['BANK_FEED', 'STATEMENT_VIEW'],
+  });
+  const anchorDate =
+    latestActivity.at(0)?.occurredAt ?? new Date(Date.UTC(1970, 0, 1));
+  const defaultMonth = `${anchorDate.getUTCFullYear()}-${String(anchorDate.getUTCMonth() + 1).padStart(2, '0')}`;
   const selectedMonth =
     hasText(params.month) && /^\d{4}-\d{2}$/.test(params.month) ? params.month : defaultMonth;
   const [yearPart, monthPart] = selectedMonth.split('-');
   const year = Number(yearPart);
   const month = Number(monthPart);
 
-  const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.statements);
   const rows = await getUserRealActivityForPeriod(userId, { year, month });
   const stats = summarize(rows);
 
@@ -266,6 +272,7 @@ function UserSourceBadge({
   source: string;
   provider?: string | null | undefined;
 }): JSX.Element {
+  const serverConfig = getServerConfig();
   let label = 'Activity';
   switch (source) {
     case 'BANK_FEED':
@@ -280,7 +287,7 @@ function UserSourceBadge({
       <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(17,26,47,0.7)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#dbe4ff]">
         {label}
       </span>
-      {process.env.NODE_ENV !== 'production' && hasText(provider) ? (
+      {serverConfig.enableDevTools && hasText(provider) ? (
         <span className="rounded-full border border-[rgba(27,38,69,0.6)] bg-[rgba(255,77,109,0.15)] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#ffe6ee]">
           {provider}
         </span>

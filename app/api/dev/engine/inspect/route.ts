@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { resolveUserContext } from '@/lib/user-context';
-import { buildEngineContext, safeSolveDecisionForUser } from '@/lib/engine';
+import { buildEngineContext } from '@/lib/engine';
+import { safeSolveDecisionForWorld } from '@/lib/engine/run';
+import { fromPrismaUserToEngineState } from '@/lib/engine-state';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
 import { parseJsonBody } from '@/lib/validation';
 import { asError } from '@/lib/errors';
 
@@ -23,16 +26,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const { merchant, amount, category, mcc } = parsed.data;
+    const now = new Date();
+    const nowMs = now.getTime();
+    const world = buildPrismaWorld();
     const ctx = buildEngineContext({
       surface: 'web',
-      now: new Date(),
+      nowMs,
       merchantName: merchant,
       merchantCategoryKey: category?.toUpperCase() ?? null,
       mcc: mcc ?? null,
       amountCents: Math.round(amount * 100),
     });
 
-    const engineResult = await safeSolveDecisionForUser(userId, ctx, { maxCandidates: 64 });
+    const state = await fromPrismaUserToEngineState(userId, nowMs);
+    const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
+      maxCandidates: 64,
+      includeLegacyDecision: false,
+      stateOverride: state,
+    });
     if (!engineResult.ok) {
       return NextResponse.json(
         {
@@ -71,6 +82,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     asError(error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = error.message ?? 'Engine inspect failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

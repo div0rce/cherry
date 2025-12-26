@@ -305,28 +305,30 @@ function validateSummary(
   );
 }
 
-function buildPreviewPayload(summary: AutopilotPurchaseSummary) {
+function buildPreviewPayload(summary: AutopilotPurchaseSummary, now: Date) {
   return {
     merchant: summary.merchant.trim(),
     amountCents: dollarsToCents(summary.amount),
-    occurredAt: new Date().toISOString(),
+    occurredAt: now.toISOString(),
     category: CATEGORY_REWARD_MAP[summary.category],
   };
 }
 
 // NOTE: Ensure output shape remains stable for AutopilotDecisionPanel consumption.
 export async function runSimulation(
-  summary: AutopilotPurchaseSummary
+  summary: AutopilotPurchaseSummary,
+  options: { now: Date }
 ): Promise<AutopilotSimulationResult> {
+  const nowIso = options.now.toISOString();
   // Adapter: UI-only entry point. Maps AutopilotPurchaseSummary → /api/autopilot/preview → AutopilotSimulationResult. See docs/autopilot-engine-adapter.md.
   if (!validateSummary(summary)) {
     throw {
       message: 'INVALID_SIMULATION_SUMMARY',
-      errorTimestamp: new Date().toISOString(),
+      errorTimestamp: nowIso,
     };
   }
 
-  const payload = buildPreviewPayload(summary);
+  const payload = buildPreviewPayload(summary, options.now);
 
   let response: Response;
   try {
@@ -339,11 +341,9 @@ export async function runSimulation(
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    const message =
-      error instanceof Error && typeof error.message === 'string' && error.message.length > 0
-        ? error.message
-        : 'PREVIEW_REQUEST_FAILED';
-    throw { message, errorTimestamp: new Date().toISOString() };
+    asError(error);
+    const message = error.message.length > 0 ? error.message : 'PREVIEW_REQUEST_FAILED';
+    throw { message, errorTimestamp: nowIso };
   }
 
   if (!response.ok) {
@@ -368,7 +368,7 @@ export async function runSimulation(
         : 'PREVIEW_ERROR';
     const errorPayload: { message: string; errorTimestamp: string; code?: string } = {
       message: message ?? fallbackMessage,
-      errorTimestamp: new Date().toISOString(),
+      errorTimestamp: nowIso,
     };
     if (code !== undefined && code !== '') {
       errorPayload.code = code;
@@ -381,7 +381,7 @@ export async function runSimulation(
   if (!parsed.success) {
     throw {
       message: 'PREVIEW_RESPONSE_INVALID',
-      errorTimestamp: new Date().toISOString(),
+      errorTimestamp: nowIso,
     };
   }
 

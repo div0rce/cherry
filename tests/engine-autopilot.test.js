@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import Module from 'node:module';
+import { makeTestWorld } from './helpers/world';
 
 const requireModule = Module.createRequire(__filename);
+const fixedNowMs = new Date('2024-01-01T00:00:00Z').getTime();
+const { world } = makeTestWorld({ nowMs: fixedNowMs });
 
 function mockModule(modulePath, exports) {
   const resolved = requireModule.resolve(modulePath);
@@ -17,7 +20,9 @@ function resetModules() {
   const targets = [
     '../lib/engine/public',
     '../lib/engine/context',
+    '../lib/engine/run',
     '../lib/engine/solver',
+    '@/lib/engine-state',
     '@/lib/scan-helpers',
   ];
   for (const target of targets) {
@@ -54,7 +59,7 @@ function buildEngineState(overrides = {}) {
       soft: { avoidInterest: false, avoidNewDebt: false },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDate: null, nextPaycheckNetCents: null },
+    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -78,8 +83,8 @@ function buildEngineState(overrides = {}) {
             rateValue: 0.02,
             capAmountCents: null,
             capPeriod: null,
-            promoStart: null,
-            promoEnd: null,
+            promoStartMs: null,
+            promoEndMs: null,
             source: 'STATIC_CONFIG',
             confidence: 1,
           },
@@ -108,8 +113,8 @@ function buildEngineState(overrides = {}) {
             rateValue: 0.01,
             capAmountCents: null,
             capPeriod: null,
-            promoStart: null,
-            promoEnd: null,
+            promoStartMs: null,
+            promoEndMs: null,
             source: 'STATIC_CONFIG',
             confidence: 1,
           },
@@ -152,6 +157,8 @@ function setupMocks({ state, engineResult, category = 'DINING' }) {
   });
   mockModule('../lib/engine/context', {
     buildEngineContext: (ctx) => ctx,
+  });
+  mockModule('@/lib/engine-state', {
     fromPrismaUserToEngineState: async () => state,
   });
   mockModule('../lib/engine/solver', {
@@ -179,11 +186,12 @@ async function runOkDecision() {
   const { getAutopilotDecisionForUserSwipe } =
     requireModule('../lib/engine/public');
 
-  const result = await getAutopilotDecisionForUserSwipe({
+  const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
     merchant: 'Test Cafe',
     amountCents: 4_000,
     cardUniverseIds: ['card-a', 'card-b'],
+    nowMs: fixedNowMs,
   });
 
   assert.equal(result.kind, 'OK');
@@ -214,11 +222,12 @@ async function runBlockedDecision() {
   const { getAutopilotDecisionForUserSwipe } =
     requireModule('../lib/engine/public');
 
-  const result = await getAutopilotDecisionForUserSwipe({
+  const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
     merchant: 'Guardrail Shop',
     amountCents: 5_000,
     cardUniverseIds: ['card-a'],
+    nowMs: fixedNowMs,
   });
 
   assert.equal(result.kind, 'BLOCKED');
@@ -246,11 +255,12 @@ async function runFallbackDecision() {
   const { getAutopilotDecisionForUserSwipe } =
     requireModule('../lib/engine/public');
 
-  const result = await getAutopilotDecisionForUserSwipe({
+  const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
     merchant: 'Fallback Mart',
     amountCents: 1_000,
     cardUniverseIds: [],
+    nowMs: fixedNowMs,
   });
 
   assert.equal(result.kind, 'FALLBACK');

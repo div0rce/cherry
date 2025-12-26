@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { logError } from '@/lib/logger';
 import { runRecommendationFromOrderContext } from '@/lib/vine/run-recommendation';
+import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
 import type { OrderContext } from '@/lib/vine/order-context';
 import { mapTerminalEventToOrderContext } from '@/lib/vine/order-context';
 import { OrderContextSchema } from '@/lib/schemas/vine';
@@ -10,15 +11,17 @@ import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
 import { isValidMcc } from '@/lib/mcc';
 import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
 import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
 import { parseJsonBody } from '@/lib/validation';
 import { z } from 'zod';
+import { asError, asLogMeta } from '@/lib/errors';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const requestReceivedAt = new Date();
+  const requestTimestampMs = requestReceivedAt.getTime();
   try {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/vine/order POST');
@@ -45,18 +48,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           parsedMcc != null && Number.isFinite(Number.parseInt(parsedMcc, 10))
             ? Number.parseInt(parsedMcc, 10)
             : null,
-        timestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : Date.now(),
+        timestamp: Number.isFinite(parsedTimestamp) ? parsedTimestamp : requestTimestampMs,
         deviceId: body.terminal?.terminalId ?? 'VINE-SIM',
         orderId: body.vine?.sessionId ?? null,
         nonce: null,
         source: body.vine?.source ?? VineOrderSource.VINE_SIM,
-      });
+      }, { fallbackTimestampMs: requestTimestampMs });
     } else {
+      const validatedTimestamp = Number.isFinite(body.timestamp) ? body.timestamp : requestTimestampMs;
       orderContext = {
         deviceId: hasText(body.deviceId) ? body.deviceId.trim() : 'VINE-SIM',
         amountCents: Math.floor(body.amountCents as number),
         currency: 'USD',
-        timestamp: body.timestamp,
+        timestamp: validatedTimestamp,
         source: body.source ?? VineOrderSource.VINE_SIM,
         ...(hasText(body.storeId) ? { storeId: body.storeId.trim() } : {}),
         ...(hasText(body.terminalId) ? { terminalId: body.terminalId.trim() } : {}),
@@ -67,29 +71,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       };
     }
 
-      if (orderContext.mccCode != null && !isValidMcc(orderContext.mccCode)) {
-        return NextResponse.json({ error: 'MCC must be a valid merchant category code' }, { status: 400 });
-      }
+    if (orderContext.mccCode != null && !isValidMcc(orderContext.mccCode)) {
+      return NextResponse.json({ error: 'MCC must be a valid merchant category code' }, { status: 400 });
+    }
 
-      const nowMs = Date.now();
-      const ageMs = nowMs - orderContext.timestamp;
-      const maxAgeMs = 3 * 60 * 1000; // TODO: tune freshness window
-      if (ageMs > maxAgeMs) {
-        return NextResponse.json(
-          { error: 'stale_order', ageMs },
-          { status: 400 }
-        );
-      }
-      const signatureHeader = request.headers.get('x-vine-signature');
-      const sigCtx: VineSignatureContext = {
-        deviceId: orderContext.deviceId,
-        amountCents: orderContext.amountCents,
-        currency: orderContext.currency ?? 'USD',
-        timestamp: orderContext.timestamp,
-        storeId: orderContext.storeId ?? null,
-        terminalId: orderContext.terminalId ?? null,
-        orderId: orderContext.orderId ?? null,
-      };
+    const ageMs = requestTimestampMs - orderContext.timestamp;
+    const maxAgeMs = 3 * 60 * 1000; // TODO: tune freshness window
+    if (ageMs > maxAgeMs) {
+      return NextResponse.json(
+        { error: 'stale_order', ageMs },
+        { status: 400 }
+      );
+    }
+    const signatureHeader = request.headers.get('x-vine-signature');
+    const sigCtx: VineSignatureContext = {
+      deviceId: orderContext.deviceId,
+      amountCents: orderContext.amountCents,
+      currency: orderContext.currency ?? 'USD',
+      timestamp: orderContext.timestamp,
+      storeId: orderContext.storeId ?? null,
+      terminalId: orderContext.terminalId ?? null,
+      orderId: orderContext.orderId ?? null,
+    };
     const sigResult = await verifyVineSignature(sigCtx, signatureHeader);
     if (!sigResult.ok) {
       return NextResponse.json(
@@ -99,7 +102,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     try {
-      const result = await runRecommendationFromOrderContext(orderContext, userId);
+      const world = buildPrismaWorld();
+      const result = await runRecommendationFromOrderContext(world, orderContext, userId, {
+        now: requestReceivedAt,
+      });
 
       return NextResponse.json({
         sessionId: result.sessionId,
@@ -123,18 +129,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   } catch (error) {
     asError(error);
-    if (error.message?.includes('lab demo mode is disabled in production')) {
+    if (error instanceof Error && error.message?.includes('lab demo mode is disabled in production')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error.message?.includes('Unauthorized')) {
+    if (error instanceof Error && error.message?.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
+    if (error instanceof Error && error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
       return NextResponse.json(
         { error: 'vine_user_missing', message: error.message },
         { status: 500 }
       );
     }
+    asError(error);
     logError('Error in /api/vine/order', error);
     return NextResponse.json({ error: 'Failed to process order' }, { status: 500 });
   }

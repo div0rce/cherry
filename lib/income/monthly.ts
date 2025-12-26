@@ -30,7 +30,9 @@ export function buildMonthlyIncomeSnapshots(txs: ClassifiedBankTransaction[]): M
 
   for (const tx of txs) {
     if (directionOf(tx) !== 'credit') continue;
-    const month = monthStart(tx.postedAt ?? tx.occurredAt ?? new Date());
+    const timestamp = tx.postedAt ?? tx.occurredAt;
+    if (timestamp == null) continue;
+    const month = monthStart(timestamp);
     const key = month.toISOString();
     const absCents = Math.abs(normalizeAmountMinor(tx.amountMinor));
 
@@ -134,7 +136,9 @@ export function detectIncomeRegimesFromMonthly(
       const avgNetIncome =
         regimeMonths.reduce((acc, m) => acc + clampNonNegative(m.netEarnedIncomeCents), 0) /
         Math.max(regimeMonths.length, 1);
-      const startMonth = regimeMonths[0]?.monthStart ?? monthly[currentStartIdx]?.monthStart ?? monthStart(new Date());
+      const fallbackStart =
+        monthly[currentStartIdx]?.monthStart ?? monthly[0]?.monthStart ?? monthStart(new Date(0));
+      const startMonth = regimeMonths[0]?.monthStart ?? monthly[currentStartIdx]?.monthStart ?? fallbackStart;
       const endMonth =
         regimeMonths.at(-1)?.monthStart ??
         monthly[i - 1]?.monthStart ??
@@ -161,7 +165,8 @@ export function detectIncomeRegimesFromMonthly(
     const avgNetIncome =
       tailMonths.reduce((acc, m) => acc + clampNonNegative(m.netEarnedIncomeCents), 0) /
       Math.max(tailMonths.length, 1);
-    const tailStart = tailMonths[0]?.monthStart ?? monthly.at(-1)?.monthStart ?? monthStart(new Date());
+    const fallbackTailStart = tailMonths[0]?.monthStart ?? monthly.at(-1)?.monthStart ?? monthStart(new Date(0));
+    const tailStart = tailMonths[0]?.monthStart ?? monthly.at(-1)?.monthStart ?? fallbackTailStart;
     const tailEnd = tailMonths.at(-1)?.monthStart ?? tailStart;
     drafts.push({
       startMonth: tailStart,
