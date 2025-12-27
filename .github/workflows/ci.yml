@@ -105,7 +105,7 @@ jobs:
         run: npm run check:engine-freeze
 
       - name: Lint
-        run: npm run lint
+        run: npm run lint -- --max-warnings=0
 
       - name: Typecheck scripts
         run: npm run typecheck:scripts
@@ -118,3 +118,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Check (composite)
+        run: npm run check

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import ts from 'typescript';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { BRAND_PROPERTIES } from '../lib/util/brand-registry';
+import { BRAND_CONSTRUCTORS, BRAND_PROPERTIES } from '../lib/util/brand-registry';
 
 ensureTsEsm();
 
@@ -64,10 +64,12 @@ function isLiteralExpression(expression: ts.Expression): boolean {
   return false;
 }
 
-function isAsIsoDateCall(expression: ts.Expression): boolean {
+function isBrandConstructorCall(expression: ts.Expression): boolean {
   if (!ts.isCallExpression(expression)) return false;
   if (ts.isIdentifier(expression.expression)) {
-    return expression.expression.text === 'asIsoDate';
+    return BRAND_CONSTRUCTORS.includes(
+      expression.expression.text as (typeof BRAND_CONSTRUCTORS)[number]
+    );
   }
   return false;
 }
@@ -96,7 +98,7 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
     initializer: ts.Expression
   ): void {
     if (!isLiteralExpression(initializer)) return;
-    if (isAsIsoDateCall(initializer)) return;
+    if (isBrandConstructorCall(initializer)) return;
     if (targetType === undefined) return;
     if (!hasBrandProperty(targetType)) return;
     addViolation(
