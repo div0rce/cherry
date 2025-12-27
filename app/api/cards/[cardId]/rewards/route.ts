@@ -42,6 +42,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
+  const requestTimestamp = new Date().toISOString();
   const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
   assertUserId(userId, 'api/cards/[cardId]/rewards GET');
   const { cardId } = await params;
@@ -52,6 +53,7 @@ export async function GET(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -63,6 +65,7 @@ export async function GET(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }
@@ -91,6 +94,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
+  const requestTimestamp = new Date().toISOString();
   const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
   assertUserId(userId, 'api/cards/[cardId]/rewards POST');
   const { cardId } = await params;
@@ -101,6 +105,7 @@ export async function POST(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -112,6 +117,7 @@ export async function POST(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
+      timestamp: requestTimestamp,
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
   }
@@ -130,6 +136,7 @@ export async function POST(
       outcome: 'STOP',
       reason: 'INVALID_FIELDS',
       detail: { hasValidCategory, hasValidMultiplier, hasValidCap },
+      timestamp: requestTimestamp,
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
@@ -141,6 +148,7 @@ export async function POST(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }
@@ -184,6 +192,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
+  const requestTimestamp = new Date().toISOString();
   const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
   assertUserId(userId, 'api/cards/[cardId]/rewards DELETE');
   const { cardId } = await params;
@@ -194,6 +203,7 @@ export async function DELETE(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -205,6 +215,7 @@ export async function DELETE(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
+      timestamp: requestTimestamp,
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
   }
@@ -215,6 +226,7 @@ export async function DELETE(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'MISSING_REWARD_RULE_ID',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -226,6 +238,7 @@ export async function DELETE(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }
@@ -240,6 +253,7 @@ export async function DELETE(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'REWARD_RULE_NOT_FOUND',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Reward rule not found for card', { status: 404 });
   }
@@ -282,6 +296,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
+  const requestTimestamp = new Date().toISOString();
   const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
   assertUserId(userId, 'api/cards/[cardId]/rewards PATCH');
   const { cardId } = await params;
@@ -292,6 +307,7 @@ export async function PATCH(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -303,6 +319,7 @@ export async function PATCH(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
+      timestamp: requestTimestamp,
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
   }
@@ -323,6 +340,7 @@ export async function PATCH(
       outcome: 'STOP',
       reason: 'INVALID_FIELDS',
       detail: { hasValidCategory, hasValidMultiplier, hasValidCashback, hasValidCap },
+      timestamp: requestTimestamp,
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
@@ -334,6 +352,7 @@ export async function PATCH(
       surface: 'rewards',
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
+      timestamp: requestTimestamp,
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }

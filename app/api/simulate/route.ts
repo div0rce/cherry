@@ -36,6 +36,9 @@ import type {
 const validCategories = Object.values(RewardCategory) as string[];
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const requestNow = new Date();
+  const requestNowMs = requestNow.getTime();
+  const requestTimestamp = requestNow.toISOString();
   let authorityDecision: SimulatedAuthorityDecision | null = null;
   try {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
@@ -48,6 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'simulate',
         outcome: 'STOP',
         reason: 'INVALID_PAYLOAD',
+        timestamp: requestTimestamp,
       });
       return NextResponse.json(
         { error: 'Invalid request' },
@@ -90,6 +94,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'STOP',
         reason: 'INVALID_FIELDS',
         detail: { fields: validationErrors },
+        timestamp: requestTimestamp,
       });
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
@@ -106,8 +111,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ).id;
     }
 
-    const now = new Date();
-    const nowMs = now.getTime();
     const world = buildPrismaWorld();
     const authorityParams: SimulateSpendParams = {
       userId,
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       surface: 'simulate',
       counterfactuals: [],
     };
-    authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs });
+    authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs: requestNowMs });
     await recordDecisionEvent({
       userId,
       surface: 'simulate',
@@ -125,14 +128,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     const ctx = buildEngineContext({
       surface: 'web',
-      nowMs,
+      nowMs: requestNowMs,
       merchantName,
       merchantCategoryKey: normalizedCategory,
       mcc: mccCode != null ? String(mccCode) : null,
       amountCents: body.amountCents,
     });
 
-    const state = await fromPrismaUserToEngineState(userId, nowMs);
+    const state = await fromPrismaUserToEngineState(userId, requestNowMs);
     const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
       maxCandidates: 64,
       stateOverride: state,
@@ -145,6 +148,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'simulate',
         outcome: 'FALLBACK',
         reason: `ENGINE_${engineResult.reason}`,
+        timestamp: requestTimestamp,
       });
       return NextResponse.json(
         {
@@ -181,6 +185,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'simulate',
         outcome: 'FALLBACK',
         reason: 'ENGINE_MAPPING_FAILED',
+        timestamp: requestTimestamp,
       });
       return NextResponse.json(
         {
@@ -202,6 +207,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'simulate',
         detail: 'Decision amount missing',
         data: { decision },
+        timestamp: requestTimestamp,
       });
       return NextResponse.json(
         { error: 'Unable to process decision' },
@@ -218,6 +224,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'simulate',
         outcome: 'STOP',
         reason: 'MISSING_CARD',
+        timestamp: requestTimestamp,
       });
       return NextResponse.json(
         {
@@ -237,6 +244,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'simulate',
         outcome: 'WARN',
         reason: 'MISSING_BUCKET',
+        timestamp: requestTimestamp,
       });
     }
 
@@ -267,7 +275,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         userId,
         merchant: merchantName,
         amountCents: body.amountCents,
-        occurredAt: now,
+        occurredAt: requestNow,
       });
       logGuardrailEvent({
         userId,
@@ -275,6 +283,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'OK',
         reason: 'COMMIT_READY',
         detail: { swipeIdempotencyKey },
+        timestamp: requestTimestamp,
       });
     } else if (shouldCommit) {
       logGuardrailEvent({
@@ -287,6 +296,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           bucketId: decision.budget.bucketId ?? null,
           cardId: decision.card.cardId ?? null,
         },
+        timestamp: requestTimestamp,
       });
     }
 
@@ -324,7 +334,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
 
       if (canCommit && hasText(decision.budget.bucketId)) {
-        const freshBucket = await ensureBucketFresh(decision.budget.bucketId, now);
+        const freshBucket = await ensureBucketFresh(decision.budget.bucketId, requestNow);
         if (freshBucket !== null && freshBucket.userId === userId) {
           await db.bucket.updateMany({
             where: { id: freshBucket.id, userId },
@@ -337,6 +347,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             outcome: 'STOP',
             reason: 'BUCKET_STALE_OR_MISMATCH',
             detail: { bucketId: decision.budget.bucketId },
+            timestamp: requestTimestamp,
           });
         }
       }

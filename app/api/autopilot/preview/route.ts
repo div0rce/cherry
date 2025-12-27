@@ -18,6 +18,7 @@ import { asAppError, isUnauthorized } from '../../../../lib/errors';
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestStartedAt = new Date();
   const requestStartedMs = requestStartedAt.getTime();
+  const requestTimestamp = requestStartedAt.toISOString();
   let userId: string | null = null;
   let previewStatusLabel: 'ok' | 'blocked' | 'fallback' | 'invalid' | 'none' = 'none';
 
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: 'INPUT_INVALID',
         severity: 'hard',
         reason: 'INVALID_PAYLOAD',
+        timestamp: requestTimestamp,
       });
       return respond(400, { error: 'Invalid payload', code: 'INVALID_PAYLOAD' });
     }
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           reasonCode: preview?.reasonCode,
           issues: validatedPreview.error.format(),
         },
+        timestamp: requestTimestamp,
       });
       return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
     }
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: 'DECISION_BLOCKED',
         severity: 'hard',
         reason: validatedPreview.data.reasonCode,
+        timestamp: requestTimestamp,
       });
     }
     if (validatedPreview.data.status === 'fallback') {
@@ -91,6 +95,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: 'ENGINE_ERROR',
         severity: 'soft',
         reason: validatedPreview.data.reasonCode,
+        timestamp: requestTimestamp,
       });
     }
 
@@ -113,6 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: caught.status >= 500 ? 'ENGINE_ERROR' : 'INPUT_INVALID',
         severity: caught.status >= 500 ? 'soft' : 'hard',
         reason: caught.code,
+        timestamp: requestTimestamp,
       });
       return respond(caught.status, { error: appError.message, code: caught.code });
     }
@@ -126,6 +132,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       surface: 'autopilot',
       detail: 'Autopilot preview failed unexpectedly',
       data: { userId, error: appError.message },
+      timestamp: requestTimestamp,
     });
     return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
   }

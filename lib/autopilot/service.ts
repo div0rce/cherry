@@ -317,6 +317,7 @@ async function evaluateAutopilot(
       surface: 'autopilot',
       detail: 'Unexpected engineDecisionId prefix',
       data: { engineDecisionId },
+      timestamp: occurredAt.toISOString(),
     });
   }
 
@@ -552,6 +553,7 @@ export async function getAutopilotPreview(
         reason: 'PREVIEW_OUTPUT_SCHEMA_MISMATCH',
         issues: parsed.error.format(),
       },
+      timestamp: evaluation.occurredAt.toISOString(),
     });
     throw new AutopilotServiceError('Invalid Autopilot preview output', 500, 'INVALID_PREVIEW_OUTPUT');
   }
@@ -561,6 +563,7 @@ export async function getAutopilotPreview(
       surface: 'autopilot',
       detail: 'Missing recommended card for ok Autopilot preview',
       data: { decisionId: parsed.data.decisionId },
+      timestamp: evaluation.occurredAt.toISOString(),
     });
   }
 
@@ -786,6 +789,7 @@ export async function commitAutopilotDecision(
           surface: 'autopilot',
           detail: 'Bucket delta referenced missing or foreign bucket',
           data: { bucketId: evaluation.decision.bucketDelta.bucketId, userId },
+          timestamp: evaluation.occurredAt.toISOString(),
         });
       }
     }

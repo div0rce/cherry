@@ -155,6 +155,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'STOP',
         reason: 'MISSING_MERCHANT',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }
@@ -169,6 +170,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'STOP',
         reason: 'INVALID_AMOUNT',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }
@@ -197,6 +199,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'FALLBACK',
         reason: 'SCAN_API_ERROR',
         detail: { code: result.error, message: result.message },
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }
@@ -212,6 +215,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'STOP',
         reason: 'START_WITHOUT_PREVIEW',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }
@@ -222,6 +226,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'STOP',
         reason: 'SNAPSHOT_SESSION_BLOCK',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }
@@ -272,6 +277,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'STOP',
         reason: 'CONFIRM_WITHOUT_SESSION',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }
@@ -280,6 +286,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         detail: 'Missing cardId when confirming session',
         data: { decision: scanPreview.decision },
+        timestamp: new Date(currentMs()).toISOString(),
       });
       setError('Unable to confirm session');
       return;
@@ -290,6 +297,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'STOP',
         reason: 'INVALID_SESSION_AMOUNT',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       setError('Enter a positive amount to confirm the session.');
       return;
@@ -300,6 +308,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         surface: 'scan',
         outcome: 'WARN',
         reason: 'CONFIRM_IN_NON_OPEN_STATE',
+        timestamp: new Date(currentMs()).toISOString(),
       });
       return;
     }

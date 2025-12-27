@@ -45,6 +45,12 @@ export function RunSimulationForm(): JSX.Element {
     merchant?: string;
   }>({});
   const [submitting, setSubmitting] = useState(false);
+  const getTimestamp = () => {
+    if (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number') {
+      return new Date(performance.timeOrigin + performance.now()).toISOString();
+    }
+    return new Date(0).toISOString();
+  };
 
   const categoriesLabel = useMemo(() => VALID_CATEGORIES.join(', '), []);
   const inputClass =
@@ -97,6 +103,7 @@ export function RunSimulationForm(): JSX.Element {
         outcome: 'STOP',
         reason: 'INVALID_FORM',
         detail: fieldErrors,
+        timestamp: getTimestamp(),
       });
       return;
     }

@@ -3,31 +3,36 @@
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/admin/getLedgerStats.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/admin/getSessionStats.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/alerts/processDailyStateAlert.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/auth.ts": {
     "effects": [
       "next_redirect"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/autopilot/engineDecisionId.ts": {
     "effects": [
@@ -35,219 +40,253 @@
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/autopilot/service.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/bank/csv-dev-provider.ts": {
     "effects": [
       "fs",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/bank/ingest.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/bank/user-link.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/buckets/ensure-fresh.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/buckets/periods.ts": {
     "effects": [
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/buckets/regimes.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/daily-state/runDailyForUser.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/dashboard.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/demo-seeder.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/dev/dev-user.ts": {
     "effects": [
       "console",
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/evaluator/prisma-safe.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/evaluator/regime-buckets.ts": {
     "effects": [
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/evaluator/stats.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/history.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/income/classifier.ts": {
     "effects": [
       "console",
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/income/monthly.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/ingest/bank-transactions.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/logger.ts": {
     "effects": [
       "console"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/logging.ts": {
     "effects": [
       "console"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/points.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/prisma.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/scan-helpers.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/schemas/bank-ingest.ts": {
     "effects": [
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/sessions/confirm-service.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/sessions/summaries.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/simulation.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/unified-activity.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/user-context.ts": {
     "effects": [
       "crypto",
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/verification/verify-session.ts": {
     "effects": [
       "prisma"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "persistence-only"
   },
   "lib/vine/run-recommendation.ts": {
     "effects": [
       "prisma",
       "time"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "legacy-combo"
   },
   "lib/vine/security.ts": {
     "effects": [
       "console",
       "crypto"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   },
   "lib/wallet/cherryPass.ts": {
     "effects": [
       "fs",
       "path"
     ],
-    "source": "legacy"
+    "source": "legacy",
+    "tier": "boundary-time"
   }
 }

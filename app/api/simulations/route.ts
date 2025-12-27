@@ -24,6 +24,7 @@ import { logGuardrailEvent } from '../../../lib/log';
  * Returns shape: { data, total, page, pageSize }
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const requestTimestamp = new Date().toISOString();
   try {
     const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/simulations GET');
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         surface: 'simulations',
         outcome: 'WARN',
         reason: 'INVALID_PAGE_FALLBACK',
+        timestamp: requestTimestamp,
       });
     }
 
@@ -59,6 +61,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         surface: 'simulations',
         outcome: 'WARN',
         reason: 'INVALID_PAGE_SIZE_FALLBACK',
+        timestamp: requestTimestamp,
       });
     }
 
@@ -74,6 +77,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           surface: 'simulations',
           outcome: 'STOP',
           reason: 'INVALID_STATUS',
+          timestamp: requestTimestamp,
         });
         return new NextResponse('Invalid request', { status: 400 });
       }
@@ -91,6 +95,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           surface: 'simulations',
           outcome: 'STOP',
           reason: 'INVALID_CATEGORY',
+          timestamp: requestTimestamp,
         });
         return new NextResponse('Invalid request', { status: 400 });
       }

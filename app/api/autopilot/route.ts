@@ -16,6 +16,9 @@ const AutopilotRequestSchema = z
   .strict();
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const requestNow = new Date();
+  const requestNowMs = requestNow.getTime();
+  const requestTimestamp = requestNow.toISOString();
   let userId: string | null = null;
   try {
     const context = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
@@ -28,6 +31,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         userId,
         kind: 'INPUT_INVALID',
         severity: 'soft',
+        timestamp: requestTimestamp,
       });
       return NextResponse.json({ message: 'Invalid request' }, { status: parsed.response.status });
     }
@@ -41,6 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: 'INPUT_INVALID',
         severity: 'soft',
         detail: { field: 'amount' },
+        timestamp: requestTimestamp,
       });
       return NextResponse.json({ message: 'Amount must be positive.' }, { status: 400 });
     }
@@ -51,7 +56,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderBy: { createdAt: 'asc' },
     });
     const cardUniverseIds = cards.map((card) => card.id);
-    const nowMs = Date.now();
     const world = buildPrismaWorld();
 
     const decision = await getAutopilotDecisionForUserSwipe(world, {
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       merchant: merchant.trim(),
       amountCents,
       cardUniverseIds,
-      nowMs,
+      nowMs: requestNowMs,
     });
 
     const cardName =
@@ -104,6 +108,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       kind: 'ENGINE_ERROR',
       severity: 'hard',
       detail: { message: appError.message },
+      timestamp: requestTimestamp,
     });
     return NextResponse.json({ message: 'Failed to fetch recommendation' }, { status: 500 });
   }

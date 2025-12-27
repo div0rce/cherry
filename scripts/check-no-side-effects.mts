@@ -13,9 +13,12 @@ type Violation = {
 
 type AllowlistSource = 'legacy' | 'adapter' | 'boundary';
 
+type AllowlistTier = 'boundary-time' | 'persistence-only' | 'legacy-combo';
+
 type AllowlistEntry = {
   effects: string[];
   source: AllowlistSource;
+  tier: AllowlistTier;
 };
 
 const ROOT = process.cwd();
@@ -25,6 +28,7 @@ const AllowlistEntrySchema = z
   .object({
     effects: z.array(z.string()),
     source: z.enum(['legacy', 'adapter', 'boundary']),
+    tier: z.enum(['boundary-time', 'persistence-only', 'legacy-combo']),
   })
   .strict();
 const AllowlistSchema = z.record(z.string(), AllowlistEntrySchema);
@@ -202,6 +206,23 @@ function collectViolations(filePath: string): Violation | null {
   return { file: relative, effects };
 }
 
+function inferTier(effects: string[]): AllowlistTier {
+  const hasPrisma = effects.includes('prisma');
+  const hasTime = effects.includes('time');
+  if (hasPrisma && hasTime) return 'legacy-combo';
+  if (hasPrisma) return 'persistence-only';
+  return 'boundary-time';
+}
+
+function assertTier(entry: AllowlistEntry, file: string): void {
+  const expected = inferTier(entry.effects);
+  if (entry.tier !== expected) {
+    throw new Error(
+      `Allowlist tier mismatch for ${file}: expected ${expected}, got ${entry.tier}`
+    );
+  }
+}
+
 function loadAllowlist(): Record<string, AllowlistEntry> {
   if (!fs.existsSync(ALLOWLIST_PATH)) {
     throw new Error(`Side-effects allowlist missing at ${path.relative(ROOT, ALLOWLIST_PATH)}`);
@@ -211,10 +232,13 @@ function loadAllowlist(): Record<string, AllowlistEntry> {
   const normalized: Record<string, AllowlistEntry> = {};
   const entries = Object.entries(parsed) as Array<[string, AllowlistEntry]>;
   for (const [key, entry] of entries) {
-    normalized[path.normalize(key)] = {
+    const normalizedEntry: AllowlistEntry = {
       effects: entry.effects.slice().sort(),
       source: entry.source,
+      tier: entry.tier,
     };
+    assertTier(normalizedEntry, key);
+    normalized[path.normalize(key)] = normalizedEntry;
   }
   return normalized;
 }

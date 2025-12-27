@@ -10,12 +10,12 @@ import { asAppError, isUnauthorized } from '../../../../lib/errors';
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const requestNow = new Date();
+  const requestTimestamp = requestNow.toISOString();
   let userId: string | null = null;
   try {
     const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
     userId = userContext.userId;
-    // Boundary layer: wall-clock capture allowed; downstream must receive injected time.
-    const requestNow = new Date();
 
     const parsed = await parseJsonBody(request, AutopilotCommitInputSchema);
     if (!parsed.ok) {
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: 'INPUT_INVALID',
         severity: 'hard',
         reason: 'INVALID_PAYLOAD',
+        timestamp: requestTimestamp,
       });
       return parsed.response;
     }
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind,
         severity,
         reason: caught.code,
+        timestamp: requestTimestamp,
       });
       return NextResponse.json(
         { error: appError.message, code: caught.code },
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       surface: 'autopilot',
       detail: 'Autopilot commit failed unexpectedly',
       data: { userId, error: appError.message },
+      timestamp: requestTimestamp,
     });
     return NextResponse.json(
       { error: 'Failed to commit swipe', code: 'AUTOPILOT_COMMIT_UNEXPECTED' },

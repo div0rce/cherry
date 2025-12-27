@@ -18,6 +18,7 @@ type LegacyGuardrailEvent = {
   surface: Exclude<GuardrailSurface, 'autopilot'>;
   outcome: GuardrailOutcome;
   reason: string;
+  timestamp: string;
   detail?: unknown;
 };
 
@@ -26,6 +27,7 @@ type AutopilotGuardrailEvent = {
   surface: 'autopilot';
   kind: AutopilotGuardrailKind;
   severity: 'soft' | 'hard';
+  timestamp: string;
   reason?: string;
   detail?: unknown;
 };
@@ -48,14 +50,20 @@ export function logGuardrailEvent(event: GuardrailEvent): void {
       outcome: mapKindToOutcome(event.kind),
       reason: event.reason ?? event.kind,
       detail: event.detail,
+      timestamp: event.timestamp,
     };
-    logWarn('Guardrail event', { ...normalized, timestamp: 'not_recorded' });
+    logWarn('Guardrail event', normalized);
     return;
   }
 
-  logWarn('Guardrail event', { ...event, timestamp: 'not_recorded' });
+  logWarn('Guardrail event', event);
 }
 
-export function logInvariantViolation(event: { surface: string; detail: string; data?: unknown }): void {
-  logError('Invariant violation', { ...event, timestamp: 'not_recorded' });
+export function logInvariantViolation(event: {
+  surface: string;
+  detail: string;
+  timestamp: string;
+  data?: unknown;
+}): void {
+  logError('Invariant violation', event);
 }

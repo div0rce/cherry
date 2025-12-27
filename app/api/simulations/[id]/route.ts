@@ -14,6 +14,7 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
   ): Promise<NextResponse> {
+  const requestTimestamp = new Date().toISOString();
   try {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/simulations DELETE');
@@ -25,6 +26,7 @@ export async function DELETE(
         surface: 'simulations',
         outcome: 'STOP',
         reason: 'MISSING_SIMULATION_ID',
+        timestamp: requestTimestamp,
       });
       return new NextResponse('Invalid request', { status: 400 });
     }
@@ -39,6 +41,7 @@ export async function DELETE(
         surface: 'simulations',
         outcome: 'STOP',
         reason: 'SIMULATION_NOT_FOUND',
+        timestamp: requestTimestamp,
       });
       return new NextResponse('Simulation not found for user', { status: 404 });
     }

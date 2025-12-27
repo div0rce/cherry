@@ -9,9 +9,12 @@ ensureTsEsm();
 
 type AllowlistSource = 'legacy' | 'adapter' | 'boundary';
 
+type AllowlistTier = 'boundary-time' | 'persistence-only' | 'legacy-combo';
+
 type AllowlistEntry = {
   effects: string[];
   source: AllowlistSource;
+  tier: AllowlistTier;
 };
 
 const ROOT = process.cwd();
@@ -21,9 +24,18 @@ const AllowlistEntrySchema = z
   .object({
     effects: z.array(z.string()),
     source: z.enum(['legacy', 'adapter', 'boundary']),
+    tier: z.enum(['boundary-time', 'persistence-only', 'legacy-combo']),
+  })
+  .strict();
+const AllowlistEntryLegacySchema = z
+  .object({
+    effects: z.array(z.string()),
+    source: z.enum(['legacy', 'adapter', 'boundary']),
+    tier: z.enum(['boundary-time', 'persistence-only', 'legacy-combo']).optional(),
   })
   .strict();
 const AllowlistSchema = z.record(z.string(), AllowlistEntrySchema);
+const AllowlistLegacySchema = z.record(z.string(), AllowlistEntryLegacySchema);
 const LegacyAllowlistSchema = z.record(z.string(), z.array(z.string()));
 
 function fail(message: string): never {
@@ -44,13 +56,30 @@ function parseAllowlist(
         parsed = AllowlistSchema.parse(parsedJson);
       } catch (error: unknown) {
         void error;
-        const legacy = LegacyAllowlistSchema.parse(parsedJson);
-        const converted: Record<string, AllowlistEntry> = {};
-        const legacyEntries = Object.entries(legacy) as Array<[string, string[]]>;
-        for (const [key, effects] of legacyEntries) {
-          converted[key] = { effects, source: 'legacy' };
+        try {
+          const legacyEntries = AllowlistLegacySchema.parse(parsedJson);
+          const converted: Record<string, AllowlistEntry> = {};
+          const entries = Object.entries(legacyEntries) as Array<
+            [string, z.infer<typeof AllowlistEntryLegacySchema>]
+          >;
+          for (const [key, entry] of entries) {
+            converted[key] = {
+              effects: entry.effects,
+              source: entry.source,
+              tier: entry.tier ?? inferTier(entry.effects),
+            };
+          }
+          parsed = converted;
+        } catch (legacyError: unknown) {
+          void legacyError;
+          const legacy = LegacyAllowlistSchema.parse(parsedJson);
+          const converted: Record<string, AllowlistEntry> = {};
+          const legacyEntries = Object.entries(legacy) as Array<[string, string[]]>;
+          for (const [key, effects] of legacyEntries) {
+            converted[key] = { effects, source: 'legacy', tier: inferTier(effects) };
+          }
+          parsed = converted;
         }
-        parsed = converted;
       }
     } else {
       parsed = AllowlistSchema.parse(parsedJson);
@@ -61,6 +90,7 @@ function parseAllowlist(
       normalized[path.normalize(key)] = {
         effects: entry.effects.slice().sort(),
         source: entry.source,
+        tier: entry.tier,
       };
     }
     return normalized;
@@ -94,6 +124,18 @@ function countLegacy(allowlist: Record<string, AllowlistEntry>): number {
   return Object.values(allowlist).filter((entry) => entry.source === 'legacy').length;
 }
 
+function countLegacyCombo(allowlist: Record<string, AllowlistEntry>): number {
+  return Object.values(allowlist).filter((entry) => entry.tier === 'legacy-combo').length;
+}
+
+function inferTier(effects: string[]): AllowlistTier {
+  const hasPrisma = effects.includes('prisma');
+  const hasTime = effects.includes('time');
+  if (hasPrisma && hasTime) return 'legacy-combo';
+  if (hasPrisma) return 'persistence-only';
+  return 'boundary-time';
+}
+
 function main(): void {
   const current = loadCurrentAllowlist();
   const previous = loadPreviousAllowlist();
@@ -106,6 +148,13 @@ function main(): void {
   const currentLegacyCount = countLegacy(current);
   if (currentLegacyCount > previousLegacyCount) {
     fail(`Legacy allowlist entries increased (${previousLegacyCount} -> ${currentLegacyCount})`);
+  }
+  const previousLegacyComboCount = countLegacyCombo(previous);
+  const currentLegacyComboCount = countLegacyCombo(current);
+  if (currentLegacyComboCount > previousLegacyComboCount) {
+    fail(
+      `Legacy-combo allowlist entries increased (${previousLegacyComboCount} -> ${currentLegacyComboCount})`
+    );
   }
 
   const previousFiles = new Set(Object.keys(previous));

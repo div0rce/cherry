@@ -26,6 +26,12 @@ export function SignInCard({
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const getTimestamp = () => {
+    if (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number') {
+      return new Date(performance.timeOrigin + performance.now()).toISOString();
+    }
+    return new Date(0).toISOString();
+  };
 
   const error = hasText(errorCode)
     ? errorMessages[errorCode] ?? 'Something went wrong while signing you in.'
@@ -44,6 +50,7 @@ export function SignInCard({
         surface: 'signin',
         outcome: 'STOP',
         reason: 'MISSING_CREDENTIALS',
+        timestamp: getTimestamp(),
       });
       return;
     }
@@ -62,6 +69,7 @@ export function SignInCard({
         surface: 'signin',
         outcome: 'STOP',
         reason: `AUTH_${result.error}`,
+        timestamp: getTimestamp(),
       });
       setStatus(errorMessages[result.error] ?? 'Invalid email or password. Please try again.');
       setSubmitting(false);
