@@ -90,7 +90,7 @@ async function testNullUserIdThrows() {
     validateEngineDecision: () => {},
   });
   mockModule('../lib/adapters/runtime/authority.prisma', {
-    simulateSpendAuthority: async () => authorityDecisionStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityDecisionStub }),
     recordDecisionEvent: async () => {},
   });
 
@@ -134,7 +134,7 @@ async function testP2003Logs() {
     validateEngineDecision: () => {},
   });
   mockModule('../lib/adapters/runtime/authority.prisma', {
-    simulateSpendAuthority: async () => authorityDecisionStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityDecisionStub }),
     recordDecisionEvent: async () => {},
   });
 

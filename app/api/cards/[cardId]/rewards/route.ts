@@ -54,6 +54,7 @@ export async function GET(
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -66,6 +67,7 @@ export async function GET(
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }
@@ -106,6 +108,7 @@ export async function POST(
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -118,6 +121,7 @@ export async function POST(
       outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
   }
@@ -137,6 +141,7 @@ export async function POST(
       reason: 'INVALID_FIELDS',
       detail: { hasValidCategory, hasValidMultiplier, hasValidCap },
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
@@ -149,6 +154,7 @@ export async function POST(
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }
@@ -204,6 +210,7 @@ export async function DELETE(
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -216,6 +223,7 @@ export async function DELETE(
       outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
   }
@@ -227,6 +235,7 @@ export async function DELETE(
       outcome: 'STOP',
       reason: 'MISSING_REWARD_RULE_ID',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -239,6 +248,7 @@ export async function DELETE(
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }
@@ -254,6 +264,7 @@ export async function DELETE(
       outcome: 'STOP',
       reason: 'REWARD_RULE_NOT_FOUND',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Reward rule not found for card', { status: 404 });
   }
@@ -308,6 +319,7 @@ export async function PATCH(
       outcome: 'STOP',
       reason: 'MISSING_CARD_ID',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Invalid request', { status: 400 });
   }
@@ -320,6 +332,7 @@ export async function PATCH(
       outcome: 'STOP',
       reason: 'INVALID_PAYLOAD',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: parsed.response.status });
   }
@@ -341,6 +354,7 @@ export async function PATCH(
       reason: 'INVALID_FIELDS',
       detail: { hasValidCategory, hasValidMultiplier, hasValidCashback, hasValidCap },
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
@@ -353,6 +367,7 @@ export async function PATCH(
       outcome: 'STOP',
       reason: 'CARD_NOT_FOUND',
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return new NextResponse('Card not found for user', { status: 404 });
   }

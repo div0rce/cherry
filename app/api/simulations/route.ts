@@ -52,6 +52,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         outcome: 'WARN',
         reason: 'INVALID_PAGE_FALLBACK',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     }
 
@@ -62,6 +63,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         outcome: 'WARN',
         reason: 'INVALID_PAGE_SIZE_FALLBACK',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     }
 
@@ -78,6 +80,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           outcome: 'STOP',
           reason: 'INVALID_STATUS',
           timestamp: requestTimestamp,
+        timestampSource: 'boundary',
         });
         return new NextResponse('Invalid request', { status: 400 });
       }
@@ -96,6 +99,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           outcome: 'STOP',
           reason: 'INVALID_CATEGORY',
           timestamp: requestTimestamp,
+        timestampSource: 'boundary',
         });
         return new NextResponse('Invalid request', { status: 400 });
       }

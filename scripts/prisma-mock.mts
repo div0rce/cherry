@@ -34,10 +34,17 @@ type ModuleWithInternals = {
     load?: (
       url: string,
       context: { format?: string },
-      nextLoad: (url: string, context: { format?: string }) => Promise<{ format: string; source: string }>
+      nextLoad: (
+        url: string,
+        context: { format?: string },
+        defaultLoad?: (url: string, context: { format?: string }) => Promise<{
+          format: string;
+          source: string | ArrayBuffer | ArrayBufferView;
+        }>
+      ) => Promise<{ format: string; source: string | ArrayBuffer | ArrayBufferView }>
     ) =>
-      | Promise<{ format: string; source: string; shortCircuit?: boolean }>
-      | { format: string; source: string; shortCircuit?: boolean };
+      | Promise<{ format: string; source: string | ArrayBuffer | ArrayBufferView; shortCircuit?: boolean }>
+      | { format: string; source: string | ArrayBuffer | ArrayBufferView; shortCircuit?: boolean };
   }) => unknown;
 };
 
@@ -232,8 +239,10 @@ class MockPrismaClient {
   user = createCollection('user');
   bankTransaction = createCollection('bankTransaction');
   card = createCollection('card');
+  rewardRule = createCollection('rewardRule');
   bucket = createCollection('bucket');
   categoryPreference = createCollection('categoryPreference');
+  mccToRewardCategory = createCollection('mccToRewardCategory');
   dailyState = createCollection('dailyState');
   historicalEngineEvaluation = createCollection('historicalEngineEvaluation');
   historicalIncomeRegime = createCollection('historicalIncomeRegime');
@@ -393,7 +402,9 @@ function shouldLogLoaderDebug(): boolean {
   return process.env['CHERRY_DEBUG_LOADER'] === '1';
 }
 
-function buildSentinelSource(url: string): { format: 'module'; source: string } | null {
+function buildSentinelSource(
+  url: string
+): { format: 'module'; source: string | ArrayBuffer | ArrayBufferView } | null {
   const testMode = process.env['CHERRY_TEST_LOADER_SENTINEL'] === '1';
   if (!testMode || !url.startsWith(SENTINEL_SCHEME)) return null;
   const suffix = url.slice(SENTINEL_SCHEME.length);

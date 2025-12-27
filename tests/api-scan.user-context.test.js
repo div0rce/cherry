@@ -142,7 +142,7 @@ function setupScanMocks({ engineOk = true } = {}) {
   });
 
   mockModule('../lib/adapters/runtime/authority.prisma', {
-    simulateSpendAuthority: async () => authorityDecisionStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityDecisionStub }),
     recordDecisionEvent: async () => {},
   });
 

@@ -19,6 +19,7 @@ type LegacyGuardrailEvent = {
   outcome: GuardrailOutcome;
   reason: string;
   timestamp: string;
+  timestampSource: 'boundary' | 'client' | 'engine';
   detail?: unknown;
 };
 
@@ -28,6 +29,7 @@ type AutopilotGuardrailEvent = {
   kind: AutopilotGuardrailKind;
   severity: 'soft' | 'hard';
   timestamp: string;
+  timestampSource: 'boundary' | 'client' | 'engine';
   reason?: string;
   detail?: unknown;
 };
@@ -51,6 +53,7 @@ export function logGuardrailEvent(event: GuardrailEvent): void {
       reason: event.reason ?? event.kind,
       detail: event.detail,
       timestamp: event.timestamp,
+      timestampSource: event.timestampSource,
     };
     logWarn('Guardrail event', normalized);
     return;

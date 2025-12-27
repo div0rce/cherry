@@ -104,6 +104,7 @@ export function RunSimulationForm(): JSX.Element {
         reason: 'INVALID_FORM',
         detail: fieldErrors,
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }

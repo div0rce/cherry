@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-17
+Last updated: 2025-12-26
 
 # DecisionEvent Ledger (authority replay log)
 
@@ -8,7 +8,7 @@ Purpose: Immutable audit trail of every authority_v1 evaluation. Drives replay, 
 ## Model
 - Table: `DecisionEvent`
 - Columns: `id`, `userId`, `surface`, `verdict`, `reasonCode` (top), `reasonCodes` (array), `severity`, `inputsVersion`, `createdAt`.
-- Write rule: every `simulateSpendAuthority` call writes exactly one row; no dedup/retry; no updates.
+- Write rule: `simulateSpendAuthority` writes exactly one row when authority returns `ok: true`; fallback/blocked results do not write; no dedup/retry; no updates.
 
 ## Why it matters
 - Replay: reproduce “why was this warning shown?” using `inputsVersion` + reasons.

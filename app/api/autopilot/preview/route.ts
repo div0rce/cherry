@@ -46,6 +46,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'hard',
         reason: 'INVALID_PAYLOAD',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return respond(400, { error: 'Invalid payload', code: 'INVALID_PAYLOAD' });
     }
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'hard',
         reason: validatedPreview.data.reasonCode,
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     }
     if (validatedPreview.data.status === 'fallback') {
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'soft',
         reason: validatedPreview.data.reasonCode,
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     }
 
@@ -119,6 +122,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: caught.status >= 500 ? 'soft' : 'hard',
         reason: caught.code,
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return respond(caught.status, { error: appError.message, code: caught.code });
     }

@@ -35,6 +35,10 @@ export type SimulatedAuthorityDecision = {
 
 export type AuthorityDecision = AuthorityPure & SimulatedAuthorityDecision;
 
+export type SafeAuthorityDecision =
+  | { ok: true; decision: AuthorityDecision }
+  | { ok: false; status: 'fallback' | 'blocked'; reason: string; decision: AuthorityDecision };
+
 export type SimulateSpendParams = {
   userId: string;
   amountCents: number;

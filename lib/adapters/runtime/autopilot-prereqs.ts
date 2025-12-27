@@ -2,6 +2,7 @@ import { RewardCategory } from '@prisma/client';
 import { prisma } from '../../prisma';
 import { assertUserId } from '../../invariants';
 import type { AutopilotPrereqs, AutopilotOnboardingState } from '../../autopilot/prereq-types';
+import { assertPrismaReady } from '../assert-prisma-ready';
 
 function deriveState(counts: {
   cardsCount: number;
@@ -33,6 +34,7 @@ function buildWarnings(
 
 export async function getAutopilotPrereqs(userId: string): Promise<AutopilotPrereqs> {
   assertUserId(userId, 'getAutopilotPrereqs');
+  assertPrismaReady(prisma);
 
   const [cardsCount, rulesCount, bucketsCount, baseRuleCount, cards, buckets] = await Promise.all([
     prisma.card.count({ where: { userId } }),

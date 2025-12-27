@@ -63,7 +63,8 @@ async function loadDecisionEvent(lookup: ReplayLookup): Promise<DecisionEvent> {
 export async function replayAuthority(lookup: ReplayLookup): Promise<ReplayResult> {
   const event = await loadDecisionEvent(lookup);
   const params = assertParamsFromEvent(event);
-  const recomputed = await simulateSpendAuthority(params, { nowMs: event.createdAt.getTime() });
+  const authorityResult = await simulateSpendAuthority(params, { nowMs: event.createdAt.getTime() });
+  const recomputed = authorityResult.decision;
 
   const reasonsChanged =
     recomputed.reasons.map((r) => r.code).join('|') !==

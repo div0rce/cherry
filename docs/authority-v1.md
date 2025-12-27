@@ -1,5 +1,5 @@
 Status: Active — spec frozen for authority_v1
-Last updated: 2025-12-17
+Last updated: 2025-12-26
 
 # Authority v1 (advisory-only, deterministic)
 
@@ -61,7 +61,7 @@ Verdict rule (severity lattice):
 - Advisory only: no bucket/session/ledger mutations; no auth/routing semantics; no approval/decline language.
 - Reasons are exhaustive and finite; no free-form codes.
 - `reasons` is non-empty; severity is the max of reasons.
-- `DecisionEvent` is written once per invocation (see below).
+- `DecisionEvent` is written once per `ok: true` invocation (see below).
 - Counterfactuals use the same evaluation pipeline and determinism rules.
 
 ---
@@ -69,7 +69,7 @@ Verdict rule (severity lattice):
 ## Persistence (DecisionEvent ledger)
 - Table: `DecisionEvent`
 - Columns: `id`, `userId`, `surface`, `verdict`, `reasonCode` (top), `reasonCodes` (array), `severity`, `inputsVersion`, `createdAt`
-- Rule: every `simulateSpendAuthority` call that returns a verdict writes exactly one `DecisionEvent`; no retries/dedup.
+- Rule: every `simulateSpendAuthority` call that returns `ok: true` writes exactly one `DecisionEvent`; fallback/blocked results do not write; no retries/dedup.
 
 ---
 

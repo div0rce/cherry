@@ -27,6 +27,7 @@ export async function DELETE(
         outcome: 'STOP',
         reason: 'MISSING_SIMULATION_ID',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return new NextResponse('Invalid request', { status: 400 });
     }
@@ -42,6 +43,7 @@ export async function DELETE(
         outcome: 'STOP',
         reason: 'SIMULATION_NOT_FOUND',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return new NextResponse('Simulation not found for user', { status: 404 });
     }

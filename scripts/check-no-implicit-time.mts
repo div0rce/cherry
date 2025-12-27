@@ -49,6 +49,7 @@ function checkFile(filePath: string): Violation[] {
   const violations: Violation[] = [];
   const newDateRegex = /new\s+Date\s*\(\s*\)/g;
   const dateNowRegex = /Date\.now\s*\(\s*\)/g;
+  const perfNowRegex = /performance\.now\s*\(\s*\)/g;
 
   lines.forEach((line, idx) => {
     if (isAllowlisted(filePath, line)) {
@@ -73,6 +74,16 @@ function checkFile(filePath: string): Violation[] {
         line: idx + 1,
         col: match.index + 1,
         message: "Implicit time detected: Date.now()",
+      });
+    }
+
+    perfNowRegex.lastIndex = 0;
+    while ((match = perfNowRegex.exec(line)) !== null) {
+      violations.push({
+        file: filePath,
+        line: idx + 1,
+        col: match.index + 1,
+        message: "Implicit time detected: performance.now()",
       });
     }
   });

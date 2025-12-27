@@ -172,7 +172,9 @@ function isClientFile(filePath: string, content: string): boolean {
     .map((line) => line.trim())
     .find((line) => line.length > 0);
 
-  return firstNonEmpty === "'use client'" || firstNonEmpty === '"use client"';
+  if (!firstNonEmpty) return false;
+  const normalized = firstNonEmpty.replace(/;$/, "");
+  return normalized === "'use client'" || normalized === '"use client"';
 }
 
 function stripForScan(content: string): string {

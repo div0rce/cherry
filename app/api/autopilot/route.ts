@@ -32,6 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         kind: 'INPUT_INVALID',
         severity: 'soft',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json({ message: 'Invalid request' }, { status: parsed.response.status });
     }
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'soft',
         detail: { field: 'amount' },
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json({ message: 'Amount must be positive.' }, { status: 400 });
     }
@@ -109,6 +111,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       severity: 'hard',
       detail: { message: appError.message },
       timestamp: requestTimestamp,
+      timestampSource: 'boundary',
     });
     return NextResponse.json({ message: 'Failed to fetch recommendation' }, { status: 500 });
   }

@@ -496,7 +496,7 @@ export async function getAutopilotPreview(
   if (evaluation.occurredAt.getTime() > options.now.getTime()) {
     throw new Error('Invariant violation: occurredAt > request now');
   }
-  const { __authorityPure: _authorityBrand, ...authorityDecision } = await simulateSpendAuthority(
+  const authorityResult = await simulateSpendAuthority(
     {
       userId,
       amountCents: evaluation.amountCents,
@@ -506,19 +506,22 @@ export async function getAutopilotPreview(
     },
     { nowMs: evaluation.occurredAt.getTime() }
   );
+  const { __authorityPure: _authorityBrand, ...authorityDecision } = authorityResult.decision;
   void _authorityBrand;
-  await recordDecisionEvent({
-    userId,
-    surface: 'autopilot',
-    params: {
+  if (authorityResult.ok) {
+    await recordDecisionEvent({
       userId,
-      amountCents: evaluation.amountCents,
-      category: evaluation.resolvedCategory,
       surface: 'autopilot',
-      counterfactuals: [],
-    },
-    decision: authorityDecision,
-  });
+      params: {
+        userId,
+        amountCents: evaluation.amountCents,
+        category: evaluation.resolvedCategory,
+        surface: 'autopilot',
+        counterfactuals: [],
+      },
+      decision: authorityDecision,
+    });
+  }
 
   const explanation = buildExplanation(evaluation);
   const rewardStrengthLevel = computeRewardStrengthLevel(

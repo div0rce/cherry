@@ -64,6 +64,12 @@ function mockPrisma(): void {
         count: async () => scenario.bucketsCount,
         findMany: async () => scenario.buckets,
       },
+      categoryPreference: {},
+      mccToRewardCategory: {},
+      dailyState: {},
+      recommendationSession: {},
+      cherryPointLedger: {},
+      decisionEvent: {},
     },
   };
 

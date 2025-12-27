@@ -19,6 +19,7 @@ type AllowlistEntry = {
   effects: string[];
   source: AllowlistSource;
   tier: AllowlistTier;
+  expiresBy?: string | undefined;
 };
 
 const ROOT = process.cwd();
@@ -29,6 +30,7 @@ const AllowlistEntrySchema = z
     effects: z.array(z.string()),
     source: z.enum(['legacy', 'adapter', 'boundary']),
     tier: z.enum(['boundary-time', 'persistence-only', 'legacy-combo']),
+    expiresBy: z.string().optional(),
   })
   .strict();
 const AllowlistSchema = z.record(z.string(), AllowlistEntrySchema);
@@ -260,7 +262,12 @@ function main(): void {
   if (writeAllowlist) {
     const allowlist: Record<string, AllowlistEntry> = {};
     for (const v of violations) {
-      allowlist[v.file] = { effects: v.effects, source: 'legacy' };
+      const tier = inferTier(v.effects);
+      const entry: AllowlistEntry = { effects: v.effects, source: 'legacy', tier };
+      if (tier === 'legacy-combo') {
+        entry.expiresBy = '2026-03-01';
+      }
+      allowlist[v.file] = entry;
     }
     const json = `${JSON.stringify(allowlist, null, 2)}\n`;
     fs.writeFileSync(ALLOWLIST_PATH, json, 'utf8');

@@ -4,7 +4,7 @@ import { prisma } from '../../prisma';
 import { RewardCategory } from '@prisma/client';
 import type { Bucket } from '@prisma/client';
 import { applyInMemoryRollover } from '../../buckets/periods';
-import { AppError } from '../../errors';
+import { assertPrismaReady } from '../assert-prisma-ready';
 import type {
   CategoryCoverageMode,
   EngineDecision,
@@ -18,26 +18,16 @@ export type {
   EvaluateTransactionResult,
 } from '../../legacy-engine-types';
 
-function requireModel<T>(model: T | null | undefined, name: string): T {
-  if (model == null) {
-    throw new AppError('INTERNAL', `Required Prisma model missing: ${name}`, 500);
-  }
-  return model;
-}
-
 export async function resolveCategory(input: {
   mccCode?: number | null;
   category?: string | RewardCategory | null;
   merchantName?: string | null;
 }): Promise<RewardCategory> {
+  assertPrismaReady(prisma);
   const { mccCode, category, merchantName } = input;
 
   if (mccCode !== null && mccCode !== undefined && Number.isInteger(mccCode)) {
-    const mccToRewardCategory = requireModel(
-      prisma.mccToRewardCategory as typeof prisma.mccToRewardCategory | undefined,
-      'mccToRewardCategory'
-    );
-    const mapping = await mccToRewardCategory.findFirst({
+    const mapping = await prisma.mccToRewardCategory.findFirst({
       where: { mccCode, isDefault: true },
     });
     if (mapping) return mapping.category;
@@ -98,19 +88,14 @@ async function getCategoryCoverage(
   userId: string,
   category: RewardCategory
 ): Promise<{ coverageMode: CategoryCoverageMode; buckets: Bucket[] }> {
-  const bucket = requireModel(prisma.bucket as typeof prisma.bucket | undefined, 'bucket');
-  const categoryPreference = requireModel(
-    prisma.categoryPreference as typeof prisma.categoryPreference | undefined,
-    'categoryPreference'
-  );
-  const buckets = await bucket.findMany({
+  const buckets = await prisma.bucket.findMany({
     where: { userId, category },
     orderBy: { createdAt: 'asc' },
   });
 
   if (buckets.length > 0) return { coverageMode: 'BUDGETED', buckets };
 
-  const pref = await categoryPreference.findUnique({
+  const pref = await prisma.categoryPreference.findUnique({
     where: {
       userId_category: { userId, category },
     },
@@ -128,8 +113,7 @@ async function resolveBestCardForTransaction(input: {
   category: RewardCategory;
   amountCents: number;
 }) {
-  const card = requireModel(prisma.card as typeof prisma.card | undefined, 'card');
-  const cards = await card.findMany({
+  const cards = await prisma.card.findMany({
     where: { userId: input.userId },
     include: {
       rewardRules: true,
@@ -193,6 +177,7 @@ export async function runEngine(input: EngineInput): Promise<EngineDecision> {
   if (input.nowMs == null || Number.isNaN(input.nowMs)) {
     throw new Error('runEngine requires explicit `nowMs`');
   }
+  assertPrismaReady(prisma);
   const now = new Date(input.nowMs);
 
   const category = await resolveCategory({

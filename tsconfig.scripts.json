@@ -21,6 +21,7 @@
     "scripts/**/*.ts",
     "scripts/**/*.mts",
     "scripts/**/*.cts",
+    "tests/guardrails/guardrail-event-totality.test.ts",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts"
   ]

@@ -52,6 +52,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'STOP',
         reason: 'INVALID_PAYLOAD',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json(
         { error: 'Invalid request' },
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         reason: 'INVALID_FIELDS',
         detail: { fields: validationErrors },
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     }
@@ -119,13 +121,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       surface: 'simulate',
       counterfactuals: [],
     };
-    authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs: requestNowMs });
-    await recordDecisionEvent({
-      userId,
-      surface: 'simulate',
-      params: authorityParams,
-      decision: authorityDecision,
-    });
+    const authorityResult = await simulateSpendAuthority(authorityParams, { nowMs: requestNowMs });
+    authorityDecision = authorityResult.decision;
+    if (!authorityResult.ok) {
+      logGuardrailEvent({
+        userId,
+        surface: 'simulate',
+        outcome: authorityResult.status === 'blocked' ? 'STOP' : 'FALLBACK',
+        reason: `AUTHORITY_${authorityResult.reason}`,
+        detail: { status: authorityResult.status },
+        timestamp: requestTimestamp,
+        timestampSource: 'boundary',
+      });
+    } else {
+      await recordDecisionEvent({
+        userId,
+        surface: 'simulate',
+        params: authorityParams,
+        decision: authorityDecision,
+      });
+    }
     const ctx = buildEngineContext({
       surface: 'web',
       nowMs: requestNowMs,
@@ -149,6 +164,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'FALLBACK',
         reason: `ENGINE_${engineResult.reason}`,
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json(
         {
@@ -186,6 +202,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'FALLBACK',
         reason: 'ENGINE_MAPPING_FAILED',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json(
         {
@@ -225,6 +242,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'STOP',
         reason: 'MISSING_CARD',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json(
         {
@@ -245,6 +263,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         outcome: 'WARN',
         reason: 'MISSING_BUCKET',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     }
 
@@ -284,6 +303,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         reason: 'COMMIT_READY',
         detail: { swipeIdempotencyKey },
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     } else if (shouldCommit) {
       logGuardrailEvent({
@@ -297,6 +317,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           cardId: decision.card.cardId ?? null,
         },
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
     }
 
@@ -348,6 +369,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             reason: 'BUCKET_STALE_OR_MISMATCH',
             detail: { bucketId: decision.budget.bucketId },
             timestamp: requestTimestamp,
+            timestampSource: 'boundary',
           });
         }
       }

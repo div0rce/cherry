@@ -97,6 +97,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'INVALID_AMOUNT',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -114,6 +115,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'INVALID_MCC',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -128,6 +130,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'MISSING_CURRENCY',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -191,6 +194,7 @@ export function VineSimulatorClient(): JSX.Element {
         reason: 'INVALID_VINE_SIGNAL',
         detail: validation.error.flatten(),
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -207,6 +211,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'UNAUTHENTICATED',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       setTransientStatus({ type: 'error', message: 'Sign in to use the Vine simulator.' }, 6000);
       void signIn(undefined, { callbackUrl: window.location.href });
@@ -222,6 +227,7 @@ export function VineSimulatorClient(): JSX.Element {
         reason: 'VINE_ORDER_FAILED',
         detail: { error: res.error },
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       setTransientStatus({ type: 'error', message: friendly }, 6000);
       return;
@@ -239,6 +245,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'CONFIRM_WITHOUT_ORDER',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -259,6 +266,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'INVALID_DECISION_AMOUNT',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       setTransientStatus({ type: 'error', message: 'Invalid amount on recommendation.' }, 6000);
       return;
@@ -281,6 +289,7 @@ export function VineSimulatorClient(): JSX.Element {
         outcome: 'STOP',
         reason: 'UNAUTHENTICATED',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       setTransientStatus({ type: 'error', message: 'Sign in to confirm.' }, 6000);
       void signIn(undefined, { callbackUrl: window.location.href });
@@ -295,6 +304,7 @@ export function VineSimulatorClient(): JSX.Element {
         reason: 'SESSION_CONFIRM_FAILED',
         detail: { error: res.error },
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       const friendlyMessage = hasText(res.message) ? res.message : 'Failed to confirm session';
       setTransientStatus(

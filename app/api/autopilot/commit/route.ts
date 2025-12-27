@@ -26,6 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: 'hard',
         reason: 'INVALID_PAYLOAD',
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return parsed.response;
     }
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity,
         reason: caught.code,
         timestamp: requestTimestamp,
+        timestampSource: 'boundary',
       });
       return NextResponse.json(
         { error: appError.message, code: caught.code },

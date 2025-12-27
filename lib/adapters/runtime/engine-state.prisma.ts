@@ -1,6 +1,7 @@
 import { applyInMemoryRollover } from '../../buckets/periods';
 import { toBucketRuntime } from '../../buckets-runtime';
 import { prisma } from '../../prisma';
+import { assertPrismaReady } from '../assert-prisma-ready';
 import type {
   Bucket,
   DebtAccount,
@@ -25,6 +26,7 @@ export async function fromPrismaUserToEngineState(
   if (nowMs == null || Number.isNaN(nowMs)) {
     throw new Error('fromPrismaUserToEngineState requires explicit `nowMs`');
   }
+  assertPrismaReady(prisma);
 
   const [cards, buckets, debts, constraints, world, preferences] = await Promise.all([
     loadNormalizedCards(userId),

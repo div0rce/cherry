@@ -156,6 +156,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'STOP',
         reason: 'MISSING_MERCHANT',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -171,6 +172,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'STOP',
         reason: 'INVALID_AMOUNT',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -200,6 +202,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         reason: 'SCAN_API_ERROR',
         detail: { code: result.error, message: result.message },
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -216,6 +219,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'STOP',
         reason: 'START_WITHOUT_PREVIEW',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -227,6 +231,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'STOP',
         reason: 'SNAPSHOT_SESSION_BLOCK',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -278,6 +283,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'STOP',
         reason: 'CONFIRM_WITHOUT_SESSION',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -298,6 +304,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'STOP',
         reason: 'INVALID_SESSION_AMOUNT',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       setError('Enter a positive amount to confirm the session.');
       return;
@@ -309,6 +316,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
         outcome: 'WARN',
         reason: 'CONFIRM_IN_NON_OPEN_STATE',
         timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
       });
       return;
     }

@@ -154,7 +154,7 @@ async function runPreviewValid() {
     logInvariantViolation: () => {},
   });
   mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
-    simulateSpendAuthority: async () => authorityStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
@@ -203,7 +203,7 @@ async function runPreviewInvalid() {
     logInvariantViolation: () => {},
   });
   mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
-    simulateSpendAuthority: async () => authorityStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
@@ -250,7 +250,7 @@ async function runPreviewUnauthorized() {
     logInvariantViolation: () => {},
   });
   mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
-    simulateSpendAuthority: async () => authorityStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
@@ -298,7 +298,7 @@ async function runPreviewUnexpectedError() {
     logInvariantViolation: () => {},
   });
   mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
-    simulateSpendAuthority: async () => authorityStub,
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
   mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {

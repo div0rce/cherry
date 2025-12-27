@@ -15,6 +15,7 @@ type AllowlistEntry = {
   effects: string[];
   source: AllowlistSource;
   tier: AllowlistTier;
+  expiresBy?: string | undefined;
 };
 
 const ROOT = process.cwd();
@@ -25,6 +26,7 @@ const AllowlistEntrySchema = z
     effects: z.array(z.string()),
     source: z.enum(['legacy', 'adapter', 'boundary']),
     tier: z.enum(['boundary-time', 'persistence-only', 'legacy-combo']),
+    expiresBy: z.string().optional(),
   })
   .strict();
 const AllowlistEntryLegacySchema = z
@@ -32,6 +34,7 @@ const AllowlistEntryLegacySchema = z
     effects: z.array(z.string()),
     source: z.enum(['legacy', 'adapter', 'boundary']),
     tier: z.enum(['boundary-time', 'persistence-only', 'legacy-combo']).optional(),
+    expiresBy: z.string().optional(),
   })
   .strict();
 const AllowlistSchema = z.record(z.string(), AllowlistEntrySchema);
@@ -63,11 +66,15 @@ function parseAllowlist(
             [string, z.infer<typeof AllowlistEntryLegacySchema>]
           >;
           for (const [key, entry] of entries) {
-            converted[key] = {
+            const convertedEntry: AllowlistEntry = {
               effects: entry.effects,
               source: entry.source,
               tier: entry.tier ?? inferTier(entry.effects),
             };
+            if (entry.expiresBy !== undefined) {
+              convertedEntry.expiresBy = entry.expiresBy;
+            }
+            converted[key] = convertedEntry;
           }
           parsed = converted;
         } catch (legacyError: unknown) {
@@ -87,11 +94,15 @@ function parseAllowlist(
     const normalized: Record<string, AllowlistEntry> = {};
     const entries = Object.entries(parsed) as Array<[string, AllowlistEntry]>;
     for (const [key, entry] of entries) {
-      normalized[path.normalize(key)] = {
+      const normalizedEntry: AllowlistEntry = {
         effects: entry.effects.slice().sort(),
         source: entry.source,
         tier: entry.tier,
       };
+      if (entry.expiresBy !== undefined) {
+        normalizedEntry.expiresBy = entry.expiresBy;
+      }
+      normalized[path.normalize(key)] = normalizedEntry;
     }
     return normalized;
   } catch (err: unknown) {
@@ -136,6 +147,23 @@ function inferTier(effects: string[]): AllowlistTier {
   return 'boundary-time';
 }
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseExpiresBy(value: string, file: string): number {
+  if (!ISO_DATE_RE.test(value)) {
+    fail(`Invalid expiresBy date for ${file}: ${value}`);
+  }
+  const timestamp = Date.parse(`${value}T00:00:00Z`);
+  if (Number.isNaN(timestamp)) {
+    fail(`Invalid expiresBy date for ${file}: ${value}`);
+  }
+  return timestamp;
+}
+
+function startOfUtcDay(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
 function main(): void {
   const current = loadCurrentAllowlist();
   const previous = loadPreviousAllowlist();
@@ -155,6 +183,18 @@ function main(): void {
     fail(
       `Legacy-combo allowlist entries increased (${previousLegacyComboCount} -> ${currentLegacyComboCount})`
     );
+  }
+
+  const todayUtcStart = startOfUtcDay(new Date());
+  for (const [file, entry] of Object.entries(current)) {
+    if (entry.tier !== 'legacy-combo') continue;
+    if (!entry.expiresBy) {
+      fail(`Missing expiresBy for legacy-combo entry: ${file}`);
+    }
+    const expiresAt = parseExpiresBy(entry.expiresBy, file);
+    if (expiresAt < todayUtcStart) {
+      fail(`Legacy-combo entry expired (${entry.expiresBy}): ${file}`);
+    }
   }
 
   const previousFiles = new Set(Object.keys(previous));
@@ -187,6 +227,13 @@ function main(): void {
     }
     if (prevEntry.source !== currEntry.source) {
       sourceChanges += 1;
+    }
+    if (
+      prevEntry.tier === 'legacy-combo' &&
+      prevEntry.expiresBy &&
+      !currEntry.expiresBy
+    ) {
+      fail(`expiresBy removed from legacy-combo entry: ${file}`);
     }
   }
 

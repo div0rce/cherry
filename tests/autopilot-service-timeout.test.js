@@ -42,10 +42,44 @@ async function runTimeoutTest() {
   mockModule(requireModule.resolve('@/lib/prisma'), {
     prisma: {
       card: {
-        findMany: async () => [{ id: 'card-1', nickname: 'Card 1', issuer: null, network: null }],
+        findMany: async () => [
+          {
+            id: 'card-1',
+            nickname: 'Card 1',
+            issuer: null,
+            network: null,
+            isCredit: true,
+            rewardRules: [],
+          },
+        ],
       },
       bucket: {
         findUnique: async () => null,
+        findMany: async () => [],
+      },
+      dailyState: {
+        findFirst: async () => null,
+      },
+      categoryPreference: {
+        findUnique: async () => null,
+      },
+      recommendationSession: {
+        count: async () => 0,
+      },
+      cherryPointLedger: {
+        aggregate: async () => ({ _sum: { points: 0 } }),
+      },
+      rewardRule: {},
+      mccToRewardCategory: {
+        findMany: async () => [],
+      },
+      decisionEvent: {},
+      user: {
+        findUnique: async () => ({
+          id: 'user-timeout',
+          engineObjectiveProfile: null,
+          engineObjectiveWeights: null,
+        }),
       },
     },
   });

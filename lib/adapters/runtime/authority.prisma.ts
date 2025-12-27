@@ -3,21 +3,28 @@ import { getServerConfig } from '../../config/store';
 import type { Logger } from '../logger';
 import { ConsoleLogger } from './logger.console';
 import { Sha256Digest } from './digest.sha256';
+import { assertPrismaReady } from '../assert-prisma-ready';
 import {
   simulateSpendAuthorityFromSnapshot,
   recordDecisionEventWithWriter,
+  type AuthorityDecision,
   type AuthoritySnapshot,
+  type SafeAuthorityDecision,
   type SimulateSpendParams,
   type SimulatedAuthorityDecision,
 } from '../../authority/simulateSpendAuthority';
+import { AuthorityReason } from '../../authority/reasonCodes';
+import { authorityPureBrand, authorityVersion, getReasonSeverity } from '../../authority/config';
 import { CherryPointLedgerStatus, VerificationStatus } from '@prisma/client';
 import { applyInMemoryRollover } from '../../buckets/periods';
 import { toBucketRuntime } from '../../buckets-runtime';
+import { asAppError } from '../../errors';
 
 async function buildAuthoritySnapshot(
   params: SimulateSpendParams,
   nowMs: number
 ): Promise<AuthoritySnapshot> {
+  assertPrismaReady(prisma);
   const [dailyState, buckets, categoryPreference, pendingSessions, pendingLedger] =
     await Promise.all([
       prisma.dailyState.findFirst({
@@ -70,15 +77,40 @@ async function buildAuthoritySnapshot(
 export async function simulateSpendAuthority(
   params: SimulateSpendParams,
   options: { nowMs: number; engineVersion?: string }
-): ReturnType<typeof simulateSpendAuthorityFromSnapshot> {
-  const snapshot = await buildAuthoritySnapshot(params, options.nowMs);
+): Promise<SafeAuthorityDecision> {
   const serverConfig = getServerConfig();
-  return simulateSpendAuthorityFromSnapshot(params, {
-    nowMs: options.nowMs,
-    engineVersion: options.engineVersion ?? serverConfig.engineVersion,
-    snapshot,
-    digest: Sha256Digest,
-  });
+  const engineVersion = options.engineVersion ?? serverConfig.engineVersion ?? 'unknown';
+  const fallbackDecision = async () =>
+    buildFallbackDecision(params, options.nowMs, engineVersion);
+  const isValidAmount = Number.isFinite(params.amountCents) && params.amountCents > 0;
+
+  if (!isValidAmount) {
+    return {
+      ok: false,
+      status: 'blocked',
+      reason: 'INVALID_AMOUNT',
+      decision: await fallbackDecision(),
+    };
+  }
+
+  try {
+    const snapshot = await buildAuthoritySnapshot(params, options.nowMs);
+    const decision = await simulateSpendAuthorityFromSnapshot(params, {
+      nowMs: options.nowMs,
+      engineVersion,
+      snapshot,
+      digest: Sha256Digest,
+    });
+    return { ok: true, decision };
+  } catch (err: unknown) {
+    const appError = asAppError(err);
+    return {
+      ok: false,
+      status: 'fallback',
+      reason: appError.code,
+      decision: await fallbackDecision(),
+    };
+  }
 }
 
 export async function recordDecisionEvent(options: {
@@ -88,6 +120,7 @@ export async function recordDecisionEvent(options: {
   decision: SimulatedAuthorityDecision;
   logger?: Logger;
 }): Promise<void> {
+  assertPrismaReady(prisma);
   await recordDecisionEventWithWriter({
     userId: options.userId,
     surface: options.surface,
@@ -96,4 +129,46 @@ export async function recordDecisionEvent(options: {
     writer: prisma.decisionEvent,
     logger: options.logger ?? ConsoleLogger,
   });
+}
+
+async function buildFallbackDecision(
+  params: SimulateSpendParams,
+  nowMs: number,
+  engineVersion: string
+): Promise<AuthorityDecision> {
+  const snapshot: AuthoritySnapshot = {
+    dailyState: null,
+    buckets: [],
+    categoryPreferenceMode: null,
+    pendingSessions: 0,
+    pendingPoints: 0,
+  };
+  try {
+    return await simulateSpendAuthorityFromSnapshot(params, {
+      nowMs,
+      engineVersion,
+      snapshot,
+      digest: Sha256Digest,
+    });
+  } catch (error: unknown) {
+    void error;
+    const severity = getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, params.surface);
+    return {
+      __authorityPure: authorityPureBrand,
+      version: authorityVersion,
+      verdict: 'FLAG_SIMULATED',
+      severity,
+      reasons: [
+        {
+          code: AuthorityReason.DAILY_STATE_RISKY,
+          severity,
+          detail: 'Authority fallback: unable to compute snapshot.',
+        },
+      ],
+      explanation: 'Authority fallback: unavailable snapshot.',
+      inputsVersion: `fallback:${params.userId}:${params.amountCents}:${params.category}`,
+      engineVersion,
+      counterfactuals: [],
+    };
+  }
 }

@@ -64,13 +64,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         surface: 'scan' as const,
         counterfactuals: [],
       };
-      authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs });
-      await recordDecisionEvent({
-        userId,
-        surface: 'scan',
-        params: authorityParams,
-        decision: authorityDecision,
-      });
+      const authorityResult = await simulateSpendAuthority(authorityParams, { nowMs });
+      authorityDecision = authorityResult.decision;
+      if (authorityResult.ok) {
+        await recordDecisionEvent({
+          userId,
+          surface: 'scan',
+          params: authorityParams,
+          decision: authorityDecision,
+        });
+      }
 
       const ctx = buildEngineContext({
         surface: 'web',

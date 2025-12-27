@@ -95,13 +95,16 @@ export async function runRecommendationFromOrderContext(
     surface: 'vine' as const,
     counterfactuals: [],
   };
-  const authorityDecision = await simulateSpendAuthority(authorityParams, { nowMs: engineNowMs });
-  await recordDecisionEvent({
-    userId,
-    surface: 'vine',
-    params: authorityParams,
-    decision: authorityDecision,
-  });
+  const authorityResult = await simulateSpendAuthority(authorityParams, { nowMs: engineNowMs });
+  const authorityDecision = authorityResult.decision;
+  if (authorityResult.ok) {
+    await recordDecisionEvent({
+      userId,
+      surface: 'vine',
+      params: authorityParams,
+      decision: authorityDecision,
+    });
+  }
 
   const expiresAt = new Date(Math.max(timestamp, options.now.getTime()) + 15 * 60 * 1000);
   const derivedOrderToken =

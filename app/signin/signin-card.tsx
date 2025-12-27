@@ -51,6 +51,7 @@ export function SignInCard({
         outcome: 'STOP',
         reason: 'MISSING_CREDENTIALS',
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       return;
     }
@@ -70,6 +71,7 @@ export function SignInCard({
         outcome: 'STOP',
         reason: `AUTH_${result.error}`,
         timestamp: getTimestamp(),
+        timestampSource: 'client',
       });
       setStatus(errorMessages[result.error] ?? 'Invalid email or password. Please try again.');
       setSubmitting(false);
