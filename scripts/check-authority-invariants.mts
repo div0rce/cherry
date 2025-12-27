@@ -18,7 +18,8 @@ type SimulatedAuthorityDecision =
   import('../lib/authority/simulateSpendAuthority.ts').SimulatedAuthorityDecision;
 type DecisionEventWriter = import('../lib/authority/simulateSpendAuthority.ts').DecisionEventWriter;
 
-const fixedNowMs = new Date('2024-01-02T00:00:00Z').getTime();
+const fixedNowMs = 1704153600000;
+const fixedPeriodEndMs = 1706745600000;
 const digest = Sha256Digest;
 
 function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySnapshot {
@@ -35,7 +36,7 @@ function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySna
         budgetAmount: 10_000,
         remainingCents: 9_000,
         strictMode: true,
-        periodEndMs: new Date('2024-02-01T00:00:00Z').getTime(),
+        periodEndMs: fixedPeriodEndMs,
       },
     ],
     categoryPreferenceMode: CategoryBudgetMode.BUDGETED,

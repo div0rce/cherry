@@ -72,3 +72,9 @@ Rationale:
 Silent misuse of policy metadata causes long-term system rot.
 
 Guardrail checks: `npm run check:branded-literal` and `tests/guardrails/branded-type-enforcement.test.ts`.
+
+# Guardrail 14 — Guardrail Self-Consistency
+
+- Guardrail scripts (`scripts/check-*`) must obey all active guardrails.
+- No implicit booleans, `any`, branded literals, wall-clock time, or unsafe casts in guardrail scripts.
+- Guardrail checks: `npm run check:guardrail-self` and `tests/guardrails/guardrail-self-consistency.test.ts`.

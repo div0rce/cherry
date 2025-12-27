@@ -10,7 +10,7 @@ ensureTsEsm();
 const prisma = new PrismaClient();
 
 function assertOfflineEvaluatorModelsPresent() {
-  const client = prisma as unknown as Record<string, unknown>;
+  const client = prisma as Record<string, unknown>;
   const hasIncomeRegime =
     Boolean(client['historicalIncomeRegime']) &&
     typeof (client['historicalIncomeRegime'] as Record<string, unknown>)['findFirst'] === 'function';

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import ts from 'typescript';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { BRAND_PROPERTIES } from '../lib/util/brand-registry';
 
 ensureTsEsm();
 
@@ -13,7 +14,8 @@ type Violation = {
 
 const ROOT = process.cwd();
 const TARGET_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
-const TARGET_PREFIXES = ['lib', 'scripts'];
+const TARGET_PREFIXES = ['app', 'lib', 'scripts', 'tests'];
+const FIXTURE_DIR = path.join('tests', 'fixtures');
 const FIXTURE_MODE = process.env['CHERRY_BRANDED_LITERAL_FIXTURE'] === '1';
 const FIXTURE_PATH = path.join(
   ROOT,
@@ -33,24 +35,33 @@ function isTargetFile(fileName: string): boolean {
   if (relative.startsWith('..')) return false;
   const normalized = path.normalize(relative);
   if (!TARGET_EXTENSIONS.has(path.extname(normalized))) return false;
+  if (normalized.startsWith(path.normalize(FIXTURE_DIR))) return false;
   return TARGET_PREFIXES.some((prefix) => {
     const normalizedPrefix = path.normalize(prefix);
     return normalized === normalizedPrefix || normalized.startsWith(`${normalizedPrefix}${path.sep}`);
   });
 }
 
-function hasIsoDateBrand(type: ts.Type): boolean {
+function hasBrandProperty(type: ts.Type): boolean {
   if (type.isUnion()) {
-    return type.types.some((member) => hasIsoDateBrand(member));
+    return type.types.some((member) => hasBrandProperty(member));
   }
   if (type.isIntersection()) {
-    return type.types.some((member) => hasIsoDateBrand(member));
+    return type.types.some((member) => hasBrandProperty(member));
   }
-  return type.getProperties().some((prop) => prop.getName() === '__isoDateBrand');
+  return type
+    .getProperties()
+    .some((prop) => BRAND_PROPERTIES.includes(prop.getName() as (typeof BRAND_PROPERTIES)[number]));
 }
 
-function isStringLiteralExpression(expression: ts.Expression): boolean {
-  return ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression);
+function isLiteralExpression(expression: ts.Expression): boolean {
+  if (ts.isStringLiteral(expression)) return true;
+  if (ts.isNoSubstitutionTemplateLiteral(expression)) return true;
+  if (ts.isNumericLiteral(expression)) return true;
+  if (ts.isPrefixUnaryExpression(expression) && ts.isNumericLiteral(expression.operand)) {
+    return true;
+  }
+  return false;
 }
 
 function isAsIsoDateCall(expression: ts.Expression): boolean {
@@ -84,20 +95,24 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
     targetType: ts.Type | undefined,
     initializer: ts.Expression
   ): void {
-    if (!isStringLiteralExpression(initializer)) return;
+    if (!isLiteralExpression(initializer)) return;
     if (isAsIsoDateCall(initializer)) return;
     if (targetType === undefined) return;
-    if (!hasIsoDateBrand(targetType)) return;
+    if (!hasBrandProperty(targetType)) return;
     addViolation(
       violations,
       sourceFile,
       node,
-      `IsoDateString assigned from string literal; use asIsoDate(...)`
+      `Branded type assigned from literal; use a constructor`
     );
   }
 
   function visit(node: ts.Node): void {
-    if (ts.isVariableDeclaration(node) && node.initializer) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer !== undefined &&
+      node.initializer !== null
+    ) {
       const targetType = checker.getTypeAtLocation(node.name);
       checkLiteral(node, targetType, node.initializer);
     } else if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {

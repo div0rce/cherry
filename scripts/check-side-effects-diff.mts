@@ -168,8 +168,30 @@ function parseExpiresBy(value: IsoDateString, file: string): number {
   return timestamp;
 }
 
-function startOfUtcDay(date: Date): number {
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+function resolveEpochMs(): number {
+  const envValue = process.env['SOURCE_DATE_EPOCH'] ?? process.env['CHERRY_GUARDRAIL_EPOCH'];
+  if (envValue !== undefined) {
+    const parsed = Number(envValue);
+    if (Number.isFinite(parsed) === false) {
+      fail(`Invalid SOURCE_DATE_EPOCH: ${envValue}`);
+    }
+    return parsed > 1_000_000_000_000 ? Math.trunc(parsed) : Math.trunc(parsed * 1000);
+  }
+  const gitEpochRaw = execSync('git log -1 --format=%ct', { encoding: 'utf8' }).trim();
+  if (gitEpochRaw.length === 0) {
+    fail('Unable to determine epoch from git log');
+  }
+  const parsed = Number(gitEpochRaw);
+  if (Number.isFinite(parsed) === false) {
+    fail(`Invalid git epoch: ${gitEpochRaw}`);
+  }
+  return Math.trunc(parsed * 1000);
+}
+
+function startOfUtcDayMs(epochMs: number): number {
+  const dayMs = 86_400_000;
+  const days = Math.floor(epochMs / dayMs);
+  return days * dayMs;
 }
 
 function main(): void {
@@ -193,7 +215,7 @@ function main(): void {
     );
   }
 
-  const todayUtcStart = startOfUtcDay(new Date());
+  const todayUtcStart = startOfUtcDayMs(resolveEpochMs());
   for (const [file, entry] of Object.entries(current)) {
     if (entry.tier !== 'legacy-combo') continue;
     if (entry.expiresBy === undefined) {
