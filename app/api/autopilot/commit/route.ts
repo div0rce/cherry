@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { commitAutopilotDecision, commitAutopilotDecisionV2 } from '@/lib/autopilot/service';
-import { AutopilotCommitInputSchema, AutopilotServiceError } from '@/lib/autopilot/types';
-import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
-import { parseJsonBody } from '@/lib/validation';
-import { resolveUserContext } from '@/lib/user-context';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { asError } from '@/lib/errors';
+import { commitAutopilotDecision, commitAutopilotDecisionV2 } from '../../../../lib/autopilot/service';
+import { AutopilotCommitInputSchema, AutopilotServiceError } from '../../../../lib/autopilot/types';
+import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log';
+import { parseJsonBody } from '../../../../lib/validation';
+import { resolveUserContext } from '../../../../lib/user-context';
+import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma';
+import { asAppError, isUnauthorized } from '../../../../lib/errors';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
@@ -35,8 +35,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       : await commitAutopilotDecision(world, userContext.userId, parsed.data, { now: requestNow });
 
     return NextResponse.json(result, { status: 200 });
-  } catch (caught) {
-    asError(caught);
+  } catch (caught: unknown) {
+    const appError = asAppError(caught);
     if (caught instanceof AutopilotServiceError) {
       const kind =
         caught.code === 'DECISION_BLOCKED' || caught.code === 'CARD_MISMATCH'
@@ -53,18 +53,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         reason: caught.code,
       });
       return NextResponse.json(
-        { error: caught.message, code: caught.code },
+        { error: appError.message, code: caught.code },
         { status: caught.status }
       );
     }
 
-    if (caught.message.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, { status: 401 });
     }
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot commit failed unexpectedly',
-      data: { userId, error: caught.message },
+      data: { userId, error: appError.message },
     });
     return NextResponse.json(
       { error: 'Failed to commit swipe', code: 'AUTOPILOT_COMMIT_UNEXPECTED' },

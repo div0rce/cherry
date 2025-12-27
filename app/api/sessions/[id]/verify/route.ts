@@ -1,15 +1,15 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError } from '@/lib/logger';
-import { VerifySessionSchema } from '@/lib/schemas/sessions';
-import { parseJsonBody } from '@/lib/validation';
+import { logError } from '../../../../../lib/logger';
+import { VerifySessionSchema } from '../../../../../lib/schemas/sessions';
+import { parseJsonBody } from '../../../../../lib/validation';
 import {
   assertUserId,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { verifySessionFromSignal } from '@/lib/verification/verify-session';
-import { asError } from '@/lib/errors';
+} from '../../../../../lib/user-context';
+import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session';
+import { asAppError, isUnauthorized } from '../../../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -28,12 +28,12 @@ export async function POST(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/sessions/[id]/verify POST', error);
+    logError('Error resolving user context in api/sessions/[id]/verify POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -75,10 +75,10 @@ export async function POST(
       sessionStatus: result.sessionStatus,
       ledgerStatus: result.ledgerStatus,
     });
-  } catch (error) {
-    asError(error);
-    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, err: error });
-    logError('Error in /api/sessions/[id]/verify', error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    logInvariant('Error in api/sessions/[id]/verify POST', { userId, mode, err: appError });
+    logError('Error in /api/sessions/[id]/verify', appError);
     return NextResponse.json({ error: 'Failed to verify session' }, { status: 500 });
   }
 }

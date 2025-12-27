@@ -1,6 +1,6 @@
-import { applyInMemoryRollover } from '@/lib/buckets/periods';
-import { toBucketRuntime } from '@/lib/buckets-runtime';
-import { prisma } from '@/lib/prisma';
+import { applyInMemoryRollover } from '../../buckets/periods';
+import { toBucketRuntime } from '../../buckets-runtime';
+import { prisma } from '../../prisma';
 import type {
   Bucket,
   DebtAccount,
@@ -12,10 +12,10 @@ import type {
   RewardRule,
   UserConstraints,
   WorldParams,
-} from '@/lib/engine/types';
-import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '@/lib/engine/objective';
-import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '@/lib/engine/runtime';
-import { asError } from '@/lib/errors';
+} from '../../engine/types';
+import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '../../engine/objective';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '../../engine/runtime';
+import { asAppError } from '../../errors';
 
 export async function fromPrismaUserToEngineState(
   userId: string,
@@ -36,7 +36,7 @@ export async function fromPrismaUserToEngineState(
   ]);
 
   const cash =
-    (await loadCashSnapshot(userId).catch(() => ({
+    (await loadCashSnapshot(userId).catch((_error: unknown) => ({
       liquidCents: null,
       nextPaycheckDateMs: null,
       nextPaycheckNetCents: null,
@@ -231,11 +231,11 @@ async function loadUserPreferences(
     let customWeights: Partial<ObjectiveWeights> | undefined;
     try {
       customWeights = coerceObjectiveWeights(user.engineObjectiveWeights ?? undefined);
-    } catch (err) {
-      asError(err);
+    } catch (err: unknown) {
+      const appError = asAppError(err);
       logPreferencesWarning(runtime, 'Failed to parse engineObjectiveWeights; ignoring overrides', {
         userId,
-        err,
+        err: appError,
       });
     }
 
@@ -244,11 +244,11 @@ async function loadUserPreferences(
       : { profileId: profile.id };
 
     return preferences;
-  } catch (err) {
-    asError(err);
+  } catch (err: unknown) {
+    const appError = asAppError(err);
     logPreferencesWarning(runtime, 'Unexpected error loading preferences; using defaults', {
       userId,
-      err,
+      err: appError,
     });
     return { ...DEFAULT_ENGINE_USER_PREFERENCES };
   }

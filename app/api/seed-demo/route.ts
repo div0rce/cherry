@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError, logInfo } from '@/lib/logger';
-import { seedDemoForUser } from '@/lib/demo-seeder';
+import { logError, logInfo } from '../../../lib/logger';
+import { seedDemoForUser } from '../../../lib/demo-seeder';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { asError } from '@/lib/errors';
+} from '../../../lib/user-context';
+import { asAppError, isUnauthorized } from '../../../lib/errors';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -30,12 +30,12 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/seed-demo POST', error);
+    logError('Error resolving user context in api/seed-demo POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -46,7 +46,7 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     logInfo('Seeded demo data via API', { userId, mode, summary });
     return NextResponse.json({ message: 'Demo data seeded', summary });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     const userIdValue = userId ?? undefined;
     const modeValue = mode ?? undefined;
     if (isPrismaP2003(error)) {
@@ -61,10 +61,10 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
       logInvariant('Error in api/seed-demo POST', {
         userId: userIdValue,
         mode: modeValue,
-        err: error,
+        err: appError,
       });
     }
-    logError('Failed to seed demo data via API', error);
+    logError('Failed to seed demo data via API', appError);
     return NextResponse.json({ error: 'Failed to seed demo data' }, { status: 500 });
   }
 }

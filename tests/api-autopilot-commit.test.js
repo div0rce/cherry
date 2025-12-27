@@ -179,7 +179,8 @@ async function runCommitUnauthorized() {
   });
   mockModule(requireModule.resolve('@/lib/user-context'), {
     resolveUserContext: async () => {
-      throw new Error('Unauthorized');
+      const { AppError } = requireModule('@/lib/errors');
+      throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
     },
   });
 

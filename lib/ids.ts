@@ -1,5 +1,5 @@
-import { hasText } from '@/lib/text';
-import { isPositiveNumber } from '@/lib/numbers';
+import { hasText } from './text';
+import { isPositiveNumber } from './numbers';
 
 export function buildSwipeIdempotencyKey(args: {
   userId: string;

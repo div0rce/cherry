@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '@/lib/user-context';
-import { hasText } from '@/lib/text';
-import { logGuardrailEvent } from '@/lib/log';
-import { asError } from '@/lib/errors';
+import { prisma } from '../../../../lib/prisma';
+import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../lib/user-context';
+import { hasText } from '../../../../lib/text';
+import { logGuardrailEvent } from '../../../../lib/log';
+import { asAppError, isUnauthorized } from '../../../../lib/errors';
 
 /**
  * DELETE /api/simulations/[id]
@@ -47,8 +47,8 @@ export async function DELETE(
       await prisma.simulatedTransaction.delete({
         where: { id: simulation.id },
       });
-    } catch (err) {
-      asError(err);
+    } catch (err: unknown) {
+      const appError = asAppError(err);
       if (isPrismaP2003(err)) {
         const metaValue = err.meta == null ? null : String(err.meta);
         logInvariant('P2003 in api/simulations DELETE', {
@@ -59,13 +59,13 @@ export async function DELETE(
         });
         return new NextResponse('User context or FK error', { status: 500 });
       }
-      throw err;
+      throw appError;
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to delete simulation', { status: 500 });

@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError, logInfo } from '@/lib/logger';
-import { seedCardsAndBucketsForUser } from '@/lib/demo-seeder';
+import { logError, logInfo } from '../../../../lib/logger';
+import { seedCardsAndBucketsForUser } from '../../../../lib/demo-seeder';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+} from '../../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -30,12 +30,12 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/seed-demo/cards-buckets POST', error);
+    logError('Error resolving user context in api/seed-demo/cards-buckets POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -46,7 +46,7 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     logInfo('Seeded cards & buckets via API', { userId, mode, summary });
     return NextResponse.json({ message: 'Seeded cards and buckets', summary });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/seed-demo/cards-buckets POST', {
         userId,
@@ -55,9 +55,9 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
         err: error,
       });
     } else {
-      logInvariant('Error in api/seed-demo/cards-buckets POST', { userId, mode, err: error });
+      logInvariant('Error in api/seed-demo/cards-buckets POST', { userId, mode, err: appError });
     }
-    logError('Failed to seed cards & buckets via API', error);
+    logError('Failed to seed cards & buckets via API', appError);
     return NextResponse.json({ error: 'Failed to seed cards & buckets' }, { status: 500 });
   }
 }

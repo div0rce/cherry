@@ -3,8 +3,8 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import type { ActionState } from '../../../../_lib/form-state.js';
+import { fetchFromApi, requireUserContext } from '../../../../../../_lib/api';
+import type { ActionState } from '../../../../_lib/form-state';
 
 const ALLOWED_CATEGORIES = [
   RewardCategory.DINING,
@@ -70,7 +70,7 @@ export async function createRewardRule(
   }
 
   await requireUserContext();
-  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}/rewards`, {
+  const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -80,7 +80,7 @@ export async function createRewardRule(
     }),
   });
 
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=cards');
     return;
   }
@@ -88,9 +88,9 @@ export async function createRewardRule(
     return { status: 'error', message: 'Failed to create reward rule.' };
   }
 
-  const bucketsResponse = await fetchFromApi('/api/buckets');
+  const bucketsResponse = await fetchFromApi<Array<{ id?: string }>>('/api/buckets');
   if (bucketsResponse.ok) {
-    const buckets = (await bucketsResponse.json()) as Array<{ id?: string }>;
+    const buckets = bucketsResponse.data;
     if (buckets.length === 0) {
       redirect('/app/onboarding/buckets/new');
       return;

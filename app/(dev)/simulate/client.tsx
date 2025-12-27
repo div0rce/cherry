@@ -1,12 +1,13 @@
 'use client';
 
 import type { JSX } from 'react';
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { hasText } from '@/lib/text';
-import { isPositiveNumber } from '@/lib/numbers';
-import { logGuardrailEvent } from '@/lib/log';
+import { hasText } from '../../../lib/text';
+import { isPositiveNumber } from '../../../lib/numbers';
+import { logGuardrailEvent } from '../../../lib/log';
+import { callApi } from '../../../lib/client/api';
 
 function promptSignIn(setStatus: (message: string) => void) {
   setStatus('Sign in to continue.');
@@ -105,61 +106,35 @@ export function RunSimulationForm(): JSX.Element {
     setSubmitting(true);
 
     const amountCents = Math.round(parsedAmount * 100);
+    const res = await callApi<unknown>('/api/simulate', {
+      method: 'POST',
+      body: JSON.stringify({
+        amountCents,
+        category: normalizedCategory,
+        merchantName: merchantNameTrimmed,
+        mccCode: mcc,
+        ...(commit ? { commit: true } : {}),
+      }),
+    });
 
-    try {
-      const res = await fetch('/api/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amountCents,
-          category: normalizedCategory,
-          merchantName: merchantNameTrimmed,
-          mccCode: mcc,
-          ...(commit ? { commit: true } : {}),
-        }),
-      });
-
-      if (res.status === 401) {
+    if (!res.ok) {
+      if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
+        setSubmitting(false);
         return;
       }
-
-      if (!res.ok) {
-        const headerContentType = res.headers.get('content-type');
-        const contentType = hasText(headerContentType) ? headerContentType : '';
-        let message = 'Simulation failed';
-        if (contentType.includes('application/json')) {
-          const data = (await res.json()) as unknown;
-          if (data !== null && typeof data === 'object') {
-            const maybeDetails = (data as { details?: unknown }).details;
-            const details =
-              Array.isArray(maybeDetails) && maybeDetails.every((d) => typeof d === 'string')
-                ? (maybeDetails as string[]).join('; ')
-                : null;
-            const maybeError = (data as { error?: unknown }).error;
-            if (typeof maybeError === 'string') {
-              message = hasText(details) ? `${maybeError}: ${details}` : maybeError;
-            }
-          }
-        } else {
-          const text = await res.text();
-          if (hasText(text)) message = text;
-        }
-        setStatus(`(${res.status}) ${message}`);
-        return;
-      }
-
-      setStatus('Done!');
-      setMerchantName('');
-      setMccCode('');
-      setAmountDollars('');
-      setCommit(false);
-      router.refresh();
-    } catch {
-      setStatus('Network error: unable to run simulation.');
-    } finally {
+      setStatus(res.message);
       setSubmitting(false);
+      return;
     }
+
+    setStatus('Done!');
+    setMerchantName('');
+    setMccCode('');
+    setAmountDollars('');
+    setCommit(false);
+    router.refresh();
+    setSubmitting(false);
   }
 
   return (
@@ -254,18 +229,16 @@ export function DeleteSimulationButton({
     if (!confirmed) return;
 
     setStatus('Removing…');
-    const res = await fetch(`/api/simulations/${simulationId}`, {
+    const res = await callApi<unknown>(`/api/simulations/${simulationId}`, {
       method: 'DELETE',
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = await res.text();
-      setStatus(hasText(message) ? message : 'Failed to delete');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to delete');
       return;
     }
 

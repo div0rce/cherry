@@ -1,13 +1,13 @@
-import type { RewardCategory } from '@/lib/enums';
-import { hasText } from '@/lib/text';
-import { isPositiveNumber } from '@/lib/numbers';
-import { resolveScanCategory } from '@/lib/scan-helpers';
-import { buildEngineContext } from './context.js';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { safeSolveDecisionForWorld } from './run.js';
-import type { EngineDecision, EngineState } from './types.js';
-import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types.js';
-import type { World } from '@/lib/adapters/world';
+import type { RewardCategory } from '../enums';
+import { hasText } from '../text';
+import { isPositiveNumber } from '../numbers';
+import { resolveScanCategory } from '../scan-helpers';
+import { buildEngineContext } from './context';
+import { fromPrismaUserToEngineState } from '../engine-state';
+import { safeSolveDecisionForWorld } from './run';
+import type { EngineDecision, EngineState } from './types';
+import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types';
+import type { World } from '../adapters/world';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];
 
@@ -208,7 +208,8 @@ export async function getAutopilotDecisionForUserSwipe(
       mccCode: null,
       explicitCategory: null,
     });
-  } catch {
+  } catch (error: unknown) {
+    void error;
     merchantCategoryKey = null;
   }
 

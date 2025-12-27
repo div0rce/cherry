@@ -1,4 +1,6 @@
-import type { JSX } from "react";
+import React, { type JSX } from "react";
+
+void React;
 
 type Segment = {
   label: string;

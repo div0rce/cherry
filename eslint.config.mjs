@@ -158,6 +158,10 @@ export default defineConfig([
           selector: 'CallExpression[callee.object.name="JSON"][callee.property.name="parse"]',
           message: 'Prefer schema-validated parsing (Zod) instead of raw JSON.parse.',
         },
+        {
+          selector: 'CatchClause[param.typeAnnotation=null]',
+          message: 'All catch params must be typed as unknown and normalized.',
+        },
       ],
       // Exhaustive switches
       '@typescript-eslint/switch-exhaustiveness-check': 'error',

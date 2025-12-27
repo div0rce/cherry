@@ -6,7 +6,7 @@ import type {
   EngineDecision,
   EngineState,
   EngineValidationIssue,
-} from './types.js';
+} from './types';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { assertUserId } from '@/lib/invariants';
-import { isPrismaP2003, logInvariant } from '@/lib/user-context';
-import { asError } from '@/lib/errors';
-import { hasText } from '@/lib/text';
+import { prisma } from '../prisma';
+import { assertUserId } from '../invariants';
+import { isPrismaP2003, logInvariant } from '../user-context';
+import { asAppError } from '../errors';
+import { hasText } from '../text';
 
 export interface AggregatorTransaction {
   id: string;
@@ -111,15 +111,15 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
       await prisma.bankTransaction.create({ data });
     }
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in ingestBankTransaction', {
         userId: tx.userId,
         err,
       });
     } else {
-      logInvariant('Error in ingestBankTransaction', { userId: tx.userId, err });
+      logInvariant('Error in ingestBankTransaction', { userId: tx.userId, err: appError });
     }
-    throw err;
+    throw appError;
   }
 }

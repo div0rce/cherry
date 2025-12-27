@@ -1,14 +1,14 @@
 import type { JSX } from 'react';
-import { prisma } from '@/lib/prisma';
-import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { ROUTES } from '@/lib/routes';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { Card } from '@/components/ui/card';
-import { EmptyState } from '@/components/ui/empty-state';
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { asError } from '@/lib/errors';
+import { prisma } from '../../../../lib/prisma';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth';
+import { ROUTES } from '../../../../lib/routes';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { Card } from '../../../../components/ui/card';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { ErrorBanner } from '../../../../components/ErrorBanner';
+import { asAppError } from '../../../../lib/errors';
 
 type SourceSummary = {
   source: string;
@@ -38,9 +38,9 @@ export default async function IngestDashboardPage(): Promise<JSX.Element> {
   let error: string | null = null;
   try {
     summaries = await loadSourceSummaries(userId);
-  } catch (err) {
-    asError(err);
-    error = err.message;
+  } catch (err: unknown) {
+    const appError = asAppError(err);
+    error = appError.message;
   }
 
   const totalTx = summaries.reduce((sum, item) => sum + item.count, 0);

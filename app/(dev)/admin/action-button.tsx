@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { asError } from '@/lib/errors';
+import { callApi } from '../../../lib/client/api';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -25,37 +25,21 @@ export function AdminActionButton({
     setStatus('loading');
     setMessage(null);
 
-    try {
-      const res = await fetch(href, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-      });
+    const res = await callApi<{ message?: string }>(href, {
+      method,
+      cache: 'no-store',
+    });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        const message = hasText(errorText) ? errorText : 'Request failed';
-        throw new Error(message);
-      }
-
-      setStatus('success');
-      const parsed = (await res.json().catch(() => null)) as unknown;
-      let nextMessage = 'Completed';
-      if (
-        parsed !== null &&
-        typeof parsed === 'object' &&
-        'message' in parsed &&
-        typeof (parsed as { message: unknown }).message === 'string'
-      ) {
-        nextMessage = (parsed as { message: string }).message;
-      }
-      setMessage(nextMessage);
-      router.refresh();
-    } catch (err) {
-      asError(err);
+    if (!res.ok) {
       setStatus('error');
-      setMessage(err.message);
+      setMessage(res.message);
+      return;
     }
+
+    setStatus('success');
+    const nextMessage = hasText(res.data.message) ? res.data.message : 'Completed';
+    setMessage(nextMessage);
+    router.refresh();
   }
 
   const isLoading = status === 'loading';

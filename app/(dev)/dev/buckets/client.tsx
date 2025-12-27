@@ -2,8 +2,9 @@
 
 import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
-import { useState, FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
+import { callApi } from '../../../../lib/client/api';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -22,18 +23,16 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }): JSX.Elem
     if (!confirmed) return;
 
     setStatus('Removing…');
-    const res = await fetch(`/api/buckets/${bucketId}`, {
+    const res = await callApi<unknown>(`/api/buckets/${bucketId}`, {
       method: 'DELETE',
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = (await res.text()).trim();
-      setStatus(hasText(message) ? message : 'Failed to delete bucket');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to delete bucket');
       return;
     }
 
@@ -99,9 +98,8 @@ export function AddBucketForm(): JSX.Element {
     const budgetCents = Math.round(parsedBudget * 100);
 
     setStatus('Saving…');
-    const res = await fetch('/api/buckets', {
+    const res = await callApi<unknown>('/api/buckets', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: trimmedName,
         period,
@@ -112,14 +110,12 @@ export function AddBucketForm(): JSX.Element {
       }),
     });
 
-    if (res.status === 401) {
-      promptSignIn(setStatus);
-      return;
-    }
-
     if (!res.ok) {
-      const message = (await res.text()).trim();
-      setStatus(hasText(message) ? message : 'Failed to create bucket');
+      if (res.error === 'UNAUTHORIZED') {
+        promptSignIn(setStatus);
+        return;
+      }
+      setStatus(hasText(res.message) ? res.message : 'Failed to create bucket');
       return;
     }
 

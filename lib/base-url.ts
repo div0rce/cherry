@@ -1,5 +1,5 @@
-import type { PublicConfig } from './config/public.js';
-import { getPublicConfig } from './config/store.js';
+import type { PublicConfig } from './config/public';
+import { getPublicConfig } from './config/store';
 
 const FALLBACK_URL = 'http://localhost:3000';
 

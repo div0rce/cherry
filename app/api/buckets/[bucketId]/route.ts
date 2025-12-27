@@ -1,18 +1,18 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { logError } from '@/lib/logger';
-import { BucketUpdateSchema } from '@/lib/schemas/buckets';
-import { parseJsonBody } from '@/lib/validation';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount, toBucketRuntime } from '@/lib/buckets-runtime';
+import { prisma } from '../../../../lib/prisma';
+import { logError } from '../../../../lib/logger';
+import { BucketUpdateSchema } from '../../../../lib/schemas/buckets';
+import { parseJsonBody } from '../../../../lib/validation';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount, toBucketRuntime } from '../../../../lib/buckets-runtime';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+} from '../../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -52,12 +52,12 @@ export async function PATCH(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/buckets/[bucketId] PATCH', error);
+    logError('Error resolving user context in api/buckets/[bucketId] PATCH', appError);
     return new NextResponse('Failed to resolve user context', { status: 500 });
   }
 
@@ -100,8 +100,8 @@ export async function PATCH(
     });
 
     return NextResponse.json(toBucketRuntime(updated));
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets/[bucketId] PATCH', {
         userId,
@@ -110,8 +110,8 @@ export async function PATCH(
         err: error,
       });
     } else {
-      logInvariant('Error in api/buckets/[bucketId] PATCH', { userId, mode, err: error });
-      logError('Error updating bucket', error);
+      logInvariant('Error in api/buckets/[bucketId] PATCH', { userId, mode, err: appError });
+      logError('Error updating bucket', appError);
     }
     return new NextResponse('Failed to update bucket', { status: 500 });
   }
@@ -136,12 +136,12 @@ export async function DELETE(
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/buckets/[bucketId] DELETE', error);
+    logError('Error resolving user context in api/buckets/[bucketId] DELETE', appError);
     return new NextResponse('Failed to resolve user context', { status: 500 });
   }
 
@@ -169,8 +169,8 @@ export async function DELETE(
       where: { id: bucket.id, userId },
     });
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/buckets/[bucketId] DELETE', {
         userId,
@@ -179,8 +179,8 @@ export async function DELETE(
         err: error,
       });
     } else {
-      logInvariant('Error in api/buckets/[bucketId] DELETE', { userId, mode, err: error });
-      logError('Error deleting bucket', error);
+      logInvariant('Error in api/buckets/[bucketId] DELETE', { userId, mode, err: appError });
+      logError('Error deleting bucket', appError);
     }
     return new NextResponse('Failed to delete bucket', { status: 500 });
   }

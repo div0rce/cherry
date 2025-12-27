@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { initConfigFromEnv } from "./lib/config/init.js";
+import { initConfigFromEnv } from "./lib/config/init";
 
 initConfigFromEnv(process.env);
 

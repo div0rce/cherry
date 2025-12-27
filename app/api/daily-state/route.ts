@@ -2,8 +2,8 @@ import type { NextRequest } from 'next/server';
 // NOTE: DailyState contract is type-locked. See docs/daily-state.md.
 // Do not change semantics without bumping engineVersion.
 import { NextResponse } from 'next/server';
-import { withUser } from '@/lib/with-user';
-import { prisma } from '@/lib/prisma';
+import { withUser } from '../../../lib/with-user';
+import { prisma } from '../../../lib/prisma';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {

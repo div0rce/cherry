@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '@/lib/prisma';
-import { getAutopilotDecisionForUserSwipe } from '@/lib/engine';
-import { resolveUserContext } from '@/lib/user-context';
-import { logGuardrailEvent } from '@/lib/log';
-import { parseJsonBody } from '@/lib/validation';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { asError } from '@/lib/errors';
+import { prisma } from '../../../lib/prisma';
+import { getAutopilotDecisionForUserSwipe } from '../../../lib/engine';
+import { resolveUserContext } from '../../../lib/user-context';
+import { logGuardrailEvent } from '../../../lib/log';
+import { parseJsonBody } from '../../../lib/validation';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma';
+import { asAppError, isUnauthorized } from '../../../lib/errors';
 
 const AutopilotRequestSchema = z
   .object({
@@ -93,9 +93,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       savingsDollars: (decision.expectedMonetaryBenefitCents ?? 0) / 100,
       bucketDelta,
     });
-  } catch (err) {
-    asError(err);
-    if (err.message.includes('Unauthorized')) {
+  } catch (err: unknown) {
+    const appError = asAppError(err);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     logGuardrailEvent({
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       userId,
       kind: 'ENGINE_ERROR',
       severity: 'hard',
-      detail: { message: err.message },
+      detail: { message: appError.message },
     });
     return NextResponse.json({ message: 'Failed to fetch recommendation' }, { status: 500 });
   }

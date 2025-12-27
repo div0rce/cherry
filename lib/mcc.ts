@@ -1,4 +1,4 @@
-import mccCodes from '@/data/mcc/mcc-codes.json';
+import mccCodes from '../data/mcc/mcc-codes.json';
 
 export interface MccRange {
   start: number;

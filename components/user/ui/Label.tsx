@@ -1,5 +1,5 @@
 import type { JSX, LabelHTMLAttributes } from 'react';
-import { cn } from './utils.js';
+import { cn } from './utils';
 
 export default function Label({ className, ...rest }: LabelHTMLAttributes<HTMLLabelElement>): JSX.Element {
   return (

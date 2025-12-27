@@ -1,4 +1,4 @@
-import UserPage from '@/app/(user)/app/page';
+import UserPage from '../../../../../../../../app/(user)/app/page.js';
 
 export async function GET(): Promise<Response> {
   const _fixture: typeof UserPage | null = null;

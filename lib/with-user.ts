@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { resolveUserContext } from '@/lib/user-context';
-import { assertUserId } from '@/lib/invariants';
+import { resolveUserContext } from './user-context';
+import { assertUserId } from './invariants';
 
 export async function withUser(
   request: NextRequest,
@@ -11,7 +11,8 @@ export async function withUser(
     const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     assertUserId(userId);
     return handler(userId, request);
-  } catch {
+  } catch (error: unknown) {
+    void error;
     return new NextResponse('Unauthorized', { status: 401 });
   }
 }

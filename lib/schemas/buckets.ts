@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { RewardCategorySchema, CentsSchema } from './common.js';
+import { RewardCategorySchema, CentsSchema } from './common';
 
 export const BucketCreateSchema = z
   .object({

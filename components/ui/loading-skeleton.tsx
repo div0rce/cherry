@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX } from 'react';
-import { Skeleton } from './skeleton.js';
+import { Skeleton } from './skeleton';
 
 export function LoadingRows({
   rows = 3,

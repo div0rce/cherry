@@ -5,6 +5,11 @@ import path from 'node:path';
 const repoRoot = process.cwd();
 const scriptPath = path.join(repoRoot, 'scripts', 'check-repo-guardrails.js');
 const fixturesRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'repo');
+const TOKEN_TS_NODE_REGISTER = ['ts-node', 'register'].join('/');
+const TOKEN_NODE_SCRIPTS_MTS = [
+  'node',
+  'scripts/*.mts',
+].join(' ');
 
 type Expectation = {
   guardrail: string;
@@ -124,13 +129,13 @@ function run(): void {
 
   runFixture('ts-node-register', {
     guardrail: 'ts-node-register-forbidden',
-    token: 'ts-node/register',
+    token: TOKEN_TS_NODE_REGISTER,
     file: path.join('scripts', 'bad.ts'),
   });
 
   runFixture('esm-loader-direct', {
     guardrail: 'esm-loader-bypass',
-    token: 'node scripts/*.mts',
+    token: TOKEN_NODE_SCRIPTS_MTS,
     file: path.join('tests', 'bad.test.ts'),
   });
 

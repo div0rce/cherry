@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import { RewardRuleForm } from '../../../../../_components/RewardRuleForm.js';
-import { DeleteActionButton } from '../../../../../_components/DeleteActionButton.js';
-import { deleteRewardRule, updateRewardRule } from './actions.js';
+import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api';
+import { RewardRuleForm } from '../../../../../_components/RewardRuleForm';
+import { DeleteActionButton } from '../../../../../_components/DeleteActionButton';
+import { deleteRewardRule, updateRewardRule } from './actions';
 export const dynamic = 'force-dynamic';
 
 
@@ -19,29 +19,31 @@ export default async function EditRewardRulePage({
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId, ruleId } = resolvedParams;
   await requireUserContext();
-  const ruleResponse = await fetchFromApi(`/api/cards/${cardId}/rewards`);
+  const ruleResponse = await fetchFromApi<
+    Array<{
+      id: string;
+      category: string;
+      multiplier: number | null;
+      cashbackPercent: number | null;
+    }>
+  >(`/api/cards/${cardId}/rewards`);
   if (!ruleResponse.ok) {
     redirect('/app/onboarding?missing=rules');
     return null;
   }
-  const rules = (await ruleResponse.json()) as Array<{
-    id: string;
-    category: string;
-    multiplier: number | null;
-    cashbackPercent: number | null;
-  }>;
+  const rules = ruleResponse.data;
   const currentRule = rules.find((item) => item.id === ruleId) ?? null;
   if (currentRule === null) {
     redirect('/app/onboarding?missing=rules');
     return null;
   }
 
-  const cardResponse = await fetchFromApi('/api/cards');
+  const cardResponse = await fetchFromApi<Array<{ id: string; nickname: string }>>('/api/cards');
   if (!cardResponse.ok) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }
-  const cards = (await cardResponse.json()) as Array<{ id: string; nickname: string }>;
+  const cards = cardResponse.data;
   const card = cards.find((item) => item.id === cardId) ?? null;
   if (card === null) {
     redirect('/app/onboarding?missing=cards');

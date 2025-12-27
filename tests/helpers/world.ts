@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { World } from '@/lib/adapters/world';
+import type { World } from '../../lib/adapters/world';
 import type {
   BankTxn,
   BankTxnStore,
@@ -9,7 +9,7 @@ import type {
   LedgerStore,
   SessionRecord,
   SessionStore,
-} from '@/lib/adapters/persistence';
+} from '../../lib/adapters/persistence';
 
 type LogEntry = { level: 'info' | 'warn' | 'error'; message: string; meta?: unknown };
 

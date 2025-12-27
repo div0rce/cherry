@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);

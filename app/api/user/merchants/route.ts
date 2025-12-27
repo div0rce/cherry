@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { resolveUserContext } from '@/lib/user-context';
+import { prisma } from '../../../../lib/prisma';
+import { resolveUserContext } from '../../../../lib/user-context';
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -28,7 +28,8 @@ export async function GET(request: Request): Promise<Response> {
     );
 
     return NextResponse.json({ names });
-  } catch {
+  } catch (error: unknown) {
+    void error;
     return NextResponse.json({ names: [] });
   }
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { withIdempotency } from '@/lib/idempotency';
-import { makeTestWorld } from './helpers/world.js';
+import { withIdempotency } from '../lib/idempotency';
+import { makeTestWorld } from './helpers/world';
 
 type Payload = { value: number };
 
@@ -54,7 +54,8 @@ async function run(): Promise<void> {
       (value) => ({ value: value.value }),
       (payload) => ({ value: Number(payload['value']) })
     );
-  } catch {
+  } catch (error: unknown) {
+    void error;
     threw = true;
   }
   assert.ok(threw, 'non-P2002 idempotency errors must be surfaced');

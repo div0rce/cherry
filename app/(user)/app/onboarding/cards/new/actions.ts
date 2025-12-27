@@ -2,8 +2,8 @@
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import type { ActionState } from '../../_lib/form-state.js';
+import { fetchFromApi, requireUserContext } from '../../../../_lib/api';
+import type { ActionState } from '../../_lib/form-state';
 
 const ALLOWED_NETWORKS = ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'OTHER'] as const;
 
@@ -64,7 +64,7 @@ export async function createCard(
   const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
   await requireUserContext();
-  const response = await fetchFromApi('/api/cards', {
+  const response = await fetchFromApi<{ id?: string }>('/api/cards', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -78,7 +78,7 @@ export async function createCard(
   if (!response.ok) {
     return { status: 'error', message: 'Failed to create card.' };
   }
-  const created = (await response.json()) as { id?: string };
+  const created = response.data;
   if (typeof created.id !== 'string' || created.id.length === 0) {
     return { status: 'error', message: 'Card created without an id.' };
   }

@@ -1,19 +1,19 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError } from '@/lib/logger';
-import { runRecommendationFromOrderContext } from '@/lib/vine/run-recommendation';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import type { OrderContext } from '@/lib/vine/order-context';
-import { mapTerminalEventToOrderContext } from '@/lib/vine/order-context';
-import { OrderContextSchema } from '@/lib/schemas/vine';
-import { VineOrderSource } from '@/lib/enums';
-import { vineTerminalEventSchema } from '@/lib/schemas/vine-terminal';
-import { isValidMcc } from '@/lib/mcc';
-import { verifyVineSignature, type VineSignatureContext } from '@/lib/vine/security';
-import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '@/lib/user-context';
-import { parseJsonBody } from '@/lib/validation';
+import { logError } from '../../../../lib/logger';
+import { runRecommendationFromOrderContext } from '../../../../lib/vine/run-recommendation';
+import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma';
+import type { OrderContext } from '../../../../lib/vine/order-context';
+import { mapTerminalEventToOrderContext } from '../../../../lib/vine/order-context';
+import { OrderContextSchema } from '../../../../lib/schemas/vine';
+import { VineOrderSource } from '../../../../lib/enums';
+import { vineTerminalEventSchema } from '../../../../lib/schemas/vine-terminal';
+import { isValidMcc } from '../../../../lib/mcc';
+import { verifyVineSignature, type VineSignatureContext } from '../../../../lib/vine/security';
+import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '../../../../lib/user-context';
+import { parseJsonBody } from '../../../../lib/validation';
 import { z } from 'zod';
-import { asError, asLogMeta } from '@/lib/errors';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         authority: result.authority,
       });
     } catch (err: unknown) {
-      asError(err);
+      const appError = asAppError(err);
       if (isPrismaP2003(err)) {
         logInvariant('P2003 in api/vine/order POST', {
           userId,
@@ -123,26 +123,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           err,
         });
       } else {
-        logInvariant('Error in api/vine/order POST', { userId, mode, err });
+        logInvariant('Error in api/vine/order POST', { userId, mode, err: appError });
       }
       return NextResponse.json({ error: 'User context or FK error' }, { status: 500 });
     }
-  } catch (error) {
-    asError(error);
-    if (error instanceof Error && error.message?.includes('lab demo mode is disabled in production')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    if (error instanceof Error && error.message?.includes('Unauthorized')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if (error instanceof Error && error.message?.startsWith('VINE_RECO_USER_NOT_FOUND')) {
-      return NextResponse.json(
-        { error: 'vine_user_missing', message: error.message },
-        { status: 500 }
-      );
-    }
-    asError(error);
-    logError('Error in /api/vine/order', error);
+    logError('Error in /api/vine/order', appError);
     return NextResponse.json({ error: 'Failed to process order' }, { status: 500 });
   }
 }

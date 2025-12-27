@@ -5,14 +5,15 @@ import type { JSX } from 'react';
 import {
   runSimulation,
   type AutopilotSimulationResult,
-} from '@/lib/autopilot/runSimulation';
+} from '../../lib/autopilot/runSimulation';
 import type {
   AutopilotUiSpec,
   AutopilotCategoryOptionValue,
   AutopilotTimingOption,
-} from '@/lib/autopilot/uiSpec';
-import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.js';
-import { AutopilotDecisionPanel } from './AutopilotDecisionPanel.js';
+} from '../../lib/autopilot/uiSpec';
+import { asAppError } from '../../lib/errors';
+import { AutopilotPurchaseForm } from './AutopilotPurchaseForm';
+import { AutopilotDecisionPanel } from './AutopilotDecisionPanel';
 
 export type AutopilotPurchaseSummary = {
   amount: number;
@@ -72,8 +73,9 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
     try {
       const result = await runSimulation(summary, { now: new Date() });
       setSimulationResult(result);
-    } catch (error) {
-      console.error('Autopilot simulation failed', error);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
+      console.error('Autopilot simulation failed', appError);
       setSimulationError(uiSpec.simulationErrorMessage);
       setSimulationResult(null);
     } finally {

@@ -1,37 +1,37 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { logError, logWarn } from '@/lib/logger';
-import { SimulateRequestSchema } from '@/lib/schemas/simulate';
-import { validateEngineDecision } from '@/lib/engine-invariants';
+import { prisma } from '../../../lib/prisma';
+import { logError, logWarn } from '../../../lib/logger';
+import { SimulateRequestSchema } from '../../../lib/schemas/simulate';
+import { validateEngineDecision } from '../../../lib/engine-invariants';
 import {
   resolveUserContext,
   assertUserId,
   logInvariant,
   isPrismaP2003,
-} from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+} from '../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { hasText } from '@/lib/text';
-import { isPositiveNumber } from '@/lib/numbers';
-import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
-import { buildSwipeIdempotencyKey } from '@/lib/ids';
-import { parseJsonBody } from '@/lib/validation';
-import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
+} from '../../../lib/engine';
+import { safeSolveDecisionForWorld } from '../../../lib/engine/run';
+import { fromPrismaUserToEngineState } from '../../../lib/engine-state';
+import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine';
+import { ensureBucketFresh } from '../../../lib/buckets/ensure-fresh';
+import { hasText } from '../../../lib/text';
+import { isPositiveNumber } from '../../../lib/numbers';
+import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log';
+import { buildSwipeIdempotencyKey } from '../../../lib/ids';
+import { parseJsonBody } from '../../../lib/validation';
+import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma';
 import type {
   SimulatedAuthorityDecision,
   SimulateSpendParams,
-} from '@/lib/authority/simulateSpendAuthority';
+} from '../../../lib/authority/simulateSpendAuthority';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       committed: canCommit && !strictDecline,
     });
   } catch (caught: unknown) {
-    asError(caught);
+    const appError = asAppError(caught);
     if (isPrismaP2003(caught)) {
       const meta = asLogMeta((caught as { meta?: unknown }).meta);
       logInvariant('P2003 while processing simulate', { meta, err: caught });
@@ -361,10 +361,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-    if (caught.message?.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error in /api/simulate', caught);
+    logError('Error in /api/simulate', appError);
     return NextResponse.json(
       { error: 'Failed to run simulation', ...(authorityDecision ? { authority: authorityDecision } : {}) },
       { status: 500 }

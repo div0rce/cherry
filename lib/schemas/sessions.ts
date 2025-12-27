@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CentsSchema } from './common.js';
+import { CentsSchema } from './common';
 
 export const CreateSessionSchema = z
   .object({

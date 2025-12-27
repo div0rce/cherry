@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../../lib/prisma';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+} from '../../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors';
 
 export async function POST(_req: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -29,9 +29,9 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to resolve user context', { status: 500 });
@@ -54,7 +54,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
       deletedSessions: sessionResult.count,
     });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/admin/clear-sessions POST', {
         userId,
@@ -63,7 +63,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
         err: error,
       });
     } else {
-      logInvariant('Error in api/admin/clear-sessions POST', { userId, mode, err: error });
+      logInvariant('Error in api/admin/clear-sessions POST', { userId, mode, err: appError });
     }
     return new NextResponse('Failed to clear sessions', { status: 500 });
   }

@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
-import { RewardCategory } from '@prisma/client';
+import prismaClient from '@prisma/client';
 import type {
   DecisionEventWriter,
   SimulatedAuthorityDecision,
   SimulateSpendParams,
-} from '../lib/authority/simulateSpendAuthority.js';
-import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority.js';
-import { AuthorityReason } from '../lib/authority/reasonCodes.js';
+} from '../lib/authority/simulateSpendAuthority';
+import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority';
+import { AuthorityReason } from '../lib/authority/reasonCodes';
+
+const { RewardCategory } = prismaClient as typeof import('@prisma/client');
 
 function buildDecision(): SimulatedAuthorityDecision {
   return {

@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../../lib/prisma';
 import Link from 'next/link';
-import { EmptyState } from '@/components/ui/empty-state';
-import { getCurrentUserId } from '@/lib/auth';
-import { hasText } from '@/lib/text';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { getCurrentUserId } from '../../../../lib/auth';
+import { hasText } from '../../../../lib/text';
 
 function formatCents(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -19,7 +19,8 @@ export default async function SimulationDetailPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent(`/simulations/${simulationId}`)}`);
     return null;
   }

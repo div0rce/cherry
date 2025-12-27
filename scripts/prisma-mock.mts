@@ -1,21 +1,44 @@
 /* Simple Prisma client mock for test runs (no external database). */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
-import * as Module from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 
 ensureTsEsm();
 
+declare global {
+  var __PRISMA_CLIENT_MOCK__: Record<string, unknown> | undefined;
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 type Where = Record<string, unknown>;
 
 const requireFn = createRequire(import.meta.url);
+const ModuleInternal = requireFn('node:module') as ModuleWithInternals;
 
 type ModuleWithInternals = {
+  new (id: string): NodeModuleType;
+  _cache: Record<string, NodeModuleType>;
   _resolveFilename: (...args: [string, unknown]) => string;
   _load: (...args: [string, unknown, boolean]) => unknown;
+  registerHooks?: (hooks: {
+    resolve?: (
+      specifier: string,
+      context: { parentURL?: string },
+      nextResolve: (specifier: string, context: { parentURL?: string }) => Promise<{ url: string }>
+    ) => Promise<{ url: string; shortCircuit?: boolean }> | { url: string; shortCircuit?: boolean };
+    load?: (
+      url: string,
+      context: { format?: string },
+      nextLoad: (url: string, context: { format?: string }) => Promise<{ format: string; source: string }>
+    ) =>
+      | Promise<{ format: string; source: string; shortCircuit?: boolean }>
+      | { format: string; source: string; shortCircuit?: boolean };
+  }) => unknown;
 };
 
 class MockDecimal {
@@ -305,7 +328,6 @@ class MockPrismaClientKnownRequestError extends Error {
 }
 
 // Register mock in require cache for any import of '@prisma/client'.
-const ModuleInternal = Module as unknown as ModuleWithInternals;
 const originalResolveFilename = ModuleInternal._resolveFilename;
 const originalLoad = ModuleInternal._load;
 let resolvedPrismaPath = '@prisma/client';
@@ -315,33 +337,66 @@ try {
     id: '',
     filename: '',
   });
-} catch {
+} catch (error: unknown) {
+  void error;
   resolvedLookup = '@prisma/client';
 }
 if (typeof resolvedLookup === 'string' && resolvedLookup.length > 0) {
   resolvedPrismaPath = resolvedLookup;
 }
 
-const mockModule = {
-  id: resolvedPrismaPath,
-  filename: resolvedPrismaPath,
-  loaded: true,
-  exports: {
-    PrismaClient: MockPrismaClient,
+const mockExports = {
+  PrismaClient: MockPrismaClient,
+  PrismaClientKnownRequestError: MockPrismaClientKnownRequestError,
+  Prisma: {
+    Decimal: MockDecimal,
     PrismaClientKnownRequestError: MockPrismaClientKnownRequestError,
-    Prisma: {
-      Decimal: MockDecimal,
-      PrismaClientKnownRequestError: MockPrismaClientKnownRequestError,
-      ...PrismaEnums,
-      $Enums: PrismaEnums,
-    },
-    $Enums: PrismaEnums,
     ...PrismaEnums,
+    $Enums: PrismaEnums,
   },
-} as unknown as NodeModuleType;
+  $Enums: PrismaEnums,
+  ...PrismaEnums,
+} as Record<string, unknown>;
+mockExports['default'] = mockExports;
+mockExports['__esModule'] = true;
+globalThis.__PRISMA_CLIENT_MOCK__ = mockExports;
+
+const mockModule = new ModuleInternal(resolvedPrismaPath) as NodeModuleType;
+mockModule.filename = resolvedPrismaPath;
+mockModule.loaded = true;
+mockModule.exports = mockExports;
 
 requireFn.cache['@prisma/client'] = mockModule;
 requireFn.cache[resolvedPrismaPath] = mockModule;
+ModuleInternal._cache['@prisma/client'] = mockModule;
+ModuleInternal._cache[resolvedPrismaPath] = mockModule;
+
+const exportNames = Object.keys(mockExports).filter((key) => {
+  if (key === 'default' || key === '__esModule') return false;
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key);
+});
+const esmSource = [
+  'const mock = globalThis.__PRISMA_CLIENT_MOCK__;',
+  'export default mock;',
+  ...exportNames.map((name) => `export const ${name} = mock.${name};`),
+].join('\n');
+const esmUrl = `data:text/javascript,${encodeURIComponent(esmSource)}`;
+if (typeof ModuleInternal.registerHooks === 'function') {
+  ModuleInternal.registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier === '@prisma/client') {
+        return { url: esmUrl, shortCircuit: true };
+      }
+      return nextResolve(specifier, context);
+    },
+    load(url, context, nextLoad) {
+      if (url === esmUrl) {
+        return { format: 'module', source: esmSource, shortCircuit: true };
+      }
+      return nextLoad(url, context);
+    },
+  });
+}
 
 ModuleInternal._load = function (...args: [string, unknown, boolean]) {
   const [request] = args;

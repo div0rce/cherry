@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { deriveStableId, assertStableId } from '../lib/identity/hash.js';
+import { deriveStableId, assertStableId } from '../lib/identity/hash';
 
 const payload = { userId: 'user-1', amountCents: 1234, meta: { category: 'DINING' } };
 
@@ -12,7 +12,8 @@ assertStableId(id1);
 let threw = false;
 try {
   assertStableId('123e4567-e89b-12d3-a456-426614174000');
-} catch {
+} catch (error: unknown) {
+  void error;
   threw = true;
 }
 

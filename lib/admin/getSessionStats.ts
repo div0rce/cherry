@@ -1,5 +1,5 @@
 import { RecommendationStatus } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../prisma';
 
 type SessionStats = {
   total: number;

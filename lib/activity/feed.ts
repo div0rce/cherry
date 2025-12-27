@@ -5,7 +5,7 @@ import type {
   RecommendationSource,
   RewardCategory,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../prisma';
 
 export type ActivityItemType =
   | 'SESSION_CREATED'

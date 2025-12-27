@@ -3,9 +3,9 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import type { ActionState } from '../../_lib/form-state.js';
+import { resolveExplicitNow } from '../../../../_lib/clock';
+import { fetchFromApi, requireUserContext } from '../../../../_lib/api';
+import type { ActionState } from '../../_lib/form-state';
 
 const BucketSchema = z
   .object({
@@ -53,7 +53,7 @@ export async function createBucket(
 
   await requireUserContext();
   const now = resolveExplicitNow(formData.get('now'));
-  const response = await fetchFromApi('/api/buckets', {
+  const response = await fetchFromApi<unknown>('/api/buckets', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({

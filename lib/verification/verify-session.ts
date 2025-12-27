@@ -5,12 +5,12 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { computeBucketReversal } from '@/lib/sessions/reversal';
-import { logError, logWarn } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import type { VerificationResult, VerificationSignal } from './types.js';
+import { prisma } from '../prisma';
+import { ensureBucketFresh } from '../buckets/ensure-fresh';
+import { computeBucketReversal } from '../sessions/reversal';
+import { logError, logWarn } from '../logger';
+import { asAppError } from '../errors';
+import type { VerificationResult, VerificationSignal } from './types';
 
 const AMOUNT_TOLERANCE_RATIO = 0.05;
 const AMOUNT_TOLERANCE_MIN_CENTS = 100;
@@ -139,9 +139,9 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
         }
       }
     });
-  } catch (caught) {
-    asError(caught);
-    logError('verify_session_failed', { err: caught, sessionId: session.id, userId });
+  } catch (caught: unknown) {
+    const appError = asAppError(caught);
+    logError('verify_session_failed', { err: appError, sessionId: session.id, userId });
     return { ok: false, reason: 'INVALID', message: 'Failed to verify session' };
   }
 

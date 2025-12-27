@@ -5,26 +5,26 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
-import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
+import { prisma } from '../prisma';
+import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma';
+import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import type { World } from '@/lib/adapters/world';
-import type { OrderContext } from './order-context.js';
-import { validateEngineDecision } from '@/lib/engine-invariants';
-import { assertUserId } from '@/lib/invariants';
-import { isPrismaP2003, logInvariant } from '@/lib/user-context';
+} from '../engine';
+import { safeSolveDecisionForWorld } from '../engine/run';
+import { fromPrismaUserToEngineState } from '../engine-state';
+import { runEngine as runLegacyEngine } from '../legacy-engine';
+import type { World } from '../adapters/world';
+import type { OrderContext } from './order-context';
+import { validateEngineDecision } from '../engine-invariants';
+import { assertUserId } from '../invariants';
+import { isPrismaP2003, logInvariant } from '../user-context';
 import type { RewardCategory } from '@prisma/client';
-import { deriveOrderToken } from './order-token.js';
-import { assertStableId } from '@/lib/identity/hash';
-import { asError } from '@/lib/errors';
+import { deriveOrderToken } from './order-token';
+import { assertStableId } from '../identity/hash';
+import { AppError, asAppError } from '../errors';
 
 export async function runRecommendationFromOrderContext(
   world: World,
@@ -173,12 +173,16 @@ export async function runRecommendationFromOrderContext(
 
     return { sessionId: session.id, orderToken, decision, authority: authorityDecision };
   } catch (err: unknown) {
-    asError(err);
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('FK failure in recommendationSession.create', { userId, err });
-      throw new Error('Internal error: failed to persist recommendation session (FK violation)');
+      throw new AppError(
+        'INTERNAL',
+        'Internal error: failed to persist recommendation session (FK violation)',
+        500
+      );
     }
-    logInvariant('Error creating recommendation session from Vine', { userId, err });
-    throw err;
+    logInvariant('Error creating recommendation session from Vine', { userId, err: appError });
+    throw appError;
   }
 }

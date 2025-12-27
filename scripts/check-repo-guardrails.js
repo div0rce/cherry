@@ -55,8 +55,9 @@ const TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
 const FORBIDDEN_TS_NODE_REGISTER = /\bts-node\/register\b|\bts-node\/register\/transpile-only\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
-const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asError\s*\(/;
-const AS_ERROR_CALL = /\basError\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asAppError\s*\(/;
+const AS_ERROR_CALL = /\basAppError\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const FORBIDDEN_AS_ERROR = /\basError\b/;
 const CATCH_HEADER = /\bcatch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/;
 
 const IGNORE_DIRS = new Set([
@@ -174,9 +175,13 @@ const adaptersPrefix = path.normalize(path.join('lib', 'adapters')) + path.sep;
 const schemasPrefix = path.normalize(path.join('lib', 'schemas')) + path.sep;
 const validationPrefix = path.normalize(path.join('lib', 'validation')) + path.sep;
 const moneyModulePath = path.normalize(path.join('lib', 'money.ts'));
+const apiPrefix = path.normalize(path.join('app', 'api')) + path.sep;
 const engineDir = path.join(root, 'lib', 'engine');
 const bucketsDir = path.join(root, 'lib', 'buckets');
 const verificationDir = path.join(root, 'lib', 'verification');
+const componentsDir = path.join(root, 'components');
+const middlewareFile = path.join(root, 'middleware.ts');
+const nextConfigFile = path.join(root, 'next.config.ts');
 
 const libStart = path.join(root, 'lib');
 const libFiles = collectFiles(libStart);
@@ -185,6 +190,7 @@ const engineFiles = collectFiles(engineDir);
 const bucketFiles = collectFiles(bucketsDir);
 
 const verificationFiles = collectFiles(verificationDir);
+const componentFiles = collectFiles(componentsDir);
 
 const appDir = path.join(root, 'app');
 const apiDir = path.join(appDir, 'api');
@@ -245,8 +251,8 @@ function hasUserImport(content) {
  */
 function importsUserApi(content) {
   return (
-    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/api['"]/.test(content) ||
-    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/api['"]\s*\)/.test(content)
+    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/api(?:\.[mc]?[jt]sx?)?['"]/.test(content) ||
+    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/api(?:\.[mc]?[jt]sx?)?['"]\s*\)/.test(content)
   );
 }
 
@@ -256,8 +262,8 @@ function importsUserApi(content) {
  */
 function importsDeprecatedUserApi(content) {
   return (
-    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions['"]/.test(content) ||
-    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions['"]\s*\)/.test(content)
+    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions(?:\.[mc]?[jt]sx?)?['"]/.test(content) ||
+    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions(?:\.[mc]?[jt]sx?)?['"]\s*\)/.test(content)
   );
 }
 
@@ -294,6 +300,7 @@ const MONEY_FLOAT_ALLOWLIST = new Map([
   ['lib/autopilot/service.ts', 'TEMP: service layer'],
   ['lib/alerts/sendEmailAlert.ts', 'TEMP: formatting only'],
 ]);
+const FORBIDDEN_ALIAS = /from\s+['"]@\/|import\s*\(\s*['"]@\/|require\s*\(\s*['"]@\//;
 const TS_CONFIG_PARSE = /JSON\.parse\s*\(/;
 
 for (const file of libFiles) {
@@ -409,6 +416,16 @@ for (const file of timeFiles) {
 }
 
 const errorLogFiles = [...appFiles, ...libFiles];
+const asErrorFiles = [...appFiles, ...libFiles, ...scriptFiles, ...testFiles];
+
+for (const file of asErrorFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  if (FORBIDDEN_AS_ERROR.test(content)) {
+    console.error(`as-error-banned: ${relPath}`);
+    process.exit(1);
+  }
+}
 for (const file of errorLogFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
@@ -464,7 +481,7 @@ for (const file of errorLogFiles) {
       if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
         if (!justEnteredCatch) {
           const usesVar = new RegExp(`\\b${currentCatchVar}\\b`).test(line);
-          if (usesVar && !line.includes('asError(')) {
+          if (usesVar && !line.includes('asAppError(')) {
             console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
             process.exit(1);
           }
@@ -472,7 +489,7 @@ for (const file of errorLogFiles) {
       }
 
       if (RAW_LOG_CALL.test(line)) {
-        if (!line.includes('asError(')) {
+        if (!line.includes('asAppError(')) {
           const matches = line.matchAll(RAW_ERROR_IDENTIFIER);
           for (const match of matches) {
             const identifier = match[1];
@@ -481,6 +498,14 @@ for (const file of errorLogFiles) {
               process.exit(1);
             }
           }
+        }
+      }
+
+      if (currentCatchVar && relPath.startsWith(apiPrefix)) {
+        const messageAccess = new RegExp(`\\b${currentCatchVar}\\.message\\b`);
+        if (messageAccess.test(line)) {
+          console.error(`api-error-message-banned: ${relPath}: ${currentCatchVar}`);
+          process.exit(1);
         }
       }
 
@@ -654,6 +679,24 @@ for (const file of allFiles) {
   const content = fs.readFileSync(file, 'utf8');
   if (importsDeprecatedUserApi(content)) {
     console.error(`deprecated-user-api: ${relPath}: app/(user)/_lib/actions`);
+    process.exit(1);
+  }
+}
+
+const aliasFiles = new Set([
+  ...appFiles,
+  ...libFiles,
+  ...componentFiles,
+  ...testFiles,
+]);
+if (fs.existsSync(middlewareFile)) aliasFiles.add(middlewareFile);
+if (fs.existsSync(nextConfigFile)) aliasFiles.add(nextConfigFile);
+
+for (const file of aliasFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  const content = fs.readFileSync(file, 'utf8');
+  if (FORBIDDEN_ALIAS.test(content)) {
+    console.error(`alias-forbidden: ${relPath}: @/`);
     process.exit(1);
   }
 }

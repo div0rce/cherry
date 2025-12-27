@@ -1,11 +1,11 @@
-import { generateCandidateActions } from './candidates.js';
-import { simulateAction } from './simulate.js';
+import { generateCandidateActions } from './candidates';
+import { simulateAction } from './simulate';
 import {
   DEFAULT_OBJECTIVE_WEIGHTS,
   scoreDecision,
   getObjectiveWeightsForState,
   normalizeObjectiveWeights,
-} from './objective.js';
+} from './objective';
 import {
   EngineError,
   enforceHardConstraints,
@@ -14,8 +14,8 @@ import {
   getHardConstraints,
   validateEngineContext,
   validateEngineState,
-} from './guardrails.js';
-import { ENGINE_VERSION } from './context.js';
+} from './guardrails';
+import { ENGINE_VERSION } from './context';
 import type {
   EngineAction,
   EngineContext,
@@ -23,10 +23,10 @@ import type {
   EngineDecisionTrace,
   EngineState,
   ObjectiveWeights,
-} from './types.js';
-import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
-import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '@/lib/legacy-engine-types';
-import { asError } from '@/lib/errors';
+} from './types';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
+import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types';
+import { asAppError } from '../errors';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
@@ -77,9 +77,13 @@ export async function solveDecision(
     weights = options.weights
       ? normalizeObjectiveWeights({ ...baseWeights, ...options.weights })
       : baseWeights;
-  } catch (err) {
-    asError(err);
-    logEngineError(runtime, 'unexpected', { userId: state.userId, err, context: 'resolve_weights' });
+  } catch (err: unknown) {
+    const appError = asAppError(err);
+    logEngineError(runtime, 'unexpected', {
+      userId: state.userId,
+      err: appError,
+      context: 'resolve_weights',
+    });
     weights = options.weights
       ? normalizeObjectiveWeights({ ...DEFAULT_OBJECTIVE_WEIGHTS, ...options.weights })
       : DEFAULT_OBJECTIVE_WEIGHTS;
@@ -207,8 +211,8 @@ export async function safeSolveDecisionForUser(
       successResult.legacyDecision = legacyDecision;
     }
     return successResult;
-  } catch (err) {
-    asError(err);
+  } catch (err: unknown) {
+    const appError = asAppError(err);
     const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     if (err instanceof EngineError) {
       logEngineError(runtime, 'validation', { userId, err });
@@ -219,7 +223,7 @@ export async function safeSolveDecisionForUser(
       };
     }
 
-    logEngineError(runtime, 'unexpected', { userId, err });
+    logEngineError(runtime, 'unexpected', { userId, err: appError });
     return {
       ok: false,
       reason: 'ENGINE_ERROR',

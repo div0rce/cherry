@@ -1,16 +1,17 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { ButtonLink } from '@/components/ui/Button';
-import { Card } from '@/components/ui/card';
-import { Alert } from '@/components/ui/alert';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import { getCurrentUserId } from '@/lib/auth';
-import { ROUTES } from '@/lib/routes';
-import { DeleteBucketButton, AddBucketForm } from './client.js';
-import { asError } from '@/lib/errors';
+import { ButtonLink } from '../../../../components/ui/Button';
+import { Card } from '../../../../components/ui/card';
+import { Alert } from '../../../../components/ui/alert';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { getCurrentUserId } from '../../../../lib/auth';
+import { ROUTES } from '../../../../lib/routes';
+import { DeleteBucketButton, AddBucketForm } from './client';
+import { fetchApiResult } from '../../../../lib/api/fetch-json';
+import type { ApiResult } from '../../../../lib/api/result';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -35,37 +36,29 @@ function formatCents(cents: number | null | undefined) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-async function fetchBuckets(): Promise<Bucket[]> {
-  const res = await fetch('/api/buckets', { cache: 'no-store' });
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('UNAUTHORIZED');
-    }
-    const message = (await res.text()).trim();
-    throw new Error(hasText(message) ? message : 'Failed to load buckets');
-  }
-  const data = (await res.json()) as Bucket[];
-  return data;
+async function fetchBuckets(): Promise<ApiResult<Bucket[]>> {
+  return fetchApiResult<Bucket[]>('/api/buckets', { cache: 'no-store' });
 }
 
 export default async function BucketsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
-  } catch {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
   }
 
   let buckets: Bucket[] = [];
   let error: string | null = null;
 
-  try {
-    buckets = await fetchBuckets();
-  } catch (err) {
-    asError(err);
-    if (err.message === 'UNAUTHORIZED') {
+  const bucketsResult = await fetchBuckets();
+  if (!bucketsResult.ok) {
+    if (bucketsResult.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
     }
-    error = err.message;
+    error = bucketsResult.message;
+  } else {
+    buckets = bucketsResult.data;
   }
 
   const totalBudgetCents = buckets.reduce((sum, b) => sum + (b.budgetAmount ?? 0), 0);

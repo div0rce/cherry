@@ -1,4 +1,4 @@
-import { resolveUserContext } from '@/lib/user-context';
+import { resolveUserContext } from '../../../../../../../../lib/user-context.js';
 import type { ReactElement } from 'react';
 
 export default async function FixturePage(): Promise<ReactElement> {

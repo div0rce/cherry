@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isValidMcc, normalizeMcc } from '@/lib/mcc';
+import { isValidMcc, normalizeMcc } from '../mcc';
 
 export const mccSchema = z
   .union([z.string(), z.number()])

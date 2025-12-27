@@ -8,7 +8,14 @@ ensureTsEsm();
 type Violation = { file: string; line: number; col: number; message: string };
 
 const ROOT = process.cwd();
-const EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs', '.mts']);
+const EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.mts',
+]);
 const IGNORE_DIRS = new Set([
   'node_modules',
   '.next',

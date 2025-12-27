@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '../app/api/auth/[...nextauth]/route';
 
 export async function getUserIdFromSession(): Promise<string | null> {
   const session = await getServerSession(authOptions);
@@ -20,7 +20,8 @@ export async function getCurrentUserId(): Promise<string> {
 export async function getCurrentUserIdOrRedirect(callbackUrl = '/'): Promise<string> {
   try {
     return await getCurrentUserId();
-  } catch {
-    redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+  } catch (error: unknown) {
+    void error;
+    return redirect(`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 }

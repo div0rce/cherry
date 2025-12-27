@@ -3,8 +3,8 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import type { ActionState } from '../../../../../_lib/form-state.js';
+import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api';
+import type { ActionState } from '../../../../../_lib/form-state';
 
 const ALLOWED_CATEGORIES = [
   RewardCategory.DINING,
@@ -79,7 +79,7 @@ export async function updateRewardRule(
   }
 
   await requireUserContext();
-  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}/rewards`, {
+  const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
@@ -89,7 +89,7 @@ export async function updateRewardRule(
       cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : undefined,
     }),
   });
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=rules');
     return;
   }
@@ -115,12 +115,12 @@ export async function deleteRewardRule(
   }
 
   await requireUserContext();
-  const response = await fetchFromApi(`/api/cards/${parsed.data.cardId}/rewards`, {
+  const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ rewardRuleId: parsed.data.ruleId }),
   });
-  if (response.status === 404) {
+  if (!response.ok && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=rules');
     return;
   }

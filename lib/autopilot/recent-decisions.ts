@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AutopilotDecisionStatus } from './types.js';
+import type { AutopilotDecisionStatus } from './types';
 
 export type StoredAutopilotDecision = {
   decisionId: string;
@@ -41,7 +41,8 @@ export async function loadRecentAutopilotDecisions(
     const parsed = StoredDecisionListSchema.safeParse(parsedJson);
     if (!parsed.success) return [];
     return parsed.data;
-  } catch {
+  } catch (error: unknown) {
+    void error;
     return [];
   }
 }
@@ -53,7 +54,8 @@ function persistRecentDecisions(
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(getStorageKey(userId), JSON.stringify(decisions));
-  } catch {
+  } catch (error: unknown) {
+    void error;
     // Ignore storage failures silently; recent decisions are best-effort.
   }
 }

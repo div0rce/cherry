@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { evaluateDailyStateTransition } from '../lib/alerts/alertPolicy.js';
+import { evaluateDailyStateTransition } from '../lib/alerts/alertPolicy';
 
 function ds({ status, date }) {
   return {

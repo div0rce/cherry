@@ -1,13 +1,13 @@
-import type { World } from '@/lib/adapters/world';
+import type { World } from '../adapters/world';
 import {
   safeSolveDecisionForUser,
   solveDecision,
   type SafeDecisionOutcome,
   type SolveDecisionOptions,
   type SolveDecisionResult,
-} from './solver.js';
-import type { EngineContext, EngineState } from './types.js';
-import { DEFAULT_ENGINE_RUNTIME } from './runtime.js';
+} from './solver';
+import type { EngineContext, EngineState } from './types';
+import { DEFAULT_ENGINE_RUNTIME } from './runtime';
 
 export type EngineRunInput = {
   state: EngineState;

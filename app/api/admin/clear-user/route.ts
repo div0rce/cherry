@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { logError, logInfo } from '@/lib/logger';
+import { prisma } from '../../../../lib/prisma';
+import { logError, logInfo } from '../../../../lib/logger';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+} from '../../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -30,12 +30,12 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
     });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message.startsWith('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/admin/clear-user', error);
+    logError('Error resolving user context in api/admin/clear-user', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -64,7 +64,7 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ message: 'User data cleared', deleted: summary });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('P2003 in api/admin/clear-user POST', {
         userId,
@@ -73,9 +73,9 @@ export async function POST(_request: NextRequest): Promise<NextResponse> {
         err: error,
       });
     } else {
-      logInvariant('Error in api/admin/clear-user POST', { userId, mode, err: error });
+      logInvariant('Error in api/admin/clear-user POST', { userId, mode, err: appError });
     }
-    logError('Failed to clear user data', error);
+    logError('Failed to clear user data', appError);
     return new NextResponse('Failed to clear user data', { status: 500 });
   }
 }

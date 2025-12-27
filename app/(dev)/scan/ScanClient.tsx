@@ -1,22 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type JSX } from 'react';
-import { PageHeader } from '@/components/ui/page-header';
-import { Panel } from '@/components/ui/panel';
-import { Card } from '@/components/ui/card';
-import { Button, ButtonLink } from '@/components/ui/Button';
-import { Alert } from '@/components/ui/alert';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
-import type { LegacyEngineDecision } from '@/lib/engine';
-import type { ScanResponse } from '@/lib/schemas/scan';
-import { ScanResponseSchema } from '@/lib/schemas/scan';
-import { callApi } from '@/lib/client/api';
-import { useApiAction } from '@/lib/client/useApiAction';
-import { ErrorBanner } from '@/components/ErrorBanner';
-import { hasText } from '@/lib/text';
-import { isNonNegativeNumber, isPositiveNumber } from '@/lib/numbers';
-import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
+import { PageHeader } from '../../../components/ui/page-header';
+import { Panel } from '../../../components/ui/panel';
+import { Card } from '../../../components/ui/card';
+import { Button, ButtonLink } from '../../../components/ui/Button';
+import { Alert } from '../../../components/ui/alert';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { Skeleton } from '../../../components/ui/skeleton';
+import type { LegacyEngineDecision } from '../../../lib/engine';
+import type { ScanResponse } from '../../../lib/schemas/scan';
+import { ScanResponseSchema } from '../../../lib/schemas/scan';
+import { callApi } from '../../../lib/client/api';
+import { useApiAction } from '../../../lib/client/useApiAction';
+import { ErrorBanner } from '../../../components/ErrorBanner';
+import { hasText } from '../../../lib/text';
+import { isNonNegativeNumber, isPositiveNumber } from '../../../lib/numbers';
+import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log';
 
 type ScanPreview = {
   category: string | null;
@@ -79,7 +79,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
   const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
   const merchantInputRef = useRef<HTMLInputElement | null>(null);
   const { isLoading: isScanning, run: runScan } = useApiAction<ScanResponse>();
-  const perfStartMsRef = useRef<number>(typeof performance !== 'undefined' ? performance.now() : 0);
+  const perfStartMsRef = useRef<number>(0);
 
   const initialNowMs = useMemo(() => {
     if (typeof nowMs === 'number') return nowMs;
@@ -100,6 +100,12 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     const secs = countdownSeconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }, [countdownSeconds]);
+
+  useEffect(() => {
+    if (typeof performance !== 'undefined') {
+      perfStartMsRef.current = performance.now();
+    }
+  }, []);
 
   useEffect(() => {
     if (sessionState === null || countdownSeconds == null) return;
@@ -184,13 +190,13 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     );
 
     if (!result.ok) {
-      setError(result.error);
+      setError(result.message);
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
         outcome: 'FALLBACK',
         reason: 'SCAN_API_ERROR',
-        detail: result.error,
+        detail: { code: result.error, message: result.message },
       });
       return;
     }
@@ -222,47 +228,41 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     setIsStartingSession(true);
     setError(null);
 
-    try {
-      const result = await callApi<{
-        sessionId: string;
-        orderToken: string;
-        expiresAt: string;
-      }>('/api/sessions', {
-        method: 'POST',
-        body: JSON.stringify({
-          merchantName:
-            scanPreview.merchantName ??
-            (hasText(merchantName) ? merchantName.trim() : undefined),
-          amountCents: scanPreview.amountCents,
-          category: scanPreview.category ?? undefined,
-        }),
-      });
+    const result = await callApi<{
+      sessionId: string;
+      orderToken: string;
+      expiresAt: string;
+    }>('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({
+        merchantName:
+          scanPreview.merchantName ?? (hasText(merchantName) ? merchantName.trim() : undefined),
+        amountCents: scanPreview.amountCents,
+        category: scanPreview.category ?? undefined,
+      }),
+    });
 
-      if (!result.ok) {
-        setError(result.error);
-        setIsStartingSession(false);
-        return;
-      }
-
-      const remainingSec = Math.max(
-        0,
-        Math.floor((new Date(result.data.expiresAt).getTime() - currentMs()) / 1000),
-      );
-
-      setSessionState({
-        id: result.data.sessionId,
-        orderToken: result.data.orderToken,
-        expiresAt: result.data.expiresAt,
-        pointsPending: scanPreview.advisoryPoints,
-        pointsPosted: 0,
-        status: 'OPEN',
-      });
-      setCountdownSeconds(remainingSec);
-    } catch {
-      setError('Failed to start session');
-    } finally {
+    if (!result.ok) {
+      setError(result.message);
       setIsStartingSession(false);
+      return;
     }
+
+    const remainingSec = Math.max(
+      0,
+      Math.floor((new Date(result.data.expiresAt).getTime() - currentMs()) / 1000),
+    );
+
+    setSessionState({
+      id: result.data.sessionId,
+      orderToken: result.data.orderToken,
+      expiresAt: result.data.expiresAt,
+      pointsPending: scanPreview.advisoryPoints,
+      pointsPosted: 0,
+      status: 'OPEN',
+    });
+    setCountdownSeconds(remainingSec);
+    setIsStartingSession(false);
   }
 
   async function confirmSession() {
@@ -305,31 +305,26 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     }
     setIsConfirming(true);
     setError(null);
-    try {
-      const result = await callApi<{ sessionStatus: string; ledgerStatus: string }>(
-        `/api/sessions/${sessionState.id}/confirm`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            actualAmountCents: scanPreview.amountCents,
-            usedCardId: scanPreview.decision.card.cardId,
-            followedRecommendation: true,
-          }),
-        }
-      );
-
-      if (!result.ok) {
-        setError(result.error);
-        setIsConfirming(false);
-        return;
+    const result = await callApi<{ sessionStatus: string; ledgerStatus: string }>(
+      `/api/sessions/${sessionState.id}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          actualAmountCents: scanPreview.amountCents,
+          usedCardId: scanPreview.decision.card.cardId,
+          followedRecommendation: true,
+        }),
       }
+    );
 
-      setSessionState((prev) => (prev !== null ? { ...prev, status: 'CLAIMED' } : prev));
-    } catch {
-      setError('Failed to confirm session');
-    } finally {
+    if (!result.ok) {
+      setError(result.message);
       setIsConfirming(false);
+      return;
     }
+
+    setSessionState((prev) => (prev !== null ? { ...prev, status: 'CLAIMED' } : prev));
+    setIsConfirming(false);
   }
 
   const formatCents = (cents: number | null | undefined) => {

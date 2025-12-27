@@ -3,21 +3,21 @@ import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
-import { resolveScanCategory } from '@/lib/scan-helpers';
-import type { ScanResponseBody } from '@/lib/scan-types';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { ScanRequestSchema } from '@/lib/schemas/scan';
-import { parseJsonBody } from '@/lib/validation';
-import { validateEngineDecision } from '@/lib/engine-invariants';
-import { resolveUserContext } from '@/lib/user-context';
+} from '../../../lib/engine';
+import { safeSolveDecisionForWorld } from '../../../lib/engine/run';
+import { fromPrismaUserToEngineState } from '../../../lib/engine-state';
+import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine';
+import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma';
+import type { SimulatedAuthorityDecision } from '../../../lib/authority/simulateSpendAuthority';
+import { resolveScanCategory } from '../../../lib/scan-helpers';
+import type { ScanResponseBody } from '../../../lib/scan-types';
+import { logError } from '../../../lib/logger';
+import { asAppError, isUnauthorized } from '../../../lib/errors';
+import { ScanRequestSchema } from '../../../lib/schemas/scan';
+import { parseJsonBody } from '../../../lib/validation';
+import { validateEngineDecision } from '../../../lib/engine-invariants';
+import { resolveUserContext } from '../../../lib/user-context';
 import type { RewardCategory } from '@prisma/client';
 
 const hasText = (value?: string | null): value is string =>
@@ -162,9 +162,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       };
 
       return NextResponse.json(response);
-    } catch (error) {
-      asError(error);
-      logError('Error in /api/scan', error);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
+      logError('Error in /api/scan', appError);
       return NextResponse.json(
         {
           error: 'Failed to evaluate scan',
@@ -173,12 +173,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-  } catch (error) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error in /api/scan', error);
+    logError('Error in /api/scan', appError);
     return NextResponse.json({ error: 'Failed to evaluate scan' }, { status: 500 });
   }
 }

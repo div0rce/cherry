@@ -4,31 +4,31 @@ import {
   CategoryCoverageModeDb,
   RecommendationStatus,
   RecommendationSource,
-  RecommendationSession,
   RewardCategory,
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import type { RecommendationSession } from '@prisma/client';
+import { prisma } from '../../../lib/prisma';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { runEngine as runLegacyEngine } from '@/lib/legacy-engine';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { logError } from '@/lib/logger';
-import { CreateSessionSchema } from '@/lib/schemas/sessions';
-import { parseJsonBody } from '@/lib/validation';
-import { validateEngineDecision } from '@/lib/engine-invariants';
+} from '../../../lib/engine';
+import { safeSolveDecisionForWorld } from '../../../lib/engine/run';
+import { fromPrismaUserToEngineState } from '../../../lib/engine-state';
+import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma';
+import { logError } from '../../../lib/logger';
+import { CreateSessionSchema } from '../../../lib/schemas/sessions';
+import { parseJsonBody } from '../../../lib/validation';
+import { validateEngineDecision } from '../../../lib/engine-invariants';
 import { randomUUID } from 'crypto';
-import { fetchSessionSummaries } from '@/lib/sessions/summaries';
-import { assertUserId } from '@/lib/invariants';
-import { logInvariant } from '@/lib/logging';
-import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+import { fetchSessionSummaries } from '../../../lib/sessions/summaries';
+import { assertUserId } from '../../../lib/invariants';
+import { logInvariant } from '../../../lib/logging';
+import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -41,12 +41,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     userId = ctx.userId;
     mode = ctx.mode;
-  } catch (error) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in /api/sessions POST', error);
+    logError('Error resolving user context in /api/sessions POST', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       decision,
     });
   } catch (error: unknown) {
-    asError(error);
+    const appError = asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('FK violation while creating recommendation session', {
         userId,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 500 }
       );
     }
-    logError('Error in /api/sessions POST', error);
+    logError('Error in /api/sessions POST', appError);
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 });
   }
 }
@@ -209,12 +209,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const ctx = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
     userId = ctx.userId;
-  } catch (error) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in /api/sessions GET', error);
+    logError('Error resolving user context in /api/sessions GET', appError);
     return NextResponse.json({ error: 'Failed to resolve user context' }, { status: 500 });
   }
 
@@ -270,9 +270,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         hasMore,
       },
     });
-  } catch (error) {
-    asError(error);
-    logError('Error in /api/sessions GET', error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    logError('Error in /api/sessions GET', appError);
     return NextResponse.json({ error: 'Failed to fetch sessions' }, { status: 500 });
   }
 }

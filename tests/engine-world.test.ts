@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { buildEngineContext } from '@/lib/engine';
-import { runEngine } from '@/lib/engine/run';
-import type { EngineState } from '@/lib/engine/types';
-import { makeTestWorld } from './helpers/world.js';
+import { buildEngineContext } from '../lib/engine';
+import { runEngine } from '../lib/engine/run';
+import type { EngineState } from '../lib/engine/types';
+import { makeTestWorld } from './helpers/world';
 
 function buildStubState(): EngineState {
   return {

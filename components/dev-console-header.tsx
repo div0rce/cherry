@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from 'react';
-import { UserMenu } from './user-menu.js';
-import { ButtonLink } from '@/components/ui/Button';
-import { cn } from '@/lib/ui/cn';
+import { UserMenu } from './user-menu';
+import { ButtonLink } from './ui/Button';
+import { cn } from '../lib/ui/cn';
 
 type DevConsoleHeaderProps = {
   userEmail: string;

@@ -1,1 +1,1 @@
-export { fromPrismaUserToEngineState } from '@/lib/adapters/runtime/engine-state.prisma';
+export { fromPrismaUserToEngineState } from './adapters/runtime/engine-state.prisma';

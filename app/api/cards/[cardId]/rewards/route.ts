@@ -3,19 +3,19 @@
 // style behavior the simulation engine can consume.
 
 import { NextResponse, NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../../../lib/prisma';
 import { RewardCategory } from '@prisma/client';
-import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../../lib/user-context';
+import { asAppError, asLogMeta } from '../../../../../lib/errors';
 import {
   RewardRuleCreateSchema,
   RewardRuleDeleteSchema,
   RewardRuleUpdateSchema,
-} from '@/lib/schemas/cards';
-import { hasText } from '@/lib/text';
-import { isPositiveNumber } from '@/lib/numbers';
-import { logGuardrailEvent } from '@/lib/log';
-import { parseJsonBody } from '@/lib/validation';
+} from '../../../../../lib/schemas/cards';
+import { hasText } from '../../../../../lib/text';
+import { isPositiveNumber } from '../../../../../lib/numbers';
+import { logGuardrailEvent } from '../../../../../lib/log';
+import { parseJsonBody } from '../../../../../lib/validation';
 
 /**
  * Fetch the card for the current user to prevent cross-user access and give a
@@ -156,8 +156,8 @@ export async function POST(
     });
 
     return NextResponse.json(rewardRule, { status: 201 });
-  } catch (err) {
-    asError(err);
+  } catch (err: unknown) {
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards POST', {
         userId,
@@ -167,7 +167,7 @@ export async function POST(
       });
       return new NextResponse('User context or FK error', { status: 500 });
     }
-    throw err;
+    throw appError;
   }
 }
 
@@ -248,8 +248,8 @@ export async function DELETE(
     await prisma.rewardRule.delete({
       where: { id: rule.id },
     });
-  } catch (err) {
-    asError(err);
+  } catch (err: unknown) {
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards DELETE', {
         userId,
@@ -259,7 +259,7 @@ export async function DELETE(
       });
       return new NextResponse('User context or FK error', { status: 500 });
     }
-    throw err;
+    throw appError;
   }
 
   return new NextResponse(null, { status: 204 });
@@ -359,8 +359,8 @@ export async function PATCH(
     });
 
     return NextResponse.json(updated);
-  } catch (err) {
-    asError(err);
+  } catch (err: unknown) {
+    const appError = asAppError(err);
     if (isPrismaP2003(err)) {
       logInvariant('P2003 in api/cards/[cardId]/rewards PATCH', {
         userId,
@@ -370,6 +370,6 @@ export async function PATCH(
       });
       return new NextResponse('User context or FK error', { status: 500 });
     }
-    throw err;
+    throw appError;
   }
 }

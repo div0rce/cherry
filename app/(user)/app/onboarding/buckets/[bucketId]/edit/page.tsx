@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import { BucketForm } from '../../../_components/BucketForm.js';
-import { DeleteActionButton } from '../../../_components/DeleteActionButton.js';
-import { deleteBucket, updateBucket } from './actions.js';
+import { fetchFromApi, requireUserContext } from '../../../../../_lib/api';
+import { BucketForm } from '../../../_components/BucketForm';
+import { DeleteActionButton } from '../../../_components/DeleteActionButton';
+import { deleteBucket, updateBucket } from './actions';
 export const dynamic = 'force-dynamic';
 
 
@@ -19,18 +19,20 @@ export default async function EditBucketPage({
   const resolvedParams = params instanceof Promise ? await params : params;
   const { bucketId } = resolvedParams;
   await requireUserContext();
-  const response = await fetchFromApi('/api/buckets');
+  const response = await fetchFromApi<
+    Array<{
+      id: string;
+      name: string;
+      budgetAmount: number;
+      category: string;
+      period: string;
+    }>
+  >('/api/buckets');
   if (!response.ok) {
     redirect('/app/onboarding?missing=buckets');
     return null;
   }
-  const buckets = (await response.json()) as Array<{
-    id: string;
-    name: string;
-    budgetAmount: number;
-    category: string;
-    period: string;
-  }>;
+  const buckets = response.data;
   const currentBucket = buckets.find((item) => item.id === bucketId) ?? null;
   if (currentBucket === null) {
     redirect('/app/onboarding?missing=buckets');

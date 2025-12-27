@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { EmptyState } from '@/components/ui/empty-state';
+import { EmptyState } from './ui/empty-state';
 
 type EmptyListProps = {
   title: string;

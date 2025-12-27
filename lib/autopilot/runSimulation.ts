@@ -1,10 +1,11 @@
-import type { AutopilotPurchaseSummary } from '@/components/autopilot/AutopilotShell';
-import type { AutopilotRewardCategory } from '@/lib/autopilot/types';
+import type { AutopilotPurchaseSummary } from '../../components/autopilot/AutopilotShell';
+import type { AutopilotRewardCategory } from './types';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
-} from '@/lib/validation/autopilot/preview';
-import { asError } from '@/lib/errors';
+} from '../validation/autopilot/preview';
+import { fetchJSON } from '../api/fetch-json';
+import { asAppError } from '../errors';
 
 export type SimulationCardChoice = {
   id: string;
@@ -330,9 +331,9 @@ export async function runSimulation(
 
   const payload = buildPreviewPayload(summary, options.now);
 
-  let response: Response;
+  let raw: unknown;
   try {
-    response = await fetch('/api/autopilot/preview', {
+    raw = await fetchJSON<unknown>('/api/autopilot/preview', {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -340,34 +341,17 @@ export async function runSimulation(
       },
       body: JSON.stringify(payload),
     });
-  } catch (error) {
-    asError(error);
-    const message = error.message.length > 0 ? error.message : 'PREVIEW_REQUEST_FAILED';
-    throw { message, errorTimestamp: nowIso };
-  }
-
-  if (!response.ok) {
-    let message: string | undefined;
-    let code: string | undefined;
-    try {
-      const errorBody: unknown = await response.json();
-      if (isRecord(errorBody)) {
-        if (typeof errorBody['error'] === 'string') {
-          message = errorBody['error'];
-        }
-        if (typeof errorBody['code'] === 'string') {
-          code = errorBody['code'];
-        }
-      }
-    } catch {
-      // ignore parse errors and fall back to generic message
-    }
-    const fallbackMessage =
-      typeof response.statusText === 'string' && response.statusText.length > 0
-        ? response.statusText
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    const details = appError.details;
+    const code =
+      isRecord(details) && typeof details['code'] === 'string' ? details['code'] : undefined;
+    const message =
+      typeof appError.message === 'string' && appError.message.length > 0
+        ? appError.message
         : 'PREVIEW_ERROR';
     const errorPayload: { message: string; errorTimestamp: string; code?: string } = {
-      message: message ?? fallbackMessage,
+      message,
       errorTimestamp: nowIso,
     };
     if (code !== undefined && code !== '') {
@@ -375,8 +359,6 @@ export async function runSimulation(
     }
     throw errorPayload;
   }
-
-  const raw: unknown = await response.json();
   const parsed = AutopilotPreviewOutputSchema.safeParse(raw);
   if (!parsed.success) {
     throw {

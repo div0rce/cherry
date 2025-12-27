@@ -19,10 +19,6 @@
     "moduleResolution": "NodeNext",
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"]
-    },
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false
   }

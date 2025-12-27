@@ -6,4 +6,4 @@ export {
   type EngineInput,
   type CategoryCoverageMode,
   type EvaluateTransactionResult,
-} from '@/lib/legacy-engine';
+} from '../legacy-engine';

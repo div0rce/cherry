@@ -1,13 +1,13 @@
 import type { JSX } from 'react';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { getUnifiedActivityForUser, getUserRealActivityForPeriod, type UnifiedActivityRow } from '@/lib/unified-activity';
-import { ROUTES } from '@/lib/routes';
-import { getServerConfig } from '@/lib/config/store';
-import MonthPicker from './client.js';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth';
+import { getUnifiedActivityForUser, getUserRealActivityForPeriod, type UnifiedActivityRow } from '../../../../lib/unified-activity';
+import { ROUTES } from '../../../../lib/routes';
+import { getServerConfig } from '../../../../lib/config/store';
+import MonthPicker from './client';
 
 type SearchParams = Promise<{ month?: string }>;
 

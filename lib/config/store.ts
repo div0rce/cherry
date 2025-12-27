@@ -1,6 +1,6 @@
-import type { PublicConfig } from './public.js';
-import type { RuntimeConfig } from './runtime.js';
-import type { ServerConfig } from './server.js';
+import type { PublicConfig } from './public';
+import type { RuntimeConfig } from './runtime';
+import type { ServerConfig } from './server';
 
 let serverConfig: ServerConfig | null = null;
 let publicConfig: PublicConfig | null = null;

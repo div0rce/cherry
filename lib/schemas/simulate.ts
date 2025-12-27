@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CentsSchema, RewardCategorySchema } from './common.js';
+import { CentsSchema, RewardCategorySchema } from './common';
 
 export const SimulateRequestSchema = z
   .object({

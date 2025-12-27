@@ -64,7 +64,7 @@ function installMocks(): void {
                 : null;
         return {
           ok: true,
-          json: async () => ({
+          data: {
             prereqs: {
               ...mockPrereqs,
               cards: [],
@@ -74,7 +74,7 @@ function installMocks(): void {
               warnings: [],
             },
             missing,
-          }),
+          },
         };
       },
     },

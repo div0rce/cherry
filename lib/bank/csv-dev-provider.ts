@@ -51,7 +51,8 @@ export async function parseCsvDevFile(filePath: string): Promise<CsvDevTransacti
         : '[]';
       const parsed: unknown = await new Response(rawLinesJson).json();
       rawLines = Array.isArray(parsed) ? parsed.map((line) => String(line)) : [];
-    } catch {
+    } catch (error: unknown) {
+      void error;
       rawLines = [];
     }
 

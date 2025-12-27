@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 // NOTE: DailyState contract is type-locked. See docs/daily-state.md.
 // Do not change semantics without bumping engineVersion.
-import { withUser } from '@/lib/with-user';
-import { parseJsonBody } from '@/lib/validation';
+import { withUser } from '../../../../lib/with-user';
+import { parseJsonBody } from '../../../../lib/validation';
 import { DailyStateSource } from '@prisma/client';
-import { runDailyForUser } from '@/lib/daily-state/runDailyForUser';
+import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser';
 
 const RunDailySchema = z
   .object({

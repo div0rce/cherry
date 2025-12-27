@@ -4,13 +4,13 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../lib/prisma';
 import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { resolveUserContext, assertUserId } from '@/lib/user-context';
-import { hasText } from '@/lib/text';
-import { logGuardrailEvent } from '@/lib/log';
+import { logError } from '../../../lib/logger';
+import { asAppError, isUnauthorized } from '../../../lib/errors';
+import { resolveUserContext, assertUserId } from '../../../lib/user-context';
+import { hasText } from '../../../lib/text';
+import { logGuardrailEvent } from '../../../lib/log';
 
 /**
  * GET /api/simulations
@@ -117,12 +117,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       page,
       pageSize,
     });
-  } catch (error) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
-    logError('Error fetching simulations', error);
+    logError('Error fetching simulations', appError);
     return new NextResponse('Failed to fetch simulations', { status: 500 });
   }
 }

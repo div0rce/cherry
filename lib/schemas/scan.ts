@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { CentsSchema } from './common.js';
-import { mccSchema } from '@/lib/schemas/mcc';
+import { CentsSchema } from './common';
+import { mccSchema } from './mcc';
 
 export const ScanRequestSchema = z
   .object({

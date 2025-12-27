@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { resolveUserContext } from '@/lib/user-context';
-import { buildEngineContext } from '@/lib/engine';
-import { safeSolveDecisionForWorld } from '@/lib/engine/run';
-import { fromPrismaUserToEngineState } from '@/lib/engine-state';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { parseJsonBody } from '@/lib/validation';
-import { asError } from '@/lib/errors';
+import { resolveUserContext } from '../../../../../lib/user-context';
+import { buildEngineContext } from '../../../../../lib/engine';
+import { safeSolveDecisionForWorld } from '../../../../../lib/engine/run';
+import { fromPrismaUserToEngineState } from '../../../../../lib/engine-state';
+import { buildPrismaWorld } from '../../../../../lib/adapters/runtime/world.prisma';
+import { parseJsonBody } from '../../../../../lib/validation';
+import { asAppError } from '../../../../../lib/errors';
 
 const InspectRequestSchema = z
   .object({
@@ -80,9 +80,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       guardrails,
       topDecision: decisions[0] ?? null,
     });
-  } catch (error) {
-    asError(error);
-    const message = error.message ?? 'Engine inspect failed';
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    const message = appError.message ?? 'Engine inspect failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

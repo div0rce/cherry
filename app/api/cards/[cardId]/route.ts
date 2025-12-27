@@ -1,12 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { CardUpdateSchema } from '@/lib/schemas/cards';
-import { parseJsonBody } from '@/lib/validation';
-import { assertUserId } from '@/lib/invariants';
-import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
-import { logInvariant } from '@/lib/logging';
-import { asError, asLogMeta } from '@/lib/errors';
+import { prisma } from '../../../../lib/prisma';
+import { CardUpdateSchema } from '../../../../lib/schemas/cards';
+import { parseJsonBody } from '../../../../lib/validation';
+import { assertUserId } from '../../../../lib/invariants';
+import { resolveUserContext, isPrismaP2003 } from '../../../../lib/user-context';
+import { logInvariant } from '../../../../lib/logging';
+import { asAppError, asLogMeta } from '../../../../lib/errors';
 
 export async function PATCH(
   request: NextRequest,
@@ -42,8 +42,8 @@ export async function PATCH(
       },
     });
     return NextResponse.json(updated);
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    asAppError(error);
     if (isPrismaP2003(error)) {
       logInvariant('Card FK violation during update', {
         userId,

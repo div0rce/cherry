@@ -4,9 +4,9 @@ import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/cl
 import {
   simulateSpendAuthorityFromSnapshot,
   type AuthoritySnapshot,
-} from '../lib/authority/simulateSpendAuthority.js';
-import { AuthorityReason } from '../lib/authority/reasonCodes.js';
-import { getServerConfig } from '../lib/config/store.js';
+} from '../lib/authority/simulateSpendAuthority';
+import { AuthorityReason } from '../lib/authority/reasonCodes';
+import { getServerConfig } from '../lib/config/store';
 
 type StubOptions = {
   dailyStateStatus?: DailyStateStatus;

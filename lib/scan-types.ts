@@ -1,7 +1,7 @@
 import { RewardCategory } from '@prisma/client';
-import type { LegacyEngineDecision } from '@/lib/engine';
-import type { BudgetVerdict, CardVerdict, OverallVerdict } from '@/lib/enums';
-import type { SimulatedAuthorityDecision } from '@/lib/authority/simulateSpendAuthority';
+import type { LegacyEngineDecision } from './engine';
+import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums';
+import type { SimulatedAuthorityDecision } from './authority/simulateSpendAuthority';
 
 export type ScanRequestBody = {
   merchantName: string;

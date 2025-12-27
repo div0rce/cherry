@@ -2,13 +2,13 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 // NOTE: DailyState pipeline is advisory-only. No auth/spend/alerts/UI coupling here.
-import { withUser } from '@/lib/with-user';
+import { withUser } from '../../../../lib/with-user';
 import { DailyStateSource } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { runDailyForUser } from '@/lib/daily-state/runDailyForUser';
-import { logInfo, logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { parseJsonBody } from '@/lib/validation';
+import { prisma } from '../../../../lib/prisma';
+import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser';
+import { logInfo, logError } from '../../../../lib/logger';
+import { asAppError } from '../../../../lib/errors';
+import { parseJsonBody } from '../../../../lib/validation';
 
 const RunAllSchema = z
   .object({
@@ -58,10 +58,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             source: DailyStateSource.NIGHTLY,
           });
           succeeded += 1;
-        } catch (error) {
+        } catch (error: unknown) {
           failed += 1;
-          asError(error);
-          logError('daily_state_user_failed', { userId: user.id, err: error });
+          const appError = asAppError(error);
+          logError('daily_state_user_failed', { userId: user.id, err: appError });
         } finally {
           processed += 1;
         }

@@ -79,10 +79,10 @@ function mockPrisma(): void {
 mockPrisma();
 
 const { getAutopilotPrereqs } = requireModule(
-  '../lib/adapters/runtime/autopilot-prereqs'
+  '../lib/adapters/runtime/autopilot-prereqs.js'
 ) as typeof import('../lib/adapters/runtime/autopilot-prereqs');
 const { getFirstMissingPrereq } = requireModule(
-  '../lib/autopilot/prereq-types'
+  '../lib/autopilot/prereq-types.js'
 ) as typeof import('../lib/autopilot/prereq-types');
 
 async function testEmptyState(): Promise<void> {
@@ -147,8 +147,8 @@ async function testReadyWithWarnings(): Promise<void> {
   const prereqs = await getAutopilotPrereqs('user-ready');
   assert.equal(prereqs.state, 'READY');
   assert.equal(getFirstMissingPrereq(prereqs), null);
-  assert.ok(prereqs.warnings.some((warning) => warning.includes('Only one card')));
-  assert.ok(prereqs.warnings.some((warning) => warning.includes('No base reward rule')));
+  assert.ok(prereqs.warnings.some((warning: string) => warning.includes('Only one card')));
+  assert.ok(prereqs.warnings.some((warning: string) => warning.includes('No base reward rule')));
 }
 
 async function run(): Promise<void> {

@@ -1,21 +1,27 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
     "target": "ES2022",
     "lib": ["ES2022"],
+    "jsx": "react-jsx",
     "esModuleInterop": true,
     "noEmit": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "scripts/**/*.ts",
     "scripts/**/*.mts",
     "scripts/**/*.cts",
-    "types/compat/**/*.d.ts"
+    "types/compat/**/*.d.ts",
+    "types/compat/**/*.d.cts"
   ]
 }

@@ -1,4 +1,4 @@
-import type { EngineAction, EngineContext, EngineState } from './types.js';
+import type { EngineAction, EngineContext, EngineState } from './types';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

@@ -1,9 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { fetchFromApi, requireUserContext } from '@/app/(user)/_lib/api';
-import { resolveExplicitNow } from '@/app/(user)/_lib/clock';
-import type { ActionState } from './_lib/form-state.js';
+import { fetchFromApi, requireUserContext } from '../../_lib/api';
+import { resolveExplicitNow } from '../../_lib/clock';
+import type { ActionState } from './_lib/form-state';
 
 export async function loadDemoDataset(
   _prevState: ActionState,
@@ -16,16 +16,18 @@ export async function loadDemoDataset(
   }
 
   const now = resolveExplicitNow(_formData.get('now'));
-  const prereqResponse = await fetchFromApi('/api/autopilot/prereqs');
+  const prereqResponse = await fetchFromApi<{ prereqs?: { state?: string } }>(
+    '/api/autopilot/prereqs'
+  );
   if (!prereqResponse.ok) {
     return { status: 'error', message: 'Unable to verify onboarding prerequisites.' };
   }
-  const prereqPayload = (await prereqResponse.json()) as { prereqs?: { state?: string } };
+  const prereqPayload = prereqResponse.data;
   if (prereqPayload.prereqs?.state === 'READY') {
     return { status: 'error', message: 'Autopilot is already ready; no demo data loaded.' };
   }
 
-  const response = await fetchFromApi('/api/seed-demo/cards-buckets', {
+  const response = await fetchFromApi<unknown>('/api/seed-demo/cards-buckets', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ nowMs: now.getTime() }),

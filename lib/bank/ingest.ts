@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client';
-import { prisma, isProduction } from '@/lib/prisma';
-import { logInfo, logWarn } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { resolveUserIdForExternalIds } from './user-link.js';
+import { prisma, isProduction } from '../prisma';
+import { logInfo, logWarn } from '../logger';
+import { asAppError } from '../errors';
+import { resolveUserIdForExternalIds } from './user-link';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -110,9 +110,14 @@ async function upsertMerchantObservation(
       select: { id: true },
     });
     return created.id;
-  } catch (caught) {
-    asError(caught);
-    logWarn('bank_ingest_merchant_observation_failed', { err: caught, userId, merchantName: safeName, mcc });
+  } catch (caught: unknown) {
+    const appError = asAppError(caught);
+    logWarn('bank_ingest_merchant_observation_failed', {
+      err: appError,
+      userId,
+      merchantName: safeName,
+      mcc,
+    });
     return null;
   }
 }

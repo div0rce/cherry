@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
-import { requireUserContext } from '@/app/(user)/_lib/api';
-import { getHomeUiBundle } from '@/lib/home/ui-bundle';
-import { HomeScreen } from './_components/HomeScreen.js';
+import { requireUserContext } from '../_lib/api';
+import { getHomeUiBundle } from '../../../lib/home/ui-bundle';
+import { HomeScreen } from './_components/HomeScreen';
 export const dynamic = 'force-dynamic';
 
 

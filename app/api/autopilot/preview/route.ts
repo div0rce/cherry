@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAutopilotPreview } from '@/lib/autopilot/service';
-import { AutopilotServiceError } from '@/lib/autopilot/types';
-import { logGuardrailEvent, logInvariantViolation } from '@/lib/log';
-import type { AutopilotPreviewEngineContext } from '@/lib/autopilot/service';
+import { getAutopilotPreview } from '../../../../lib/autopilot/service';
+import { AutopilotServiceError } from '../../../../lib/autopilot/types';
+import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log';
+import type { AutopilotPreviewEngineContext } from '../../../../lib/autopilot/service';
 import {
   AutopilotPreviewInputSchema,
   AutopilotPreviewOutputSchema,
-} from '@/lib/validation/autopilot/preview';
-import { resolveUserContext } from '@/lib/user-context';
-import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
-import { parseJsonBody } from '@/lib/validation';
-import { buildPrismaWorld } from '@/lib/adapters/runtime/world.prisma';
-import { asError } from '@/lib/errors';
+} from '../../../../lib/validation/autopilot/preview';
+import { resolveUserContext } from '../../../../lib/user-context';
+import { incrementCounter, observeDuration } from '../../../../lib/metrics/autopilot';
+import { parseJsonBody } from '../../../../lib/validation';
+import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma';
+import { asAppError, isUnauthorized } from '../../../../lib/errors';
 
 // Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 
@@ -103,8 +103,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return respond(200, validatedPreview.data);
-  } catch (caught) {
-    asError(caught);
+  } catch (caught: unknown) {
+    const appError = asAppError(caught);
     if (caught instanceof AutopilotServiceError) {
       previewStatusLabel = 'invalid';
       logGuardrailEvent({
@@ -114,10 +114,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         severity: caught.status >= 500 ? 'soft' : 'hard',
         reason: caught.code,
       });
-      return respond(caught.status, { error: caught.message, code: caught.code });
+      return respond(caught.status, { error: appError.message, code: caught.code });
     }
 
-    if (caught.message.includes('Unauthorized')) {
+    if (isUnauthorized(appError)) {
       previewStatusLabel = 'invalid';
       return respond(401, { error: 'Unauthorized', code: 'UNAUTHORIZED' });
     }
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     logInvariantViolation({
       surface: 'autopilot',
       detail: 'Autopilot preview failed unexpectedly',
-      data: { userId, error: caught.message },
+      data: { userId, error: appError.message },
     });
     return respond(500, { error: 'Failed to evaluate autopilot', code: 'PREVIEW_UNEXPECTED_ERROR' });
   }

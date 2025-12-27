@@ -2,21 +2,22 @@ import { Suspense } from 'react';
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import { LoadingRows } from '@/components/ui/loading-skeleton';
-import { ErrorBanner } from '@/components/ErrorBanner';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { LoadingRows } from '../../../../components/ui/loading-skeleton';
+import { ErrorBanner } from '../../../../components/ErrorBanner';
 import {
   AddCardForm,
   AddRewardRuleForm,
   DeleteCardButton,
   DeleteRewardRuleButton,
-} from './client.js';
-import { getCurrentUserId } from '@/lib/auth';
-import { ROUTES } from '@/lib/routes';
-import { asError } from '@/lib/errors';
+} from './client';
+import { getCurrentUserId } from '../../../../lib/auth';
+import { ROUTES } from '../../../../lib/routes';
+import { fetchApiResult } from '../../../../lib/api/fetch-json';
+import type { ApiResult } from '../../../../lib/api/result';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -71,40 +72,30 @@ function formatRuleDisplay(rule: RewardRule) {
   return `${multiplier}x points`;
 }
 
-async function fetchCards(): Promise<Card[]> {
-  const res = await fetch('/api/cards', { cache: 'no-store' });
-
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('UNAUTHORIZED');
-    }
-    const message = (await res.text()).trim();
-    throw new Error(hasText(message) ? message : 'Failed to load cards');
-  }
-
-  const data = (await res.json()) as Card[];
-  return data;
+async function fetchCards(): Promise<ApiResult<Card[]>> {
+  return fetchApiResult<Card[]>('/api/cards', { cache: 'no-store' });
 }
 
 export default async function CardsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
-  } catch {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
   }
 
   let cards: Card[] = [];
   let error: string | null = null;
 
-  try {
-    cards = await fetchCards();
-  } catch (err) {
-    asError(err);
-    if (err.message === 'UNAUTHORIZED') {
+  const cardsResult = await fetchCards();
+  if (!cardsResult.ok) {
+    if (cardsResult.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
       return null;
     }
-    error = err.message;
+    error = cardsResult.message;
+  } else {
+    cards = cardsResult.data;
   }
 
   const totalRewardRules = cards.reduce((sum, card) => sum + card.rewardRules.length, 0);

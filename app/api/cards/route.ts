@@ -1,14 +1,14 @@
 // app/api/cards/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../../lib/prisma';
 import { Prisma, RewardCategory } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CardCreateSchema, CardDeleteSchema } from '@/lib/schemas/cards';
-import { parseJsonBody } from '@/lib/validation';
-import { assertUserId } from '@/lib/invariants';
-import { logInvariant } from '@/lib/logging';
-import { resolveUserContext, isPrismaP2003 } from '@/lib/user-context';
-import { asError, asLogMeta } from '@/lib/errors';
+import { CardCreateSchema, CardDeleteSchema } from '../../../lib/schemas/cards';
+import { parseJsonBody } from '../../../lib/validation';
+import { assertUserId } from '../../../lib/invariants';
+import { logInvariant } from '../../../lib/logging';
+import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -156,8 +156,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     return NextResponse.json(card, { status: 201 });
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    asAppError(error);
     if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
       return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
     }
@@ -206,8 +206,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       await prisma.card.delete({
         where: { id: card.id },
       });
-    } catch (err) {
-      asError(err);
+    } catch (err: unknown) {
+      const appError = asAppError(err);
       if (isPrismaP2003(err)) {
         logInvariant('Card FK violation during delete', {
           userId,
@@ -217,13 +217,13 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
         });
         return new NextResponse('User foreign key violation while deleting card', { status: 500 });
       }
-      throw err;
+      throw appError;
     }
 
     return new NextResponse(null, { status: 204 });
-  } catch (error) {
-    asError(error);
-    if (error.message?.includes('Unauthorized')) {
+  } catch (error: unknown) {
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
     return new NextResponse('Failed to delete card', { status: 500 });

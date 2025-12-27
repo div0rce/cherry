@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '@/lib/with-user';
-import { prisma } from '@/lib/prisma';
-import { generateCherryPass } from '@/lib/wallet/cherryPass';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { getWalletPassConfigStatus } from '@/lib/wallet/config';
+import { withUser } from '../../../../lib/with-user';
+import { prisma } from '../../../../lib/prisma';
+import { generateCherryPass } from '../../../../lib/wallet/cherryPass';
+import { logError } from '../../../../lib/logger';
+import { asAppError } from '../../../../lib/errors';
+import { getWalletPassConfigStatus } from '../../../../lib/wallet/config';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -45,9 +45,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           'Cache-Control': 'no-store',
         },
       });
-    } catch (error) {
-      asError(error);
-      logError('Error generating Cherry Pass', error);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
+      logError('Error generating Cherry Pass', appError);
       return NextResponse.json(
         {
           error:

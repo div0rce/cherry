@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '@/lib/with-user';
-import { prisma } from '@/lib/prisma';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
+import { withUser } from '../../../../lib/with-user';
+import { prisma } from '../../../../lib/prisma';
+import { logError } from '../../../../lib/logger';
+import { asAppError } from '../../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -69,9 +69,9 @@ export async function GET(
         pointsPosted: postedPoints,
         pointsPending: pendingPoints,
       });
-    } catch (error) {
-      asError(error);
-      logError('Error in GET /api/sessions/[id]', error);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
+      logError('Error in GET /api/sessions/[id]', appError);
       return NextResponse.json({ error: 'Failed to fetch session' }, { status: 500 });
     }
   });

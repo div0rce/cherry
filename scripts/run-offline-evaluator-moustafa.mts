@@ -63,7 +63,8 @@ async function main() {
     try {
       const user = await resolveDevUser();
       return user.id;
-    } catch {
+    } catch (error: unknown) {
+      void error;
       return null;
     }
   })();

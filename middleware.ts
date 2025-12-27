@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { ROUTES } from '@/lib/routes';
+import { ROUTES } from './lib/routes';
 
 const DEV_PATH_REGEX = new RegExp(`^${ROUTES.dev.root}(\\/.*)?$`);
 const DEV_API_REGEX = new RegExp(`^/api${ROUTES.dev.root}(\\/.*)?$`);

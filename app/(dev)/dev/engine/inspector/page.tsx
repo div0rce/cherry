@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
-import { PageHeader } from '@/components/ui/page-header';
-import { Panel } from '@/components/ui/panel';
-import InspectorClient from './client.js';
+import { PageHeader } from '../../../../../components/ui/page-header';
+import { Panel } from '../../../../../components/ui/panel';
+import InspectorClient from './client';
 
 export default function EngineInspectorPage(): JSX.Element {
   return (

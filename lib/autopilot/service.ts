@@ -11,44 +11,44 @@ import {
   VerificationStatus,
   RewardCategory,
 } from '@prisma/client';
-import type { AutopilotDecision } from '@/lib/engine/public-types';
-import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '@/lib/engine/public';
-import { logInvariantViolation } from '@/lib/log';
-import { prisma } from '@/lib/prisma';
-import { recordDecisionEvent, simulateSpendAuthority } from '@/lib/adapters/runtime/authority.prisma';
-import type { World } from '@/lib/adapters/world';
-import { resolveScanCategory } from '@/lib/scan-helpers';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { asError } from '@/lib/errors';
+import type { AutopilotDecision } from '../engine/public-types';
+import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public';
+import { logInvariantViolation } from '../log';
+import { prisma } from '../prisma';
+import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma';
+import type { World } from '../adapters/world';
+import { resolveScanCategory } from '../scan-helpers';
+import { ensureBucketFresh } from '../buckets/ensure-fresh';
+import { asAppError } from '../errors';
 import {
   computeBucketBalance,
   computeBucketBalanceFromNumbers,
   deriveLegacyCurrentAmount,
   toBucketRuntime,
   type BucketRuntime,
-} from '@/lib/buckets-runtime';
-import { hasText } from '@/lib/text';
+} from '../buckets-runtime';
+import { hasText } from '../text';
 import type {
   AutopilotCommitInput,
   AutopilotCommitResult,
   AutopilotDecisionStatus,
   AutopilotRecommendedCard,
   AutopilotRewardCategory,
-} from './types.js';
-import { AutopilotServiceError } from './types.js';
-import { getAutopilotUiSpec } from '@/lib/autopilot/uiSpec';
+} from './types';
+import { AutopilotServiceError } from './types';
+import { getAutopilotUiSpec } from './uiSpec';
 import type {
   AutopilotPreviewOutput,
   AutopilotPreviewUiBundle,
-} from '@/lib/validation/autopilot/preview';
-import { AutopilotPreviewOutputSchema } from '@/lib/validation/autopilot/preview';
-import { incrementCounter, observeDuration } from '@/lib/metrics/autopilot';
-import { confirmRecommendationSession, SessionConfirmError } from '@/lib/sessions/confirm-service';
+} from '../validation/autopilot/preview';
+import { AutopilotPreviewOutputSchema } from '../validation/autopilot/preview';
+import { incrementCounter, observeDuration } from '../metrics/autopilot';
+import { confirmRecommendationSession, SessionConfirmError } from '../sessions/confirm-service';
 import {
   buildAutopilotStateSnapshot,
   buildAutopilotStateSnapshotHash,
   computeEngineDecisionIdV1,
-} from '@/lib/autopilot/engineDecisionId';
+} from './engineDecisionId';
 
 export type AutopilotPreviewEngineContext = {
   merchant: string;
@@ -264,8 +264,8 @@ async function evaluateAutopilot(
       typeof options.timeoutMs === 'number'
         ? await withTimeout(engineCall, options.timeoutMs, 'ENGINE_TIMEOUT')
         : await engineCall;
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
     if (error instanceof AutopilotServiceError) {
       throw error;
     }
@@ -273,7 +273,7 @@ async function evaluateAutopilot(
       'Unable to evaluate Autopilot right now',
       500,
       'ENGINE_ERROR',
-      error instanceof Error ? error.message : 'UNKNOWN_ENGINE_ERROR'
+      appError.message
     );
   }
 
@@ -302,13 +302,13 @@ async function evaluateAutopilot(
       effectiveAt: occurredAt,
       stateSnapshotHash,
     });
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
     throw new AutopilotServiceError(
       'Unable to build decision fingerprint',
       400,
       'INVALID_IDEMPOTENCY',
-      error.message
+      appError.message
     );
   }
 
@@ -652,8 +652,8 @@ export async function commitAutopilotDecisionV2(
       allowZeroPoints: true,
       now: evaluation.occurredAt,
     });
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
     if (error instanceof SessionConfirmError) {
       throw new AutopilotServiceError(
         error.message,
@@ -662,7 +662,7 @@ export async function commitAutopilotDecisionV2(
         error.detail ?? error.code
       );
     }
-    throw error;
+    throw appError;
   }
 
   const createdCommit = await prisma.autopilotCommit.create({

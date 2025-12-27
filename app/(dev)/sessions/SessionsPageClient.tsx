@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo, useState, type JSX } from 'react';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import type { SessionSummary } from '@/lib/sessions/summaries';
-import { ButtonLink } from '@/components/ui/Button';
+import { PageHeader } from '../../../components/ui/page-header';
+import { MetricCard } from '../../../components/ui/metric-card';
+import { Panel } from '../../../components/ui/panel';
+import { EmptyState } from '../../../components/ui/empty-state';
+import type { SessionSummary } from '../../../lib/sessions/summaries';
+import { ButtonLink } from '../../../components/ui/Button';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { requireUserContext } from '@/app/(user)/_lib/api';
+import { requireUserContext } from '../_lib/api';
 export const dynamic = 'force-dynamic';
 
 

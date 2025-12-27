@@ -54,7 +54,7 @@ async function main(): Promise<void> {
     }
 
     console.warn('Dev UI parity check passed (no missing rows).');
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Failed to read docs/dev-ui-parity.md', error);
     process.exitCode = 1;
   }

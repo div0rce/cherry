@@ -5,7 +5,7 @@ import type {
   RecommendationSource,
   RewardCategory,
 } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../prisma';
 
 export type SessionDisplayStatus = 'OPEN' | 'EXPIRED' | 'CONFIRMED_PENDING' | 'CONFIRMED_POSTED';
 

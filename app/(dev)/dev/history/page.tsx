@@ -1,14 +1,14 @@
 import type { JSX } from 'react';
-import { getCurrentUserIdOrRedirect } from '@/lib/auth';
-import { getUnifiedActivityForUser, type UnifiedActivityRow } from '@/lib/unified-activity';
-import { ROUTES } from '@/lib/routes';
-import { PageHeader } from '@/components/ui/page-header';
-import { MetricCard } from '@/components/ui/metric-card';
-import { Panel } from '@/components/ui/panel';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Alert } from '@/components/ui/alert';
-import { getServerConfig } from '@/lib/config/store';
-import { asError } from '@/lib/errors';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth';
+import { getUnifiedActivityForUser, type UnifiedActivityRow } from '../../../../lib/unified-activity';
+import { ROUTES } from '../../../../lib/routes';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { Alert } from '../../../../components/ui/alert';
+import { getServerConfig } from '../../../../lib/config/store';
+import { asAppError } from '../../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -45,9 +45,9 @@ export default async function SpendHistoryPage(): Promise<JSX.Element> {
       limit: 200,
       sourceFilter: ['BANK_FEED', 'STATEMENT_VIEW'],
     });
-  } catch (err) {
-    asError(err);
-    error = err.message;
+  } catch (err: unknown) {
+    const appError = asAppError(err);
+    error = appError.message;
   }
 
   const debitRows = rows.filter((r) => (r.cashDeltaCents ?? 0) < 0);

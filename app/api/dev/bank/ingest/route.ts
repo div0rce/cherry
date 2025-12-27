@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '@/lib/with-user';
-import { parseJsonBody } from '@/lib/validation';
-import { BankIngestRequestSchema } from '@/lib/schemas/bank-ingest';
-import { ingestBankTransactions } from '@/lib/bank/ingest';
-import { prisma } from '@/lib/prisma';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { BANK_TX_DEFAULT_ORDER } from '@/lib/bank/fields';
+import { withUser } from '../../../../../lib/with-user';
+import { parseJsonBody } from '../../../../../lib/validation';
+import { BankIngestRequestSchema } from '../../../../../lib/schemas/bank-ingest';
+import { ingestBankTransactions } from '../../../../../lib/bank/ingest';
+import { prisma } from '../../../../../lib/prisma';
+import { logError } from '../../../../../lib/logger';
+import { asAppError } from '../../../../../lib/errors';
+import { BANK_TX_DEFAULT_ORDER } from '../../../../../lib/bank/fields';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -36,9 +36,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       const stats = await ingestBankTransactions(parsed.data.transactions);
       return NextResponse.json({ ok: true, ...stats });
-    } catch (error) {
-      asError(error);
-      logError('bank_ingest_failed', error);
+    } catch (error: unknown) {
+      const appError = asAppError(error);
+      logError('bank_ingest_failed', appError);
       return NextResponse.json({ ok: false, error: 'bank_ingest_failed' }, { status: 500 });
     }
   });

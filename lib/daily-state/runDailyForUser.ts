@@ -2,13 +2,13 @@
 // Do not add auth, spend, alerts, UI coupling, or mutations beyond the DailyState row.
 import { createHash } from 'crypto';
 import { DailyStateSource, DailyStateStatus, Prisma, type DailyState } from '@prisma/client';
-import { prisma } from '@/lib/prisma';
-import { ensureBucketFresh } from '@/lib/buckets/ensure-fresh';
-import { toBucketRuntime } from '@/lib/buckets-runtime';
-import { processDailyStateAlert } from '@/lib/alerts/processDailyStateAlert';
-import { logError } from '@/lib/logger';
-import { asError } from '@/lib/errors';
-import { getServerConfig } from '@/lib/config/store';
+import { prisma } from '../prisma';
+import { ensureBucketFresh } from '../buckets/ensure-fresh';
+import { toBucketRuntime } from '../buckets-runtime';
+import { processDailyStateAlert } from '../alerts/processDailyStateAlert';
+import { logError } from '../logger';
+import { asAppError } from '../errors';
+import { getServerConfig } from '../config/store';
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -188,8 +188,8 @@ export async function runDailyForUser(params: {
     resultStatus = dailyState.status;
     resultInputsVersion = dailyState.inputsVersion;
     resultEngineVersion = dailyState.engineVersion;
-  } catch (error) {
-    asError(error);
+  } catch (error: unknown) {
+    const appError = asAppError(error);
     const fallbackStatus: DailyStateStatus = DailyStateStatus.INSUFFICIENT_DATA;
     await prisma.dailyState.upsert({
       where: { userId_date: { userId, date: targetDate } },
@@ -197,7 +197,7 @@ export async function runDailyForUser(params: {
         status: fallbackStatus,
         computedAt: now,
         source,
-        errors: error.message,
+        errors: appError.message,
       },
       create: {
         userId,
@@ -210,7 +210,7 @@ export async function runDailyForUser(params: {
         summary: Prisma.JsonNull,
         safeToSpendCents: null,
         nextRiskEvent: Prisma.JsonNull,
-        errors: error.message,
+        errors: appError.message,
       },
     });
 
@@ -220,9 +220,9 @@ export async function runDailyForUser(params: {
   if (dailyStateRecord !== null) {
     try {
       await processDailyStateAlert({ prev: prevForAlert, curr: dailyStateRecord });
-    } catch (caught) {
-      asError(caught);
-      logError('daily_state_alert_unhandled', { userId, err: caught });
+    } catch (caught: unknown) {
+      const appError = asAppError(caught);
+      logError('daily_state_alert_unhandled', { userId, err: appError });
     }
   }
 
