@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, JSX } from 'react';
-import { cn } from './utils.js';
+import { cn } from './utils';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hasError?: boolean;

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -25,7 +24,7 @@ const { callApi } = require('../lib/client/api');
 const { getServerConfig, resetServerConfigForTests } = require('../lib/config/store');
 const { POST } = require('../app/api/vine/order/route');
 
-process.env.API_BASE_URL = 'http://localhost:3000';
+const baseUrl = 'http://localhost:3000';
 
 function setSignatureMode(mode) {
   const current = getServerConfig();
@@ -108,6 +107,7 @@ async function run() {
   let res = await callApi('/api/vine/order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    baseUrl,
     body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
   });
   assert.equal(res.ok, true);
@@ -121,6 +121,7 @@ async function run() {
       'Content-Type': 'application/json',
       'X-Vine-Signature': goodSig,
     },
+    baseUrl,
     body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
   });
   assert.equal(res.ok, true, JSON.stringify(res.error));
@@ -129,10 +130,11 @@ async function run() {
   res = await callApi('/api/vine/order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    baseUrl,
     body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
   });
   assert.equal(res.ok, false);
-  assert.equal(res.status, 401);
+  assert.equal(res.error, 'UNAUTHORIZED');
 
   // Enforce wrong signature
   res = await callApi('/api/vine/order', {
@@ -141,10 +143,11 @@ async function run() {
       'Content-Type': 'application/json',
       'X-Vine-Signature': 'deadbeef',
     },
+    baseUrl,
     body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
   });
   assert.equal(res.ok, false);
-  assert.equal(res.status, 401);
+  assert.equal(res.error, 'UNAUTHORIZED');
 
   process.env.CHERRY_VINE_SIGNATURE_MODE = originalMode;
   restoreDate();

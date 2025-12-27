@@ -1,11 +1,11 @@
-import type { AutopilotPurchaseSummary } from '../../components/autopilot/AutopilotShell.js';
-import type { AutopilotRewardCategory } from './types.js';
+import type { AutopilotPurchaseSummary } from '../../components/autopilot/AutopilotShell';
+import type { AutopilotRewardCategory } from './types';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
-} from '../validation/autopilot/preview.js';
-import { fetchJSON } from '../api/fetch-json.js';
-import { asAppError } from '../errors.js';
+} from '../validation/autopilot/preview';
+import { fetchJSON } from '../api/fetch-json';
+import { asAppError } from '../errors';
 
 export type SimulationCardChoice = {
   id: string;

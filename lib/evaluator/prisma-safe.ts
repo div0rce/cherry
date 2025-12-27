@@ -1,4 +1,4 @@
-import { prisma } from '../prisma.js';
+import { prisma } from '../prisma';
 
 function hasModel(client: Record<string, unknown> | null | undefined, key: string): boolean {
   if (client == null || typeof client !== 'object') return false;
@@ -28,7 +28,8 @@ export async function assertOfflineEvaluatorModelsReady(): Promise<void> {
       prisma.historicalIncomeRegime.count({ take: 0 }),
       prisma.historicalBucketTemplate.count({ take: 0 }),
     ]);
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     throw new Error(
       [
         'Offline evaluator tables are not available. Ensure migrations are applied:',

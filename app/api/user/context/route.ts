@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { resolveUserContext } from '../../../../lib/user-context.js';
-import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
+import { resolveUserContext } from '../../../../lib/user-context';
+import { asAppError, isUnauthorized } from '../../../../lib/errors';
 
 export async function GET(): Promise<NextResponse> {
   try {

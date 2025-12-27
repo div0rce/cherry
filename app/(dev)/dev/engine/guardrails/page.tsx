@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
-import { PageHeader } from '../../../../../components/ui/page-header.js';
-import { Panel } from '../../../../../components/ui/panel.js';
-import { Card } from '../../../../../components/ui/card.js';
-import { MetricCard } from '../../../../../components/ui/metric-card.js';
-import { EmptyState } from '../../../../../components/ui/empty-state.js';
+import { PageHeader } from '../../../../../components/ui/page-header';
+import { Panel } from '../../../../../components/ui/panel';
+import { Card } from '../../../../../components/ui/card';
+import { MetricCard } from '../../../../../components/ui/metric-card';
+import { EmptyState } from '../../../../../components/ui/empty-state';
 
 type Guardrail = {
   code: string;

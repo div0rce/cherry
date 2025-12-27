@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { prisma } from '../../../lib/prisma.js';
-import { getAutopilotDecisionForUserSwipe } from '../../../lib/engine.js';
-import { resolveUserContext } from '../../../lib/user-context.js';
-import { logGuardrailEvent } from '../../../lib/log.js';
-import { parseJsonBody } from '../../../lib/validation.js';
-import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
-import { asAppError, isUnauthorized } from '../../../lib/errors.js';
+import { prisma } from '../../../lib/prisma';
+import { getAutopilotDecisionForUserSwipe } from '../../../lib/engine';
+import { resolveUserContext } from '../../../lib/user-context';
+import { logGuardrailEvent } from '../../../lib/log';
+import { parseJsonBody } from '../../../lib/validation';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma';
+import { asAppError, isUnauthorized } from '../../../lib/errors';
 
 const AutopilotRequestSchema = z
   .object({

@@ -1,4 +1,4 @@
-export * from './engine/index.js';
+export * from './engine/index';
 export {
   runEngine,
   evaluateTransaction,
@@ -7,4 +7,4 @@ export {
   type EngineInput,
   type CategoryCoverageMode,
   type EvaluateTransactionResult,
-} from './engine/legacy.js';
+} from './engine/legacy';

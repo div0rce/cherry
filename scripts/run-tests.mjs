@@ -24,7 +24,7 @@ const testFiles = fg
   .sync(['tests/**/*.test.{js,ts,tsx}'], {
     cwd: repoRoot,
     absolute: true,
-    ignore: ['**/__mocks__/**'],
+    ignore: ['**/__mocks__/**', 'tests/fixtures/**'],
   })
   .sort();
 

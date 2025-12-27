@@ -1,7 +1,11 @@
 {
   "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "app/**/*.ts",
@@ -17,7 +21,9 @@
     "tests/**/*.tsx",
     "next.config.ts",
     "middleware.ts",
+    "next-env.d.ts",
     "types/compat/**/*.d.ts",
+    "types/compat/**/*.d.cts",
     "types/jsx-global.d.ts",
     "tailwind.config.ts",
     "prisma/**/*.ts"
@@ -27,6 +33,7 @@
     ".next",
     "dist",
     "build",
-    "coverage"
+    "coverage",
+    "tests/fixtures"
   ]
 }

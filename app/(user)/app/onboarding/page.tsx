@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { fetchFromApi, requireUserContext } from '../../_lib/api.js';
-import type { AutopilotOnboardingState, AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types.js';
-import { loadDemoDataset } from './actions.js';
-import { DemoDatasetButton } from './_components/DemoDatasetButton.js';
+import { fetchFromApi, requireUserContext } from '../../_lib/api';
+import type { AutopilotOnboardingState, AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types';
+import { loadDemoDataset } from './actions';
+import { DemoDatasetButton } from './_components/DemoDatasetButton';
 export const dynamic = 'force-dynamic';
 
 type MissingKey = 'cards' | 'rules' | 'buckets' | null;
@@ -242,9 +242,6 @@ export default async function OnboardingPage({
     throw new Error(prereqResponse.message);
   }
   const prereqPayload = prereqResponse.data;
-    prereqs: AutopilotPrereqs;
-    missing: 'cards' | 'rules' | 'buckets' | null;
-  };
   const prereqs = prereqPayload.prereqs;
   const missing = prereqPayload.missing;
   const primaryCta = buildPrimaryCta(prereqs, missing);

@@ -3,9 +3,9 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
-import { resolveExplicitNow } from '../../../../../_lib/clock.js';
-import type { ActionState } from '../../../_lib/form-state.js';
+import { fetchFromApi, requireUserContext } from '../../../../../_lib/api';
+import { resolveExplicitNow } from '../../../../../_lib/clock';
+import type { ActionState } from '../../../_lib/form-state';
 
 const UpdateBucketSchema = z
   .object({

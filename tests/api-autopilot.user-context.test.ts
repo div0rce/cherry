@@ -34,15 +34,16 @@ function mockNextServer(): void {
   try {
     const alt = requireModule.resolve('next/server.js');
     mockModule(alt, exports);
-  } catch {
+  } catch (error: unknown) {
+    void error;
     // ignore
   }
 }
 
 function resetModules(): void {
   const targets = [
-    '../app/api/autopilot/preview/route',
-    '../app/api/autopilot/commit/route',
+    '../app/api/autopilot/preview/route.js',
+    '../app/api/autopilot/commit/route.js',
     'next/server',
     '@/lib/log',
     '@/lib/autopilot/service',
@@ -53,14 +54,15 @@ function resetModules(): void {
     try {
       const resolved = requireModule.resolve(target);
       delete requireModule.cache[resolved];
-    } catch {
+    } catch (error: unknown) {
+      void error;
       // ignore
     }
   }
 }
 
 function buildUiStub() {
-  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec.js');
+  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec');
   const spec = getAutopilotUiSpec();
 
   return {
@@ -173,7 +175,7 @@ async function runUserContextPreview(): Promise<void> {
   });
 
   const { POST } =
-    requireModule('../app/api/autopilot/preview/route') as typeof import('../app/api/autopilot/preview/route');
+    requireModule('../app/api/autopilot/preview/route.js') as typeof import('../app/api/autopilot/preview/route');
 
   const res = await POST({
     json: async () => ({ merchant: 'Shop', amountCents: 500, category: 'DINING' }),
@@ -209,7 +211,7 @@ async function runUserContextCommit(): Promise<void> {
   });
 
   const { POST } =
-    requireModule('../app/api/autopilot/commit/route') as typeof import('../app/api/autopilot/commit/route');
+    requireModule('../app/api/autopilot/commit/route.js') as typeof import('../app/api/autopilot/commit/route');
 
   const res = await POST({
     json: async () => ({

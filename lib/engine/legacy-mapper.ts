@@ -1,7 +1,7 @@
-import type { RewardCategory } from '../enums.js';
-import type { BudgetVerdict, CardVerdict, OverallVerdict } from '../enums.js';
-import type { EngineContext, EngineDecision, EngineState } from './types.js';
-import type { EngineDecision as LegacyEngineDecision } from './legacy.js';
+import type { RewardCategory } from '../enums';
+import type { BudgetVerdict, CardVerdict, OverallVerdict } from '../enums';
+import type { EngineContext, EngineDecision, EngineState } from './types';
+import type { EngineDecision as LegacyEngineDecision } from './legacy';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

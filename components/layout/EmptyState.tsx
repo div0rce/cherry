@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from 'react';
-import { Button, ButtonLink } from '../ui/Button.js';
-import { cn } from '../../lib/ui/cn.js';
+import { Button, ButtonLink } from '../ui/Button';
+import { cn } from '../../lib/ui/cn';
 
 type EmptyStateProps = {
   icon?: ReactNode;

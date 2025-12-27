@@ -60,7 +60,8 @@ function logUnmapped(mcc: number) {
       if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) {
         list = parsed;
       }
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
+      void error;
       list = [];
     }
   }

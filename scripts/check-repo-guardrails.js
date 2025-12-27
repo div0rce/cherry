@@ -251,8 +251,8 @@ function hasUserImport(content) {
  */
 function importsUserApi(content) {
   return (
-    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/api['"]/.test(content) ||
-    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/api['"]\s*\)/.test(content)
+    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/api(?:\.[mc]?[jt]sx?)?['"]/.test(content) ||
+    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/api(?:\.[mc]?[jt]sx?)?['"]\s*\)/.test(content)
   );
 }
 
@@ -262,8 +262,8 @@ function importsUserApi(content) {
  */
 function importsDeprecatedUserApi(content) {
   return (
-    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions['"]/.test(content) ||
-    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions['"]\s*\)/.test(content)
+    /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions(?:\.[mc]?[jt]sx?)?['"]/.test(content) ||
+    /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions(?:\.[mc]?[jt]sx?)?['"]\s*\)/.test(content)
   );
 }
 

@@ -1,15 +1,15 @@
-import type { Clock } from './clock.js';
-import type { ConfigReader } from './config.js';
-import type { Digest } from './digest.js';
-import type { EntropySource } from './entropy.js';
-import type { HttpClient } from './http.js';
-import type { Logger } from './logger.js';
+import type { Clock } from './clock';
+import type { ConfigReader } from './config';
+import type { Digest } from './digest';
+import type { EntropySource } from './entropy';
+import type { HttpClient } from './http';
+import type { Logger } from './logger';
 import type {
   BankTxnStore,
   IdempotencyStore,
   LedgerStore,
   SessionStore,
-} from './persistence.js';
+} from './persistence';
 
 export type World = {
   clock: Clock;

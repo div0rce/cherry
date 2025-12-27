@@ -1,4 +1,4 @@
-import { logError, logWarn } from './logger.js';
+import { logError, logWarn } from './logger';
 
 export type GuardrailSurface =
   | 'scan'

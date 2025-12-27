@@ -1,9 +1,9 @@
-import type { AuthorityPure, AuthorityVersion } from '../authority/config.js';
-import { AUTHORITY_REASON_SEVERITY, AuthorityReason } from '../authority/reasonCodes.js';
+import type { AuthorityPure, AuthorityVersion } from '../authority/config';
+import { AUTHORITY_REASON_SEVERITY, AuthorityReason } from '../authority/reasonCodes';
 import type {
   AuthorityDecision,
   SimulatedAuthorityDecision,
-} from '../authority/simulateSpendAuthority.js';
+} from '../authority/simulateSpendAuthority';
 
 type AssertTrue<T extends true> = T;
 

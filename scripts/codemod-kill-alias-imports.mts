@@ -33,17 +33,18 @@ function rewriteFile(fileAbs: string): boolean {
 
   const out = src.replace(
     /(from\s+['"])([^'"]+)(['"])|(\bimport\s*\(\s*['"])([^'"]+)(['"]\s*\))/g,
-    (...args) => {
-      const fromPrefix = args[1];
-      const fromSpec = args[2];
-      const fromSuffix = args[3];
-      const dynPrefix = args[4];
-      const dynSpec = args[5];
-      const dynSuffix = args[6];
-
+    (
+      match: string,
+      fromPrefix: string | undefined,
+      fromSpec: string | undefined,
+      fromSuffix: string | undefined,
+      dynPrefix: string | undefined,
+      dynSpec: string | undefined,
+      dynSuffix: string | undefined
+    ): string => {
       const spec = fromSpec ?? dynSpec;
-      if (!spec) return args[0];
-      if (!spec.startsWith('@/')) return args[0];
+      if (spec === undefined || spec === '') return match;
+      if (!spec.startsWith('@/')) return match;
 
       const repoTargetAbs = path.join(ROOT, spec.slice(2));
       const fromDir = path.dirname(fileAbs);
@@ -56,8 +57,13 @@ function rewriteFile(fileAbs: string): boolean {
 
       changed = true;
 
-      if (fromPrefix) return `${fromPrefix}${rel}${fromSuffix}`;
-      return `${dynPrefix}${rel}${dynSuffix}`;
+      if (fromPrefix !== undefined && fromSuffix !== undefined) {
+        return `${fromPrefix}${rel}${fromSuffix}`;
+      }
+      if (dynPrefix !== undefined && dynSuffix !== undefined) {
+        return `${dynPrefix}${rel}${dynSuffix}`;
+      }
+      return match;
     }
   );
 
@@ -77,8 +83,8 @@ function main(): void {
     if (
       !content.includes("'@/") &&
       !content.includes('"@/') &&
-      !content.includes('import("...js') &&
-      !content.includes("import('...js")
+      !content.includes('import("..') &&
+      !content.includes("import('..")
     ) {
       continue;
     }
@@ -86,7 +92,7 @@ function main(): void {
     if (rewriteFile(file)) updated += 1;
   }
 
-  console.log(`codemod-kill-alias-imports: updated ${updated} files`);
+  process.stdout.write(`codemod-kill-alias-imports: updated ${updated} files\n`);
 }
 
 main();

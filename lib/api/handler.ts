@@ -1,4 +1,4 @@
-import { asAppError } from '../errors.js';
+import { asAppError } from '../errors';
 
 type ApiHandlerResult<T> = T | Response;
 

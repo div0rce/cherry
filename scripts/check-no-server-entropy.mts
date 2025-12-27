@@ -15,7 +15,14 @@ type Violation = {
 
 const ROOT = process.cwd();
 const TARGET_DIRS = [path.join(ROOT, "app"), path.join(ROOT, "lib")];
-const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs", ".mts"]);
+const EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.mts',
+]);
 const PRAGMA = "@server-entropy-allow";
 const PRAGMA_FILE = "@server-entropy-allow-file";
 const __filename = fileURLToPath(import.meta.url);

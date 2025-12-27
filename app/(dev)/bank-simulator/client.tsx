@@ -1,13 +1,13 @@
 'use client';
 
 import type { JSX } from 'react';
-import { useEffect, useState } from 'react';
-import { callApi } from '../../../lib/client/api.js';
+import { useState } from 'react';
+import { callApi } from '../../../lib/client/api';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
-type PendingSession = {
+export type PendingSession = {
   id: string;
   merchantName: string | null;
   amountCents: number;
@@ -20,8 +20,12 @@ type PendingSession = {
   pendingPoints: number;
 };
 
-export default function BankSimulatorClient(): JSX.Element {
-  const [sessions, setSessions] = useState<PendingSession[]>([]);
+type BankSimulatorClientProps = {
+  initialSessions: PendingSession[];
+};
+
+export default function BankSimulatorClient({ initialSessions }: BankSimulatorClientProps): JSX.Element {
+  const [sessions, setSessions] = useState<PendingSession[]>(initialSessions);
   const [loading, setLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,10 +42,6 @@ export default function BankSimulatorClient(): JSX.Element {
     setSessions(res.data.sessions ?? []);
     setLoading(false);
   }
-
-  useEffect(() => {
-    void loadSessions();
-  }, []);
 
   async function handleVerify(id: string, verified: boolean) {
     setActioningId(id);

@@ -1,8 +1,8 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { requireUserContext } from '../../../../_lib/api.js';
-import { BucketForm } from '../../_components/BucketForm.js';
-import { createBucket } from './actions.js';
+import { requireUserContext } from '../../../../_lib/api';
+import { BucketForm } from '../../_components/BucketForm';
+import { createBucket } from './actions';
 export const dynamic = 'force-dynamic';
 
 

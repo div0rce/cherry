@@ -1,10 +1,10 @@
 // Advisory-only alert processing. Do not add auth/spend/alerts/UI coupling beyond this minimal channel.
-import { prisma } from '../prisma.js';
+import { prisma } from '../prisma';
 import type { DailyState } from '@prisma/client';
-import { evaluateDailyStateTransition } from './alertPolicy.js';
-import { sendEmailAlert } from './sendEmailAlert.js';
-import { logError, logInfo } from '../logger.js';
-import { asAppError } from '../errors.js';
+import { evaluateDailyStateTransition } from './alertPolicy';
+import { sendEmailAlert } from './sendEmailAlert';
+import { logError, logInfo } from '../logger';
+import { asAppError } from '../errors';
 
 export async function processDailyStateAlert(params: {
   prev: DailyState | null;

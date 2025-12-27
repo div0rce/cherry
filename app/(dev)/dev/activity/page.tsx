@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
-import { prisma } from '../../../../lib/prisma.js';
-import { getCurrentUserIdOrRedirect } from '../../../../lib/auth.js';
-import { getDevActivityEvents } from '../../../../lib/unified-activity.js';
-import { ROUTES } from '../../../../lib/routes.js';
-import ActivityPageClient from '../../activity/client.js';
+import { prisma } from '../../../../lib/prisma';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth';
+import { getDevActivityEvents } from '../../../../lib/unified-activity';
+import { ROUTES } from '../../../../lib/routes';
+import ActivityPageClient from '../../activity/client';
 
 export default async function DevActivityPage(): Promise<JSX.Element> {
   const userId = await getCurrentUserIdOrRedirect(ROUTES.dev.activity);

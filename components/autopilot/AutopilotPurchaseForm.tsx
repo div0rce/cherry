@@ -1,9 +1,10 @@
 "use client";
 
-import type React from 'react';
-import type { JSX } from 'react';
-import { getAutopilotUiSpec } from '../../lib/autopilot/uiSpec.js';
-import type { Category, Timing } from './AutopilotShell.js';
+import React, { type JSX } from 'react';
+import { getAutopilotUiSpec } from '../../lib/autopilot/uiSpec';
+import type { Category, Timing } from './AutopilotShell';
+
+void React;
 
 type AutopilotUiSpec = ReturnType<typeof getAutopilotUiSpec>;
 

@@ -1,6 +1,6 @@
-import type { BucketRuntime } from '../buckets-runtime.js';
-import type { AuthorityDecision } from '../authority/simulateSpendAuthority.js';
-import type { AutopilotPreviewUiBundle } from '../validation/autopilot/preview.js';
+import type { BucketRuntime } from '../buckets-runtime';
+import type { AuthorityDecision } from '../authority/simulateSpendAuthority';
+import type { AutopilotPreviewUiBundle } from '../validation/autopilot/preview';
 import { z } from 'zod';
 
 export const AUTOPILOT_REWARD_CATEGORIES = [

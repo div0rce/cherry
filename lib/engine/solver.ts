@@ -1,11 +1,11 @@
-import { generateCandidateActions } from './candidates.js';
-import { simulateAction } from './simulate.js';
+import { generateCandidateActions } from './candidates';
+import { simulateAction } from './simulate';
 import {
   DEFAULT_OBJECTIVE_WEIGHTS,
   scoreDecision,
   getObjectiveWeightsForState,
   normalizeObjectiveWeights,
-} from './objective.js';
+} from './objective';
 import {
   EngineError,
   enforceHardConstraints,
@@ -14,8 +14,8 @@ import {
   getHardConstraints,
   validateEngineContext,
   validateEngineState,
-} from './guardrails.js';
-import { ENGINE_VERSION } from './context.js';
+} from './guardrails';
+import { ENGINE_VERSION } from './context';
 import type {
   EngineAction,
   EngineContext,
@@ -23,10 +23,10 @@ import type {
   EngineDecisionTrace,
   EngineState,
   ObjectiveWeights,
-} from './types.js';
-import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
-import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types.js';
-import { asAppError } from '../errors.js';
+} from './types';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
+import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types';
+import { asAppError } from '../errors';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;

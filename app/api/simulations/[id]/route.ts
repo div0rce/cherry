@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma.js';
-import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../lib/user-context.js';
-import { hasText } from '../../../../lib/text.js';
-import { logGuardrailEvent } from '../../../../lib/log.js';
-import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
+import { prisma } from '../../../../lib/prisma';
+import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../lib/user-context';
+import { hasText } from '../../../../lib/text';
+import { logGuardrailEvent } from '../../../../lib/log';
+import { asAppError, isUnauthorized } from '../../../../lib/errors';
 
 /**
  * DELETE /api/simulations/[id]

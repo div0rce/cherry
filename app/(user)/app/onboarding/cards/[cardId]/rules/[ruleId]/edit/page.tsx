@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api.js';
-import { RewardRuleForm } from '../../../../../_components/RewardRuleForm.js';
-import { DeleteActionButton } from '../../../../../_components/DeleteActionButton.js';
-import { deleteRewardRule, updateRewardRule } from './actions.js';
+import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api';
+import { RewardRuleForm } from '../../../../../_components/RewardRuleForm';
+import { DeleteActionButton } from '../../../../../_components/DeleteActionButton';
+import { deleteRewardRule, updateRewardRule } from './actions';
 export const dynamic = 'force-dynamic';
 
 

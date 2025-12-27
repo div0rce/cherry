@@ -5,26 +5,26 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '../prisma.js';
-import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
-import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority.js';
+import { prisma } from '../prisma';
+import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma';
+import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '../engine.js';
-import { safeSolveDecisionForWorld } from '../engine/run.js';
-import { fromPrismaUserToEngineState } from '../engine-state.js';
-import { runEngine as runLegacyEngine } from '../legacy-engine.js';
-import type { World } from '../adapters/world.js';
-import type { OrderContext } from './order-context.js';
-import { validateEngineDecision } from '../engine-invariants.js';
-import { assertUserId } from '../invariants.js';
-import { isPrismaP2003, logInvariant } from '../user-context.js';
+} from '../engine';
+import { safeSolveDecisionForWorld } from '../engine/run';
+import { fromPrismaUserToEngineState } from '../engine-state';
+import { runEngine as runLegacyEngine } from '../legacy-engine';
+import type { World } from '../adapters/world';
+import type { OrderContext } from './order-context';
+import { validateEngineDecision } from '../engine-invariants';
+import { assertUserId } from '../invariants';
+import { isPrismaP2003, logInvariant } from '../user-context';
 import type { RewardCategory } from '@prisma/client';
-import { deriveOrderToken } from './order-token.js';
-import { assertStableId } from '../identity/hash.js';
-import { AppError, asAppError } from '../errors.js';
+import { deriveOrderToken } from './order-token';
+import { assertStableId } from '../identity/hash';
+import { AppError, asAppError } from '../errors';
 
 export async function runRecommendationFromOrderContext(
   world: World,

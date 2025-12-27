@@ -1,14 +1,14 @@
 import type { JSX } from 'react';
-import { getCurrentUserIdOrRedirect } from '../../../../lib/auth.js';
-import { getUnifiedActivityForUser, type UnifiedActivityRow } from '../../../../lib/unified-activity.js';
-import { ROUTES } from '../../../../lib/routes.js';
-import { PageHeader } from '../../../../components/ui/page-header.js';
-import { MetricCard } from '../../../../components/ui/metric-card.js';
-import { Panel } from '../../../../components/ui/panel.js';
-import { EmptyState } from '../../../../components/ui/empty-state.js';
-import { Alert } from '../../../../components/ui/alert.js';
-import { getServerConfig } from '../../../../lib/config/store.js';
-import { asAppError } from '../../../../lib/errors.js';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth';
+import { getUnifiedActivityForUser, type UnifiedActivityRow } from '../../../../lib/unified-activity';
+import { ROUTES } from '../../../../lib/routes';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { Alert } from '../../../../components/ui/alert';
+import { getServerConfig } from '../../../../lib/config/store';
+import { asAppError } from '../../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

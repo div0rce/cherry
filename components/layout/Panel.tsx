@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react';
-import { cn } from '../../lib/ui/cn.js';
+import { cn } from '../../lib/ui/cn';
 
 type PanelProps = {
   title?: string;

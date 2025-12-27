@@ -1,20 +1,21 @@
 // Legacy engine entrypoint retained for compatibility with existing flows.
 // New code should prefer the typed solver in lib/engine/solver.
-import { prisma } from '../../prisma.js';
-import { Bucket, RewardCategory } from '@prisma/client';
-import { applyInMemoryRollover } from '../../buckets/periods.js';
+import { prisma } from '../../prisma';
+import { RewardCategory } from '@prisma/client';
+import type { Bucket } from '@prisma/client';
+import { applyInMemoryRollover } from '../../buckets/periods';
 import type {
   CategoryCoverageMode,
   EngineDecision,
   EngineInput,
-} from '../../legacy-engine-types.js';
+} from '../../legacy-engine-types';
 
 export type {
   CategoryCoverageMode,
   EngineDecision,
   EngineInput,
   EvaluateTransactionResult,
-} from '../../legacy-engine-types.js';
+} from '../../legacy-engine-types';
 
 export async function resolveCategory(input: {
   mccCode?: number | null;

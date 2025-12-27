@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
-import { BucketForm } from '../../../_components/BucketForm.js';
-import { DeleteActionButton } from '../../../_components/DeleteActionButton.js';
-import { deleteBucket, updateBucket } from './actions.js';
+import { fetchFromApi, requireUserContext } from '../../../../../_lib/api';
+import { BucketForm } from '../../../_components/BucketForm';
+import { DeleteActionButton } from '../../../_components/DeleteActionButton';
+import { deleteBucket, updateBucket } from './actions';
 export const dynamic = 'force-dynamic';
 
 

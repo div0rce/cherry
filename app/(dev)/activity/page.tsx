@@ -1,14 +1,14 @@
 import type { JSX } from 'react';
-import { PageHeader } from '../../../components/ui/page-header.js';
-import { MetricCard } from '../../../components/ui/metric-card.js';
-import { Panel } from '../../../components/ui/panel.js';
-import { EmptyState } from '../../../components/ui/empty-state.js';
-import { ErrorBanner } from '../../../components/ErrorBanner.js';
-import { Card } from '../../../components/ui/card.js';
-import { ButtonLink } from '../../../components/ui/Button.js';
-import { getCurrentUserIdOrRedirect } from '../../../lib/auth.js';
-import { fetchActivityFeed } from '../../../lib/activity/feed.js';
-import { asAppError } from '../../../lib/errors.js';
+import { PageHeader } from '../../../components/ui/page-header';
+import { MetricCard } from '../../../components/ui/metric-card';
+import { Panel } from '../../../components/ui/panel';
+import { EmptyState } from '../../../components/ui/empty-state';
+import { ErrorBanner } from '../../../components/ErrorBanner';
+import { Card } from '../../../components/ui/card';
+import { ButtonLink } from '../../../components/ui/Button';
+import { getCurrentUserIdOrRedirect } from '../../../lib/auth';
+import { fetchActivityFeed } from '../../../lib/activity/feed';
+import { asAppError } from '../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

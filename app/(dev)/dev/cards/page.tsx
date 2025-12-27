@@ -2,22 +2,22 @@ import { Suspense } from 'react';
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { PageHeader } from '../../../../components/ui/page-header.js';
-import { MetricCard } from '../../../../components/ui/metric-card.js';
-import { Panel } from '../../../../components/ui/panel.js';
-import { EmptyState } from '../../../../components/ui/empty-state.js';
-import { LoadingRows } from '../../../../components/ui/loading-skeleton.js';
-import { ErrorBanner } from '../../../../components/ErrorBanner.js';
+import { PageHeader } from '../../../../components/ui/page-header';
+import { MetricCard } from '../../../../components/ui/metric-card';
+import { Panel } from '../../../../components/ui/panel';
+import { EmptyState } from '../../../../components/ui/empty-state';
+import { LoadingRows } from '../../../../components/ui/loading-skeleton';
+import { ErrorBanner } from '../../../../components/ErrorBanner';
 import {
   AddCardForm,
   AddRewardRuleForm,
   DeleteCardButton,
   DeleteRewardRuleButton,
-} from './client.js';
-import { getCurrentUserId } from '../../../../lib/auth.js';
-import { ROUTES } from '../../../../lib/routes.js';
-import { fetchApiResult } from '../../../../lib/api/fetch-json.js';
-import type { ApiResult } from '../../../../lib/api/result.js';
+} from './client';
+import { getCurrentUserId } from '../../../../lib/auth';
+import { ROUTES } from '../../../../lib/routes';
+import { fetchApiResult } from '../../../../lib/api/fetch-json';
+import type { ApiResult } from '../../../../lib/api/result';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -79,7 +79,8 @@ async function fetchCards(): Promise<ApiResult<Card[]>> {
 export default async function CardsPage(): Promise<JSX.Element | null> {
   try {
     await getCurrentUserId();
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
   }
 

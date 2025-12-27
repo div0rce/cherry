@@ -1,9 +1,9 @@
-import type { World } from '../lib/adapters/world.js';
+import type { World } from '../lib/adapters/world';
 import type {
   BankTxn,
   LedgerEntry,
   SessionRecord,
-} from '../lib/adapters/persistence.js';
+} from '../lib/adapters/persistence';
 
 const nowMs = 0;
 

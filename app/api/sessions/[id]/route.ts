@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '../../../../lib/with-user.js';
-import { prisma } from '../../../../lib/prisma.js';
-import { logError } from '../../../../lib/logger.js';
-import { asAppError } from '../../../../lib/errors.js';
+import { withUser } from '../../../../lib/with-user';
+import { prisma } from '../../../../lib/prisma';
+import { logError } from '../../../../lib/logger';
+import { asAppError } from '../../../../lib/errors';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

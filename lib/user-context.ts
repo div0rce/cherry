@@ -1,12 +1,12 @@
 import crypto from 'node:crypto';
 import { getServerSession } from 'next-auth';
-import { prisma } from './prisma.ts';
+import { prisma } from './prisma';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { getServerConfig } from './config/store.js';
-import type { ServerConfig } from './config/server.js';
-import { logInvariant } from './logging.ts';
-import { assertUserId } from './invariants.ts';
-import { AppError } from './errors.ts';
+import { getServerConfig } from './config/store';
+import type { ServerConfig } from './config/server';
+import { logInvariant } from './logging';
+import { assertUserId } from './invariants';
+import { AppError } from './errors';
 
 export type UserContextMode = 'AUTHENTICATED' | 'LAB_DEMO';
 

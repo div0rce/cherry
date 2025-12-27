@@ -37,12 +37,6 @@
     ],
     "source": "legacy"
   },
-  "lib/autopilot/runSimulation.ts": {
-    "effects": [
-      "fetch"
-    ],
-    "source": "legacy"
-  },
   "lib/autopilot/service.ts": {
     "effects": [
       "prisma",
@@ -86,12 +80,6 @@
     "effects": [
       "prisma",
       "time"
-    ],
-    "source": "legacy"
-  },
-  "lib/client/api.ts": {
-    "effects": [
-      "fetch"
     ],
     "source": "legacy"
   },

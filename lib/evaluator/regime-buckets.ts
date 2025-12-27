@@ -3,8 +3,8 @@ import {
   REGIME_BUCKET_KEYS,
   deriveBucketDeltaCents,
   inferBucketKeyForTransaction,
-} from '../buckets/regimes.js';
-import type { ClassifiedBankTransaction } from '../income/types.js';
+} from '../buckets/regimes';
+import type { ClassifiedBankTransaction } from '../income/types';
 
 function monthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));

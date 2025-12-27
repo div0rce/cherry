@@ -1,9 +1,9 @@
 'use server';
 
 import { cookies, headers } from 'next/headers';
-import { fetchApiResult } from '../../../lib/api/fetch-json.js';
-import type { ApiResult } from '../../../lib/api/result.js';
-import { AppError } from '../../../lib/errors.js';
+import { fetchApiResult } from '../../../lib/api/fetch-json';
+import type { ApiResult } from '../../../lib/api/result';
+import { AppError } from '../../../lib/errors';
 
 type UserContextResponse = {
   userId: string;

@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
-import { prisma } from '../../../lib/prisma.js';
-import { apiHandler } from '../../../lib/api/handler.js';
+import { prisma } from '../../../lib/prisma';
+import { apiHandler } from '../../../lib/api/handler';
 
 export function GET(_req: NextRequest): Promise<Response> {
   return apiHandler(async () => {

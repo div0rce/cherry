@@ -3,19 +3,19 @@
 // style behavior the simulation engine can consume.
 
 import { NextResponse, NextRequest } from 'next/server';
-import { prisma } from '../../../../../lib/prisma.js';
+import { prisma } from '../../../../../lib/prisma';
 import { RewardCategory } from '@prisma/client';
-import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../../lib/user-context.js';
-import { asAppError, asLogMeta } from '../../../../../lib/errors.js';
+import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../../lib/user-context';
+import { asAppError, asLogMeta } from '../../../../../lib/errors';
 import {
   RewardRuleCreateSchema,
   RewardRuleDeleteSchema,
   RewardRuleUpdateSchema,
-} from '../../../../../lib/schemas/cards.js';
-import { hasText } from '../../../../../lib/text.js';
-import { isPositiveNumber } from '../../../../../lib/numbers.js';
-import { logGuardrailEvent } from '../../../../../lib/log.js';
-import { parseJsonBody } from '../../../../../lib/validation.js';
+} from '../../../../../lib/schemas/cards';
+import { hasText } from '../../../../../lib/text';
+import { isPositiveNumber } from '../../../../../lib/numbers';
+import { logGuardrailEvent } from '../../../../../lib/log';
+import { parseJsonBody } from '../../../../../lib/validation';
 
 /**
  * Fetch the card for the current user to prevent cross-user access and give a

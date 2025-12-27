@@ -10,7 +10,14 @@ type Violation = { file: string; line: number; col: number; message: string };
 
 const ROOT = process.cwd();
 const TARGET_DIRS = [path.join(ROOT, "app"), path.join(ROOT, "lib")];
-const EXTENSIONS = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs", ".mts"]);
+const EXTENSIONS = new Set([
+  '.ts',
+  '.tsx',
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.mts',
+]);
 const PRAGMA_LINE = "@implicit-ordering-allow";
 const PRAGMA_FILE = "@implicit-ordering-allow-file";
 const __filename = fileURLToPath(import.meta.url);

@@ -1,1 +1,1 @@
-export { getAutopilotDecisionForUserSwipe } from './public.js';
+export { getAutopilotDecisionForUserSwipe } from './public';

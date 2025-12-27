@@ -2,10 +2,10 @@
 
 import { signIn } from 'next-auth/react';
 import { z } from 'zod';
-import { getPublicConfig } from '../config/store.js';
-import { fetchJSON } from '../api/fetch-json.js';
-import { asAppError } from '../errors.js';
-import type { ApiResult } from '../api/result.js';
+import { getPublicConfig } from '../config/store';
+import { fetchJSON } from '../api/fetch-json';
+import { asAppError } from '../errors';
+import type { ApiResult } from '../api/result';
 
 export type { ApiResult };
 
@@ -73,7 +73,8 @@ function resolveBaseUrl(explicitBaseUrl?: string): string {
 
   try {
     return getPublicConfig().appBaseUrl;
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     // fall through
   }
 
@@ -84,7 +85,8 @@ function isAbsoluteUrl(value: string): boolean {
   try {
     new URL(value);
     return true;
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     return false;
   }
 }

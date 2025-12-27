@@ -1,5 +1,5 @@
 import type { JSX, ReactNode } from 'react';
-import { UserBottomNav } from '../../components/user/UserBottomNav.js';
+import { UserBottomNav } from '../../components/user/UserBottomNav';
 export const dynamic = 'force-dynamic';
 
 

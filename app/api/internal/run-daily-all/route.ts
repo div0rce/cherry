@@ -2,13 +2,13 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 // NOTE: DailyState pipeline is advisory-only. No auth/spend/alerts/UI coupling here.
-import { withUser } from '../../../../lib/with-user.js';
+import { withUser } from '../../../../lib/with-user';
 import { DailyStateSource } from '@prisma/client';
-import { prisma } from '../../../../lib/prisma.js';
-import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
-import { logInfo, logError } from '../../../../lib/logger.js';
-import { asAppError } from '../../../../lib/errors.js';
-import { parseJsonBody } from '../../../../lib/validation.js';
+import { prisma } from '../../../../lib/prisma';
+import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser';
+import { logInfo, logError } from '../../../../lib/logger';
+import { asAppError } from '../../../../lib/errors';
+import { parseJsonBody } from '../../../../lib/validation';
 
 const RunAllSchema = z
   .object({

@@ -1,12 +1,12 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-import { prisma } from '../../prisma.js';
+import { prisma } from '../../prisma';
 import type { DecisionEvent } from '@prisma/client';
-import { simulateSpendAuthority } from './authority.prisma.js';
+import { simulateSpendAuthority } from './authority.prisma';
 import type {
   SimulateSpendParams,
   SimulatedAuthorityDecision,
   CounterfactualAuthorityRequest,
-} from '../../authority/simulateSpendAuthority.js';
+} from '../../authority/simulateSpendAuthority';
 
 type ReplayLookup =
   | { decisionEventId: string; userId?: string; inputsVersion?: string }

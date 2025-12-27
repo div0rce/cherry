@@ -1,14 +1,14 @@
 // app/api/cards/route.ts
 import { NextResponse, NextRequest } from 'next/server';
-import { prisma } from '../../../lib/prisma.js';
+import { prisma } from '../../../lib/prisma';
 import { Prisma, RewardCategory } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CardCreateSchema, CardDeleteSchema } from '../../../lib/schemas/cards.js';
-import { parseJsonBody } from '../../../lib/validation.js';
-import { assertUserId } from '../../../lib/invariants.js';
-import { logInvariant } from '../../../lib/logging.js';
-import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
-import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
+import { CardCreateSchema, CardDeleteSchema } from '../../../lib/schemas/cards';
+import { parseJsonBody } from '../../../lib/validation';
+import { assertUserId } from '../../../lib/invariants';
+import { logInvariant } from '../../../lib/logging';
+import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 

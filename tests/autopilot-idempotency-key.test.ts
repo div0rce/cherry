@@ -1,19 +1,19 @@
 import assert from 'node:assert/strict';
 import Module from 'node:module';
-import { BucketPeriod, RecommendationSource, RewardCategory } from '@prisma/client';
-import type { AutopilotStateSnapshot } from '../lib/autopilot/engineDecisionId.js';
-import {
 import { fileURLToPath } from 'node:url';
+import { BucketPeriod, RecommendationSource, RewardCategory } from '@prisma/client';
+import type { AutopilotStateSnapshot } from '../lib/autopilot/engineDecisionId';
+import {
   buildAutopilotStateSnapshotHash,
   computeEngineDecisionIdV1,
-} from '../lib/autopilot/engineDecisionId.js';
+} from '../lib/autopilot/engineDecisionId';
 import type {
   AutopilotCommitInput,
   AutopilotPreviewInput,
   AutopilotPreviewOutput,
-} from '../lib/autopilot/types.js';
-import type { World } from '../lib/adapters/world.js';
-import { makeTestWorld } from './helpers/world.js';
+} from '../lib/autopilot/types';
+import type { World } from '../lib/adapters/world';
+import { makeTestWorld } from './helpers/world';
 
 const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);
@@ -35,13 +35,13 @@ function mockModule(modulePath: string, exports: unknown) {
 
 function resetModules() {
   const targets = [
-  '@/lib/autopilot/service',
-  '@/lib/autopilot/engineDecisionId',
-  '@/lib/engine/public',
-  '@/lib/prisma',
-  '@/lib/scan-helpers',
-  '@/lib/log',
-  '@/lib/metrics/autopilot',
+    '@/lib/autopilot/service',
+    '@/lib/autopilot/engineDecisionId',
+    '@/lib/engine/public',
+    '@/lib/prisma',
+    '@/lib/scan-helpers',
+    '@/lib/log',
+    '@/lib/metrics/autopilot',
     '@/lib/sessions/confirm-service',
     '@/lib/buckets/ensure-fresh',
   ];
@@ -49,7 +49,8 @@ function resetModules() {
     try {
       const resolved = requireModule.resolve(target);
       delete requireModule.cache[resolved];
-    } catch {
+    } catch (error: unknown) {
+      void error;
       // ignore missing
     }
   }
@@ -233,7 +234,7 @@ async function runSemanticStabilityAcrossRowIds() {
     buildAutopilotStateSnapshot,
     buildAutopilotStateSnapshotHash: buildHash,
     computeEngineDecisionIdV1: computeIdV1,
-  } = requireModule('@/lib/autopilot/engineDecisionId') as typeof import('../lib/autopilot/engineDecisionId.js');
+  } = requireModule('@/lib/autopilot/engineDecisionId') as typeof import('../lib/autopilot/engineDecisionId');
 
   const baseParams = {
     userId: 'user-1',

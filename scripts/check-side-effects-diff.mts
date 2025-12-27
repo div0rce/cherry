@@ -42,7 +42,8 @@ function parseAllowlist(
     if (options?.allowLegacy) {
       try {
         parsed = AllowlistSchema.parse(parsedJson);
-      } catch (_error: unknown) {
+      } catch (error: unknown) {
+        void error;
         const legacy = LegacyAllowlistSchema.parse(parsedJson);
         const converted: Record<string, AllowlistEntry> = {};
         const legacyEntries = Object.entries(legacy) as Array<[string, string[]]>;
@@ -83,7 +84,8 @@ function loadPreviousAllowlist(): Record<string, AllowlistEntry> | null {
       { encoding: 'utf8' }
     );
     return parseAllowlist(raw, 'previous allowlist', { allowLegacy: true });
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     return null;
   }
 }

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { BucketPeriod, RecommendationSource, RewardCategory } from '@prisma/client';
-import { applyInMemoryRollover } from '../buckets/periods.js';
-import { prisma } from '../prisma.js';
+import { applyInMemoryRollover } from '../buckets/periods';
+import { prisma } from '../prisma';
 
 export const ENGINE_VERSION = 'autopilot_engine_v1';
 export const SOLVER_CONFIG_VERSION = 'solver_v1';

@@ -5,15 +5,15 @@ import type { JSX } from 'react';
 import {
   runSimulation,
   type AutopilotSimulationResult,
-} from '../../lib/autopilot/runSimulation.js';
+} from '../../lib/autopilot/runSimulation';
 import type {
   AutopilotUiSpec,
   AutopilotCategoryOptionValue,
   AutopilotTimingOption,
-} from '../../lib/autopilot/uiSpec.js';
-import { asAppError } from '../../lib/errors.js';
-import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.js';
-import { AutopilotDecisionPanel } from './AutopilotDecisionPanel.js';
+} from '../../lib/autopilot/uiSpec';
+import { asAppError } from '../../lib/errors';
+import { AutopilotPurchaseForm } from './AutopilotPurchaseForm';
+import { AutopilotDecisionPanel } from './AutopilotDecisionPanel';
 
 export type AutopilotPurchaseSummary = {
   amount: number;

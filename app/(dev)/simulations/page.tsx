@@ -1,17 +1,18 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { prisma } from '../../../lib/prisma.js';
-import { getCurrentUserId } from '../../../lib/auth.js';
+import { prisma } from '../../../lib/prisma';
+import { getCurrentUserId } from '../../../lib/auth';
 import Link from 'next/link';
-import type { SimulationHistoryItem } from '../../../components/simulations/simulation-history-list.js';
-import { SimulationHistoryList } from '../../../components/simulations/simulation-history-list.js';
-import { hasText } from '../../../lib/text.js';
+import type { SimulationHistoryItem } from '../../../components/simulations/simulation-history-list';
+import { SimulationHistoryList } from '../../../components/simulations/simulation-history-list';
+import { hasText } from '../../../lib/text';
 
 export default async function SimulationsPage(): Promise<JSX.Element | null> {
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent('/simulations')}`);
     return null;
   }

@@ -1,7 +1,7 @@
 import type { JSX, ReactNode } from 'react';
 import Link from 'next/link';
-import { EmptyState } from '../ui/empty-state.js';
-import { hasText } from '../../lib/text.js';
+import { EmptyState } from '../ui/empty-state';
+import { hasText } from '../../lib/text';
 
 export type SimulationHistoryItem = {
   id: string;

@@ -1,5 +1,5 @@
-import { AppError, asAppError, type AppErrorCode } from '../errors.js';
-import type { ApiResult } from './result.js';
+import { AppError, asAppError, type AppErrorCode } from '../errors';
+import type { ApiResult } from './result';
 
 // Transport boundary helpers: fetchJSON throws AppError, fetchApiResult returns ApiResult for UI use.
 const APP_ERROR_CODES: AppErrorCode[] = [
@@ -29,7 +29,8 @@ function codeForStatus(status: number): AppErrorCode {
 async function safeReadJson(res: Response): Promise<unknown | null> {
   try {
     return await res.json();
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     return null;
   }
 }
@@ -55,13 +56,25 @@ function extractErrorPayload(
   return { code: fallbackCode, message: fallbackMessage };
 }
 
+export type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+function resolveFetcher(fetcher?: Fetcher): Fetcher {
+  if (fetcher) return fetcher;
+  if (typeof globalThis.fetch === 'function') {
+    return globalThis.fetch.bind(globalThis);
+  }
+  throw new AppError('INTERNAL', 'Fetch is not available in this environment', 500);
+}
+
 export async function fetchJSON<T>(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
+  fetcher?: Fetcher
 ): Promise<T> {
+  const performFetch = resolveFetcher(fetcher);
   let response: Response;
   try {
-    response = await fetch(input, init);
+    response = await performFetch(input, init);
   } catch (err: unknown) {
     throw asAppError(err);
   }
@@ -91,10 +104,11 @@ export async function fetchJSON<T>(
 
 export async function fetchApiResult<T>(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
+  fetcher?: Fetcher
 ): Promise<ApiResult<T>> {
   try {
-    const data = await fetchJSON<T>(input, init);
+    const data = await fetchJSON<T>(input, init, fetcher);
     return { ok: true, data };
   } catch (err: unknown) {
     const error = asAppError(err);

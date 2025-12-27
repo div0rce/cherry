@@ -2,7 +2,7 @@
 
 import type { JSX, SelectHTMLAttributes } from 'react';
 import { forwardRef } from 'react';
-import { cn } from '../../lib/ui/cn.js';
+import { cn } from '../../lib/ui/cn';
 
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
 

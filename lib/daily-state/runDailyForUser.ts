@@ -2,13 +2,13 @@
 // Do not add auth, spend, alerts, UI coupling, or mutations beyond the DailyState row.
 import { createHash } from 'crypto';
 import { DailyStateSource, DailyStateStatus, Prisma, type DailyState } from '@prisma/client';
-import { prisma } from '../prisma.js';
-import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
-import { toBucketRuntime } from '../buckets-runtime.js';
-import { processDailyStateAlert } from '../alerts/processDailyStateAlert.js';
-import { logError } from '../logger.js';
-import { asAppError } from '../errors.js';
-import { getServerConfig } from '../config/store.js';
+import { prisma } from '../prisma';
+import { ensureBucketFresh } from '../buckets/ensure-fresh';
+import { toBucketRuntime } from '../buckets-runtime';
+import { processDailyStateAlert } from '../alerts/processDailyStateAlert';
+import { logError } from '../logger';
+import { asAppError } from '../errors';
+import { getServerConfig } from '../config/store';
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));

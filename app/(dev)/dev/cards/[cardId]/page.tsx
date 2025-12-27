@@ -1,11 +1,11 @@
 import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { getCurrentUserId } from '../../../../../lib/auth.js';
-import { prisma } from '../../../../../lib/prisma.js';
-import { ROUTES } from '../../../../../lib/routes.js';
+import { getCurrentUserId } from '../../../../../lib/auth';
+import { prisma } from '../../../../../lib/prisma';
+import { ROUTES } from '../../../../../lib/routes';
 import Link from 'next/link';
-import { EmptyState } from '../../../../../components/ui/empty-state.js';
-import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client.js';
+import { EmptyState } from '../../../../../components/ui/empty-state';
+import { AddRewardRuleForm, DeleteCardButton, DeleteRewardRuleButton } from '../client';
 
 function formatCents(cents: number | null) {
   if (cents == null) return '—';
@@ -27,7 +27,8 @@ export default async function CardDetailPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent(`${ROUTES.dev.cards}/${cardId}`)}`);
     return null;
   }

@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '../../../../../lib/with-user.js';
-import { parseJsonBody } from '../../../../../lib/validation.js';
-import { BankIngestRequestSchema } from '../../../../../lib/schemas/bank-ingest.js';
-import { ingestBankTransactions } from '../../../../../lib/bank/ingest.js';
-import { prisma } from '../../../../../lib/prisma.js';
-import { logError } from '../../../../../lib/logger.js';
-import { asAppError } from '../../../../../lib/errors.js';
-import { BANK_TX_DEFAULT_ORDER } from '../../../../../lib/bank/fields.js';
+import { withUser } from '../../../../../lib/with-user';
+import { parseJsonBody } from '../../../../../lib/validation';
+import { BankIngestRequestSchema } from '../../../../../lib/schemas/bank-ingest';
+import { ingestBankTransactions } from '../../../../../lib/bank/ingest';
+import { prisma } from '../../../../../lib/prisma';
+import { logError } from '../../../../../lib/logger';
+import { asAppError } from '../../../../../lib/errors';
+import { BANK_TX_DEFAULT_ORDER } from '../../../../../lib/bank/fields';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

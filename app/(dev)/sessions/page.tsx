@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getCurrentUserId } from '../../../lib/auth.js';
-import { fetchSessionSummaries } from '../../../lib/sessions/summaries.js';
-import { SessionsPageClient } from './SessionsPageClient.js';
-import { prisma } from '../../../lib/prisma.js';
+import { getCurrentUserId } from '../../../lib/auth';
+import { fetchSessionSummaries } from '../../../lib/sessions/summaries';
+import { SessionsPageClient } from './SessionsPageClient';
+import { prisma } from '../../../lib/prisma';
 
 export default async function SessionsPage({
   searchParams,
@@ -13,7 +13,8 @@ export default async function SessionsPage({
   let userId: string;
   try {
     userId = await getCurrentUserId();
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     redirect(`/signin?callbackUrl=${encodeURIComponent('/sessions')}`);
     return null;
   }

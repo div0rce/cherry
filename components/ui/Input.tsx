@@ -2,7 +2,7 @@
 
 import type { InputHTMLAttributes, JSX } from 'react';
 import { forwardRef } from 'react';
-import { cn } from '../../lib/ui/cn.js';
+import { cn } from '../../lib/ui/cn';
 
 type InputProps = InputHTMLAttributes<HTMLInputElement>;
 

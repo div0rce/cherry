@@ -1,5 +1,5 @@
 import type { RewardCategory } from '@prisma/client';
-import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
+import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums';
 
 export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 

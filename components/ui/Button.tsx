@@ -6,8 +6,8 @@ import Link from 'next/link';
 import type { LinkProps } from 'next/link';
 import { Slot } from '@radix-ui/react-slot';
 import { type VariantProps } from 'class-variance-authority';
-import { buttonVariants, type ButtonVariant, type ButtonSize } from './button-classes.js';
-import { cn } from '../../lib/ui/cn.js';
+import { buttonVariants, type ButtonVariant, type ButtonSize } from './button-classes';
+import { cn } from '../../lib/ui/cn';
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -53,7 +53,9 @@ function ButtonLink({
       <Link
         href={disabled ? '#' : href}
         aria-disabled={disabled}
-        {...(disabled && { onClick: (e) => e.preventDefault() })}
+        {...(disabled && {
+          onClick: (event: React.MouseEvent<HTMLAnchorElement>) => event.preventDefault(),
+        })}
         {...props}
       >
         {children}

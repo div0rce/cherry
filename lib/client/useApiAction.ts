@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { ApiResult } from '../api/result.js';
-import { asAppError } from '../errors.js';
+import type { ApiResult } from '../api/result';
+import { asAppError } from '../errors';
 
 type ApiActionState<T> = {
   data: T | null;
@@ -23,7 +23,7 @@ export function useApiAction<TResponse>(): {
   });
 
   const run = useCallback(
-    async (fn: () => Promise<ApiResult<TResponse>>) => {
+    async (fn: () => Promise<ApiResult<TResponse>>): Promise<ApiResult<TResponse>> => {
       setState({ data: null, error: null, isLoading: true });
       try {
         const result = await fn();

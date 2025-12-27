@@ -1,17 +1,17 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
-import { prisma } from '../../../lib/prisma.js';
-import { logError } from '../../../lib/logger.js';
-import { BucketCreateSchema, BucketDeleteSchema } from '../../../lib/schemas/buckets.js';
-import { parseJsonBody } from '../../../lib/validation.js';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount, toBucketRuntime } from '../../../lib/buckets-runtime.js';
+import { prisma } from '../../../lib/prisma';
+import { logError } from '../../../lib/logger';
+import { BucketCreateSchema, BucketDeleteSchema } from '../../../lib/schemas/buckets';
+import { parseJsonBody } from '../../../lib/validation';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount, toBucketRuntime } from '../../../lib/buckets-runtime';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '../../../lib/user-context.js';
-import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
+} from '../../../lib/user-context';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';

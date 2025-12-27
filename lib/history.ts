@@ -1,4 +1,4 @@
-import { prisma } from './prisma.js';
+import { prisma } from './prisma';
 
 export type HistorySource = 'VINE_SIM' | 'MANUAL_LOOKUP' | 'OTHER';
 

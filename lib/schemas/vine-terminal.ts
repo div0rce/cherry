@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { VineTerminalEvent } from '../vine/terminal-types.js';
-import {
+import type {
+  VineTerminalEvent,
   VineTerminalEnvironment,
   VineTerminalEntryMode,
   VineCardBrand,
@@ -9,7 +9,7 @@ import {
   VineDeclineReason,
   VineTransactionType,
   VineSource,
-} from '../vine/terminal-types.js';
+} from '../vine/terminal-types';
 
 const envValues: [VineTerminalEnvironment, ...VineTerminalEnvironment[]] = [
   'IN_STORE',

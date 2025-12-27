@@ -1,5 +1,5 @@
-import type { World } from './adapters/world.js';
-import { asAppError } from './errors.js';
+import type { World } from './adapters/world';
+import { asAppError } from './errors';
 
 export async function withIdempotency<T>(
   world: World,

@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import ScanClient from './ScanClient.js';
+import ScanClient from './ScanClient';
 
 export default function Page(): JSX.Element {
   return <ScanClient />;

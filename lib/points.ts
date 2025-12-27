@@ -1,4 +1,4 @@
-import { prisma } from './prisma.js';
+import { prisma } from './prisma';
 
 export async function getCherryPointsBalance(userId: string): Promise<number> {
   const result = await prisma.cherryPointLedger.aggregate({

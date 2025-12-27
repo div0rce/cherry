@@ -3,7 +3,7 @@
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { callApi } from '../../../lib/client/api.js';
+import { callApi } from '../../../lib/client/api';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

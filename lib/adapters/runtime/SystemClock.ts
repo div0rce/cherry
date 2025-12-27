@@ -1,4 +1,4 @@
-import type { Clock } from '../contracts/Clock.js';
+import type { Clock } from '../contracts/Clock';
 
 export class SystemClock implements Clock {
   private readonly nowFn: () => Date;

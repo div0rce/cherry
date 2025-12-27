@@ -1,12 +1,12 @@
-import { assertPublicConfig, type PublicConfig } from './public.ts';
-import { assertRuntimeConfig, type RuntimeConfig } from './runtime.ts';
+import { assertPublicConfig, type PublicConfig } from './public';
+import { assertRuntimeConfig, type RuntimeConfig } from './runtime';
 import {
   assertServerConfig,
   type BankIngestConfig,
   type ServerConfig,
   type VineSignatureMode,
   type WalletCertificateConfig,
-} from './server.ts';
+} from './server';
 
 function coerceOptionalString(value: string | undefined): string | null {
   if (typeof value !== 'string') return null;

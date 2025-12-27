@@ -1,4 +1,4 @@
-import { prisma } from './prisma.js';
+import { prisma } from './prisma';
 import {
   BucketPeriod,
   CategoryBudgetMode,
@@ -12,12 +12,12 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import type { OverallVerdict } from './enums.js';
-import { runEngine } from './engine/index.js';
-import { assertUserId } from './invariants.js';
-import { isPrismaP2003, logInvariant } from './user-context.js';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime.js';
-import { asAppError } from './errors.js';
+import type { OverallVerdict } from './enums';
+import { runEngine } from './engine';
+import { assertUserId } from './invariants';
+import { isPrismaP2003, logInvariant } from './user-context';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime';
+import { asAppError } from './errors';
 
 const cardDefinitions = [
   {

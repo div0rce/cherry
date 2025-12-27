@@ -1,4 +1,4 @@
-import type { Logger } from '../contracts/Logger.js';
+import type { Logger } from '../contracts/Logger';
 
 export class ConsoleLogger implements Logger {
   info(message: string, meta?: unknown): void {

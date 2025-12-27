@@ -1,4 +1,4 @@
-import type { LegacyEngineDecision } from './engine.js';
+import type { LegacyEngineDecision } from './engine';
 
 // Throws if the decision violates internal consistency checks.
 export function validateEngineDecision(decision: LegacyEngineDecision): void {

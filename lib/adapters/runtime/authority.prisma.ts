@@ -1,18 +1,18 @@
-import { prisma } from '../../prisma.js';
-import { getServerConfig } from '../../config/store.js';
-import type { Logger } from '../logger.js';
-import { ConsoleLogger } from './logger.console.js';
-import { Sha256Digest } from './digest.sha256.js';
+import { prisma } from '../../prisma';
+import { getServerConfig } from '../../config/store';
+import type { Logger } from '../logger';
+import { ConsoleLogger } from './logger.console';
+import { Sha256Digest } from './digest.sha256';
 import {
   simulateSpendAuthorityFromSnapshot,
   recordDecisionEventWithWriter,
   type AuthoritySnapshot,
   type SimulateSpendParams,
   type SimulatedAuthorityDecision,
-} from '../../authority/simulateSpendAuthority.js';
+} from '../../authority/simulateSpendAuthority';
 import { CherryPointLedgerStatus, VerificationStatus } from '@prisma/client';
-import { applyInMemoryRollover } from '../../buckets/periods.js';
-import { toBucketRuntime } from '../../buckets-runtime.js';
+import { applyInMemoryRollover } from '../../buckets/periods';
+import { toBucketRuntime } from '../../buckets-runtime';
 
 async function buildAuthoritySnapshot(
   params: SimulateSpendParams,

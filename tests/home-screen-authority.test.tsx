@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getHomeUiBundle } from '../lib/home/ui-bundle.js';
+import { fileURLToPath } from 'node:url';
+import { getHomeUiBundle } from '../lib/home/ui-bundle';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function run(): Promise<void> {
   const bundle = await getHomeUiBundle('test-user');

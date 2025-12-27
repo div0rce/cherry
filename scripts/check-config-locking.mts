@@ -14,7 +14,8 @@ function expectThrow(fn: () => void, message: string): void {
   let threw = false;
   try {
     fn();
-  } catch (_error: unknown) {
+  } catch (error: unknown) {
+    void error;
     threw = true;
   }
   if (!threw) {
@@ -51,7 +52,8 @@ const config = getServerConfig();
 let mutationThrew = false;
 try {
   (config as Record<string, unknown>)['environment'] = 'production';
-} catch (_error: unknown) {
+} catch (error: unknown) {
+  void error;
   mutationThrew = true;
 }
 
@@ -63,7 +65,8 @@ if (!mutationThrew && mutatedEnvironment !== 'test') {
 let nestedMutationThrew = false;
 try {
   (config.wallet as Record<string, unknown>)['enabled'] = true;
-} catch (_error: unknown) {
+} catch (error: unknown) {
+  void error;
   nestedMutationThrew = true;
 }
 

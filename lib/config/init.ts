@@ -1,8 +1,8 @@
-import { buildPublicConfig, buildRuntimeConfig, buildServerConfig } from './from-env.ts';
-import { setPublicConfig, setRuntimeConfig, setServerConfig, lockServerConfig } from './store.ts';
-import type { PublicConfig } from './public.ts';
-import type { RuntimeConfig } from './runtime.ts';
-import type { ServerConfig } from './server.ts';
+import { buildPublicConfig, buildRuntimeConfig, buildServerConfig } from './from-env';
+import { setPublicConfig, setRuntimeConfig, setServerConfig, lockServerConfig } from './store';
+import type { PublicConfig } from './public';
+import type { RuntimeConfig } from './runtime';
+import type { ServerConfig } from './server';
 
 type InitOptions = {
   lockServerConfig?: boolean;

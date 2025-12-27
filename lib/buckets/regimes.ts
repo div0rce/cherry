@@ -1,8 +1,8 @@
 import type { HistoricalIncomeRegime } from '@prisma/client';
-import { prisma, isProduction } from '../prisma.js';
-import { isRefundLike } from '../income/classifier.js';
-import { computeIncomeRegimesForUser, persistIncomeRegimes } from '../income/monthly.js';
-import type { ClassifiedBankTransaction, IncomeRegimeDraft } from '../income/types.js';
+import { prisma, isProduction } from '../prisma';
+import { isRefundLike } from '../income/classifier';
+import { computeIncomeRegimesForUser, persistIncomeRegimes } from '../income/monthly';
+import type { ClassifiedBankTransaction, IncomeRegimeDraft } from '../income/types';
 
 export const REGIME_BUCKET_KEYS = {
   FIXED: 'fixed_obligations',

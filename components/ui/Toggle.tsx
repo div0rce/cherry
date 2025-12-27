@@ -2,7 +2,7 @@
 
 import type { ChangeEvent, InputHTMLAttributes, JSX } from 'react';
 import { forwardRef } from 'react';
-import { cn } from '../../lib/ui/cn.js';
+import { cn } from '../../lib/ui/cn';
 
 type ToggleProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   label?: string;

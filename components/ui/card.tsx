@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { cn } from '../../lib/ui/cn.js';
+import { cn } from '../../lib/ui/cn';
 
 type CardTone = 'base' | 'muted' | 'accent';
 type CardPadding = 'none' | 'sm' | 'md' | 'lg';

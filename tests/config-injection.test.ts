@@ -1,9 +1,9 @@
-import { assertServerConfig } from '../lib/config/server.js';
-import { assertPublicConfig } from '../lib/config/public.js';
-import { resetServerConfigForTests, setPublicConfig, lockServerConfig } from '../lib/config/store.js';
-import { getBaseUrl } from '../lib/base-url.js';
-import { getWalletPassConfigStatus } from '../lib/wallet/config.js';
-import { getVineSignatureMode } from '../lib/vine/security.js';
+import { assertServerConfig } from '../lib/config/server';
+import { assertPublicConfig } from '../lib/config/public';
+import { resetServerConfigForTests, setPublicConfig, lockServerConfig } from '../lib/config/store';
+import { getBaseUrl } from '../lib/base-url';
+import { getWalletPassConfigStatus } from '../lib/wallet/config';
+import { getVineSignatureMode } from '../lib/vine/security';
 
 process.stdout.write('config-injection: running\n');
 

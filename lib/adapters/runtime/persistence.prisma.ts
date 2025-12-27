@@ -14,7 +14,7 @@ import type {
   SessionStore,
   SessionStatus,
   SessionUpdateInput,
-} from '../persistence.js';
+} from '../persistence';
 import type {
   Prisma,
   PrismaClient,

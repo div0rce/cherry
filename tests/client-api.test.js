@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 
-process.env.API_BASE_URL = 'http://localhost:3000';
+const baseUrl = 'http://localhost:3000';
 
 global.fetch = async () => ({
   ok: true,
@@ -16,7 +15,7 @@ const { callApi } = require('../lib/client/api');
 
 async function run() {
   // Success path
-  const success = await callApi('/api/test');
+  const success = await callApi('/api/test', { baseUrl });
   assert.equal(success.ok, true);
   assert.deepEqual(success.data, { foo: 'bar' });
 
@@ -26,7 +25,7 @@ async function run() {
     status: 500,
     json: async () => ({ error: 'boom' }),
   });
-  const failure = await callApi('/api/test');
+  const failure = await callApi('/api/test', { baseUrl });
   assert.equal(failure.ok, false);
   assert.equal(failure.error, 'INTERNAL');
   assert.equal(failure.message, 'boom');
