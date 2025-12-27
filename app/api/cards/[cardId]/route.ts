@@ -26,7 +26,7 @@ export async function PATCH(
   const card = await prisma.card.findFirst({
     where: { id: cardId, userId },
   });
-  if (!card) {
+  if (card === null) {
     return new NextResponse('Card not found for user', { status: 404 });
   }
 

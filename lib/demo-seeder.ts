@@ -89,7 +89,7 @@ type SeedCardsBucketsSummary = {
 async function assertUserExists(userId: string) {
   assertUserId(userId, 'demo-seeder assertUserExists');
   const existing = await prisma.user.findUnique({ where: { id: userId } });
-  if (existing) return existing;
+  if (existing !== null) return existing;
   return prisma.user.create({
     data: {
       id: userId,
@@ -156,7 +156,7 @@ async function seedDemoBucketsForUser(
     const balance = computeBucketBalanceFromNumbers(bucket.budgetAmount, bucket.spentCents, 0);
     const legacyCurrentAmount = deriveLegacyCurrentAmount(balance);
     const existing = await prisma.bucket.findFirst({ where: { userId, name: bucket.name } });
-    if (existing) {
+    if (existing !== null) {
       await prisma.bucket.update({
         where: { id: existing.id },
         data: {
@@ -194,7 +194,7 @@ async function seedCategoryPreferenceIfMissing(userId: string) {
   const existing = await prisma.categoryPreference.findFirst({
     where: { userId, category: RewardCategory.ENTERTAINMENT },
   });
-  if (!existing) {
+  if (existing === null) {
     await prisma.categoryPreference.create({
       data: {
         userId,
@@ -223,7 +223,7 @@ export async function seedCardsAndBucketsForUser(
     const periodStart =
       options?.periodStart ??
       (() => {
-        if (!baseNow) {
+        if (baseNow === undefined) {
           throw new Error('seedCardsAndBucketsForUser requires now when periodStart is not provided');
         }
         return new Date(Date.UTC(baseNow.getUTCFullYear(), baseNow.getUTCMonth(), 1));
@@ -231,7 +231,7 @@ export async function seedCardsAndBucketsForUser(
     const periodEnd =
       options?.periodEnd ??
       (() => {
-        if (!baseNow) {
+        if (baseNow === undefined) {
           throw new Error('seedCardsAndBucketsForUser requires now when periodEnd is not provided');
         }
         return new Date(Date.UTC(baseNow.getUTCFullYear(), baseNow.getUTCMonth() + 1, 1));
@@ -240,7 +240,7 @@ export async function seedCardsAndBucketsForUser(
     const cardsSeeded = await seedDemoCardsForUser(userId);
     const bucketsSeeded = await seedDemoBucketsForUser(userId, periodStart, periodEnd);
 
-    if (options?.includeCategoryPreference) {
+    if (options?.includeCategoryPreference === true) {
       await seedCategoryPreferenceIfMissing(userId);
     }
 

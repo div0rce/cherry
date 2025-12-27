@@ -11,18 +11,18 @@ export async function ensureBucketFresh(
   db: BucketClient = prisma
 ): Promise<Bucket | null> {
   const bucket = await db.bucket.findUnique({ where: { id: bucketId } });
-  if (!bucket) return null;
+  if (bucket === null) return null;
 
   const rolled = applyInMemoryRollover(bucket, now);
   let needsRollover = rolled.isExpired;
-  if (!needsRollover) {
+  if (needsRollover === false) {
     needsRollover = rolled.periodStart.getTime() !== bucket.periodStart.getTime();
   }
-  if (!needsRollover) {
+  if (needsRollover === false) {
     needsRollover = rolled.periodEnd.getTime() !== bucket.periodEnd.getTime();
   }
 
-  if (!needsRollover) return bucket;
+  if (needsRollover === false) return bucket;
 
   const balance = computeBucketBalanceFromNumbers(rolled.budgetAmount, rolled.spentCents, 0);
 

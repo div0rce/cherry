@@ -10,7 +10,7 @@ export async function withIdempotency<T>(
   deserialize: (payload: Record<string, unknown>) => T
 ): Promise<T> {
   const existing = await world.stores.idempotency.get(userId, key);
-  if (existing) {
+  if (existing !== null) {
     return deserialize(existing.payload);
   }
 
@@ -30,7 +30,7 @@ export async function withIdempotency<T>(
     const code = (err as { code?: string }).code;
     if (code === 'P2002') {
       const fallback = await world.stores.idempotency.get(userId, key);
-      if (fallback) {
+      if (fallback !== null) {
         return deserialize(fallback.payload);
       }
     }

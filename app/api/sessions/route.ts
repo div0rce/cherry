@@ -119,7 +119,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ...(engineResult.legacyDecision ? { fallback: engineResult.legacyDecision } : {}),
     });
 
-    if (!mappedDecision) {
+    if (mappedDecision === null) {
       return NextResponse.json(
         {
           error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },

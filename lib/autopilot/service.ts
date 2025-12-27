@@ -100,7 +100,7 @@ function mapKindToStatus(kind: AutopilotDecision['kind']): AutopilotDecisionStat
 }
 
 function toRecommendedCard(card: CardSummary | null): AutopilotRecommendedCard | null {
-  if (!card) return null;
+  if (card === null) return null;
   const label = hasText(card.nickname) ? card.nickname : card.id;
   return {
     id: card.id,
@@ -184,7 +184,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, onTimeoutCode: st
   let timer: NodeJS.Timeout | null = null;
   return await Promise.race<T>([
     promise.finally(() => {
-      if (timer) {
+      if (timer !== null) {
         clearTimeout(timer);
       }
     }),
@@ -200,7 +200,7 @@ async function buildBucketImpact(
   bucketDelta: AutopilotDecision['bucketDelta'],
   userId: string
 ): Promise<AutopilotPreviewOutput['bucketImpact']> {
-  if (!bucketDelta) return null;
+  if (bucketDelta === null) return null;
 
   const bucket = await prisma.bucket.findUnique({
     where: { id: bucketDelta.bucketId, userId },
@@ -440,7 +440,7 @@ function buildExplanation(
     : 'No recommendation available for this purchase.';
   const secondary: string[] = [];
 
-  if (evaluation.recommendedCard) {
+  if (evaluation.recommendedCard !== null) {
     const cardLabel = hasText(evaluation.recommendedCard.nickname)
       ? evaluation.recommendedCard.nickname
       : evaluation.recommendedCard.id;
@@ -451,7 +451,7 @@ function buildExplanation(
       `Estimated +$${(evaluation.expectedBenefitCents / 100).toFixed(2)} vs next best option`
     );
   }
-  if (evaluation.bucketImpact) {
+  if (evaluation.bucketImpact !== null) {
     secondary.push(
       `Projected remaining: ${(evaluation.bucketImpact.remainingCents / 100).toFixed(2)}`
     );
@@ -461,7 +461,7 @@ function buildExplanation(
   if (evaluation.status !== 'ok') {
     warnings.push('Autopilot could not produce a safe recommendation.');
   }
-  if (evaluation.bucketImpact && evaluation.bucketImpact.remainingCents <= 0) {
+  if (evaluation.bucketImpact !== null && evaluation.bucketImpact.remainingCents <= 0) {
     warnings.push('This swipe would exhaust its bucket.');
   }
 
@@ -624,7 +624,7 @@ export async function commitAutopilotDecisionV2(
     include: { session: { select: { recommendedBucketId: true } } },
   });
 
-  if (existingCommit) {
+  if (existingCommit !== null) {
     const runtimeBucket =
       existingCommit.session?.recommendedBucketId !== null &&
       existingCommit.session?.recommendedBucketId !== undefined
@@ -744,7 +744,7 @@ export async function commitAutopilotDecision(
       where: { id: evaluation.decisionId },
     });
 
-    if (existing) {
+    if (existing !== null) {
       const bucket =
         typeof existing.bucketId === 'string'
           ? await ensureBucketFresh(existing.bucketId, evaluation.occurredAt, tx)
@@ -760,14 +760,14 @@ export async function commitAutopilotDecision(
     let bucketAfter: ReturnType<typeof computeBucketBalance> | null = null;
     let runtimeBucket: BucketRuntime | null = null;
 
-    if (evaluation.decision.bucketDelta) {
+    if (evaluation.decision.bucketDelta !== null) {
       const freshBucket = await ensureBucketFresh(
         evaluation.decision.bucketDelta.bucketId,
         evaluation.occurredAt,
         tx
       );
 
-      if (freshBucket && freshBucket.userId === userId) {
+      if (freshBucket !== null && freshBucket.userId === userId) {
         bucketBefore = computeBucketBalance(freshBucket);
         const delta = evaluation.decision.bucketDelta.newSpentCents - bucketBefore.committedCents;
 

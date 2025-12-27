@@ -43,7 +43,7 @@ function selectCardDecisions(
 function pickBucketDelta(decision: EngineDecision, state: EngineState): AutopilotDecision['bucketDelta'] {
   for (const projection of decision.projections.buckets) {
     const bucket = state.buckets.find((candidate) => candidate.id === projection.bucketId);
-    if (!bucket) continue;
+    if (bucket === undefined) continue;
 
     const committedChanged = projection.projectedCommittedCents !== bucket.committedCents;
     if (committedChanged) {
@@ -66,18 +66,18 @@ function estimateBenefitCents(
   const cardId = decision.action.cardId;
   if (!hasText(cardId)) return 0;
   const card = state.cards.find((candidate) => candidate.id === cardId);
-  if (!card) return 0;
+  if (card === undefined) return 0;
 
   const category = merchantCategoryKey == null ? 'OTHER' : merchantCategoryKey;
   let rewardRule = card.rewardRules.find((rule) => rule.categoryKey === category);
-  if (!rewardRule) {
+  if (rewardRule === undefined) {
     rewardRule = card.rewardRules.find((rule) => rule.categoryKey === 'GENERAL_MERCHANDISE');
   }
-  if (!rewardRule) {
+  if (rewardRule === undefined) {
     rewardRule = card.rewardRules.find((rule) => rule.categoryKey === 'OTHER');
   }
 
-  if (!rewardRule) return 0;
+  if (rewardRule === undefined) return 0;
 
   if (rewardRule.rateType === 'CASHBACK') {
     const estimated = Math.floor(amountCents * rewardRule.rateValue);
@@ -93,9 +93,9 @@ function classifyReasonCode(decision: EngineDecision, bucketDelta: AutopilotDeci
     constraint.startsWith('SOFT:')
   );
   let hasBudgetTension = softBreaches;
-  if (!hasBudgetTension) {
+  if (hasBudgetTension === false) {
     const remaining =
-      bucketDelta && bucketDelta.newRemainingCents != null
+      bucketDelta !== null && bucketDelta.newRemainingCents != null
         ? bucketDelta.newRemainingCents
         : null;
     if (remaining != null && remaining <= 0) {
@@ -238,7 +238,7 @@ export async function getAutopilotDecisionForUserSwipe(
   }
 
   const [bestDecision, runnerUp] = sortedCardDecisions;
-  if (!bestDecision) {
+  if (bestDecision === undefined) {
     return blockedDecision('NO_ELIGIBLE_DECISION');
   }
   if (!hasText(bestDecision.action.cardId)) {
@@ -247,7 +247,7 @@ export async function getAutopilotDecisionForUserSwipe(
 
   const bucketDelta = pickBucketDelta(bestDecision, engineResult.state);
   let bucketName: string | null = null;
-  if (bucketDelta) {
+  if (bucketDelta !== null) {
     const matched = engineResult.state.buckets.find(
       (bucket) => bucket.id === bucketDelta.bucketId
     );

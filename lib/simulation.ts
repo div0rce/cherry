@@ -51,7 +51,7 @@ export async function resolveCategory(
     const mapping = await prisma.mccToRewardCategory.findFirst({
       where: { mccCode, isDefault: true },
     });
-    if (mapping) return mapping.category;
+    if (mapping !== null) return mapping.category;
   }
 
   if (hasNonEmptyString(category)) {
@@ -75,7 +75,7 @@ export async function resolveCategory(
 }
 
 function scoreRule(rule: RewardRule | null): { score: number; multiplier: number | null; cashback: number | null } {
-  if (!rule) return { score: 1, multiplier: 1, cashback: null };
+  if (rule === null) return { score: 1, multiplier: 1, cashback: null };
   if (rule.cashbackPercent != null) {
     return { score: rule.cashbackPercent / 100, multiplier: null, cashback: rule.cashbackPercent };
   }
@@ -161,7 +161,7 @@ export async function runSimulation(
   const { card, rule } = await pickBestCardForCategory(prisma, userId, resolvedCategory);
 
   // No card available
-  if (!card) {
+  if (card === null) {
     const tx = await prisma.simulatedTransaction.create({
       data: {
         userId,
@@ -193,7 +193,12 @@ export async function runSimulation(
   const bucketBefore = bucketBalance?.remainingCents ?? null;
 
   // strict bucket decline
-  if (bucket && bucketBalance && bucket.strictMode && bucketBalance.remainingCents < amountCents) {
+  if (
+    bucket !== null &&
+    bucketBalance !== null &&
+    bucket.strictMode === true &&
+    bucketBalance.remainingCents < amountCents
+  ) {
     const tx = await prisma.simulatedTransaction.create({
       data: {
         userId,
@@ -224,7 +229,7 @@ export async function runSimulation(
     bucketBalance != null ? Math.max(0, bucketBalance.remainingCents - amountCents) : null;
 
   const tx = await prisma.$transaction(async (txPrisma) => {
-    if (bucket && bucketAfter != null && bucketBalance) {
+    if (bucket !== null && bucketAfter != null && bucketBalance !== null) {
       const updatedBalance = computeBucketBalanceFromNumbers(
         bucketBalance.limitCents,
         bucketBalance.postedSpendCents + amountCents,

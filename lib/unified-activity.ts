@@ -240,7 +240,7 @@ export async function getUnifiedActivityForUser(
           : 'OTHER_SIM';
 
     let merchantLocation: UnifiedActivityRow['merchantLocation'];
-    if (row.merchantObservation) {
+    if (row.merchantObservation !== null && row.merchantObservation !== undefined) {
       const location: NonNullable<UnifiedActivityRow['merchantLocation']> = {};
       if (hasNonEmptyString(row.merchantObservation.city)) location.city = row.merchantObservation.city;
       if (hasNonEmptyString(row.merchantObservation.region)) location.region = row.merchantObservation.region;
@@ -359,7 +359,7 @@ export async function getUnifiedActivityForUser(
     ) {
       return false;
     }
-    if (periodRange) {
+    if (periodRange !== null) {
       const occurred = row.occurredAt;
       if (occurred < periodRange.start || occurred >= periodRange.end) return false;
     }

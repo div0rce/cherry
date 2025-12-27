@@ -78,8 +78,12 @@ export async function fetchSessionSummaries(
   const now = options.now;
 
   const createdAtFilter: { gte?: Date; lte?: Date } = {};
-  if (filters.from) createdAtFilter.gte = filters.from;
-  if (filters.to) createdAtFilter.lte = filters.to;
+  if (filters.from !== undefined && filters.from !== null) {
+    createdAtFilter.gte = filters.from;
+  }
+  if (filters.to !== undefined && filters.to !== null) {
+    createdAtFilter.lte = filters.to;
+  }
   const hasCreatedBounds = createdAtFilter.gte !== undefined || createdAtFilter.lte !== undefined;
 
   const where: Prisma.RecommendationSessionWhereInput = {

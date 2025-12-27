@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2025-12-26
+Last updated: 2025-12-27
 
 # Guardrail 6 — Config Immutability
 
@@ -46,3 +46,9 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Engine-facing APIs (`safeSolveDecisionForWorld`, `simulateSpendAuthority`) must never throw.
 - Invalid inputs return structured outcomes, not exceptions.
 - Guardrail tests: `tests/guardrails/engine-no-throw.test.ts`.
+
+# Guardrail 12 — Boolean Totality
+
+- No implicit truthiness checks on non-boolean values.
+- Conditionals must compare explicitly (`===`, `!==`, `<`, `>`) or use typed helpers.
+- Guardrail checks: `npm run check:implicit-boolean` and `tests/guardrails/no-implicit-boolean.test.ts`.

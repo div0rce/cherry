@@ -14,7 +14,7 @@ export async function getDevIngestUser(
   const hasEnvUserId = typeof envUserId === 'string' && envUserId.trim() !== '';
   if (hasEnvUserId) {
     const user = await prisma.user.findUnique({ where: { id: envUserId } });
-    if (!user) {
+    if (user === null) {
       throw new Error(`BANK_INGEST_USER_ID="${envUserId}" not found. Sign in or set BANK_INGEST_USER_EMAIL.`);
     }
     return { id: user.id, email: user.email ?? null };
@@ -23,7 +23,7 @@ export async function getDevIngestUser(
   const hasEnvEmail = typeof envEmail === 'string' && envEmail.trim() !== '';
   if (hasEnvEmail) {
     const user = await prisma.user.findUnique({ where: { email: envEmail } });
-    if (!user) {
+    if (user === null) {
       throw new Error(`BANK_INGEST_USER_EMAIL="${envEmail}" not found. Sign in or correct the email.`);
     }
     return { id: user.id, email: user.email ?? null };

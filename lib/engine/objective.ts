@@ -139,7 +139,7 @@ export function getObjectiveWeightsForPreferences(
   preferences: EngineUserPreferences | null | undefined,
   runtime: EngineRuntime = DEFAULT_ENGINE_RUNTIME
 ): ObjectiveWeights {
-  if (!preferences) {
+  if (preferences === null || preferences === undefined) {
     logObjectiveWarning(runtime, 'Missing preferences; using defaults');
     return normalizeObjectiveWeights(DEFAULT_OBJECTIVE_WEIGHTS);
   }
@@ -177,17 +177,17 @@ function scoreComponents(
     if (card !== undefined) {
       const categoryKey = ctx.merchantCategoryKey == null ? 'ALL' : ctx.merchantCategoryKey;
       let rule = card.rewardRules.find((r) => r.categoryKey === categoryKey);
-      if (!rule) {
+      if (rule === undefined) {
         rule = card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE');
       }
-      if (!rule) {
+      if (rule === undefined) {
         rule = card.rewardRules.find((r) => r.categoryKey === 'OTHER');
       }
-      if (!rule) {
+      if (rule === undefined) {
         rule = card.rewardRules.find((r) => r.categoryKey === 'ALL');
       }
 
-      if (rule) {
+      if (rule !== undefined) {
         const base = ctx.amountCents;
         if (rule.rateType === 'CASHBACK') {
           rewards = base * rule.rateValue;
@@ -202,7 +202,7 @@ function scoreComponents(
   let runway = 0;
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
-    if (!bucket) continue;
+    if (bucket === undefined) continue;
     if (bucket.isEssential && bucket.limitCents != null) {
       runway += proj.projectedRemainingCents;
     }
@@ -212,7 +212,7 @@ function scoreComponents(
   let debtRelief = 0;
   for (const proj of projections.debt) {
     const debt = state.debts.find((d) => d.id === proj.debtId);
-    if (!debt) continue;
+    if (debt === undefined) continue;
     const currentUtil =
       debt.creditLimitCents !== null &&
       debt.creditLimitCents !== undefined &&

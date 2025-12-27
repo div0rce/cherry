@@ -55,7 +55,7 @@ export class RegimeBucketTracker {
     const regimeLedger = this.ledger.get(regimeId) ?? new Map<string, Map<string, BucketState>>();
     const monthLedger = regimeLedger.get(monthKey) ?? new Map<string, BucketState>();
     const existing = monthLedger.get(bucketKey);
-    if (existing) return existing;
+    if (existing !== undefined) return existing;
     const created: BucketState = { limitCents, spentCents: 0 };
     monthLedger.set(bucketKey, created);
     regimeLedger.set(monthKey, monthLedger);
@@ -74,13 +74,13 @@ export class RegimeBucketTracker {
     }
 
     const templates = this.templatesByRegime.get(regimeId);
-    if (!templates || templates.size === 0) {
+    if (templates === undefined || templates.size === 0) {
       return { regimeId, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
     }
 
     const bucketKey = inferBucketKeyForTransaction(tx);
     const template = templates.get(bucketKey) ?? templates.get(REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES);
-    if (!template) {
+    if (template === undefined) {
       return { regimeId, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
     }
 

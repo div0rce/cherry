@@ -164,7 +164,7 @@ function createCollection(name: string) {
     },
     findFirst: async ({ where, orderBy }: { where?: Where; orderBy?: Record<string, 'asc' | 'desc'> } = {}) => {
       const results = await api.findMany(where === undefined ? {} : { where });
-      if (orderBy) {
+      if (orderBy !== undefined) {
         const [key, dir] = Object.entries(orderBy)[0] ?? [];
         if (typeof key === 'string' && key.length > 0) {
           results.sort((a, b) => {
@@ -183,7 +183,7 @@ function createCollection(name: string) {
     },
     update: async ({ where, data }: { where: Where; data: RecordShape }) => {
       const existing = await api.findUnique({ where });
-      if (!existing) throw new Error(`Record not found in ${name}`);
+      if (existing === null) throw new Error(`Record not found in ${name}`);
       const key = resolveKey(where) ?? (existing['id'] as string);
       const updated = { ...existing, ...data };
       store.set(key, updated);
@@ -191,7 +191,7 @@ function createCollection(name: string) {
     },
     upsert: async ({ where, create, update }: { where: Where; create: RecordShape; update: RecordShape }) => {
       const existing = await api.findUnique({ where });
-      if (existing) {
+      if (existing !== null) {
         return api.update({ where, data: { ...existing, ...update } });
       }
       const data = { ...create };
@@ -218,7 +218,7 @@ function createCollection(name: string) {
     aggregate: async ({ where, _sum }: { where?: Where; _sum?: Record<string, boolean> }) => {
       const records = await api.findMany(where === undefined ? {} : { where });
       const result: Record<string, number | null> = {};
-      if (_sum) {
+      if (_sum !== undefined) {
         for (const key of Object.keys(_sum)) {
           const sum = records.reduce((acc, record) => {
             const value = (record as Record<string, unknown>)[key];
@@ -275,7 +275,7 @@ function parseEnumsFromSchema(): Record<string, Record<string, string>> {
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     const startMatch = line.match(/^enum\s+([A-Za-z0-9_]+)\s*\{/);
-    if (startMatch) {
+    if (startMatch !== null) {
       const enumName = startMatch[1];
       if (typeof enumName !== 'string') {
         current = null;
@@ -291,11 +291,11 @@ function parseEnumsFromSchema(): Record<string, Record<string, string>> {
     }
     if (current !== null) {
       const valueMatch = line.match(/^([A-Z0-9_]+)/);
-      if (valueMatch) {
+      if (valueMatch !== null) {
         const value = valueMatch[1];
         if (typeof value === 'string') {
           const bucket = enums[current];
-          if (bucket) {
+          if (bucket !== undefined) {
             bucket.push(value);
           }
         }
@@ -310,7 +310,7 @@ function parseEnumsFromSchema(): Record<string, Record<string, string>> {
 const PrismaEnums = parseEnumsFromSchema();
 
 function ensureEnum(name: string, values: string[]): void {
-  if (!PrismaEnums[name]) {
+  if (PrismaEnums[name] === undefined) {
     PrismaEnums[name] = buildEnum(values);
   }
 }
@@ -445,7 +445,7 @@ if (typeof ModuleInternal.registerHooks === 'function') {
           return { format: 'module', source: esmSource, shortCircuit: true };
         }
         const sentinel = buildSentinelSource(url);
-        if (sentinel) {
+        if (sentinel !== null) {
           return { format: sentinel.format, source: sentinel.source, shortCircuit: true };
         }
       } catch (error: unknown) {

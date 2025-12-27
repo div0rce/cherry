@@ -52,16 +52,16 @@ function applyUseCard(
   const bucketId = pickBucketForContext(state, ctx);
   if (hasNonEmptyString(bucketId)) {
     const bucket = buckets.find((b) => b.id === bucketId);
-    if (bucket) {
+    if (bucket !== undefined) {
       bucket.postedSpendCents += amount;
       recomputeBucketBalance(bucket);
     }
   }
 
   const card = state.cards.find((c) => c.id === action.cardId);
-  if (card?.isCredit && card.creditLimitCents != null) {
+  if (card !== undefined && card.isCredit && card.creditLimitCents != null) {
     const debt = debts.find((d) => d.type === 'CREDIT_CARD' && d.name === card.label);
-    if (debt) {
+    if (debt !== undefined) {
       debt.balanceCents += amount;
     }
   }
@@ -78,14 +78,14 @@ function applyPaydown(
     return;
   }
   const debt = debts.find((d) => d.id === action.debtId);
-  if (!debt) return;
+  if (debt === undefined) return;
   const delta = Math.min(debt.balanceCents, action.paydownAmountCents);
   debt.balanceCents -= delta;
 }
 
 function pickBestCashOrDebitCard(state: EngineState): NormalizedCardId | undefined {
   const debit = state.cards.find((card) => card.isActive && !card.isCredit);
-  if (debit) return debit.id;
+  if (debit !== undefined) return debit.id;
   const any = state.cards.find((card) => card.isActive);
   return any?.id;
 }

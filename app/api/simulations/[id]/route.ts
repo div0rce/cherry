@@ -36,7 +36,7 @@ export async function DELETE(
       where: { id, userId },
     });
 
-    if (!simulation) {
+    if (simulation === null) {
       logGuardrailEvent({
         userId,
         surface: 'simulations',

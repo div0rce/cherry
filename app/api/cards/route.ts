@@ -193,7 +193,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       where: { id: cardId, userId },
     });
 
-    if (!card) {
+    if (card === null) {
       return new NextResponse('Card not found for user', { status: 404 });
     }
 

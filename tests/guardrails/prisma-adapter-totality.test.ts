@@ -41,7 +41,8 @@ async function run(): Promise<void> {
     thrown = err;
   }
 
-  assert.ok(thrown && typeof thrown === 'object');
+  assert.notEqual(thrown, null);
+  assert.equal(typeof thrown, 'object');
   const error = thrown as { code?: string; message?: string };
   assert.equal(error.code, 'INTERNAL');
   assert.match(error.message ?? '', /Missing Prisma model: bucket/);

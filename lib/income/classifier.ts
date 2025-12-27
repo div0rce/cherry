@@ -173,7 +173,7 @@ function buildCounterpartyStats(txs: ClassifiableTx[]): Map<string, Counterparty
 }
 
 function looksLikeAllowanceP2P(stats: CounterpartyStats | undefined): boolean {
-  if (!stats) return false;
+  if (stats === undefined) return false;
   if (stats.creditSamples.length < 3) return false;
   const gap = stats.medianCreditGapDays ?? null;
   const spread = stats.creditAmountSpread;
@@ -181,7 +181,7 @@ function looksLikeAllowanceP2P(stats: CounterpartyStats | undefined): boolean {
 }
 
 function looksLikePseudoMerchant(stats: CounterpartyStats | undefined, direction: 'credit' | 'debit'): boolean {
-  if (!stats) return false;
+  if (stats === undefined) return false;
   const samples = direction === 'credit' ? stats.creditSamples : stats.debitSamples;
   if (samples.length < 3) return false;
   const gap = direction === 'credit' ? stats.medianCreditGapDays : stats.medianDebitGapDays;
@@ -295,13 +295,13 @@ export async function classifyIncomeAndP2PForUser(
   const classifications = classifyTransactionsInMemory(txs);
 
   const updates: Prisma.BankTransactionUpdateArgs[] = [];
-  if (opts?.persist) {
+  if (opts?.persist === true) {
     if (isProduction()) {
       throw new Error('Income/P2P classification persistence is disabled in production');
     }
     for (const classification of classifications) {
       const tx = txs.find((t) => t.id === classification.txId);
-      if (!tx) continue;
+      if (tx === undefined) continue;
       const incomeKindChanged = tx.incomeKind !== classification.incomeKind;
       const p2pKindChanged = tx.p2pKind !== classification.p2pKind;
       if (!incomeKindChanged && !p2pKindChanged) continue;

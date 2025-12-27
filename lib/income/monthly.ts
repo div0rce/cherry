@@ -183,7 +183,7 @@ export function detectIncomeRegimesFromMonthly(
   const merged: IncomeRegimeDraft[] = [];
   for (const draft of drafts) {
     const last = merged.at(-1);
-    if (last && draft.months.length < minMonths) {
+    if (last !== undefined && draft.months.length < minMonths) {
       merged[merged.length - 1] = {
         ...last,
         endMonth: draft.endMonth,

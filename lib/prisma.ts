@@ -22,7 +22,7 @@ function createPrismaClient(databaseUrl: string): PrismaClient {
 }
 
 export function initPrisma(databaseUrl?: string): PrismaClient {
-  if (globalForPrisma.prisma) return globalForPrisma.prisma;
+  if (globalForPrisma.prisma !== undefined) return globalForPrisma.prisma;
   const config = ensureServerConfig();
   const url = databaseUrl ?? config.databaseUrl;
   globalForPrisma.prisma = createPrismaClient(url);
@@ -35,7 +35,7 @@ export function setPrismaClient(client: PrismaClient): PrismaClient {
 }
 
 export function getPrisma(): PrismaClient {
-  if (!globalForPrisma.prisma) {
+  if (globalForPrisma.prisma === undefined) {
     return initPrisma();
   }
   return globalForPrisma.prisma;

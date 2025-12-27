@@ -81,7 +81,7 @@ export async function runRecommendationFromOrderContext(
     ...(engineResult.legacyDecision ? { fallback: engineResult.legacyDecision } : {}),
   });
 
-  if (!mappedDecision) {
+  if (mappedDecision === null) {
     throw new Error('Unable to map solver decision');
   }
 

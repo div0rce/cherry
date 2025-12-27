@@ -93,13 +93,13 @@ function extractImports(content: string): string[] {
   const importFrom = /import\s+[^'"\n]+?\s+from\s+['"]([^'"]+)['"]/g;
   const importOnly = /import\s+['"]([^'"]+)['"]/g;
   let match: RegExpExecArray | null = importFrom.exec(content);
-  while (match) {
+  while (match !== null) {
     const spec = match[1];
     if (typeof spec === 'string') imports.push(spec);
     match = importFrom.exec(content);
   }
   match = importOnly.exec(content);
-  while (match) {
+  while (match !== null) {
     const spec = match[1];
     if (typeof spec === 'string') imports.push(spec);
     match = importOnly.exec(content);
@@ -158,7 +158,7 @@ function main(): void {
 
     if (hasDynamic) {
       const forbidden = findForbiddenToken(file);
-      if (forbidden) {
+      if (forbidden !== null) {
         const tokenFile = path.normalize(path.relative(root, forbidden.file));
         console.error(
           `user-pages-runtime: ${relative}: forbidden token ${forbidden.token} (${tokenFile})`
@@ -174,7 +174,7 @@ function main(): void {
     }
 
     const forbidden = findForbiddenToken(file);
-    if (forbidden) {
+    if (forbidden !== null) {
       const token = forbidden.token;
       const tokenFile = path.normalize(path.relative(root, forbidden.file));
       console.error(`user-pages-runtime: ${relative}: ${token} (${tokenFile})`);

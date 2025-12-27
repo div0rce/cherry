@@ -26,7 +26,7 @@ export async function GET(
         },
       });
 
-      if (!session) {
+      if (session === null) {
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
 

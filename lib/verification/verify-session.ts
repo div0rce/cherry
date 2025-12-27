@@ -48,7 +48,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
     where: { id: sessionId, userId },
   });
 
-  if (!session) {
+  if (session === null) {
     return { ok: false, reason: 'NOT_FOUND' };
   }
 
@@ -129,7 +129,7 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
         },
       });
 
-      if (reversalBucketUpdate) {
+      if (reversalBucketUpdate !== null) {
         const bucketUpdate = await tx.bucket.updateMany({
           where: { id: reversalBucketUpdate.bucketId, userId },
           data: { spentCents: reversalBucketUpdate.newSpentCents },

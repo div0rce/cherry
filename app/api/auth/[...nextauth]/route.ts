@@ -63,7 +63,7 @@ if (process.env.NODE_ENV !== 'production') {
           where: { email },
         });
 
-        if (existingUser) {
+        if (existingUser !== null) {
           return { id: existingUser.id, email: existingUser.email };
         }
 

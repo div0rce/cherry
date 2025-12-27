@@ -7,7 +7,7 @@ import { Panel } from '../../../components/ui/panel';
 import { VineSimulatorClient } from './client';
 export default async function VineSimulatorPage(): Promise<JSX.Element> {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (session === null) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/vine-simulator')}`);
   }
 

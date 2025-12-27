@@ -15,7 +15,8 @@ async function main(): Promise<void> {
         AND column_name = 'categoryEnum'
     ) as "exists";
   `;
-  if (!columnCheck[0]?.exists) {
+  const columnExists = columnCheck[0]?.exists ?? false;
+  if (columnExists !== true) {
     console.warn('categoryEnum column not found; schema already migrated. Nothing to backfill.');
     return;
   }

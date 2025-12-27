@@ -51,11 +51,12 @@ export async function fetchActivityFeed(
   const from = filters.from ?? null;
   const to = filters.to ?? null;
 
-  const typeSet = filters.type ? new Set(filters.type) : null;
+  const typeSet =
+    filters.type !== undefined && filters.type !== null ? new Set(filters.type) : null;
 
   const sessionCreatedFilter: { gte?: Date; lte?: Date } = {};
-  if (from) sessionCreatedFilter.gte = from;
-  if (to) sessionCreatedFilter.lte = to;
+  if (from !== null) sessionCreatedFilter.gte = from;
+  if (to !== null) sessionCreatedFilter.lte = to;
   const hasSessionCreatedBounds = sessionCreatedFilter.gte !== undefined || sessionCreatedFilter.lte !== undefined;
 
   const sessionWhere: Prisma.RecommendationSessionWhereInput = {
@@ -64,8 +65,8 @@ export async function fetchActivityFeed(
   };
 
   const ledgerAwardedFilter: { gte?: Date; lte?: Date } = {};
-  if (from) ledgerAwardedFilter.gte = from;
-  if (to) ledgerAwardedFilter.lte = to;
+  if (from !== null) ledgerAwardedFilter.gte = from;
+  if (to !== null) ledgerAwardedFilter.lte = to;
   const hasLedgerAwardedBounds =
     ledgerAwardedFilter.gte !== undefined || ledgerAwardedFilter.lte !== undefined;
 
@@ -107,7 +108,7 @@ export async function fetchActivityFeed(
       const firstLedger = [...session.ledgerEntries].sort(
         (a, b) => (a.awardedAt?.getTime() ?? a.createdAt.getTime()) - (b.awardedAt?.getTime() ?? b.createdAt.getTime())
       )[0];
-      if (firstLedger) {
+      if (firstLedger !== undefined) {
         items.push({
           type: 'SESSION_CONFIRMED',
           occurredAt: firstLedger.awardedAt ?? firstLedger.createdAt,

@@ -62,37 +62,37 @@ export default function AdminClient(): JSX.Element {
   const [isFetchingBank, setIsFetchingBank] = useState(false);
 
   useEffect(() => {
-    if (!seedFeedback) return;
+    if (seedFeedback === null) return;
     const id = setTimeout(() => setSeedFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [seedFeedback]);
 
   useEffect(() => {
-    if (!seedCardsBucketsFeedback) return;
+    if (seedCardsBucketsFeedback === null) return;
     const id = setTimeout(() => setSeedCardsBucketsFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [seedCardsBucketsFeedback]);
 
   useEffect(() => {
-    if (!clearUserFeedback) return;
+    if (clearUserFeedback === null) return;
     const id = setTimeout(() => setClearUserFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [clearUserFeedback]);
 
   useEffect(() => {
-    if (!clearSessionsFeedback) return;
+    if (clearSessionsFeedback === null) return;
     const id = setTimeout(() => setClearSessionsFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [clearSessionsFeedback]);
 
   useEffect(() => {
-    if (!clearLedgerFeedback) return;
+    if (clearLedgerFeedback === null) return;
     const id = setTimeout(() => setClearLedgerFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [clearLedgerFeedback]);
 
   useEffect(() => {
-    if (!bankFeedback) return;
+    if (bankFeedback === null) return;
     const id = setTimeout(() => setBankFeedback(null), 4000);
     return () => clearTimeout(id);
   }, [bankFeedback]);

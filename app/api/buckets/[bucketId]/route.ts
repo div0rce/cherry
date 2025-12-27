@@ -75,7 +75,7 @@ export async function PATCH(
     const bucket = await prisma.bucket.findFirst({
       where: { id: bucketId, userId },
     });
-    if (!bucket) {
+    if (bucket === null) {
       return new NextResponse('Bucket not found for user', { status: 404 });
     }
 
@@ -159,7 +159,7 @@ export async function DELETE(
   const bucket = await prisma.bucket.findFirst({
     where: { id: bucketId, userId },
   });
-  if (!bucket) {
+  if (bucket === null) {
     return new NextResponse('Bucket not found for user', { status: 404 });
   }
 

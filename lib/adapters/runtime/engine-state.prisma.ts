@@ -184,7 +184,7 @@ async function loadCashSnapshot(_userId: string): Promise<EngineState['cash']> {
 function logPreferencesWarning(runtime: EngineRuntime, message: string, meta?: unknown) {
   if (!runtime.enableLogs) return;
   const logger = runtime.logger;
-  if (!logger) return;
+  if (logger === undefined) return;
   logger.warn('[engine] preferences warning', { message, meta });
 }
 
@@ -221,7 +221,7 @@ async function loadUserPreferences(
       },
     });
 
-    if (!user) {
+    if (user === null) {
       logPreferencesWarning(runtime, 'User missing while loading preferences; using defaults', { userId });
       return { ...DEFAULT_ENGINE_USER_PREFERENCES };
     }

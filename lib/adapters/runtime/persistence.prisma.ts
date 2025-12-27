@@ -141,7 +141,7 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
         where: { id },
         select: { id: true, userId: true, status: true, createdAt: true, updatedAt: true },
       });
-      if (!row) return null;
+      if (row === null) return null;
       return mapSessionRow(row);
     },
     listForUser: async (userId) => {
@@ -222,8 +222,9 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
   const bank: BankTxnStore = {
     listForUser: async (userId: string, options?: BankTxnListOptions) => {
       const where: Prisma.BankTransactionWhereInput = { userId };
-      if (options?.source && options.source.length > 0) {
-        where.source = { in: options.source };
+      const sources = options?.source;
+      if (sources !== undefined && sources.length > 0) {
+        where.source = { in: sources };
       }
       const orderBy =
         options?.orderByPostedAt !== undefined
@@ -242,7 +243,7 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
       const row = await prisma.idempotencyKey.findUnique({
         where: { userId_key: { userId, key } },
       });
-      if (!row) return null;
+      if (row === null) return null;
       return {
         key: row.key,
         userId: row.userId,

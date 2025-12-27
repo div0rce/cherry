@@ -36,7 +36,7 @@ export function validateEngineDecision(decision: LegacyEngineDecision): void {
       throw new Error('Engine invariant violated: spentAfterCents exceeds hard cap');
     }
 
-    if (budget.strictMode && budget.wouldExceed && budget.verdict === 'HEALTHY') {
+    if (budget.strictMode === true && budget.wouldExceed === true && budget.verdict === 'HEALTHY') {
       throw new Error('Engine invariant violated: strict bucket overspent but marked HEALTHY');
     }
   } else if (budget.coverageMode === 'BUDGETED') {

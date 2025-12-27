@@ -38,7 +38,7 @@ export default async function SimulationDetailPage({
     },
   });
 
-  if (!sim) return notFound();
+  if (sim === null) return notFound();
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

@@ -45,7 +45,7 @@ async function loadDecisionEvent(lookup: ReplayLookup): Promise<DecisionEvent> {
     const found = await prisma.decisionEvent.findUnique({
       where: { id: lookup.decisionEventId },
     });
-    if (!found) throw new Error('DecisionEvent not found');
+    if (found === null) throw new Error('DecisionEvent not found');
     return found;
   }
 
@@ -56,7 +56,7 @@ async function loadDecisionEvent(lookup: ReplayLookup): Promise<DecisionEvent> {
     where: { userId: lookup.userId, inputsVersion: lookup.inputsVersion },
     orderBy: { createdAt: 'desc' },
   });
-  if (!found) throw new Error('DecisionEvent not found');
+  if (found === null) throw new Error('DecisionEvent not found');
   return found;
 }
 

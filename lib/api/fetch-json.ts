@@ -59,7 +59,7 @@ function extractErrorPayload(
 export type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 function resolveFetcher(fetcher?: Fetcher): Fetcher {
-  if (fetcher) return fetcher;
+  if (fetcher !== undefined) return fetcher;
   if (typeof globalThis.fetch === 'function') {
     return globalThis.fetch.bind(globalThis);
   }

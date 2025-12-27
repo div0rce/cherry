@@ -26,13 +26,13 @@ async function resolveDevUser() {
   if (hasText(cliArg)) {
     if (cliArg.includes('@')) {
       const existing = await prisma.user.findUnique({ where: { email: cliArg } });
-      if (existing) return existing;
+      if (existing !== null) return existing;
       return prisma.user.create({
         data: { email: cliArg, ...(cliArg === LAB_USER_EMAIL ? { name: LAB_USER_NAME } : {}) },
       });
     }
     const user = await prisma.user.findUnique({ where: { id: cliArg } });
-    if (user) return user;
+    if (user !== null) return user;
     throw new Error(`No user found for id "${cliArg}". Provide an email to auto-create.`);
   }
 

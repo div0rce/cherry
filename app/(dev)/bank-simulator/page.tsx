@@ -8,7 +8,7 @@ import { prisma } from '../../../lib/prisma';
 
 export default async function BankSimulatorPage(): Promise<JSX.Element> {
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (session === null) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/bank-simulator')}`);
   }
   const userId = (session.user as { id?: string } | undefined)?.id;

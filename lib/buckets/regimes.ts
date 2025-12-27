@@ -149,7 +149,7 @@ function bucketSpendByMonth(
     if (!monthKeys.has(alignedKey)) continue;
     const bucketKey = inferBucketKeyForTransaction(tx);
     let bucketMap = spend.get(bucketKey);
-    if (!bucketMap) {
+    if (bucketMap === undefined) {
       bucketMap = new Map<string, number>();
     }
     const currentValue = bucketMap.get(alignedKey);
@@ -179,7 +179,7 @@ function synthesizeTemplatesForRegime(
   const avgSpendByBucket = new Map<string, number>();
   for (const def of BUCKET_DEFINITIONS) {
     const monthSpend = spendMap.get(def.key);
-    if (!monthSpend) {
+    if (monthSpend === undefined) {
       avgSpendByBucket.set(def.key, 0);
       continue;
     }
@@ -258,7 +258,7 @@ function synthesizeTemplatesForRegime(
   const cap = Math.round(Math.max(regime.avgNetIncomeCents, usableFreeCash) * 1.2);
   const availableForSavings = Math.max(0, Math.min(cap - allocated, bandBudgets.savings));
   const savingsDraft = drafts.find((d) => d.bucketKey === REGIME_BUCKET_KEYS.SAVINGS_BUFFER);
-  if (savingsDraft) {
+  if (savingsDraft !== undefined) {
     savingsDraft.monthlyLimitCents = availableForSavings;
     if (savingsDraft.avgSpendCents == null) {
       savingsDraft.avgSpendCents = 0;

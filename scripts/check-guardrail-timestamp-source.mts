@@ -95,12 +95,12 @@ function main(): void {
     if (calls.length === 0) continue;
 
     const expected = expectedSource(relative);
-    if (!expected) {
+    if (expected === null) {
       fail(`logGuardrailEvent used outside allowed zones: ${relative}`);
     }
     for (const call of calls) {
       const match = call.body.match(/timestampSource\s*:\s*['"]([^'"]+)['"]/);
-      if (!match) {
+      if (match === null) {
         fail(`Missing timestampSource in ${call.file}`);
       }
       const actual = match[1];

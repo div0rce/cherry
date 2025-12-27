@@ -80,7 +80,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     let bucketDelta: { name: string | null; limitCents: number | null; remainingCents: number | null } | null =
       null;
-    if (decision.bucketDelta) {
+    if (decision.bucketDelta !== null) {
       const bucket = await prisma.bucket.findUnique({
         where: { id: decision.bucketDelta.bucketId, userId },
         select: { name: true, budgetAmount: true },

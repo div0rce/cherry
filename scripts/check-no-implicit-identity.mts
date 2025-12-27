@@ -213,7 +213,8 @@ function checkFile(filePath: string): Violation[] {
   const violations: Violation[] = [];
 
   lines.forEach((line, idx) => {
-    if (isAllowlisted && rawLines[idx]?.includes(PRAGMA_LINE)) {
+    const hasInlineAllow = rawLines[idx]?.includes(PRAGMA_LINE) === true;
+    if (isAllowlisted && hasInlineAllow) {
       return;
     }
 
@@ -229,7 +230,10 @@ function checkFile(filePath: string): Violation[] {
         };
         if (!isAllowlisted) {
           violations.push(violation);
-        } else if (!rawLines[idx]?.includes(PRAGMA_LINE) && !rawContent.includes(PRAGMA_FILE)) {
+      } else if (
+        rawLines[idx]?.includes(PRAGMA_LINE) !== true &&
+        rawContent.includes(PRAGMA_FILE) === false
+      ) {
           violations.push(violation);
         }
       }

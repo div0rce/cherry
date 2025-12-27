@@ -169,7 +169,7 @@ function assertPackageScripts(): void {
   const pkgPath = path.join(process.cwd(), 'package.json');
   const pkg = readJson(pkgPath, PackageJsonSchema);
   const scripts = pkg.scripts;
-  if (!scripts) fail('package.json missing scripts');
+  if (scripts === undefined) fail('package.json missing scripts');
   const requiredScripts = [
     'lint',
     'lint:eslint',

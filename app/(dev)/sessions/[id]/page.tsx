@@ -37,7 +37,7 @@ export default async function SessionDetailPage({
     },
   });
 
-  if (!session) {
+  if (session === null) {
     redirect('/sessions');
     return null;
   }

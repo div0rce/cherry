@@ -230,7 +230,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const bucket = await prisma.bucket.findFirst({
       where: { id: bucketId, userId },
     });
-    if (!bucket) {
+    if (bucket === null) {
       return new NextResponse('Bucket not found for user', { status: 404 });
     }
 

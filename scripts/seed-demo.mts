@@ -35,7 +35,7 @@ async function resolveTargetUser() {
   const findById = (id: string) => prisma.user.findUnique({ where: { id } });
   const ensureByEmail = async (email: string) => {
     const existing = await findByEmail(email);
-    if (existing) return existing;
+    if (existing !== null) return existing;
     return prisma.user.create({
       data: {
         email,
@@ -50,7 +50,7 @@ async function resolveTargetUser() {
       return ensureByEmail(cliArg);
     }
     const user = await findById(cliArg);
-    if (user) return user;
+    if (user !== null) return user;
     throw new Error(
       `No user found for ${selectorLabel}. Use an email to auto-create or sign in through the app, then rerun the seed command with a valid account.`
     );
@@ -62,7 +62,7 @@ async function resolveTargetUser() {
 
   if (hasText(envUserId)) {
     const user = await findById(envUserId);
-    if (!user) {
+    if (user === null) {
       throw new Error(
         `SEED_USER_ID is set to "${envUserId}", but no matching user exists. Sign in first, then rerun the seed command.`
       );

@@ -26,7 +26,7 @@ async function assertCardForUser(cardId: string, userId: string) {
     where: { id: cardId, userId },
   });
 
-  if (!card) {
+  if (card === null) {
     return null;
   }
 
@@ -60,7 +60,7 @@ export async function GET(
   }
 
   const card = await assertCardForUser(cardId, userId);
-  if (!card) {
+  if (card === null) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -147,7 +147,7 @@ export async function POST(
   }
 
   const card = await assertCardForUser(cardId, userId);
-  if (!card) {
+  if (card === null) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -241,7 +241,7 @@ export async function DELETE(
   }
 
   const card = await assertCardForUser(cardId, userId);
-  if (!card) {
+  if (card === null) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -257,7 +257,7 @@ export async function DELETE(
     where: { id: rewardRuleId, cardId: card.id },
   });
 
-  if (!rule) {
+  if (rule === null) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -360,7 +360,7 @@ export async function PATCH(
   }
 
   const card = await assertCardForUser(cardId, userId);
-  if (!card) {
+  if (card === null) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -375,7 +375,7 @@ export async function PATCH(
   const rewardRule = await prisma.rewardRule.findFirst({
     where: { id: rewardRuleId, cardId: card.id },
   });
-  if (!rewardRule) {
+  if (rewardRule === null) {
     return new NextResponse('Reward rule not found for card', { status: 404 });
   }
 

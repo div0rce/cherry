@@ -127,7 +127,7 @@ async function findOrCreateLabUser(
     throw new AppError('UNAUTHORIZED', 'Unauthorized: lab demo mode is disabled in production', 401);
   }
 
-  if (factoryOverride) {
+  if (factoryOverride !== undefined) {
     const created = await factoryOverride();
     return ensureUserRow({
       userId: created.id,
@@ -137,7 +137,7 @@ async function findOrCreateLabUser(
   }
 
   const existing = await prisma.user.findUnique({ where: { email: LAB_USER_EMAIL } });
-  if (existing) return existing;
+  if (existing !== null) return existing;
 
   const created = await prisma.user.create({
     data: {

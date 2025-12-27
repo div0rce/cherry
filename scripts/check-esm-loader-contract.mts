@@ -67,7 +67,7 @@ function findLoadFunctions(file: string, content: string): LoaderFunction[] {
       const matchIndex = match.index ?? 0;
       const braceIndex = matchIndex + match[0].lastIndexOf('{');
       const block = extractBlock(content, braceIndex);
-      if (!block) {
+      if (block === null) {
         fail(`Failed to parse load() body in ${file}`);
       }
       found.push({ file, params, body: block.body });
@@ -103,7 +103,7 @@ function validateReturnShapes(loader: LoaderFunction): void {
     if (expr.startsWith('{')) {
       const startIndex = body.indexOf('{', match.index ?? 0);
       const block = extractBlock(body, startIndex);
-      if (!block || !block.body.includes('source:')) {
+      if (block === null || block.body.includes('source:') === false) {
         fail(`return object missing source in ${file}`);
       }
       if (/source\s*:\s*source\b/.test(block.body)) {

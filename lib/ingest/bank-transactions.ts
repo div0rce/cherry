@@ -105,7 +105,7 @@ export async function ingestBankTransaction(tx: AggregatorTransaction): Promise<
 
     const existing = await prisma.bankTransaction.findUnique({ where, select: { id: true } });
 
-    if (existing) {
+    if (existing !== null) {
       await prisma.bankTransaction.update({ where, data });
     } else {
       await prisma.bankTransaction.create({ data });

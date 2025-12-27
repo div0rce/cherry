@@ -70,7 +70,7 @@ export async function confirmRecommendationSession({
     where: { id: sessionId, userId },
   });
 
-  if (!session) {
+  if (session === null) {
     throw new SessionConfirmError('Session not found', 404, 'SESSION_NOT_FOUND');
   }
 

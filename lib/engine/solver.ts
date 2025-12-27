@@ -48,7 +48,7 @@ type EngineLogKind = 'validation' | 'unexpected';
 function logEngineError(runtime: EngineRuntime, kind: EngineLogKind, meta: unknown): void {
   if (!runtime.enableLogs) return;
   const logger = runtime.logger;
-  if (!logger) return;
+  if (logger === undefined) return;
   if (kind === 'validation') {
     logger.warn('[engine] validation/solve error', meta);
     return;
@@ -152,8 +152,8 @@ export async function solveDecision(
   };
 
   let legacyDecision: LegacyEngineDecision | undefined;
-  if (options.includeLegacyDecision) {
-    if (!options.legacyDecisionProvider) {
+  if (options.includeLegacyDecision === true) {
+    if (options.legacyDecisionProvider === undefined) {
       throw new EngineError('legacyDecisionProvider required when includeLegacyDecision is true');
     }
     const parsedMcc =
@@ -172,7 +172,7 @@ export async function solveDecision(
   }
 
   const result: SolveDecisionResult = { decisions: filtered, trace };
-  if (legacyDecision) {
+  if (legacyDecision !== undefined) {
     result.legacyDecision = legacyDecision;
   }
 
@@ -197,7 +197,7 @@ export async function safeSolveDecisionForUser(
   try {
     const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     const state = options.stateOverride;
-    if (!state) {
+    if (state === undefined) {
       throw new EngineError('safeSolveDecisionForUser requires a stateOverride');
     }
     const { decisions, trace, legacyDecision } = await solveDecision(state, ctx, {
@@ -207,7 +207,7 @@ export async function safeSolveDecisionForUser(
       runtime,
     });
     const successResult: SafeDecisionOutcome = { ok: true, decisions, trace, state };
-    if (legacyDecision) {
+    if (legacyDecision !== undefined) {
       successResult.legacyDecision = legacyDecision;
     }
     return successResult;

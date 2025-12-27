@@ -95,7 +95,7 @@ export function evaluateConstraintsForDecision(
 
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
-    if (!bucket) continue;
+    if (bucket === undefined) continue;
     if (
       bucket.isEssential &&
       bucket.limitCents != null &&
@@ -104,7 +104,7 @@ export function evaluateConstraintsForDecision(
       breaches.push('HARD:ESSENTIAL_BUCKET_OVER_LIMIT');
     }
     if (
-      bucket.strictMode &&
+      bucket.strictMode === true &&
       bucket.limitCents != null &&
       proj.projectedCommittedCents > bucket.limitCents
     ) {
@@ -146,7 +146,7 @@ export function evaluateConstraintsForDecision(
     const essentialBucket = state.buckets.find(
       (bucket) => bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential
     );
-    if (essentialBucket && essentialBucket.limitCents != null) {
+    if (essentialBucket !== undefined && essentialBucket.limitCents != null) {
       const margin = essentialBucket.remainingCents - amount;
       if (margin >= 0) {
         breaches.push('SOFT:ESSENTIAL_PURCHASE_DELAY');

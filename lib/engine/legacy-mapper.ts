@@ -39,7 +39,12 @@ export function mapSolverDecisionToLegacyDecision(input: {
   fallback?: LegacyEngineDecision;
 }): LegacyEngineDecision | null {
   const { solverDecision, state, ctx, category, fallback } = input;
-  if (!solverDecision || ctx.amountCents == null) {
+  if (
+    solverDecision === undefined ||
+    solverDecision === null ||
+    ctx.amountCents === null ||
+    ctx.amountCents === undefined
+  ) {
     return fallback == null ? null : fallback;
   }
 
@@ -50,20 +55,24 @@ export function mapSolverDecisionToLegacyDecision(input: {
     isCardAction = true;
   }
 
-  if (!isCardAction && fallback) {
+  if (!isCardAction && fallback !== undefined) {
     return fallback;
   }
 
   const amountCents = ctx.amountCents;
   const bucketProj = solverDecision.projections.buckets.at(0);
-  const bucket = bucketProj ? state.buckets.find((b) => b.id === bucketProj.bucketId) : undefined;
-  const limitCents = bucket && bucket.limitCents != null ? bucket.limitCents : null;
+  const bucket =
+    bucketProj !== undefined
+      ? state.buckets.find((b) => b.id === bucketProj.bucketId)
+      : undefined;
+  const limitCents =
+    bucket !== undefined && bucket.limitCents != null ? bucket.limitCents : null;
   const committedAfterCents =
-    bucketProj && bucketProj.projectedCommittedCents != null
+    bucketProj !== undefined && bucketProj.projectedCommittedCents != null
       ? bucketProj.projectedCommittedCents
       : null;
   const committedBeforeCents =
-    bucket && bucket.committedCents != null ? bucket.committedCents : null;
+    bucket !== undefined && bucket.committedCents != null ? bucket.committedCents : null;
   const remainingAfterCents =
     limitCents != null && committedAfterCents != null ? limitCents - committedAfterCents : null;
   const wouldExceed =
@@ -71,7 +80,7 @@ export function mapSolverDecisionToLegacyDecision(input: {
 
   let budgetVerdict: BudgetVerdict = 'UNCONFIGURED';
   let coverageMode: LegacyEngineDecision['budget']['coverageMode'] = 'UNCONFIGURED';
-  if (bucket) {
+  if (bucket !== undefined) {
     coverageMode = 'BUDGETED';
     if (limitCents == null) {
       budgetVerdict = 'UNBOUNDED';
@@ -97,17 +106,17 @@ export function mapSolverDecisionToLegacyDecision(input: {
 
   const categoryKey = ctx.merchantCategoryKey == null ? 'OTHER' : ctx.merchantCategoryKey;
   let rewardRule = null;
-  if (card) {
+  if (card !== undefined) {
     const byCategory = card.rewardRules.find((r) => r.categoryKey === categoryKey);
-    if (byCategory) {
+    if (byCategory !== undefined) {
       rewardRule = byCategory;
     } else {
       const general = card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE');
-      if (general) {
+      if (general !== undefined) {
         rewardRule = general;
       } else {
         const fallback = card.rewardRules.find((r) => r.categoryKey === 'OTHER');
-        if (fallback) {
+        if (fallback !== undefined) {
           rewardRule = fallback;
         }
       }

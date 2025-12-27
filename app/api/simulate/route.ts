@@ -194,7 +194,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ...(engineResult.legacyDecision ? { fallback: engineResult.legacyDecision } : {}),
     });
 
-    if (!mappedDecision) {
+    if (mappedDecision === null) {
       logWarn('Engine mapping failed in /api/simulate', { userId, mode });
       logGuardrailEvent({
         userId,

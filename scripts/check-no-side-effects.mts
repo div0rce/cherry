@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asIsoDate, type IsoDateString } from '../lib/util/iso-date';
 
 ensureTsEsm();
 
@@ -16,6 +17,13 @@ type AllowlistSource = 'legacy' | 'adapter' | 'boundary';
 type AllowlistTier = 'boundary-time' | 'persistence-only' | 'legacy-combo';
 
 type AllowlistEntry = {
+  effects: string[];
+  source: AllowlistSource;
+  tier: AllowlistTier;
+  expiresBy?: IsoDateString | undefined;
+};
+
+type AllowlistEntryRaw = {
   effects: string[];
   source: AllowlistSource;
   tier: AllowlistTier;
@@ -232,12 +240,13 @@ function loadAllowlist(): Record<string, AllowlistEntry> {
   const data = fs.readFileSync(ALLOWLIST_PATH, 'utf8');
   const parsed = AllowlistSchema.parse(globalThis.JSON.parse(data));
   const normalized: Record<string, AllowlistEntry> = {};
-  const entries = Object.entries(parsed) as Array<[string, AllowlistEntry]>;
+  const entries = Object.entries(parsed) as Array<[string, AllowlistEntryRaw]>;
   for (const [key, entry] of entries) {
     const normalizedEntry: AllowlistEntry = {
       effects: entry.effects.slice().sort(),
       source: entry.source,
       tier: entry.tier,
+      ...(entry.expiresBy !== undefined ? { expiresBy: asIsoDate(entry.expiresBy) } : {}),
     };
     assertTier(normalizedEntry, key);
     normalized[path.normalize(key)] = normalizedEntry;
@@ -283,13 +292,13 @@ function main(): void {
 
   for (const violation of violations) {
     if (isAdapterFile(violation.file)) {
-      if (allowlist[violation.file]) {
+      if (allowlist[violation.file] !== undefined) {
         errors.push(`${violation.file}: adapters must not be listed in the allowlist`);
       }
       continue;
     }
     const entry = allowlist[violation.file];
-    if (!entry) {
+    if (entry === undefined) {
       errors.push(`${violation.file}: ${violation.effects.join(', ')}`);
       continue;
     }

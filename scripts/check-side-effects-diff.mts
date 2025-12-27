@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asIsoDate, type IsoDateString } from '../lib/util/iso-date';
 
 ensureTsEsm();
 
@@ -12,6 +13,13 @@ type AllowlistSource = 'legacy' | 'adapter' | 'boundary';
 type AllowlistTier = 'boundary-time' | 'persistence-only' | 'legacy-combo';
 
 type AllowlistEntry = {
+  effects: string[];
+  source: AllowlistSource;
+  tier: AllowlistTier;
+  expiresBy?: IsoDateString | undefined;
+};
+
+type AllowlistEntryRaw = {
   effects: string[];
   source: AllowlistSource;
   tier: AllowlistTier;
@@ -53,8 +61,8 @@ function parseAllowlist(
 ): Record<string, AllowlistEntry> {
   try {
     const parsedJson: unknown = globalThis.JSON.parse(raw);
-    let parsed: Record<string, AllowlistEntry>;
-    if (options?.allowLegacy) {
+    let parsed: Record<string, AllowlistEntryRaw>;
+    if (options?.allowLegacy === true) {
       try {
         parsed = AllowlistSchema.parse(parsedJson);
       } catch (error: unknown) {
@@ -72,7 +80,7 @@ function parseAllowlist(
               tier: entry.tier ?? inferTier(entry.effects),
             };
             if (entry.expiresBy !== undefined) {
-              convertedEntry.expiresBy = entry.expiresBy;
+              convertedEntry.expiresBy = asIsoDate(entry.expiresBy);
             }
             converted[key] = convertedEntry;
           }
@@ -92,7 +100,7 @@ function parseAllowlist(
       parsed = AllowlistSchema.parse(parsedJson);
     }
     const normalized: Record<string, AllowlistEntry> = {};
-    const entries = Object.entries(parsed) as Array<[string, AllowlistEntry]>;
+    const entries = Object.entries(parsed) as Array<[string, AllowlistEntryRaw]>;
     for (const [key, entry] of entries) {
       const normalizedEntry: AllowlistEntry = {
         effects: entry.effects.slice().sort(),
@@ -100,7 +108,7 @@ function parseAllowlist(
         tier: entry.tier,
       };
       if (entry.expiresBy !== undefined) {
-        normalizedEntry.expiresBy = entry.expiresBy;
+        normalizedEntry.expiresBy = asIsoDate(entry.expiresBy);
       }
       normalized[path.normalize(key)] = normalizedEntry;
     }
@@ -149,7 +157,7 @@ function inferTier(effects: string[]): AllowlistTier {
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function parseExpiresBy(value: string, file: string): number {
+function parseExpiresBy(value: IsoDateString, file: string): number {
   if (!ISO_DATE_RE.test(value)) {
     fail(`Invalid expiresBy date for ${file}: ${value}`);
   }
@@ -168,7 +176,7 @@ function main(): void {
   const current = loadCurrentAllowlist();
   const previous = loadPreviousAllowlist();
 
-  if (!previous) {
+  if (previous === null) {
     fail('Allowlist baseline missing; commit the allowlist before running diff checks.');
   }
 
@@ -188,7 +196,7 @@ function main(): void {
   const todayUtcStart = startOfUtcDay(new Date());
   for (const [file, entry] of Object.entries(current)) {
     if (entry.tier !== 'legacy-combo') continue;
-    if (!entry.expiresBy) {
+    if (entry.expiresBy === undefined) {
       fail(`Missing expiresBy for legacy-combo entry: ${file}`);
     }
     const expiresAt = parseExpiresBy(entry.expiresBy, file);
@@ -230,8 +238,8 @@ function main(): void {
     }
     if (
       prevEntry.tier === 'legacy-combo' &&
-      prevEntry.expiresBy &&
-      !currEntry.expiresBy
+      prevEntry.expiresBy !== undefined &&
+      currEntry.expiresBy === undefined
     ) {
       fail(`expiresBy removed from legacy-combo entry: ${file}`);
     }

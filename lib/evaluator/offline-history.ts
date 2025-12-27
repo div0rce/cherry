@@ -39,7 +39,7 @@ function normalizeAmountMinor(tx: BankTransaction): number {
 }
 
 function mapDecision(decision: EngineDecision | undefined): OfflineEvaluationResult {
-  if (!decision) {
+  if (decision === undefined) {
     return {
       decisionType: 'NO_DECISION',
       cardId: null,

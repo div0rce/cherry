@@ -37,7 +37,7 @@ export default async function CardDetailPage({
     where: { id: cardId, userId },
     include: { rewardRules: true },
   });
-  if (!card) return notFound();
+  if (card === null) return notFound();
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">

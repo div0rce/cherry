@@ -135,7 +135,8 @@ function checkFile(filePath: string): Violation[] {
   const violations: Violation[] = [];
 
   lines.forEach((line, idx) => {
-    if (rawLines[idx]?.includes(PRAGMA)) {
+    const hasPragma = rawLines[idx]?.includes(PRAGMA) === true;
+    if (hasPragma) {
       return;
     }
 
@@ -172,7 +173,9 @@ function isClientFile(filePath: string, content: string): boolean {
     .map((line) => line.trim())
     .find((line) => line.length > 0);
 
-  if (!firstNonEmpty) return false;
+  if (firstNonEmpty == null || firstNonEmpty.length === 0) {
+    return false;
+  }
   const normalized = firstNonEmpty.replace(/;$/, "");
   return normalized === "'use client'" || normalized === '"use client"';
 }

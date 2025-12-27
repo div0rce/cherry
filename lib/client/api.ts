@@ -22,7 +22,7 @@ export async function callApi<TResponse>(
       ...rest,
     });
 
-    if (responseSchema) {
+    if (responseSchema !== undefined) {
       const check = responseSchema.safeParse(parsed);
       if (!check.success) {
         return { ok: false, error: 'INTERNAL', message: 'invalid_shape' };

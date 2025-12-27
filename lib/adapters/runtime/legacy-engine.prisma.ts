@@ -30,7 +30,7 @@ export async function resolveCategory(input: {
     const mapping = await prisma.mccToRewardCategory.findFirst({
       where: { mccCode, isDefault: true },
     });
-    if (mapping) return mapping.category;
+    if (mapping !== null) return mapping.category;
   }
 
   if (category !== null && category !== undefined && category !== '') {
@@ -101,7 +101,7 @@ async function getCategoryCoverage(
     },
   });
 
-  if (pref && pref.mode === 'UNBUDGETED') {
+  if (pref !== null && pref.mode === 'UNBUDGETED') {
     return { coverageMode: 'UNBUDGETED_INTENTIONAL', buckets: [] };
   }
 
@@ -143,14 +143,14 @@ async function resolveBestCardForTransaction(input: {
 
     if (
       multiplier > bestMultiplier ||
-      (multiplier === bestMultiplier && bestCard && card.id < bestCard.id)
+      (multiplier === bestMultiplier && bestCard !== null && card.id < bestCard.id)
     ) {
       bestCard = card;
       bestMultiplier = multiplier;
     }
   }
 
-  if (!bestCard) {
+  if (bestCard === null) {
     return {
       verdict: 'NO_CARD_DATA' as EngineDecision['card']['verdict'],
       hasCardData: false,
