@@ -274,7 +274,7 @@ function main(): void {
       const tier = inferTier(v.effects);
       const entry: AllowlistEntry = { effects: v.effects, source: 'legacy', tier };
       if (tier === 'legacy-combo') {
-        entry.expiresBy = '2026-03-01';
+        entry.expiresBy = asIsoDate('2026-03-01');
       }
       allowlist[v.file] = entry;
     }

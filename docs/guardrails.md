@@ -52,3 +52,23 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - No implicit truthiness checks on non-boolean values.
 - Conditionals must compare explicitly (`===`, `!==`, `<`, `>`) or use typed helpers.
 - Guardrail checks: `npm run check:implicit-boolean` and `tests/guardrails/no-implicit-boolean.test.ts`.
+
+# Guardrail 13 — Branded Policy Types
+
+Certain strings carry semantic meaning and must be branded.
+
+Examples:
+- IsoDateString
+- MoneyCents
+- EngineVersion
+
+Rules:
+- Branded types may ONLY be created via constructors.
+- No direct literals.
+- No casting.
+- Violations fail CI.
+
+Rationale:
+Silent misuse of policy metadata causes long-term system rot.
+
+Guardrail checks: `npm run check:branded-literal` and `tests/guardrails/branded-type-enforcement.test.ts`.
