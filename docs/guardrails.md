@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2025-12-25
+Last updated: 2025-12-26
 
 # Guardrail 6 — Config Immutability
 
@@ -15,3 +15,10 @@ Last updated: 2025-12-25
 `inputsVersion` is deterministic for a fixed `(engineVersion, inputs, snapshot)`. It is not
 guaranteed to remain stable across different `engineVersion` values. Consumers must not compare
 `inputsVersion` values across engine versions.
+
+# Guardrail 7 — ESM Loader Totality
+
+- ESM loader hooks must be total: every branch returns a valid `{ format, source }` or delegates to `defaultLoad`.
+- Loader hooks must never return `undefined` sources; prefer deterministic sentinel modules for tests.
+- Sentinel paths are allowed only under `CHERRY_TEST_LOADER_SENTINEL=1` and must return valid modules.
+- Guardrail checks: `npm run check:loader-contract` and `tests/guardrails/esm-loader-contract.test.ts`.

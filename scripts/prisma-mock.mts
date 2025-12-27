@@ -381,19 +381,69 @@ const esmSource = [
   ...exportNames.map((name) => `export const ${name} = mock.${name};`),
 ].join('\n');
 const esmUrl = `data:text/javascript,${encodeURIComponent(esmSource)}`;
+const SENTINEL_SCHEME = 'cherry-loader-test://';
+
+function isValidSource(source: unknown): source is string | ArrayBuffer | ArrayBufferView {
+  if (typeof source === 'string') return true;
+  if (source instanceof ArrayBuffer) return true;
+  return ArrayBuffer.isView(source);
+}
+
+function shouldLogLoaderDebug(): boolean {
+  return process.env['CHERRY_DEBUG_LOADER'] === '1';
+}
+
+function buildSentinelSource(url: string): { format: 'module'; source: string } | null {
+  const testMode = process.env['CHERRY_TEST_LOADER_SENTINEL'] === '1';
+  if (!testMode || !url.startsWith(SENTINEL_SCHEME)) return null;
+  const suffix = url.slice(SENTINEL_SCHEME.length);
+  let source: unknown;
+  if (suffix === 'undefined-source') {
+    source = undefined;
+  } else if (suffix === 'ok') {
+    source = 'export const ok = true;';
+  } else {
+    source = `export const ok = ${JSON.stringify(suffix)};`;
+  }
+
+  if (!isValidSource(source)) {
+    source = 'export const ok = "fallback";';
+  }
+  if (!isValidSource(source)) return null;
+  return { format: 'module', source };
+}
+
 if (typeof ModuleInternal.registerHooks === 'function') {
   ModuleInternal.registerHooks({
     resolve(specifier, context, nextResolve) {
+      if (
+        process.env['CHERRY_TEST_LOADER_SENTINEL'] === '1' &&
+        specifier.startsWith(SENTINEL_SCHEME)
+      ) {
+        return { url: specifier, shortCircuit: true };
+      }
       if (specifier === '@prisma/client') {
         return { url: esmUrl, shortCircuit: true };
       }
       return nextResolve(specifier, context);
     },
-    load(url, context, nextLoad) {
-      if (url === esmUrl) {
-        return { format: 'module', source: esmSource, shortCircuit: true };
+    load(url, context, defaultLoad) {
+      try {
+        if (url === esmUrl) {
+          if (!isValidSource(esmSource)) return defaultLoad(url, context, defaultLoad);
+          return { format: 'module', source: esmSource, shortCircuit: true };
+        }
+        const sentinel = buildSentinelSource(url);
+        if (sentinel) {
+          return { format: sentinel.format, source: sentinel.source, shortCircuit: true };
+        }
+      } catch (error: unknown) {
+        if (shouldLogLoaderDebug()) {
+          process.stderr.write(`[loader] mock load error: ${(error as Error).message}\n`);
+        }
+        return defaultLoad(url, context, defaultLoad);
       }
-      return nextLoad(url, context);
+      return defaultLoad(url, context, defaultLoad);
     },
   });
 }
