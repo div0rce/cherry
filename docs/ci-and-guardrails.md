@@ -10,13 +10,11 @@ Last updated: 2025-12-29
 - Steps (fail-fast):
   1) `npm ci`
   2) `npx prisma generate`
-  3) `check:guardrails` (anti-regression)
-  4) `lint`
-  5) `typecheck`
-  6) `typecheck:scripts`
-  7) `test` (runs `check:guardrails`, including `check:prisma-assumptions`)
-  8) `build`
-  9) `check` (composite superset)
+  3) `check:clean`
+  4) Prisma migrate/generate
+  5) `test` (runs `check:guardrails`, including `check:prisma-assumptions`)
+  6) `build`
+  7) `check` (composite superset, final semantic gate)
 - Tests run with `DATABASE_URL=file:./tmp/test.db` for isolation.
 
 ### Why CI Runs `npm run check`
@@ -24,6 +22,7 @@ Last updated: 2025-12-29
 - CI does not enumerate guardrails.
 - CI runs one authority: `npm run check`.
 - `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
+- The last non-empty command in the CI job must be `npm run check`.
 
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 
