@@ -1,9 +1,34 @@
 Status: Draft
-Last updated: 2025-12-28
+Last updated: 2025-12-29
 
 # Guardrails
 
 ## Current behavior
+
+## Guardrail Registry Invariants (Authoritative)
+
+### Invariant A — Name ↔ Path Bijection
+
+- Every guardrail has exactly one:
+  - npm script: `check:<name>`
+  - registry key: `check:<name>`
+  - file path: `scripts/check-<name>.mts`
+- Any deviation is a hard CI failure.
+- Why: Inline strings allow silent drift. Drift creates false confidence in CI coverage. Guardrails must be mechanically provable, not inferred.
+- Enforcement: `check:guardrail-name-path-bijection`, `check:guardrail-registry`, `check:no-orphan-check-files`.
+
+### Invariant B — Registry Is the Source of Truth
+
+- Guardrail paths must not be constructed ad hoc.
+- All guardrail execution resolves via `scripts/guardrails/registry.mts`.
+- Constants may be introduced only to strengthen invariants (e.g. `CATCH_UNKNOWN_PATH`).
+- Enforcement: `check:guardrail-execution`, `check:execution-registry-completeness`.
+
+### Invariant C — Guardrails Are Unaddressable by Path
+
+- Guardrail scripts cannot be executed directly via `node`, `tsx`, `ts-node`, workflows, docs, or nested npm scripts.
+- Guardrails are named capabilities, not files.
+- Enforcement: `check:guardrail-execution`, CI fixtures covering bypass attempts.
 
 ### Guardrail 6 — Config Immutability
 

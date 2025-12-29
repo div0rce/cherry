@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2025-12-28
+Last updated: 2025-12-29
 
 # CI and guardrails
 
@@ -18,6 +18,14 @@ Last updated: 2025-12-28
   8) `build`
   9) `check` (composite superset)
 - Tests run with `DATABASE_URL=file:./tmp/test.db` for isolation.
+
+### Why CI Runs `npm run check`
+
+- CI does not enumerate guardrails.
+- CI runs one authority: `npm run check`.
+- `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
+
+> If CI ever runs individual guardrail scripts directly, the system is broken.
 
 ### Guardrails enforced
 - ESLint rules must stay strict (`eslint.config.mjs`): Zod strictness, unsafe-any rules, strict-boolean-expressions, and JSON.parse bans.
