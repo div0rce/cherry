@@ -21,7 +21,7 @@ async function main(): Promise<void> {
 }
 
 main()
-  .catch((err) => {
+  .catch((err: unknown) => {
     console.error(err);
     process.exit(1);
   })
