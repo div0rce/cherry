@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { importUnknown } from './guardrails/lib/import-typed.mts';
+import { GuardrailRegistrySchema } from './guardrails/lib/read-json.mts';
 import { GUARDRAILS as DEFAULT_GUARDRAILS, type GuardrailName } from './guardrails/registry.mts';
 
 ensureTsEsm();
@@ -10,7 +13,12 @@ type Violation = {
   message: string;
 };
 
-const PREFIX = 'NAME_PATH_MISMATCH';
+type LoadedRegistry = {
+  guardrails: Record<GuardrailName, string>;
+  registryPath: string;
+};
+
+const PREFIX = 'check:guardrail-name-path-bijection';
 const SCRIPT_PREFIX = 'check:';
 const SCRIPT_ROOT = 'scripts';
 const CHECK_PREFIX = 'check-';
@@ -19,25 +27,30 @@ const PATH_SUFFIX = '.mts';
 const ROOT_ENV = process.env['CHERRY_GUARDRAIL_REGISTRY_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== '' ? path.resolve(ROOT_ENV) : process.cwd();
 
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
-}
-
-async function loadGuardrails(): Promise<Record<GuardrailName, string>> {
+async function loadGuardrails(): Promise<LoadedRegistry> {
   if (ROOT === process.cwd()) {
-    return DEFAULT_GUARDRAILS as Record<GuardrailName, string>;
+    const guardrails: Record<GuardrailName, string> = DEFAULT_GUARDRAILS;
+    return { guardrails, registryPath: path.join('scripts', 'guardrails', 'registry.mts') };
   }
-  const registryPath = path.join(ROOT, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathMts = path.join(ROOT, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathTs = path.join(ROOT, 'scripts', 'guardrails', 'registry.ts');
+  const registryPath = fs.existsSync(registryPathMts) ? registryPathMts : registryPathTs;
   if (fs.existsSync(registryPath) === false) {
-    fail(`Guardrail registry missing at ${registryPath}`);
+    fail(PREFIX, `Guardrail registry missing at ${registryPath}`, {
+      fix: 'Restore scripts/guardrails/registry.mts.',
+    });
   }
-  const mod = await import(pathToFileURL(registryPath).href);
-  const guardrails = mod.GUARDRAILS as Record<GuardrailName, string> | undefined;
-  if (guardrails === undefined) {
-    fail(`Guardrail registry missing in ${registryPath}`);
+  const mod: unknown = await importUnknown(registryPath);
+  const parsed = GuardrailRegistrySchema.safeParse(mod);
+  if (!parsed.success) {
+    fail(PREFIX, `Guardrail registry missing in ${registryPath}`, {
+      fix: 'Ensure GUARDRAILS is exported from the registry.',
+    });
   }
-  return guardrails;
+  return {
+    guardrails: parsed.data.GUARDRAILS as Record<GuardrailName, string>,
+    registryPath: path.relative(ROOT, registryPath),
+  };
 }
 
 /**
@@ -48,7 +61,9 @@ async function loadGuardrails(): Promise<Record<GuardrailName, string>> {
  */
 function normalizeName(name: GuardrailName): string {
   if (name.startsWith(SCRIPT_PREFIX) === false) {
-    fail(`Guardrail name must start with ${SCRIPT_PREFIX}: ${name}`);
+    fail(PREFIX, `Guardrail name must start with ${SCRIPT_PREFIX}: ${name}`, {
+      fix: 'Rename the guardrail to use the check:<name> pattern.',
+    });
   }
   const trimmed = name.slice(SCRIPT_PREFIX.length);
   return trimmed.replace(/:/g, '-');
@@ -57,13 +72,15 @@ function normalizeName(name: GuardrailName): string {
 function expectedPathFor(name: GuardrailName): string {
   const normalized = normalizeName(name);
   if (normalized.length === 0) {
-    fail(`Guardrail name is missing normalized segment: ${name}`);
+    fail(PREFIX, `Guardrail name is missing normalized segment: ${name}`, {
+      fix: 'Provide a non-empty guardrail name segment.',
+    });
   }
   return `${PATH_PREFIX}${normalized}${PATH_SUFFIX}`;
 }
 
 async function main(): Promise<void> {
-  const guardrails = await loadGuardrails();
+  const { guardrails, registryPath } = await loadGuardrails();
   const violations: Violation[] = [];
   const seenPaths = new Map<string, GuardrailName[]>();
   const guardrailNames = Object.keys(guardrails) as GuardrailName[];
@@ -77,6 +94,12 @@ async function main(): Promise<void> {
       });
       continue;
     }
+    const normalizedActual = path.posix.normalize(actual.replace(/\\/g, '/'));
+    if (actual !== normalizedActual) {
+      violations.push({
+        message: `${name} path must be normalized: ${actual} (normalized ${normalizedActual})`,
+      });
+    }
     if (actual !== expected) {
       violations.push({
         message: `${name} ↔ ${actual} (expected ${expected})`,
@@ -87,22 +110,30 @@ async function main(): Promise<void> {
     seenPaths.set(expected, existing);
   }
 
-  for (const [path, names] of seenPaths.entries()) {
+  for (const [pathKey, names] of seenPaths.entries()) {
     if (names.length > 1) {
       violations.push({
-        message: `Guardrail path aliasing detected for ${path}: ${names.join(', ')}`,
+        message: `Guardrail path aliasing detected for ${pathKey}: ${names.join(', ')}`,
       });
     }
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(`${PREFIX}: ${violation.message}\n`);
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${registryPath}:1:1: ${violation.message}`
+    );
+    fail(PREFIX, 'Guardrail name/path mismatch detected', {
+      details,
+      fix: 'Align guardrail names with scripts/check-<name>.mts and update the registry.',
+    });
   }
 
   process.stdout.write('guardrail-name-path-bijection: ok\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, {
+    fix: 'Inspect check-guardrail-name-path-bijection.mts for errors.',
+  });
+});

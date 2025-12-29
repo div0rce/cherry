@@ -4,6 +4,7 @@ const SCRIPT_ROOT = 'scripts' as const;
 const CHECK_PREFIX = 'check-' as const;
 const CHECK_PATH_BASE = `${SCRIPT_ROOT}/${CHECK_PREFIX}` as const;
 const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
+const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -22,6 +23,8 @@ export const GUARDRAILS = Object.freeze({
   'check:side-effects': `${CHECK_PATH_BASE}side-effects.mts`,
   'check:side-effects:diff': `${CHECK_PATH_BASE}side-effects-diff.mts`,
   'check:script-semantics': `${CHECK_PATH_BASE}script-semantics.mts`,
+  'check:script-json-parse': `${CHECK_PATH_BASE}script-json-parse.mts`,
+  'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,
@@ -31,6 +34,7 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-name-path-bijection': `${CHECK_PATH_BASE}guardrail-name-path-bijection.mts`,
   'check:guardrail-doc-sync': `${CHECK_PATH_BASE}guardrail-doc-sync.mts`,
   'check:guardrail-execution': `${CHECK_PATH_BASE}guardrail-execution.mts`,
+  'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
   'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,
