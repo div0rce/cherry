@@ -1,9 +1,13 @@
-Status: Draft
+Status: Active
 Last updated: 2025-12-29
 
 # Guardrails
 
 ## Current behavior
+- Guardrail and execution script registration is mandatory; registries are the only authority.
+- CI runs `npm run check` as the final composite gate; direct guardrail execution by path is forbidden.
+- Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
+- Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 
 ## Guardrail Registry Invariants (Authoritative)
 
@@ -120,23 +124,33 @@ Guardrail checks: `check:branded-literal` and `tests/guardrails/branded-type-enf
 - Changes to `scripts/guardrails/registry.mts` must include an update to this doc.
 - Guardrail check: `check:guardrail-doc-sync`.
 
-### Guardrail 19 — Name/Path Bijection
+### Guardrail 19 — Helper Exclusivity (Guardrail Minimalism)
+
+- One failure API: `scripts/guardrails/lib/fail.mts`.
+- One JSON API: `scripts/guardrails/lib/read-json.mts`.
+- One import API: `scripts/guardrails/lib/import-typed.mts`.
+- Zero allowlists, zero parallel helper stacks.
+- Guardrail check: `check:guardrail-helpers-exclusive`.
+
+### Guardrail 20 — Name/Path Bijection
 
 - Guardrail names must map to canonical script filenames: `check:<name>` → `check-<name>.mts` with `:` normalized to `-` under `scripts/`.
 - Guardrail check: `check:guardrail-name-path-bijection`.
 
-### Guardrail 20 — CI Composite Check Required
+### Guardrail 21 — CI Composite Check Required
 
 - CI must include a step that runs `npm run check`.
+- The last non-empty command in the CI job must be `npm run check`.
 - Guardrail check: `check:ci-must-run-check`.
 
-### Guardrail 21 — Execution Registry Completeness
+### Guardrail 22 — Execution Registry Completeness
 
 - Non-guardrail scripts that reference `scripts/` must be registered in `scripts/execution/registry.mts`.
 - Registry entries must exist on disk and be present in `package.json` with a runner invocation.
+- Execution script files under `scripts/` must be registered or deleted (no allowlists).
 - Guardrail checks: `check:execution-registry-completeness`, `check:no-orphan-scripts`.
 
-### Guardrail 22 — Orphan Check Files
+### Guardrail 23 — Orphan Check Files
 
 - Any `check-*` file under `scripts/` must be registered in the guardrail registry.
 - Guardrail check: `check:no-orphan-check-files`.
