@@ -34,9 +34,9 @@ assert.notEqual(
   `expected execution registry completeness to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('EXEC_REGISTRY_MISSING'),
+  stderr.includes('check:execution-registry-completeness'),
   true,
-  `expected EXEC_REGISTRY_MISSING prefix, got: ${stderr}`
+  `expected check:execution-registry-completeness prefix, got: ${stderr}`
 );
 
 process.stdout.write('execution-registry-missing-file: ok\n');

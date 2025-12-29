@@ -34,9 +34,9 @@ assert.notEqual(
   `expected guardrail-name-path-bijection to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('NAME_PATH_MISMATCH'),
+  stderr.includes('check:guardrail-name-path-bijection'),
   true,
-  `expected NAME_PATH_MISMATCH prefix, got: ${stderr}`
+  `expected check:guardrail-name-path-bijection prefix, got: ${stderr}`
 );
 
 process.stdout.write('guardrail-name-path-bijection: ok\n');

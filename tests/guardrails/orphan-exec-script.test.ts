@@ -34,9 +34,9 @@ assert.notEqual(
   `expected no-orphan-scripts to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('ORPHAN_NPM_SCRIPT'),
+  stderr.includes('check:no-orphan-scripts'),
   true,
-  `expected ORPHAN_NPM_SCRIPT prefix, got: ${stderr}`
+  `expected check:no-orphan-scripts prefix, got: ${stderr}`
 );
 
 process.stdout.write('orphan-exec-script: ok\n');

@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import path from 'node:path';
 
 function run(): void {
   const repoRoot = process.cwd();
-  const scriptPath = path.join(repoRoot, 'scripts', 'check-repo-guardrails.js');
-  const result = spawnSync('node', [scriptPath], { encoding: 'utf8' });
+  const result = spawnSync('npm', ['run', 'ts:esm', '--', 'scripts/check-repo-guardrails.mts'], {
+    encoding: 'utf8',
+    cwd: repoRoot,
+  });
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
 
   const message = output.trim();

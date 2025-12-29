@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const scriptPath = path.join(repoRoot, 'scripts', 'check-repo-guardrails.js');
+const guardrailArgs = ['run', 'ts:esm', '--', 'scripts/check-repo-guardrails.mts'];
 const fixturesRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'repo');
 const TOKEN_TS_NODE_REGISTER = ['ts-node', 'register'].join('/');
 const TOKEN_NODE_SCRIPTS_MTS = [
@@ -19,8 +19,9 @@ type Expectation = {
 
 function runFixture(subdir: string, expectation: Expectation): void {
   const root = path.join(fixturesRoot, subdir);
-  const result = spawnSync('node', [scriptPath, '--root', root], {
+  const result = spawnSync('npm', [...guardrailArgs, '--root', root], {
     encoding: 'utf8',
+    cwd: repoRoot,
   });
 
   assert.notEqual(result.status, 0, 'expected guardrail to fail');

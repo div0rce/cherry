@@ -5,23 +5,17 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '..', '..');
-const fixtureRoot = path.join(
-  repoRoot,
-  'tests',
-  'fixtures',
-  'guardrails',
-  'ci-must-run-check'
-);
+const fixtureRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'npm-arg-forwarding');
 
 const result = spawnSync(
   'npm',
-  ['run', 'ts:esm', '--', 'scripts/check-ci-must-run-check.mts'],
+  ['run', 'ts:esm', '--', 'scripts/check-npm-arg-forwarding.mts'],
   {
     cwd: repoRoot,
     encoding: 'utf8',
     env: {
       ...process.env,
-      CHERRY_CI_MUST_RUN_CHECK_ROOT: fixtureRoot,
+      CHERRY_NPM_ARG_FORWARDING_ROOT: fixtureRoot,
     },
   }
 );
@@ -31,12 +25,12 @@ const stderr = result.stderr ?? '';
 assert.notEqual(
   result.status,
   0,
-  `expected ci-must-run-check to fail, got status=${result.status ?? 'null'}`
+  `expected npm-arg-forwarding to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('check:ci-must-run-check'),
+  stderr.includes('check:npm-arg-forwarding'),
   true,
-  `expected check:ci-must-run-check output, got: ${stderr}`
+  `expected check:npm-arg-forwarding output, got: ${stderr}`
 );
 
-process.stdout.write('ci-must-run-check: ok\n');
+process.stdout.write('npm-arg-forwarding: ok\n');

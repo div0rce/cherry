@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const scriptPath = path.join(repoRoot, 'scripts', 'check-repo-guardrails.js');
+const guardrailArgs = ['run', 'ts:esm', '--', 'scripts/check-repo-guardrails.mts'];
 const fixturesRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'defaults', 'lib', 'engine');
 
 function runFixture(
@@ -20,7 +20,10 @@ function runFixture(
     const destPath = path.join(engineDir, fixtureName);
     fs.copyFileSync(sourcePath, destPath);
 
-    const result = spawnSync('node', [scriptPath, '--root', tempRoot], { encoding: 'utf8' });
+    const result = spawnSync('npm', [...guardrailArgs, '--root', tempRoot], {
+      encoding: 'utf8',
+      cwd: repoRoot,
+    });
     const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
 
     if (options.expectFail) {

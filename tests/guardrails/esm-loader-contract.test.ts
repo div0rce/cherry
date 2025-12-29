@@ -16,9 +16,9 @@ const result = spawnSync(
     '-r',
     'tsconfig-paths/register',
     '--import',
-    './scripts/config-register.mts',
+    './scripts/lib/config-register.mts',
     '--import',
-    './scripts/prisma-mock.mts',
+    './scripts/lib/prisma-mock.mts',
     entryFile,
   ],
   {

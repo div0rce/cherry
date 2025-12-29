@@ -34,9 +34,9 @@ assert.notEqual(
   `expected no-orphan-check-files to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('ORPHAN_CHECK_FILE'),
+  stderr.includes('check:no-orphan-check-files'),
   true,
-  `expected ORPHAN_CHECK_FILE prefix, got: ${stderr}`
+  `expected check:no-orphan-check-files prefix, got: ${stderr}`
 );
 
 process.stdout.write('orphan-check-file: ok\n');

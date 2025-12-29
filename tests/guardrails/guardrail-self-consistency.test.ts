@@ -27,9 +27,9 @@ assert.notEqual(
   `expected guardrail self-consistency check to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('GUARDRAIL SCRIPT VIOLATION'),
+  stderr.includes('check:guardrail-self'),
   true,
-  `expected guardrail violation output, got: ${stderr}`
+  `expected check:guardrail-self output, got: ${stderr}`
 );
 
 process.stdout.write('guardrail-self-consistency: ok\n');
