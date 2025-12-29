@@ -1,7 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { importUnknown } from './guardrails/lib/import-typed.mts';
+import {
+  PackageJsonSchema,
+  readJsonFile,
+} from './guardrails/lib/read-json.mts';
 import {
   EXECUTION as DEFAULT_EXECUTION,
   EXECUTION_RUNNER as DEFAULT_RUNNER,
@@ -16,95 +23,255 @@ type ExecutionConfig = {
   runner: string;
 };
 
-const PREFIX = 'EXEC_REGISTRY_MISSING';
+type Violation = {
+  file: string;
+  line: number;
+  col: number;
+  message: string;
+};
+
+type PackageScripts = {
+  scripts: Record<string, string>;
+  raw: string;
+};
+
+const PREFIX = 'check:execution-registry-completeness';
 const ROOT_ENV = process.env['CHERRY_EXECUTION_REGISTRY_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
   ? path.resolve(ROOT_ENV)
   : process.cwd();
+const SCRIPTS_DIR = path.join(ROOT, 'scripts');
+const GUARDRAILS_DIR = path.join(ROOT, 'scripts', 'guardrails');
+const EXECUTION_DIR = path.join(ROOT, 'scripts', 'execution');
+const LIB_DIR = path.join(ROOT, 'scripts', 'lib');
+const EXECUTION_EXTENSIONS = new Set(['.mts', '.mjs', '.js', '.cjs']);
 
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
+const ExecutionRegistrySchema = z
+  .object({
+    EXECUTION: z.record(z.string(), z.string()),
+    EXECUTION_RUNNER: z.string(),
+  })
+  .passthrough();
+
+function normalizePath(value: string): string {
+  return value.replace(/\\/g, '/');
+}
+
+function resolveRegistryPath(): string {
+  const mtsPath = path.join(ROOT, 'scripts', 'execution', 'registry.mts');
+  if (fs.existsSync(mtsPath)) return mtsPath;
+  const tsPath = path.join(ROOT, 'scripts', 'execution', 'registry.ts');
+  if (fs.existsSync(tsPath)) return tsPath;
+  return mtsPath;
+}
+
+function lineColForToken(raw: string, token: string): { line: number; col: number } {
+  const index = raw.indexOf(token);
+  if (index <= 0) return { line: 1, col: 1 };
+  const slice = raw.slice(0, index);
+  const line = slice.split('\n').length;
+  const lastNewline = slice.lastIndexOf('\n');
+  const col = lastNewline === -1 ? index + 1 : index - lastNewline;
+  return { line, col };
 }
 
 async function loadRegistry(): Promise<ExecutionConfig> {
   if (ROOT === process.cwd()) {
-    return { execution: DEFAULT_EXECUTION as ExecutionRegistry, runner: DEFAULT_RUNNER };
+    const execution: ExecutionRegistry = DEFAULT_EXECUTION;
+    return { execution, runner: DEFAULT_RUNNER };
   }
-  const registryPath = path.join(ROOT, 'scripts', 'execution', 'registry.mts');
+  const registryPath = resolveRegistryPath();
   if (fs.existsSync(registryPath) === false) {
-    fail(`Execution registry missing at ${registryPath}`);
+    fail(PREFIX, `Execution registry missing at ${registryPath}`, {
+      fix: 'Restore scripts/execution/registry.mts.',
+    });
   }
-  const mod = await import(pathToFileURL(registryPath).href);
-  const execution = mod.EXECUTION as ExecutionRegistry | undefined;
-  const runner = mod.EXECUTION_RUNNER as string | undefined;
-  if (execution === undefined || runner === undefined) {
-    fail(`Execution registry exports missing in ${registryPath}`);
+  const mod: unknown = await importUnknown(registryPath);
+  const parsed = ExecutionRegistrySchema.safeParse(mod);
+  if (!parsed.success) {
+    fail(PREFIX, `Execution registry exports missing in ${registryPath}`, {
+      fix: 'Ensure EXECUTION and EXECUTION_RUNNER are exported.',
+    });
   }
-  return { execution, runner };
+  return { execution: parsed.data.EXECUTION, runner: parsed.data.EXECUTION_RUNNER };
 }
 
-function readPackageScripts(): Record<string, string> {
+function readPackageScripts(): PackageScripts {
   const packagePath = path.join(ROOT, 'package.json');
   if (fs.existsSync(packagePath) === false) {
-    fail('package.json missing');
+    fail(PREFIX, 'package.json missing', {
+      details: [path.normalize(path.relative(ROOT, packagePath))],
+      fix: 'Restore package.json with scripts.',
+    });
   }
   const raw = fs.readFileSync(packagePath, 'utf8');
-  const parsed = JSON.parse(raw) as { scripts?: Record<string, string> };
-  const scripts = parsed.scripts;
-  if (scripts === undefined) {
-    fail('package.json scripts missing');
+  try {
+    const parsed = PackageJsonSchema.parse(readJsonFile(packagePath));
+    if (parsed.scripts === undefined) {
+      fail(PREFIX, 'package.json scripts missing', {
+        details: [path.normalize(path.relative(ROOT, packagePath))],
+        fix: 'Add a scripts object to package.json.',
+      });
+    }
+    return { scripts: parsed.scripts, raw };
+  } catch (err: unknown) {
+    const message = asMessage(err);
+    fail(PREFIX, `package.json scripts missing: ${message}`, {
+      details: [path.normalize(path.relative(ROOT, packagePath))],
+      fix: 'Fix invalid JSON in package.json.',
+    });
   }
-  return scripts;
 }
 
 function commandReferences(command: string, token: string): boolean {
-  const normalizedCommand = command.replace(/\\/g, '/');
-  const normalizedToken = token.replace(/\\/g, '/');
+  const normalizedCommand = normalizePath(command);
+  const normalizedToken = normalizePath(token);
   if (normalizedCommand.includes(normalizedToken)) return true;
   return normalizedCommand.includes(`./${normalizedToken}`);
 }
 
+function isValidExecutionPath(scriptPath: string): boolean {
+  const normalized = normalizePath(scriptPath);
+  if (!normalized.startsWith('scripts/')) return false;
+  if (normalized.includes('..')) return false;
+  const ext = path.extname(normalized);
+  if (!EXECUTION_EXTENSIONS.has(ext)) return false;
+  if (normalized.startsWith('scripts/guardrails/')) return false;
+  if (normalized.startsWith('scripts/execution/')) return false;
+  if (normalized.startsWith('scripts/lib/')) return false;
+  return true;
+}
+
+function walk(dir: string): string[] {
+  if (fs.existsSync(dir) === false) return [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...walk(fullPath));
+    } else {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+function listExecutionCandidates(): string[] {
+  const files = walk(SCRIPTS_DIR);
+  const candidates: string[] = [];
+  for (const file of files) {
+    const ext = path.extname(file);
+    if (!EXECUTION_EXTENSIONS.has(ext)) continue;
+    if (file.startsWith(GUARDRAILS_DIR)) continue;
+    if (file.startsWith(EXECUTION_DIR)) continue;
+    if (file.startsWith(LIB_DIR)) continue;
+    const base = path.basename(file);
+    if (base.startsWith('check-')) continue;
+    candidates.push(file);
+  }
+  return candidates;
+}
+
 async function main(): Promise<void> {
   const { execution, runner } = await loadRegistry();
-  const scripts = readPackageScripts();
-  const errors: string[] = [];
+  const { scripts, raw } = readPackageScripts();
+  const violations: Violation[] = [];
+  const pkgPath = path.normalize(path.relative(ROOT, path.join(ROOT, 'package.json')));
 
   for (const [name, scriptPath] of Object.entries(execution)) {
+    if (!isValidExecutionPath(scriptPath)) {
+      violations.push({
+        file: scriptPath,
+        line: 1,
+        col: 1,
+        message: `${name} has invalid registry path ${scriptPath}`,
+      });
+      continue;
+    }
     const command = scripts[name];
     if (command === undefined || command.trim().length === 0) {
-      errors.push(`${name} missing from package.json scripts`);
+      violations.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${name} missing from package.json scripts`,
+      });
       continue;
     }
     if (commandReferences(command, runner) === false) {
-      errors.push(`${name} must invoke ${runner}`);
+      const { line, col } = lineColForToken(raw, `"${name}"`);
+      violations.push({
+        file: pkgPath,
+        line,
+        col,
+        message: `${name} must invoke ${runner}`,
+      });
     }
     if (command.includes(name) === false) {
-      errors.push(`${name} must pass execution name ${name}`);
+      const { line, col } = lineColForToken(raw, `"${name}"`);
+      violations.push({
+        file: pkgPath,
+        line,
+        col,
+        message: `${name} must pass execution name ${name}`,
+      });
     }
     const absolute = path.join(ROOT, scriptPath);
     if (fs.existsSync(absolute) === false) {
-      errors.push(`${name} references missing file ${scriptPath}`);
+      violations.push({
+        file: scriptPath,
+        line: 1,
+        col: 1,
+        message: `${name} references missing file ${scriptPath}`,
+      });
     }
   }
 
-  const runnerNormalized = runner.replace(/\\/g, '/');
+  const runnerNormalized = normalizePath(runner);
   for (const [name, command] of Object.entries(scripts)) {
     if (Object.prototype.hasOwnProperty.call(execution, name)) continue;
-    const normalizedCommand = command.replace(/\\/g, '/');
+    const normalizedCommand = normalizePath(command);
     if (normalizedCommand.includes(runnerNormalized)) {
-      errors.push(`${name} invokes ${runner} but is not registered`);
+      const { line, col } = lineColForToken(raw, `"${name}"`);
+      violations.push({
+        file: pkgPath,
+        line,
+        col,
+        message: `${name} invokes ${runner} but is not registered`,
+      });
     }
   }
 
-  if (errors.length > 0) {
-    for (const err of errors) {
-      process.stderr.write(`${PREFIX}: ${err}\n`);
-    }
-    process.exit(1);
+  const registeredPaths = new Set(Object.values(execution).map(normalizePath));
+  const candidates = listExecutionCandidates();
+  for (const file of candidates) {
+    const relative = normalizePath(path.relative(ROOT, file));
+    if (registeredPaths.has(relative)) continue;
+    violations.push({
+      file: relative,
+      line: 1,
+      col: 1,
+      message: `Execution script missing from registry: ${relative}`,
+    });
+  }
+
+  if (violations.length > 0) {
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Execution registry completeness violations detected', {
+      details,
+      fix: 'Register execution scripts in scripts/execution/registry.mts or remove them.',
+    });
   }
 
   process.stdout.write('execution-registry-completeness: ok\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, {
+    fix: 'Inspect check-execution-registry-completeness.mts for errors.',
+  });
+});

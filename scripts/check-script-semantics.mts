@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import fg from "fast-glob";
+import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { parseJson } from './guardrails/lib/read-json.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -12,6 +16,8 @@ type Violation = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:script-semantics';
+const FIX = 'Move .mts files under scripts/ and keep runtime code .ts.';
 const SCRIPT_GLOB = "scripts/**/*.{ts,mts}";
 const MTS_GLOB = "**/*.mts";
 const IGNORE = [
@@ -24,6 +30,12 @@ const IGNORE = [
   "**/coverage/**",
   "**/dist-scripts/**",
 ];
+
+const PackageJsonSchema = z
+  .object({
+    type: z.string().optional(),
+  })
+  .passthrough();
 
 function normalizePath(filePath: string): string {
   return path.normalize(path.relative(ROOT, filePath));
@@ -240,8 +252,15 @@ function checkRequireUsage(filePath: string, violations: Violation[]): void {
 function checkPackageType(violations: Violation[]): void {
   const packagePath = path.join(ROOT, "package.json");
   const data = fs.readFileSync(packagePath, "utf8");
-  const parsed = globalThis.JSON.parse(data) as { type?: string };
-  if (parsed.type !== "module") {
+  let parsedType: string | undefined;
+  try {
+    parsedType = PackageJsonSchema.parse(parseJson(data)).type;
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    void error;
+    parsedType = undefined;
+  }
+  if (parsedType !== "module") {
     violations.push({
       file: "package.json",
       message:
@@ -289,13 +308,16 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(`${violation.message}\n`);
-    }
-    process.exit(1);
+    const details = violations.map((violation) => violation.message);
+    fail(PREFIX, 'Script semantics violations detected', { details, fix: FIX });
   }
 
-  console.warn("check-script-semantics: ok");
+  process.stdout.write("check-script-semantics: ok\n");
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

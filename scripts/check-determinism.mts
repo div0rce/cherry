@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -13,6 +15,8 @@ type Violation = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:determinism';
+const FIX = 'Inject time into lib/ or add @time-allow markers where permitted.';
 const TARGET_DIR = path.join(ROOT, "lib");
 const ALLOWLIST_PATHS: Set<string> = new Set([
   // keep minimal; add explicit paths only if metrics-only timestamps are required.
@@ -93,8 +97,10 @@ function checkFile(filePath: string): Violation[] {
 
 function main(): void {
   if (!fs.existsSync(TARGET_DIR)) {
-    console.error(`Target directory not found: ${TARGET_DIR}`);
-    process.exit(1);
+    fail(PREFIX, 'Target directory not found', {
+      details: [path.relative(ROOT, TARGET_DIR) + ':1:1: missing'],
+      fix: FIX,
+    });
   }
 
   const files = collectFiles(TARGET_DIR);
@@ -105,17 +111,19 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      console.error(
-        `${path.relative(ROOT, violation.file)}:${violation.line}:${
-          violation.col
-        }: ${violation.message}`
-      );
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) =>
+        `${path.relative(ROOT, violation.file)}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Determinism violations detected', { details, fix: FIX });
   }
 
-  console.warn("✅ Determinism check passed: no implicit time in lib/");
+  process.stdout.write("✅ Determinism check passed: no implicit time in lib/\n");
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

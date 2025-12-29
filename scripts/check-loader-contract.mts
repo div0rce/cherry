@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -12,10 +13,11 @@ type LoaderFunction = {
 
 const ROOT = process.cwd();
 const SCRIPTS_DIR = path.join(ROOT, 'scripts');
+const PREFIX = 'check:loader-contract';
+const FIX = 'Ensure loaders return the full LoaderResult contract.';
 
-function fail(message: string): never {
-  process.stderr.write(`[esm-loader-contract] ${message}\n`);
-  process.exit(1);
+function guardrailFail(message: string): never {
+  fail(PREFIX, message, { fix: FIX });
 }
 
 function walk(dir: string): string[] {
@@ -68,7 +70,7 @@ function findLoadFunctions(file: string, content: string): LoaderFunction[] {
       const braceIndex = matchIndex + match[0].lastIndexOf('{');
       const block = extractBlock(content, braceIndex);
       if (block === null) {
-        fail(`Failed to parse load() body in ${file}`);
+        guardrailFail(`Failed to parse load() body in ${file}`);
       }
       found.push({ file, params, body: block.body });
     }
@@ -86,15 +88,15 @@ function shouldCheckFile(file: string, content: string): boolean {
 function validateReturnShapes(loader: LoaderFunction): void {
   const { file, params, body } = loader;
   if (params.length < 3) {
-    fail(`load() must accept (url, context, defaultLoad) in ${file}`);
+    guardrailFail(`load() must accept (url, context, defaultLoad) in ${file}`);
   }
   const defaultLoadName = params[2] ?? 'defaultLoad';
   const usesDefaultLoad = new RegExp(`\\b${defaultLoadName}\\s*\\(`).test(body);
   if (!usesDefaultLoad) {
-    fail(`load() must delegate to ${defaultLoadName} in ${file}`);
+    guardrailFail(`load() must delegate to ${defaultLoadName} in ${file}`);
   }
   if (/\breturn\s+undefined\b/.test(body)) {
-    fail(`load() must not return undefined in ${file}`);
+    guardrailFail(`load() must not return undefined in ${file}`);
   }
 
   const returnRegex = /\breturn\s+([^;\n]+)/g;
@@ -104,10 +106,10 @@ function validateReturnShapes(loader: LoaderFunction): void {
       const startIndex = body.indexOf('{', match.index ?? 0);
       const block = extractBlock(body, startIndex);
       if (block === null || block.body.includes('source:') === false) {
-        fail(`return object missing source in ${file}`);
+        guardrailFail(`return object missing source in ${file}`);
       }
       if (/source\s*:\s*source\b/.test(block.body)) {
-        fail(`return object uses ambiguous source identifier in ${file}`);
+        guardrailFail(`return object uses ambiguous source identifier in ${file}`);
       }
       continue;
     }

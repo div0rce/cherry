@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -9,6 +11,9 @@ type ParityRow = {
   id: string;
   status: string;
 };
+
+const PREFIX = 'check:dev-ui-parity';
+const FIX = 'Update docs/dev-ui-parity.md or implement missing surfaces.';
 
 async function loadRows(): Promise<ParityRow[]> {
   const docPath = path.join(process.cwd(), 'docs', 'dev-ui-parity.md');
@@ -33,31 +38,27 @@ async function loadRows(): Promise<ParityRow[]> {
 }
 
 async function main(): Promise<void> {
-  try {
-    const rows = await loadRows();
-    const totals = rows.reduce<Record<string, number>>((acc, row) => {
-      acc[row.status] = (acc[row.status] ?? 0) + 1;
-      return acc;
-    }, {});
+  const rows = await loadRows();
+  const totals = rows.reduce<Record<string, number>>((acc, row) => {
+    acc[row.status] = (acc[row.status] ?? 0) + 1;
+    return acc;
+  }, {});
 
-    const implemented = totals['implemented'] ?? 0;
-    const missing = totals['missing'] ?? 0;
-    const summary = `Dev UI parity: ${rows.length} features (${implemented} implemented, ${missing} missing).`;
-    console.warn(summary);
+  const implemented = totals['implemented'] ?? 0;
+  const missing = totals['missing'] ?? 0;
+  const summary = `Dev UI parity: ${rows.length} features (${implemented} implemented, ${missing} missing).`;
+  process.stdout.write(`${summary}\n`);
 
-    if (missing > 0) {
-      const missingRows = rows.filter((row) => row.status === 'missing');
-      console.error('Missing surfaces:');
-      missingRows.forEach((row) => console.error(`- ${row.id}`));
-      process.exitCode = 1;
-      return;
-    }
-
-    console.warn('Dev UI parity check passed (no missing rows).');
-  } catch (error: unknown) {
-    console.error('Failed to read docs/dev-ui-parity.md', error);
-    process.exitCode = 1;
+  if (missing > 0) {
+    const missingRows = rows.filter((row) => row.status === 'missing');
+    const details = missingRows.map((row) => `docs/dev-ui-parity.md:1:1: ${row.id}`);
+    fail(PREFIX, 'Missing dev UI surfaces detected', { details, fix: FIX });
   }
+
+  process.stdout.write('Dev UI parity check passed (no missing rows).\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+});

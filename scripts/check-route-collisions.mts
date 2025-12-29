@@ -1,11 +1,15 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
 
 const APP_DIR = join(process.cwd(), 'app');
+const PREFIX = 'check:route-collisions';
+const FIX = 'Remove duplicate route implementations under app/.';
 
 type RouteEntry = {
   filePath: string;
@@ -54,19 +58,22 @@ function main(): void {
   }
 
   if (collisions.length === 0) {
-    console.warn('Route collision check: OK (no parallel pages).');
+    process.stdout.write('Route collision check: OK (no parallel pages).\n');
     return;
   }
 
-  console.error('Route collision check: FAILED. Parallel pages detected:\n');
+  const details: string[] = [];
   for (const [routePath, list] of collisions) {
-    console.error(`Route "${routePath}" is implemented by:`);
     for (const entry of list) {
-      console.error(`  - ${entry.filePath}`);
+      details.push(`${entry.filePath}:1:1: route \"${routePath}\" collision`);
     }
-    console.error('');
   }
-  process.exitCode = 1;
+  fail(PREFIX, 'Route collision check failed: parallel pages detected', { details, fix: FIX });
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

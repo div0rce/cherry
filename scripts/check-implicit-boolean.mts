@@ -1,6 +1,8 @@
 import path from 'node:path';
 import ts from 'typescript';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -12,6 +14,8 @@ type Violation = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:implicit-boolean';
+const FIX = 'Make boolean intent explicit with comparisons or Boolean().';
 const TARGET_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 const TARGET_PREFIXES = [
   'app',
@@ -35,9 +39,8 @@ const COMPARISON_OPERATORS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.InstanceOfKeyword,
 ]);
 
-function fail(message: string): never {
-  process.stderr.write(`[no-implicit-boolean] ${message}\n`);
-  process.exit(1);
+function guardrailFail(message: string, fix: string = FIX): never {
+  fail(PREFIX, message, { fix });
 }
 
 function isTargetFile(fileName: string): boolean {
@@ -154,18 +157,18 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
 function resolveRootNames(): string[] {
   if (FIXTURE_MODE) {
     if (!ts.sys.fileExists(FIXTURE_PATH)) {
-      fail(`Fixture not found: ${path.relative(ROOT, FIXTURE_PATH)}`);
+      guardrailFail(`Fixture not found: ${path.relative(ROOT, FIXTURE_PATH)}`);
     }
     return [FIXTURE_PATH];
   }
 
   const configPath = ts.findConfigFile(ROOT, ts.sys.fileExists, 'tsconfig.eslint.json');
   if (configPath === undefined) {
-    fail('tsconfig.eslint.json not found');
+    guardrailFail('tsconfig.eslint.json not found');
   }
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    fail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -179,7 +182,7 @@ function resolveRootNames(): string[] {
     configPath
   );
   if (parsed.errors.length > 0) {
-    fail(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -200,11 +203,11 @@ function resolveCompilerOptions(): ts.CompilerOptions {
   }
   const configPath = ts.findConfigFile(ROOT, ts.sys.fileExists, 'tsconfig.eslint.json');
   if (configPath === undefined) {
-    fail('tsconfig.eslint.json not found');
+    guardrailFail('tsconfig.eslint.json not found');
   }
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    fail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -238,15 +241,18 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(
-        `${violation.file}:${violation.line}:${violation.col}: ${violation.message}\n`
-      );
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Implicit boolean violations detected', { details, fix: FIX });
   }
 
   process.stdout.write('no-implicit-boolean: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

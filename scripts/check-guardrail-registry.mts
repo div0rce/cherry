@@ -1,7 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { importUnknown } from './guardrails/lib/import-typed.mts';
+import {
+  GuardrailRegistrySchema,
+  PackageJsonSchema,
+  readJsonFile,
+} from './guardrails/lib/read-json.mts';
 import {
   GUARDRAILS as DEFAULT_GUARDRAILS,
   GUARDRAIL_ENTRYPOINT as DEFAULT_ENTRYPOINT,
@@ -12,19 +19,27 @@ ensureTsEsm();
 type GuardrailRegistry = {
   guardrails: Record<string, string>;
   entrypoint: string;
+  registryPath: string;
 };
 
-const PREFIX = 'GUARDRAIL REGISTRY VIOLATION';
+type Violation = {
+  file: string;
+  line: number;
+  col: number;
+  message: string;
+};
+
+type PackageScripts = {
+  scripts: Record<string, string>;
+  raw: string;
+};
+
+const PREFIX = 'check:guardrail-registry';
 const ROOT = process.cwd();
 const FIXTURE_MODE = process.env['CHERRY_GUARDRAIL_REGISTRY_FIXTURE'] === '1';
 const FIXTURE_ROOT = path.join(ROOT, 'tests', 'fixtures', 'guardrails', 'guardrail-registry');
 const OVERRIDE_ROOT = process.env['CHERRY_GUARDRAIL_REGISTRY_ROOT'];
 const RUNNER_PATH = path.join('scripts', 'guardrails', 'run.mts');
-
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
-}
 
 function resolveRoot(): string {
   if (OVERRIDE_ROOT !== undefined && OVERRIDE_ROOT !== '') {
@@ -36,36 +51,71 @@ function resolveRoot(): string {
   return ROOT;
 }
 
+function lineColForToken(raw: string, token: string): { line: number; col: number } {
+  const index = raw.indexOf(token);
+  if (index <= 0) return { line: 1, col: 1 };
+  const slice = raw.slice(0, index);
+  const line = slice.split('\n').length;
+  const lastNewline = slice.lastIndexOf('\n');
+  const col = lastNewline === -1 ? index + 1 : index - lastNewline;
+  return { line, col };
+}
+
 async function loadRegistry(rootDir: string): Promise<GuardrailRegistry> {
   const resolvedRoot = path.resolve(rootDir);
   if (resolvedRoot === path.resolve(ROOT)) {
-    return { guardrails: DEFAULT_GUARDRAILS, entrypoint: DEFAULT_ENTRYPOINT };
+    return {
+      guardrails: DEFAULT_GUARDRAILS,
+      entrypoint: DEFAULT_ENTRYPOINT,
+      registryPath: path.join('scripts', 'guardrails', 'registry.mts'),
+    };
   }
-  const registryPath = path.join(resolvedRoot, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathMts = path.join(resolvedRoot, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathTs = path.join(resolvedRoot, 'scripts', 'guardrails', 'registry.ts');
+  const registryPath = fs.existsSync(registryPathMts) ? registryPathMts : registryPathTs;
   if (!fs.existsSync(registryPath)) {
-    fail(`Missing guardrail registry at ${path.relative(ROOT, registryPath)}`);
+    fail(PREFIX, `Missing guardrail registry at ${path.relative(ROOT, registryPath)}`, {
+      fix: 'Restore scripts/guardrails/registry.mts.',
+    });
   }
-  const mod = await import(pathToFileURL(registryPath).href);
-  const guardrails = mod.GUARDRAILS as Record<string, string> | undefined;
-  const entrypoint = mod.GUARDRAIL_ENTRYPOINT as string | undefined;
-  if (guardrails === undefined || entrypoint === undefined) {
-    fail(`Guardrail registry exports missing in ${path.relative(ROOT, registryPath)}`);
+  const mod: unknown = await importUnknown(registryPath);
+  const parsed = GuardrailRegistrySchema.safeParse(mod);
+  if (!parsed.success) {
+    fail(PREFIX, `Guardrail registry exports missing in ${path.relative(ROOT, registryPath)}`, {
+      fix: 'Ensure GUARDRAILS and GUARDRAIL_ENTRYPOINT are exported.',
+    });
   }
-  return { guardrails, entrypoint };
+  return {
+    guardrails: parsed.data.GUARDRAILS,
+    entrypoint: parsed.data.GUARDRAIL_ENTRYPOINT,
+    registryPath: path.relative(ROOT, registryPath),
+  };
 }
 
-function readPackageScripts(rootDir: string): Record<string, string> {
+function readPackageScripts(rootDir: string): PackageScripts {
   const pkgPath = path.join(rootDir, 'package.json');
   if (!fs.existsSync(pkgPath)) {
-    fail(`package.json missing at ${path.relative(ROOT, pkgPath)}`);
+    fail(PREFIX, `package.json missing at ${path.relative(ROOT, pkgPath)}`, {
+      fix: 'Restore package.json with scripts.',
+    });
   }
   const raw = fs.readFileSync(pkgPath, 'utf8');
-  const parsed = JSON.parse(raw) as { scripts?: Record<string, string> };
-  const scripts = parsed.scripts;
-  if (scripts === undefined) {
-    fail('package.json scripts missing');
+  try {
+    const parsed = PackageJsonSchema.parse(readJsonFile(pkgPath));
+    if (parsed.scripts === undefined) {
+      fail(PREFIX, 'package.json scripts missing', {
+        details: [path.relative(ROOT, pkgPath)],
+        fix: 'Add a scripts object to package.json.',
+      });
+    }
+    return { scripts: parsed.scripts, raw };
+  } catch (err: unknown) {
+    const message = asMessage(err);
+    fail(PREFIX, `package.json scripts missing: ${message}`, {
+      details: [path.relative(ROOT, pkgPath)],
+      fix: 'Fix invalid JSON in package.json.',
+    });
   }
-  return scripts;
 }
 
 function walk(dir: string): string[] {
@@ -117,55 +167,109 @@ function parseGuardrailCalls(command: string): string[] {
 async function main(): Promise<void> {
   const rootDir = resolveRoot();
   const registry = await loadRegistry(rootDir);
-  const scripts = readPackageScripts(rootDir);
+  const { scripts, raw } = readPackageScripts(rootDir);
   const guardrails = registry.guardrails;
   const guardrailNames = Object.keys(guardrails);
   const guardrailSet = new Set(guardrailNames);
-  const errors: string[] = [];
+  const violations: Violation[] = [];
+  const pkgPath = path.relative(ROOT, path.join(rootDir, 'package.json'));
 
   for (const name of guardrailNames) {
     const script = scripts[name];
     if (script === undefined || script.trim().length === 0) {
-      errors.push(`${name} missing from package.json scripts`);
+      violations.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${name} missing from package.json scripts`,
+      });
       continue;
     }
     if (script.includes('ts:esm') === false) {
-      errors.push(`${name} must use ts:esm`);
+      const { line, col } = lineColForToken(raw, `"${name}"`);
+      violations.push({
+        file: pkgPath,
+        line,
+        col,
+        message: `${name} must use ts:esm`,
+      });
     }
     const expectedPath = guardrails[name];
     if (expectedPath === undefined || expectedPath.length === 0) {
-      errors.push(`${name} missing guardrail path`);
+      violations.push({
+        file: registry.registryPath,
+        line: 1,
+        col: 1,
+        message: `${name} missing guardrail path`,
+      });
       continue;
     }
     const expectedAbsolute = path.join(rootDir, expectedPath);
     if (fs.existsSync(expectedAbsolute) === false) {
-      errors.push(`${name} references missing file ${expectedPath}`);
+      violations.push({
+        file: expectedPath,
+        line: 1,
+        col: 1,
+        message: `${name} references missing file ${expectedPath}`,
+      });
     }
     if (commandReferencesFile(script, RUNNER_PATH) === false) {
-      errors.push(`${name} must invoke ${RUNNER_PATH}`);
+      const { line, col } = lineColForToken(raw, `"${name}"`);
+      violations.push({
+        file: pkgPath,
+        line,
+        col,
+        message: `${name} must invoke ${RUNNER_PATH}`,
+      });
     }
     if (commandReferencesGuardrail(script, name) === false) {
-      errors.push(`${name} must pass guardrail name ${name}`);
+      const { line, col } = lineColForToken(raw, `"${name}"`);
+      violations.push({
+        file: pkgPath,
+        line,
+        col,
+        message: `${name} must pass guardrail name ${name}`,
+      });
     }
   }
 
   const guardrailCommand = scripts[registry.entrypoint];
   if (guardrailCommand === undefined) {
-    errors.push(`${registry.entrypoint} missing from package.json scripts`);
+    violations.push({
+      file: pkgPath,
+      line: 1,
+      col: 1,
+      message: `${registry.entrypoint} missing from package.json scripts`,
+    });
   } else {
     const calls = parseGuardrailCalls(guardrailCommand);
     const missing = guardrailNames.filter((name) => !calls.includes(name));
     const extra = calls.filter((name) => guardrailSet.has(name) === false);
     if (missing.length > 0) {
-      errors.push(`${registry.entrypoint} missing guardrails: ${missing.join(', ')}`);
+      violations.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${registry.entrypoint} missing guardrails: ${missing.join(', ')}`,
+      });
     }
     if (extra.length > 0) {
-      errors.push(`${registry.entrypoint} has extra entries: ${extra.join(', ')}`);
+      violations.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${registry.entrypoint} has extra entries: ${extra.join(', ')}`,
+      });
     }
     if (calls.length === guardrailNames.length) {
       const orderedMismatch = calls.some((name, idx) => name !== guardrailNames[idx]);
       if (orderedMismatch) {
-        errors.push(`${registry.entrypoint} guardrail order must match registry`);
+        violations.push({
+          file: pkgPath,
+          line: 1,
+          col: 1,
+          message: `${registry.entrypoint} guardrail order must match registry`,
+        });
       }
     }
   }
@@ -178,18 +282,31 @@ async function main(): Promise<void> {
   for (const file of checkFiles) {
     const relative = path.relative(rootDir, file);
     if (guardrailPaths.has(relative) === false) {
-      errors.push(`${relative} exists but is not registered`);
+      violations.push({
+        file: relative,
+        line: 1,
+        col: 1,
+        message: `${relative} exists but is not registered`,
+      });
     }
   }
 
-  if (errors.length > 0) {
-    for (const err of errors) {
-      process.stderr.write(`${PREFIX}: ${err}\n`);
-    }
-    process.exit(1);
+  if (violations.length > 0) {
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Guardrail registry inconsistencies detected', {
+      details,
+      fix: 'Sync scripts/guardrails/registry.mts, package.json, and guardrail files.',
+    });
   }
 
   process.stdout.write('guardrail-registry: ok\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, {
+    fix: 'Inspect check-guardrail-registry.mts for errors.',
+  });
+});

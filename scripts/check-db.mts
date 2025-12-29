@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import { PrismaClient } from '@prisma/client';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+
+const PREFIX = 'check:db';
+const FIX = 'Set DATABASE_URL and ensure the database is reachable.';
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (databaseUrl === undefined || databaseUrl === '') {
-  console.error('check:db failed: DATABASE_URL is missing');
-  process.exit(1);
+  fail(PREFIX, 'DATABASE_URL is missing', { fix: FIX });
 }
 
 const prisma = new PrismaClient();
@@ -15,14 +19,18 @@ async function main() {
     await prisma.user.count();
     await prisma.recommendationSession.count({ where: { source: 'AUTOPILOT' } });
     await prisma.autopilotCommit.count();
-    console.log('check:db ok');
-  } catch (err) {
-    console.error('check:db failed');
-    console.error(err instanceof Error ? err.stack ?? err.message : err);
-    process.exitCode = 1;
+    process.stdout.write('check:db ok\n');
+  } catch (error: unknown) {
+    const message = asMessage(error);
+    await prisma.$disconnect().catch((error: unknown) => {
+      void error;
+    });
+    fail(PREFIX, `Database check failed: ${message}`, { fix: FIX });
   } finally {
-    await prisma.$disconnect().catch(() => {});
+    await prisma.$disconnect().catch((error: unknown) => {
+      void error;
+    });
   }
 }
 
-main();
+void main();

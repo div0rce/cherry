@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { fail as guardrailFail } from './guardrails/lib/fail.mts';
 
 const migrationsDir = path.join(process.cwd(), 'prisma', 'migrations');
 const banned = [/TODO/i, /STUB/i, /FIXME/i];
+const PREFIX = 'check:migrations';
+const FIX = 'Fix migration SQL or remove banned markers.';
 
-function fail(msg) {
-  console.error(msg);
-  process.exit(1);
+function fail(msg: string): void {
+  guardrailFail(PREFIX, msg, { fix: FIX });
 }
 
 if (!fs.existsSync(migrationsDir)) {
@@ -35,4 +37,4 @@ for (const entry of entries) {
   }
 }
 
-console.log('Migration hygiene check passed.');
+process.stdout.write('Migration hygiene check passed.\n');

@@ -3,6 +3,8 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { parseJson } from './guardrails/lib/read-json.mts';
+import { fail } from './guardrails/lib/fail.mts';
 import { asIsoDate, type IsoDateString } from '../lib/util/iso-date';
 
 ensureTsEsm();
@@ -27,6 +29,8 @@ type AllowlistEntryRaw = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:side-effects:diff';
+const FIX = 'Update scripts/side-effects.allowlist.json or remove new side effects.';
 const ALLOWLIST_PATH = path.join(ROOT, 'scripts', 'side-effects.allowlist.json');
 
 const AllowlistEntrySchema = z
@@ -49,9 +53,8 @@ const AllowlistSchema = z.record(z.string(), AllowlistEntrySchema);
 const AllowlistLegacySchema = z.record(z.string(), AllowlistEntryLegacySchema);
 const LegacyAllowlistSchema = z.record(z.string(), z.array(z.string()));
 
-function fail(message: string): never {
-  process.stderr.write(`[side-effects] ${message}\n`);
-  process.exit(1);
+function guardrailFail(message: string): never {
+  fail(PREFIX, message, { fix: FIX });
 }
 
 function parseAllowlist(
@@ -60,7 +63,7 @@ function parseAllowlist(
   options?: { allowLegacy?: boolean }
 ): Record<string, AllowlistEntry> {
   try {
-    const parsedJson: unknown = globalThis.JSON.parse(raw);
+    const parsedJson: unknown = parseJson(raw);
     let parsed: Record<string, AllowlistEntryRaw>;
     if (options?.allowLegacy === true) {
       try {
@@ -114,13 +117,13 @@ function parseAllowlist(
     }
     return normalized;
   } catch (err: unknown) {
-    fail(`Failed to parse ${label}: ${(err as Error).message}`);
+    guardrailFail(`Failed to parse ${label}: ${(err as Error).message}`);
   }
 }
 
 function loadCurrentAllowlist(): Record<string, AllowlistEntry> {
   if (!fs.existsSync(ALLOWLIST_PATH)) {
-    fail(`Missing allowlist at ${path.relative(ROOT, ALLOWLIST_PATH)}`);
+    guardrailFail(`Missing allowlist at ${path.relative(ROOT, ALLOWLIST_PATH)}`);
   }
   const raw = fs.readFileSync(ALLOWLIST_PATH, 'utf8');
   return parseAllowlist(raw, 'current allowlist');
@@ -159,11 +162,11 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function parseExpiresBy(value: IsoDateString, file: string): number {
   if (!ISO_DATE_RE.test(value)) {
-    fail(`Invalid expiresBy date for ${file}: ${value}`);
+    guardrailFail(`Invalid expiresBy date for ${file}: ${value}`);
   }
   const timestamp = Date.parse(`${value}T00:00:00Z`);
   if (Number.isNaN(timestamp)) {
-    fail(`Invalid expiresBy date for ${file}: ${value}`);
+    guardrailFail(`Invalid expiresBy date for ${file}: ${value}`);
   }
   return timestamp;
 }
@@ -173,17 +176,17 @@ function resolveEpochMs(): number {
   if (envValue !== undefined) {
     const parsed = Number(envValue);
     if (Number.isFinite(parsed) === false) {
-      fail(`Invalid SOURCE_DATE_EPOCH: ${envValue}`);
+      guardrailFail(`Invalid SOURCE_DATE_EPOCH: ${envValue}`);
     }
     return parsed > 1_000_000_000_000 ? Math.trunc(parsed) : Math.trunc(parsed * 1000);
   }
   const gitEpochRaw = execSync('git log -1 --format=%ct', { encoding: 'utf8' }).trim();
   if (gitEpochRaw.length === 0) {
-    fail('Unable to determine epoch from git log');
+    guardrailFail('Unable to determine epoch from git log');
   }
   const parsed = Number(gitEpochRaw);
   if (Number.isFinite(parsed) === false) {
-    fail(`Invalid git epoch: ${gitEpochRaw}`);
+    guardrailFail(`Invalid git epoch: ${gitEpochRaw}`);
   }
   return Math.trunc(parsed * 1000);
 }
@@ -199,18 +202,18 @@ function main(): void {
   const previous = loadPreviousAllowlist();
 
   if (previous === null) {
-    fail('Allowlist baseline missing; commit the allowlist before running diff checks.');
+    guardrailFail('Allowlist baseline missing; commit the allowlist before running diff checks.');
   }
 
   const previousLegacyCount = countLegacy(previous);
   const currentLegacyCount = countLegacy(current);
   if (currentLegacyCount > previousLegacyCount) {
-    fail(`Legacy allowlist entries increased (${previousLegacyCount} -> ${currentLegacyCount})`);
+    guardrailFail(`Legacy allowlist entries increased (${previousLegacyCount} -> ${currentLegacyCount})`);
   }
   const previousLegacyComboCount = countLegacyCombo(previous);
   const currentLegacyComboCount = countLegacyCombo(current);
   if (currentLegacyComboCount > previousLegacyComboCount) {
-    fail(
+    guardrailFail(
       `Legacy-combo allowlist entries increased (${previousLegacyComboCount} -> ${currentLegacyComboCount})`
     );
   }
@@ -219,11 +222,11 @@ function main(): void {
   for (const [file, entry] of Object.entries(current)) {
     if (entry.tier !== 'legacy-combo') continue;
     if (entry.expiresBy === undefined) {
-      fail(`Missing expiresBy for legacy-combo entry: ${file}`);
+      guardrailFail(`Missing expiresBy for legacy-combo entry: ${file}`);
     }
     const expiresAt = parseExpiresBy(entry.expiresBy, file);
     if (expiresAt < todayUtcStart) {
-      fail(`Legacy-combo entry expired (${entry.expiresBy}): ${file}`);
+      guardrailFail(`Legacy-combo entry expired (${entry.expiresBy}): ${file}`);
     }
   }
 
@@ -232,7 +235,7 @@ function main(): void {
 
   const addedFiles = [...currentFiles].filter((file) => !previousFiles.has(file));
   if (addedFiles.length > 0) {
-    fail(`Allowlist growth detected (new files: ${addedFiles.join(', ')})`);
+    guardrailFail(`Allowlist growth detected (new files: ${addedFiles.join(', ')})`);
   }
 
   let addedEffectsCount = 0;
@@ -263,12 +266,12 @@ function main(): void {
       prevEntry.expiresBy !== undefined &&
       currEntry.expiresBy === undefined
     ) {
-      fail(`expiresBy removed from legacy-combo entry: ${file}`);
+      guardrailFail(`expiresBy removed from legacy-combo entry: ${file}`);
     }
   }
 
   if (addedEffectsCount > 0) {
-    fail(`Allowlist growth detected (${addedEffectsCount} new effects)`);
+    guardrailFail(`Allowlist growth detected (${addedEffectsCount} new effects)`);
   }
 
   const removedFiles = [...previousFiles].filter((file) => !currentFiles.has(file));
@@ -280,7 +283,7 @@ function main(): void {
     sourceChanges > 0;
 
   if (hasDiff && currentLegacyCount >= previousLegacyCount) {
-    fail('Allowlist changes must reduce legacy entries.');
+    guardrailFail('Allowlist changes must reduce legacy entries.');
   }
 }
 

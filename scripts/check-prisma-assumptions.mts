@@ -3,20 +3,19 @@ import path from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
 
 const prisma = new PrismaClient();
+const PREFIX = 'check:prisma-assumptions';
+const FIX = 'Align Prisma schema assumptions and regenerate the client.';
 
 function assertOfflineEvaluatorModelsPresent() {
-  const client = prisma as Record<string, unknown>;
-  const hasIncomeRegime =
-    Boolean(client['historicalIncomeRegime']) &&
-    typeof (client['historicalIncomeRegime'] as Record<string, unknown>)['findFirst'] === 'function';
-  const hasBucketTemplate =
-    Boolean(client['historicalBucketTemplate']) &&
-    typeof (client['historicalBucketTemplate'] as Record<string, unknown>)['findFirst'] === 'function';
+  const hasIncomeRegime = typeof prisma.historicalIncomeRegime?.findFirst === 'function';
+  const hasBucketTemplate = typeof prisma.historicalBucketTemplate?.findFirst === 'function';
 
   if (!hasIncomeRegime || !hasBucketTemplate) {
     throw new Error(
@@ -56,7 +55,10 @@ async function main() {
         externalId: 'dummy-external',
       },
     },
-  }).catch(() => undefined);
+  }).catch((error: unknown) => {
+    void error;
+    return undefined;
+  });
 
   // HistoricalEngineEvaluation joins to BankTransaction
   await prisma.historicalEngineEvaluation.findFirst({
@@ -68,7 +70,10 @@ async function main() {
     .findFirst({
       select: { runId: true, userId: true, bankTransactionId: true },
     })
-    .catch(() => undefined);
+    .catch((error: unknown) => {
+      void error;
+      return undefined;
+    });
 
   await prisma.bankTransaction.findFirst({
     select: { incomeKind: true, p2pKind: true },
@@ -83,12 +88,14 @@ async function main() {
   });
 }
 
-main()
-  .catch(async (err) => {
-    console.error('Prisma schema assumption failed:', err);
+void (async () => {
+  try {
+    await main();
+  } catch (error: unknown) {
+    const message = asMessage(error);
     await prisma.$disconnect();
-    process.exit(1);
-  })
-  .finally(async () => {
+    fail(PREFIX, `Prisma schema assumption failed: ${message}`, { fix: FIX });
+  } finally {
     await prisma.$disconnect();
-  });
+  }
+})();

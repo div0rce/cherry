@@ -1,5 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { z } from 'zod';
+import { parseJson } from './guardrails/lib/read-json.mts';
+import { fail } from './guardrails/lib/fail.mts';
+
+const PREFIX = 'check:repo-guardrails';
+const FIX = 'Remove the violating token or update allowlists where permitted.';
+const violations: string[] = [];
+
+function recordViolation(message: string): void {
+  violations.push(message);
+}
+
+function formatDetail(message: string): string {
+  const fileMatch = message.match(/\b[\w./()-]+\.(?:ts|tsx|js|jsx|mjs|cjs|mts|json|md|mdx)\b/);
+  const file = fileMatch?.[0];
+  if (typeof file === 'string' && file.length > 0) {
+    return `${file}:1:1: ${message}`;
+  }
+  return `scripts/check-repo-guardrails.mts:1:1: ${message}`;
+}
 
 const DEFAULT_EXTENSIONS = new Set([
   '.ts',
@@ -39,10 +59,10 @@ const TIME_TOKENS = [
   { token: 'Date.now(', regex: /\bDate\.now\s*\(/ },
 ];
 const INLINE_TS_NODE_LOADER = /node\s+--loader\s+ts-node\/esm/;
-const INLINE_TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
+const INLINE_TSX_MTS = /\btsx\b[^\n]*\b[^\s'"]+\.mts\b/;
 const DIRECT_NODE_MTS = /node\b[^\n]*\bscripts\/[^\s'"]+\.mts\b/;
 const TS_NODE_MTS = /\bts-node\b[^\n]*\.mts\b/;
-const TSX_MTS = /\btsx\b[^\n]*\.mts\b/;
+const TSX_MTS = /\btsx\b[^\n]*\b[^\s'"]+\.mts\b/;
 const FORBIDDEN_TS_NODE_REGISTER = /\bts-node\/register\b|\bts-node\/register\/transpile-only\b/;
 const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
@@ -61,6 +81,14 @@ const IGNORE_DIRS = new Set([
   'coverage',
   'dist-scripts',
 ]);
+
+const PackageJsonSchema = z
+  .object({
+    scripts: z.record(z.string(), z.string()),
+  })
+  .passthrough();
+
+const MigrationBaselineSchema = z.array(z.string());
 
 function collectFiles(startDir: string): string[] {
   const files: string[] = [];
@@ -196,7 +224,7 @@ const migrationBaselinePath = path.join(
  * @param {number} startIndex
  * @returns {number}
  */
-function countBraces(line, startIndex = 0) {
+function countBraces(line: string, startIndex = 0): number {
   let delta = 0;
   for (let i = startIndex; i < line.length; i += 1) {
     const char = line[i];
@@ -210,7 +238,7 @@ function countBraces(line, startIndex = 0) {
  * @param {string} content
  * @returns {boolean}
  */
-function hasUserImport(content) {
+function hasUserImport(content: string): boolean {
   return (
     /from\s+['"][^'"]*\(user\)[^'"]*['"]/.test(content) ||
     /require\(\s*['"][^'"]*\(user\)[^'"]*['"]\s*\)/.test(content)
@@ -221,7 +249,7 @@ function hasUserImport(content) {
  * @param {string} content
  * @returns {boolean}
  */
-function importsUserApi(content) {
+function importsUserApi(content: string): boolean {
   return (
     /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/api(?:\.[mc]?[jt]sx?)?['"]/.test(content) ||
     /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/api(?:\.[mc]?[jt]sx?)?['"]\s*\)/.test(content)
@@ -232,7 +260,7 @@ function importsUserApi(content) {
  * @param {string} content
  * @returns {boolean}
  */
-function importsDeprecatedUserApi(content) {
+function importsDeprecatedUserApi(content: string): boolean {
   return (
     /from\s+['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions(?:\.[mc]?[jt]sx?)?['"]/.test(content) ||
     /require\(\s*['"][^'"]*(?:app\/)?\(user\)\/_lib\/actions(?:\.[mc]?[jt]sx?)?['"]\s*\)/.test(content)
@@ -243,7 +271,7 @@ function importsDeprecatedUserApi(content) {
  * @param {string} content
  * @returns {boolean}
  */
-function hasMigrationEscapeHatch(content) {
+function hasMigrationEscapeHatch(content: string): boolean {
   return (
     /guardrail:\s*migration-no-replay-test-ok/.test(content) &&
     /justification:\s*\S+/.test(content)
@@ -282,16 +310,13 @@ for (const file of libFiles) {
   const lines = content.split(/\r?\n/);
   for (const line of lines) {
     if (line.includes('Math.random')) {
-      console.error(`no-implicit-randomness: ${relPath}: Math.random`);
-      process.exit(1);
+      recordViolation(`no-implicit-randomness: ${relPath}: Math.random`);
     }
     if (line.includes('crypto.randomUUID')) {
-      console.error(`no-implicit-randomness: ${relPath}: crypto.randomUUID`);
-      process.exit(1);
+      recordViolation(`no-implicit-randomness: ${relPath}: crypto.randomUUID`);
     }
     if (line.includes('crypto.randomBytes')) {
-      console.error(`no-implicit-randomness: ${relPath}: crypto.randomBytes`);
-      process.exit(1);
+      recordViolation(`no-implicit-randomness: ${relPath}: crypto.randomBytes`);
     }
     const typeContext =
       line.includes('interface ') ||
@@ -301,12 +326,10 @@ for (const file of libFiles) {
       (line.includes('<') && line.includes('>')) ||
       /:\s*[A-Za-z_<]/.test(line);
     if (line.includes('randomUUID(') && !typeContext) {
-      console.error(`no-implicit-randomness: ${relPath}: randomUUID(`);
-      process.exit(1);
+      recordViolation(`no-implicit-randomness: ${relPath}: randomUUID(`);
     }
     if (line.includes('randomBytes(') && !typeContext) {
-      console.error(`no-implicit-randomness: ${relPath}: randomBytes(`);
-      process.exit(1);
+      recordViolation(`no-implicit-randomness: ${relPath}: randomBytes(`);
     }
   }
 }
@@ -321,8 +344,7 @@ for (const file of libFiles) {
   const content = fs.readFileSync(file, 'utf8');
   for (const { token, regex } of MONEY_FLOAT_TOKENS) {
     if (regex.test(content)) {
-      console.error(`money-float-banned: ${relPath}: ${token}`);
-      process.exit(1);
+      recordViolation(`money-float-banned: ${relPath}: ${token}`);
     }
   }
 }
@@ -338,16 +360,14 @@ for (const file of silentDefaultFiles) {
   for (const line of lines) {
     for (const { token, regex } of SILENT_DEFAULT_TOKENS) {
       if (regex.test(line)) {
-        console.error(`silent-default-banned: ${relPath}: ${token}`);
-        process.exit(1);
+        recordViolation(`silent-default-banned: ${relPath}: ${token}`);
       }
     }
     if (line.includes('||')) {
       const returnMatch = /\breturn\b[^;]*\|\|/.test(line);
       const assignmentMatch = /(^|[^=!<>])=([^=]|$)/.test(line);
       if (returnMatch || assignmentMatch) {
-        console.error(`silent-default-banned: ${relPath}: ||`);
-        process.exit(1);
+        recordViolation(`silent-default-banned: ${relPath}: ||`);
       }
     }
   }
@@ -358,8 +378,7 @@ for (const file of engineFiles) {
   const content = fs.readFileSync(file, 'utf8');
   for (const { token, regex } of ENGINE_PRISMA_TOKENS) {
     if (regex.test(content)) {
-      console.error(`engine-prisma-leak: ${relPath}: ${token}`);
-      process.exit(1);
+      recordViolation(`engine-prisma-leak: ${relPath}: ${token}`);
     }
   }
 }
@@ -368,8 +387,7 @@ for (const file of engineFiles) {
   const content = fs.readFileSync(file, 'utf8');
   for (const { token, regex } of ENGINE_SIDE_EFFECT_TOKENS) {
     if (regex.test(content)) {
-      console.error(`engine-side-effect-banned: ${relPath}: ${token}`);
-      process.exit(1);
+      recordViolation(`engine-side-effect-banned: ${relPath}: ${token}`);
     }
   }
 }
@@ -381,8 +399,7 @@ for (const file of timeFiles) {
   const content = fs.readFileSync(file, 'utf8');
   for (const { token, regex } of TIME_TOKENS) {
     if (regex.test(content)) {
-      console.error(`no-implicit-time: ${relPath}: ${token}`);
-      process.exit(1);
+      recordViolation(`no-implicit-time: ${relPath}: ${token}`);
     }
   }
 }
@@ -392,10 +409,10 @@ const asErrorFiles = [...appFiles, ...libFiles, ...scriptFiles, ...testFiles];
 
 for (const file of asErrorFiles) {
   const relPath = path.normalize(path.relative(root, file));
+  if (relPath === path.normalize('scripts/guardrails/lib/error.mts')) continue;
   const content = fs.readFileSync(file, 'utf8');
   if (FORBIDDEN_AS_ERROR.test(content)) {
-    console.error(`as-error-banned: ${relPath}`);
-    process.exit(1);
+    recordViolation(`as-error-banned: ${relPath}`);
   }
 }
 for (const file of errorLogFiles) {
@@ -417,7 +434,7 @@ for (const file of errorLogFiles) {
       if (idx !== -1) {
         startIndex = idx;
         const match = line.match(CATCH_HEADER);
-        currentCatchVar = match ? match[1] : null;
+        currentCatchVar = typeof match?.[1] === 'string' ? match[1] : null;
         if (line.indexOf('{', idx) !== -1) {
           inCatch = true;
           pendingCatch = false;
@@ -453,8 +470,7 @@ for (const file of errorLogFiles) {
         if (justEnteredCatch === false) {
           const usesVar = new RegExp(`\\b${currentCatchVar}\\b`).test(line);
           if (usesVar && !line.includes('asAppError(')) {
-            console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
-            process.exit(1);
+            recordViolation(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
           }
         }
       }
@@ -465,8 +481,7 @@ for (const file of errorLogFiles) {
           for (const match of matches) {
             const identifier = match[1];
             if (identifier !== undefined && identifier !== '' && !normalizedVars.has(identifier)) {
-              console.error(`raw-error-logging: ${relPath}: ${identifier}`);
-              process.exit(1);
+              recordViolation(`raw-error-logging: ${relPath}: ${identifier}`);
             }
           }
         }
@@ -475,8 +490,7 @@ for (const file of errorLogFiles) {
       if (currentCatchVar !== null && relPath.startsWith(apiPrefix)) {
         const messageAccess = new RegExp(`\\b${currentCatchVar}\\.message\\b`);
         if (messageAccess.test(line)) {
-          console.error(`api-error-message-banned: ${relPath}: ${currentCatchVar}`);
-          process.exit(1);
+          recordViolation(`api-error-message-banned: ${relPath}: ${currentCatchVar}`);
         }
       }
 
@@ -491,8 +505,7 @@ for (const file of errorLogFiles) {
       }
       if (catchDepth <= 0) {
         if (currentCatchVar !== null && normalizedVars.has(currentCatchVar) === false) {
-          console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
-          process.exit(1);
+          recordViolation(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
         }
         inCatch = false;
         pendingCatch = false;
@@ -511,24 +524,25 @@ for (const file of commandFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (TS_NODE_MTS.test(content)) {
-    console.error(`esm-loader-bypass: ${relPath}: ts-node .mts`);
-    process.exit(1);
+    recordViolation(`esm-loader-bypass: ${relPath}: ts-node .mts`);
   }
   if (INLINE_TS_NODE_LOADER.test(content)) {
-    console.error(`esm-loader-bypass: ${relPath}: node --loader ts-node/esm`);
-    process.exit(1);
+    recordViolation(`esm-loader-bypass: ${relPath}: node --loader ts-node/esm`);
   }
   if (FORBIDDEN_TS_NODE_REGISTER.test(content)) {
-    console.error(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
-    process.exit(1);
+    recordViolation(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
   }
   if (relPath === 'package.json') {
-    /** @type {{ scripts?: Record<string, string> }} */
-    const packageJson = JSON.parse(content);
-    const scripts = packageJson.scripts;
-    if (scripts === undefined || typeof scripts !== 'object') {
-      console.error('esm-loader-macro-missing: package.json: ts:esm');
-      process.exit(1);
+    let scripts: Record<string, string>;
+    try {
+      scripts = PackageJsonSchema.parse(parseJson(content)).scripts;
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      void error;
+      scripts = {};
+    }
+    if (Object.keys(scripts).length === 0) {
+      recordViolation('esm-loader-macro-missing: package.json: ts:esm');
     }
     const macro = scripts['ts:esm'];
     if (
@@ -537,26 +551,21 @@ for (const file of commandFiles) {
       !macro.includes('tsx') ||
       !macro.includes('--tsconfig tsconfig.scripts.json')
     ) {
-      console.error('esm-loader-macro-missing: package.json: ts:esm');
-      process.exit(1);
+      recordViolation('esm-loader-macro-missing: package.json: ts:esm');
     }
     for (const [name, command] of Object.entries(scripts)) {
       if (name === 'ts:esm') continue;
       if (INLINE_TS_NODE_LOADER.test(command)) {
-        console.error(`esm-loader-inline: package.json: ${name}`);
-        process.exit(1);
+        recordViolation(`esm-loader-inline: package.json: ${name}`);
       }
       if (INLINE_TSX_MTS.test(command)) {
-        console.error(`esm-loader-inline: package.json: ${name}`);
-        process.exit(1);
+        recordViolation(`esm-loader-inline: package.json: ${name}`);
       }
       if (DIRECT_NODE_MTS.test(command)) {
-        console.error(`esm-loader-bypass: package.json: ${name}`);
-        process.exit(1);
+        recordViolation(`esm-loader-bypass: package.json: ${name}`);
       }
       if (TSX_MTS.test(command)) {
-        console.error(`esm-loader-bypass: package.json: ${name}`);
-        process.exit(1);
+        recordViolation(`esm-loader-bypass: package.json: ${name}`);
       }
     }
   }
@@ -568,27 +577,23 @@ for (const file of executionContractFiles) {
   const relPath = path.normalize(path.relative(root, file));
   if (relPath.startsWith(guardrailFixturesPrefix)) continue;
   if (relPath === path.normalize(path.join('scripts', 'check-repo-guardrails.js'))) continue;
+  if (relPath === path.normalize(path.join('scripts', 'check-repo-guardrails.mts'))) continue;
   const content = fs.readFileSync(file, 'utf8');
   const isDoc = MARKDOWN_EXTENSIONS.has(path.extname(relPath));
   if (!isDoc && FORBIDDEN_TS_NODE_REGISTER.test(content)) {
-    console.error(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
-    process.exit(1);
+    recordViolation(`ts-node-register-forbidden: ${relPath}: ts-node/register`);
   }
   if (INLINE_TS_NODE_LOADER.test(content)) {
-    console.error(`esm-loader-bypass: ${relPath}: node --loader ts-node/esm`);
-    process.exit(1);
+    recordViolation(`esm-loader-bypass: ${relPath}: node --loader ts-node/esm`);
   }
   if (DIRECT_NODE_MTS.test(content)) {
-    console.error(`esm-loader-bypass: ${relPath}: node scripts/*.mts`);
-    process.exit(1);
+    recordViolation(`esm-loader-bypass: ${relPath}: node scripts/*.mts`);
   }
   if (TS_NODE_MTS.test(content)) {
-    console.error(`esm-loader-bypass: ${relPath}: ts-node .mts`);
-    process.exit(1);
+    recordViolation(`esm-loader-bypass: ${relPath}: ts-node .mts`);
   }
   if (TSX_MTS.test(content)) {
-    console.error(`esm-loader-bypass: ${relPath}: tsx .mts`);
-    process.exit(1);
+    recordViolation(`esm-loader-bypass: ${relPath}: tsx .mts`);
   }
 }
 
@@ -603,8 +608,7 @@ for (const file of appFiles) {
   }
   const content = fs.readFileSync(file, 'utf8');
   if (importsUserApi(content)) {
-    console.error(`user-fetch-boundary: ${relPath}: app/(user)/_lib/api`);
-    process.exit(1);
+    recordViolation(`user-fetch-boundary: ${relPath}: app/(user)/_lib/api`);
   }
 }
 
@@ -612,8 +616,7 @@ for (const file of apiFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (hasUserImport(content)) {
-    console.error(`no-user-imports: ${relPath}: app/(user)`);
-    process.exit(1);
+    recordViolation(`no-user-imports: ${relPath}: app/(user)`);
   }
 }
 
@@ -621,8 +624,7 @@ for (const file of libFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (hasUserImport(content)) {
-    console.error(`no-user-imports: ${relPath}: app/(user)`);
-    process.exit(1);
+    recordViolation(`no-user-imports: ${relPath}: app/(user)`);
   }
 }
 
@@ -630,8 +632,7 @@ for (const file of scriptFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (hasUserImport(content)) {
-    console.error(`no-user-imports: ${relPath}: app/(user)`);
-    process.exit(1);
+    recordViolation(`no-user-imports: ${relPath}: app/(user)`);
   }
 }
 
@@ -639,8 +640,7 @@ for (const file of userFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (content.includes('resolveUserContext')) {
-    console.error(`user-context-boundary: ${relPath}: resolveUserContext`);
-    process.exit(1);
+    recordViolation(`user-context-boundary: ${relPath}: resolveUserContext`);
   }
 }
 
@@ -649,8 +649,7 @@ for (const file of allFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (importsDeprecatedUserApi(content)) {
-    console.error(`deprecated-user-api: ${relPath}: app/(user)/_lib/actions`);
-    process.exit(1);
+    recordViolation(`deprecated-user-api: ${relPath}: app/(user)/_lib/actions`);
   }
 }
 
@@ -667,8 +666,7 @@ for (const file of aliasFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
   if (FORBIDDEN_ALIAS.test(content)) {
-    console.error(`alias-forbidden: ${relPath}: @/`);
-    process.exit(1);
+    recordViolation(`alias-forbidden: ${relPath}: @/`);
   }
 }
 
@@ -679,21 +677,26 @@ for (const file of scriptFiles) {
     content.includes('tsconfig.json') &&
     TS_CONFIG_PARSE.test(content) &&
     !relPath.startsWith(path.normalize(path.join('scripts', 'lib')) + path.sep) &&
-    !relPath.endsWith(path.normalize(path.join('scripts', 'check-repo-guardrails.js')))
+    !relPath.endsWith(path.normalize(path.join('scripts', 'check-repo-guardrails.js'))) &&
+    !relPath.endsWith(path.normalize(path.join('scripts', 'check-repo-guardrails.mts')))
   ) {
-    console.error(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
-    process.exit(1);
+    recordViolation(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
   }
 }
 
 if (fs.existsSync(migrationsDir)) {
   if (!fs.existsSync(migrationBaselinePath)) {
-    console.error('migration-safety-baseline: missing');
-    process.exit(1);
+    recordViolation('migration-safety-baseline: missing');
   }
   const baselineRaw = fs.readFileSync(migrationBaselinePath, 'utf8');
-  /** @type {string[]} */
-  const baselineList = JSON.parse(baselineRaw);
+  let baselineList: string[] = [];
+  try {
+    baselineList = MigrationBaselineSchema.parse(parseJson(baselineRaw));
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    void error;
+    recordViolation('migration-safety-baseline: invalid JSON');
+  }
   const baseline = new Set(baselineList.map((entry) => String(entry)));
   const migrationDirs = fs
     .readdirSync(migrationsDir, { withFileTypes: true })
@@ -721,8 +724,7 @@ if (fs.existsSync(migrationsDir)) {
     const hasMigrationTest = migrationTestCandidates.some((candidate) => fs.existsSync(candidate));
 
     if (!hasReplayTests && !hasMigrationTest) {
-      console.error(`migration-safety-missing-test: ${dirName}`);
-      process.exit(1);
+      recordViolation(`migration-safety-missing-test: ${dirName}`);
     }
   }
 }
@@ -737,12 +739,10 @@ for (const file of typesFiles) {
   const relPath = path.normalize(path.relative(root, file));
   if (relPath === jsxGlobalPath) continue;
   if (relPath.startsWith(compatPrefix)) continue;
-  console.error(`types-compat-only: ${relPath}`);
-  process.exit(1);
+  recordViolation(`types-compat-only: ${relPath}`);
 }
 
-/** @type {Map<string, string[]>} */
-const moduleDeclarations = new Map();
+const moduleDeclarations = new Map<string, string[]>();
 for (const file of typesFiles) {
   const relPath = path.normalize(path.relative(root, file));
   const content = fs.readFileSync(file, 'utf8');
@@ -757,9 +757,13 @@ for (const file of typesFiles) {
 }
 for (const [moduleName, files] of moduleDeclarations) {
   if (files.length > 1) {
-    console.error(`types-duplicate-module: ${moduleName}: ${files.join(', ')}`);
-    process.exit(1);
+    recordViolation(`types-duplicate-module: ${moduleName}: ${files.join(', ')}`);
   }
 }
 
-console.warn('check-repo-guardrails: ok');
+if (violations.length > 0) {
+  const details = violations.map((message) => formatDetail(message));
+  fail(PREFIX, 'Repo guardrail violations detected', { details, fix: FIX });
+}
+
+process.stdout.write('check-repo-guardrails: ok\n');

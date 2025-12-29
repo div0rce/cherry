@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -13,6 +15,8 @@ type Violation = {
 };
 
 const cwd = process.cwd();
+const PREFIX = 'check:shell-boundaries';
+const FIX = 'Remove cross-shell imports between (dev) and (user) surfaces.';
 
 async function getFiles(pattern: string | string[]): Promise<string[]> {
   return fg(pattern, {
@@ -73,15 +77,17 @@ async function main(): Promise<void> {
   await Promise.all(files.map((file) => checkFile(file, violations)));
 
   if (violations.length > 0) {
-    console.error('Shell boundary violations detected:');
-    for (const v of violations) {
-      console.error(`- ${v.file}: imports "${v.importPath}" (${v.reason})`);
-    }
-    process.exitCode = 1;
-    return;
+    const details = violations.map(
+      (violation) =>
+        `${violation.file}:1:1: imports \"${violation.importPath}\" (${violation.reason})`
+    );
+    fail(PREFIX, 'Shell boundary violations detected', { details, fix: FIX });
   }
 
-  console.warn('Shell boundary check passed.');
+  process.stdout.write('Shell boundary check passed.\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+});

@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { parseJson } from './guardrails/lib/read-json.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 import { asIsoDate, type IsoDateString } from '../lib/util/iso-date';
 
 ensureTsEsm();
@@ -31,6 +34,8 @@ type AllowlistEntryRaw = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:side-effects';
+const FIX = 'Declare side effects in scripts/side-effects.allowlist.json or remove them.';
 const TARGET = path.join(ROOT, 'lib');
 const ALLOWLIST_PATH = path.join(ROOT, 'scripts', 'side-effects.allowlist.json');
 const AllowlistEntrySchema = z
@@ -238,7 +243,7 @@ function loadAllowlist(): Record<string, AllowlistEntry> {
     throw new Error(`Side-effects allowlist missing at ${path.relative(ROOT, ALLOWLIST_PATH)}`);
   }
   const data = fs.readFileSync(ALLOWLIST_PATH, 'utf8');
-  const parsed = AllowlistSchema.parse(globalThis.JSON.parse(data));
+  const parsed = AllowlistSchema.parse(parseJson(data));
   const normalized: Record<string, AllowlistEntry> = {};
   const entries = Object.entries(parsed) as Array<[string, AllowlistEntryRaw]>;
   for (const [key, entry] of entries) {
@@ -280,7 +285,9 @@ function main(): void {
     }
     const json = `${JSON.stringify(allowlist, null, 2)}\n`;
     fs.writeFileSync(ALLOWLIST_PATH, json, 'utf8');
-    console.warn(`Wrote side-effects allowlist to ${path.relative(ROOT, ALLOWLIST_PATH)}`);
+    process.stdout.write(
+      `Wrote side-effects allowlist to ${path.relative(ROOT, ALLOWLIST_PATH)}\n`
+    );
     process.exit(0);
   }
 
@@ -328,18 +335,20 @@ function main(): void {
 
   if (allowlistedWarnings.length > 0) {
     for (const warn of allowlistedWarnings) {
-      console.warn(warn);
+      process.stdout.write(`${warn}\n`);
     }
   }
 
   if (errors.length > 0) {
-    for (const err of errors) {
-      console.error(err);
-    }
-    process.exit(1);
+    fail(PREFIX, 'Side-effect violations detected', { details: errors, fix: FIX });
   }
 
-  console.warn('check-side-effects: ok');
+  process.stdout.write('check-side-effects: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'child_process';
+import { fail } from './guardrails/lib/fail.mts';
 
 const diffResult = spawnSync('git', ['diff', '--name-only', 'origin/main...HEAD'], {
   encoding: 'utf8',
 });
 
+const PREFIX = 'check:engine-freeze';
+const FIX = 'Update engine-freeze policy or avoid modifying engine-sensitive files.';
+
 if (diffResult.status !== 0) {
-  console.log('check-engine-freeze: unable to compute diff against origin/main, skipping (no enforcement).');
+  process.stdout.write(
+    'check-engine-freeze: unable to compute diff against origin/main, skipping (no enforcement).\n'
+  );
   process.exit(0);
 }
 
@@ -34,9 +40,8 @@ const offending = changedFiles.filter((file) =>
 );
 
 if (offending.length > 0) {
-  console.log('Engine freeze active: engine-related files changed:');
-  offending.forEach((file) => console.log(file));
-  process.exit(1);
+  const details = offending.map((file) => `${file}:1:1: engine-freeze violation`);
+  fail(PREFIX, 'Engine freeze active: engine-related files changed', { details, fix: FIX });
 }
 
-console.log('check-engine-freeze: OK (no engine-sensitive changes).');
+process.stdout.write('check-engine-freeze: OK (no engine-sensitive changes).\n');

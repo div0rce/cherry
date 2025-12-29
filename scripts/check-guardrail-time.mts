@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -10,6 +12,8 @@ type GuardrailCall = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:guardrail-time';
+const FIX = 'Align logGuardrailEvent timestampSource with the file zone.';
 const TARGET_DIRS = [path.join(ROOT, 'app'), path.join(ROOT, 'lib')];
 const EXTENSIONS = new Set(['.ts', '.tsx']);
 const SKIP_DIRS = new Set([
@@ -21,9 +25,8 @@ const SKIP_DIRS = new Set([
   'tests',
 ]);
 
-function fail(message: string): never {
-  process.stderr.write(`[guardrail-time] ${message}\n`);
-  process.exit(1);
+function guardrailFail(message: string): never {
+  fail(PREFIX, message, { fix: FIX });
 }
 
 function walk(dir: string): string[] {
@@ -65,7 +68,7 @@ function extractGuardrailCalls(file: string, content: string): GuardrailCall[] {
       }
     }
     if (end === -1) {
-      fail(`Failed to parse logGuardrailEvent() body in ${file}`);
+      guardrailFail(`Failed to parse logGuardrailEvent() body in ${file}`);
     }
     calls.push({ file, body: content.slice(openBrace + 1, end) });
   }
@@ -96,16 +99,16 @@ function main(): void {
 
     const expected = expectedSource(relative);
     if (expected === null) {
-      fail(`logGuardrailEvent used outside allowed zones: ${relative}`);
+      guardrailFail(`logGuardrailEvent used outside allowed zones: ${relative}`);
     }
     for (const call of calls) {
       const match = call.body.match(/timestampSource\s*:\s*['"]([^'"]+)['"]/);
       if (match === null) {
-        fail(`Missing timestampSource in ${call.file}`);
+        guardrailFail(`Missing timestampSource in ${call.file}`);
       }
       const actual = match[1];
       if (actual !== expected) {
-        fail(
+        guardrailFail(
           `Invalid timestampSource in ${call.file} (expected ${expected}, got ${actual ?? 'missing'})`
         );
       }
@@ -113,4 +116,9 @@ function main(): void {
   }
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

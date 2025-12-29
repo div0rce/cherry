@@ -1,20 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { importUnknown } from './guardrails/lib/import-typed.mts';
+import {
+  GuardrailRegistrySchema,
+  PackageJsonSchema,
+  readJsonFile,
+} from './guardrails/lib/read-json.mts';
 import { GUARDRAILS as DEFAULT_GUARDRAILS } from './guardrails/registry.mts';
+import { z } from 'zod';
 
 ensureTsEsm();
 
 type Violation = {
   script: string;
   message: string;
+  line: number;
+  col: number;
 };
 
 type GuardrailRegistry = Record<string, string>;
 type ExecutionRegistry = Record<string, string>;
 
-const PREFIX = 'ORPHAN_NPM_SCRIPT';
+type PackageScripts = {
+  scripts: Record<string, string>;
+  raw: string;
+};
+
+const PREFIX = 'check:no-orphan-scripts';
 const ROOT_ENV = process.env['CHERRY_EXECUTION_REGISTRY_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
   ? path.resolve(ROOT_ENV)
@@ -22,52 +37,90 @@ const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
 const SCRIPT_TOKEN = /(^|\s|['"])\.?(\/|\\)?scripts[\/\\]/;
 const ALLOWED_PREFIXES = ['check:', 'ingest:', 'audit:', 'backfill:', 'cleanup:', 'report:'];
 
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
+const ExecutionRegistrySchema = z
+  .object({
+    EXECUTION: z.record(z.string(), z.string()),
+    EXECUTION_RUNNER: z.string(),
+  })
+  .passthrough();
+
+function lineColForToken(raw: string, token: string): { line: number; col: number } {
+  const index = raw.indexOf(token);
+  if (index <= 0) return { line: 1, col: 1 };
+  const slice = raw.slice(0, index);
+  const line = slice.split('\n').length;
+  const lastNewline = slice.lastIndexOf('\n');
+  const col = lastNewline === -1 ? index + 1 : index - lastNewline;
+  return { line, col };
 }
 
 async function loadGuardrails(): Promise<GuardrailRegistry> {
   if (ROOT === process.cwd()) {
-    return DEFAULT_GUARDRAILS as GuardrailRegistry;
+    const guardrails: GuardrailRegistry = DEFAULT_GUARDRAILS;
+    return guardrails;
   }
-  const registryPath = path.join(ROOT, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathMts = path.join(ROOT, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathTs = path.join(ROOT, 'scripts', 'guardrails', 'registry.ts');
+  const registryPath = fs.existsSync(registryPathMts) ? registryPathMts : registryPathTs;
   if (fs.existsSync(registryPath) === false) {
-    fail(`Guardrail registry missing at ${registryPath}`);
+    fail(PREFIX, `Guardrail registry missing at ${registryPath}`, {
+      fix: 'Restore scripts/guardrails/registry.mts.',
+    });
   }
-  const mod = await import(pathToFileURL(registryPath).href);
-  const guardrails = mod.GUARDRAILS as GuardrailRegistry | undefined;
-  if (guardrails === undefined) {
-    fail(`Guardrail registry missing exports in ${registryPath}`);
+  const mod: unknown = await importUnknown(registryPath);
+  const parsed = GuardrailRegistrySchema.safeParse(mod);
+  if (!parsed.success) {
+    fail(PREFIX, `Guardrail registry missing exports in ${registryPath}`, {
+      fix: 'Ensure GUARDRAILS is exported from the registry.',
+    });
   }
-  return guardrails;
+  return parsed.data.GUARDRAILS;
 }
 
 async function loadExecutionRegistry(): Promise<ExecutionRegistry> {
-  const registryPath = path.join(ROOT, 'scripts', 'execution', 'registry.mts');
+  const registryPathMts = path.join(ROOT, 'scripts', 'execution', 'registry.mts');
+  const registryPathTs = path.join(ROOT, 'scripts', 'execution', 'registry.ts');
+  const registryPath = fs.existsSync(registryPathMts) ? registryPathMts : registryPathTs;
   if (fs.existsSync(registryPath) === false) {
-    fail(`Execution registry missing at ${registryPath}`);
+    fail(PREFIX, `Execution registry missing at ${registryPath}`, {
+      fix: 'Restore scripts/execution/registry.mts.',
+    });
   }
-  const mod = await import(pathToFileURL(registryPath).href);
-  const execution = mod.EXECUTION as ExecutionRegistry | undefined;
-  if (execution === undefined) {
-    fail(`Execution registry missing exports in ${registryPath}`);
+  const mod: unknown = await importUnknown(registryPath);
+  const parsed = ExecutionRegistrySchema.safeParse(mod);
+  if (!parsed.success) {
+    fail(PREFIX, `Execution registry missing exports in ${registryPath}`, {
+      fix: 'Ensure EXECUTION is exported from the execution registry.',
+    });
   }
-  return execution;
+  return parsed.data.EXECUTION as ExecutionRegistry;
 }
 
-function readPackageScripts(): Record<string, string> {
+function readPackageScripts(): PackageScripts {
   const packagePath = path.join(ROOT, 'package.json');
   if (fs.existsSync(packagePath) === false) {
-    fail('package.json missing');
+    fail(PREFIX, 'package.json missing', {
+      details: [path.normalize(path.relative(ROOT, packagePath))],
+      fix: 'Restore package.json with scripts.',
+    });
   }
   const raw = fs.readFileSync(packagePath, 'utf8');
-  const parsed = JSON.parse(raw) as { scripts?: Record<string, string> };
-  const scripts = parsed.scripts;
-  if (scripts === undefined) {
-    fail('package.json scripts missing');
+  try {
+    const parsed = PackageJsonSchema.parse(readJsonFile(packagePath));
+    if (parsed.scripts === undefined) {
+      fail(PREFIX, 'package.json scripts missing', {
+        details: [path.normalize(path.relative(ROOT, packagePath))],
+        fix: 'Add a scripts object to package.json.',
+      });
+    }
+    return { scripts: parsed.scripts, raw };
+  } catch (err: unknown) {
+    const message = asMessage(err);
+    fail(PREFIX, `package.json scripts missing: ${message}`, {
+      details: [path.normalize(path.relative(ROOT, packagePath))],
+      fix: 'Fix invalid JSON in package.json.',
+    });
   }
-  return scripts;
 }
 
 function hasAllowedPrefix(name: string): boolean {
@@ -77,18 +130,22 @@ function hasAllowedPrefix(name: string): boolean {
 async function main(): Promise<void> {
   const guardrails = await loadGuardrails();
   const execution = await loadExecutionRegistry();
-  const scripts = readPackageScripts();
+  const { scripts, raw } = readPackageScripts();
   const guardrailNames = new Set(Object.keys(guardrails));
   const executionNames = new Set(Object.keys(execution));
   const violations: Violation[] = [];
+  const packagePath = path.normalize(path.relative(ROOT, path.join(ROOT, 'package.json')));
 
   for (const [name, command] of Object.entries(scripts)) {
     if (SCRIPT_TOKEN.test(command) === false) continue;
     if (guardrailNames.has(name)) continue;
+    const { line, col } = lineColForToken(raw, `"${name}"`);
     if (hasAllowedPrefix(name) === false) {
       violations.push({
         script: name,
         message: `${name} references scripts/ but is unregistered`,
+        line,
+        col,
       });
       continue;
     }
@@ -96,18 +153,29 @@ async function main(): Promise<void> {
       violations.push({
         script: name,
         message: `${name} references scripts/ but is unregistered`,
+        line,
+        col,
       });
     }
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(`${PREFIX}: ${violation.message}\n`);
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) =>
+        `${packagePath}:${violation.line}:${violation.col}: ${violation.script}: ${violation.message}`
+    );
+    fail(PREFIX, 'Orphan npm scripts detected', {
+      details,
+      fix: 'Register scripts in the execution registry or remove them.',
+    });
   }
 
   process.stdout.write('no-orphan-scripts: ok\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, {
+    fix: 'Inspect check-no-orphan-scripts.mts for errors.',
+  });
+});

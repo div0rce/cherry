@@ -2,16 +2,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
 
 type Violation = {
   file: string;
+  line: number;
+  col: number;
   message: string;
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:engine-prisma';
+const FIX = 'Remove Prisma usage from engine code and use adapters instead.';
 const TARGETS = [
   'lib/engine/**/*.{ts,tsx,js,jsx}',
   'lib/authority/**/*.{ts,tsx,js,jsx}',
@@ -124,8 +130,13 @@ function scanFile(filePath: string): Violation[] {
   const violations: Violation[] = [];
 
   for (const pattern of PATTERNS) {
-    if (pattern.regex.test(sanitized)) {
-      violations.push({ file: relative, message: pattern.message });
+    const index = sanitized.search(pattern.regex);
+    if (index !== -1) {
+      const slice = sanitized.slice(0, index);
+      const line = slice.split('\n').length;
+      const lastNewline = slice.lastIndexOf('\n');
+      const col = lastNewline === -1 ? index + 1 : index - lastNewline;
+      violations.push({ file: relative, line, col, message: pattern.message });
     }
   }
 
@@ -141,13 +152,18 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      console.error(`${violation.file}: ${violation.message}`);
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Engine prisma violations detected', { details, fix: FIX });
   }
 
-  console.warn('check-engine-prisma: ok');
+  process.stdout.write('check-engine-prisma: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

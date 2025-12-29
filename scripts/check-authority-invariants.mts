@@ -8,19 +8,24 @@ import { initConfigFromEnv } from '../lib/config/init.ts';
 import { getServerConfig } from '../lib/config/store.ts';
 import { Sha256Digest } from '../lib/adapters/runtime/digest.sha256.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
 
-type AuthoritySnapshot = import('../lib/authority/simulateSpendAuthority.ts').AuthoritySnapshot;
-type SimulateSpendParams = import('../lib/authority/simulateSpendAuthority.ts').SimulateSpendParams;
-type SimulatedAuthorityDecision =
-  import('../lib/authority/simulateSpendAuthority.ts').SimulatedAuthorityDecision;
-type DecisionEventWriter = import('../lib/authority/simulateSpendAuthority.ts').DecisionEventWriter;
+import type {
+  AuthoritySnapshot,
+  DecisionEventWriter,
+  SimulateSpendParams,
+  SimulatedAuthorityDecision,
+} from '../lib/authority/simulateSpendAuthority.ts';
 
 const fixedNowMs = 1704153600000;
 const fixedPeriodEndMs = 1706745600000;
 const digest = Sha256Digest;
+const PREFIX = 'check:authority-invariants';
+const FIX = 'Fix authority invariants or update the guardrail expectations.';
 
 function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySnapshot {
   return {
@@ -131,10 +136,10 @@ async function main(): Promise<void> {
     assert.ok(field in event, `Missing decisionEvent field ${field}`);
   }
 
-  console.warn('authority invariants: ok');
+  process.stdout.write('authority invariants: ok\n');
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
 });

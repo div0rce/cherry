@@ -2,10 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
 
+const PREFIX = 'check:authority-lint';
+const FIX = 'Remove forbidden authority wording or add the required freeze banner.';
 const forbiddenTokens = ['approve', 'decline', 'block', 'route', 'authorization', 'auth loop'];
 const scopedGlobs = ['lib/authority/**/*.ts', 'lib/autopilot/**/*.ts', 'lib/vine/**/*.ts', 'app/api/**/*.ts'];
 const ignoreGlobs = [
@@ -67,20 +71,21 @@ function main(): void {
   const bannerViolations = checkFreezeBanners();
 
   if (tokenViolations.length > 0 || bannerViolations.length > 0) {
-    if (tokenViolations.length > 0) {
-      console.error('Forbidden authority/autopilot/vine/api language detected:');
-      for (const v of tokenViolations) {
-        console.error(`- ${v.file}: contains "${v.token}"`);
-      }
-    }
-    if (bannerViolations.length > 0) {
-      console.error('Missing authority_v1 freeze banner:');
-      for (const file of bannerViolations) {
-        console.error(`- ${file}`);
-      }
-    }
-    process.exit(1);
+    const details = [
+      ...tokenViolations.map(
+        (violation) => `${violation.file}:1:1: contains \"${violation.token}\"`
+      ),
+      ...bannerViolations.map(
+        (file) => `${file}:1:1: missing authority_v1 freeze banner`
+      ),
+    ];
+    fail(PREFIX, 'Authority lint violations detected', { details, fix: FIX });
   }
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

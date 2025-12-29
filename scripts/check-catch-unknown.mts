@@ -1,15 +1,12 @@
 import { spawnSync } from 'node:child_process';
+import { fail } from './guardrails/lib/fail.mts';
 
-const PREFIX = 'catch-unknown';
-
-function fail(message: string): never {
-  process.stderr.write(`[${PREFIX}] ${message}\n`);
-  process.exit(1);
-}
+const PREFIX = 'check:catch-unknown';
+const FIX = 'Use `catch (error: unknown)` and normalize before access.';
 
 const rg = spawnSync('rg', ['catch\\s*\\(', 'app', 'lib'], { encoding: 'utf8' });
 if (rg.status !== 0 && rg.status !== 1) {
-  fail(`rg failed with status ${rg.status ?? 'null'}`);
+  fail(PREFIX, `rg failed with status ${rg.status ?? 'null'}`, { fix: FIX });
 }
 
 const lines = (rg.stdout ?? '')
@@ -19,11 +16,10 @@ const lines = (rg.stdout ?? '')
   .filter((line) => line.includes('unknown') === false);
 
 if (lines.length > 0) {
-  process.stderr.write('Raw catch without unknown:\n');
-  for (const line of lines) {
-    process.stderr.write(`${line}\n`);
-  }
-  process.exit(1);
+  fail(PREFIX, 'Raw catch without unknown detected', {
+    details: lines,
+    fix: FIX,
+  });
 }
 
 process.stdout.write('catch-unknown: ok\n');

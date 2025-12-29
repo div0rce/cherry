@@ -1,6 +1,8 @@
 import path from 'node:path';
 import ts from 'typescript';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 import { BRAND_CONSTRUCTORS, BRAND_PROPERTIES } from '../lib/util/brand-registry';
 
 ensureTsEsm();
@@ -13,6 +15,8 @@ type Violation = {
 };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:branded-literal';
+const FIX = 'Use branded constructors instead of raw literals.';
 const TARGET_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
 const TARGET_PREFIXES = ['app', 'lib', 'scripts', 'tests'];
 const FIXTURE_DIR = path.join('tests', 'fixtures');
@@ -25,9 +29,8 @@ const FIXTURE_PATH = path.join(
   'branded-type-enforcement.ts'
 );
 
-function fail(message: string): never {
-  process.stderr.write(`[no-branded-literal] ${message}\n`);
-  process.exit(1);
+function guardrailFail(message: string, fix: string = FIX): never {
+  fail(PREFIX, message, { fix });
 }
 
 function isTargetFile(fileName: string): boolean {
@@ -101,11 +104,13 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
     if (isBrandConstructorCall(initializer)) return;
     if (targetType === undefined) return;
     if (!hasBrandProperty(targetType)) return;
+    const typeLabel = checker.typeToString(targetType);
+    const suffix = typeLabel.length > 0 ? ` (${typeLabel})` : '';
     addViolation(
       violations,
       sourceFile,
       node,
-      `Branded type assigned from literal; use a constructor`
+      `Branded type assigned from literal${suffix}; use a constructor`
     );
   }
 
@@ -136,17 +141,17 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
 function resolveRootNames(): string[] {
   if (FIXTURE_MODE) {
     if (!ts.sys.fileExists(FIXTURE_PATH)) {
-      fail(`Fixture not found: ${path.relative(ROOT, FIXTURE_PATH)}`);
+      guardrailFail(`Fixture not found: ${path.relative(ROOT, FIXTURE_PATH)}`);
     }
     return [FIXTURE_PATH];
   }
   const configPath = ts.findConfigFile(ROOT, ts.sys.fileExists, 'tsconfig.eslint.json');
   if (configPath === undefined) {
-    fail('tsconfig.eslint.json not found');
+    guardrailFail('tsconfig.eslint.json not found');
   }
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    fail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -160,7 +165,7 @@ function resolveRootNames(): string[] {
     configPath
   );
   if (parsed.errors.length > 0) {
-    fail(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -181,11 +186,11 @@ function resolveCompilerOptions(): ts.CompilerOptions {
   }
   const configPath = ts.findConfigFile(ROOT, ts.sys.fileExists, 'tsconfig.eslint.json');
   if (configPath === undefined) {
-    fail('tsconfig.eslint.json not found');
+    guardrailFail('tsconfig.eslint.json not found');
   }
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    fail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -219,15 +224,18 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(
-        `${violation.file}:${violation.line}:${violation.col}: ${violation.message}\n`
-      );
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Branded literal violations detected', { details, fix: FIX });
   }
 
   process.stdout.write('no-branded-literal: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

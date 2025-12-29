@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -8,6 +10,8 @@ ensureTsEsm();
 type Violation = { file: string; line: number; col: number; message: string };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:config-init';
+const FIX = 'Move config initialization to boundary files (app/api, scripts, tests).';
 const EXTENSIONS = new Set([
   '.ts',
   '.tsx',
@@ -117,13 +121,16 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const v of violations) {
-      console.error(`${v.file}:${v.line}:${v.col}: ${v.message}`);
-    }
-    process.exit(1);
+    const details = violations.map((v) => `${v.file}:${v.line}:${v.col}: ${v.message}`);
+    fail(PREFIX, 'Config init violations detected', { details, fix: FIX });
   }
 
-  console.warn('check-config-init: ok');
+  process.stdout.write('check-config-init: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

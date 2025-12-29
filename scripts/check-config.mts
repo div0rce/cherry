@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { readJsonFile } from './guardrails/lib/read-json.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -9,6 +13,8 @@ ensureTsEsm();
 type Violation = { file: string; line: number; col: number; message: string };
 
 const ROOT = process.cwd();
+const PREFIX = 'check:config';
+const FIX = 'Move env reads to boundaries or add explicit allowlist markers where permitted.';
 const TARGET_DIRS = [path.join(ROOT, "app"), path.join(ROOT, "lib")];
 const EXTENSIONS = new Set([
   '.ts',
@@ -23,9 +29,12 @@ const PRAGMA_FILE = "@implicit-config-allow-file";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const allowlistPath = path.join(__dirname, "guardrails", "server-entropy.allowlist.json");
-const allowlistData = globalThis.JSON.parse(fs.readFileSync(allowlistPath, "utf8")) as {
-  files?: string[];
-};
+const AllowlistSchema = z
+  .object({
+    files: z.array(z.string()).optional(),
+  })
+  .passthrough();
+const allowlistData = AllowlistSchema.parse(readJsonFile(allowlistPath));
 const ALLOWLIST = new Set((allowlistData.files ?? []).map((p) => path.normalize(p)));
 
 const EXCLUDED_PATH_PATTERNS = [
@@ -191,13 +200,17 @@ function checkFile(filePath: string): Violation[] {
   const isAllowlisted = ALLOWLIST.has(normalizedPath);
 
   if (isAllowlisted && !rawContent.includes(PRAGMA_FILE)) {
-    console.warn(`WARNING: ${normalizedPath} is allowlisted for implicit-config checks`);
+    process.stdout.write(
+      `WARNING: ${normalizedPath} is allowlisted for implicit-config checks\n`
+    );
     return [];
   }
 
   if (rawContent.includes(PRAGMA_FILE)) {
     if (isAllowlisted) {
-      console.warn(`WARNING: ${normalizedPath} is fully exempted from implicit-config checks`);
+      process.stdout.write(
+        `WARNING: ${normalizedPath} is fully exempted from implicit-config checks\n`
+      );
       return [];
     }
   }
@@ -247,13 +260,20 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      console.error(`${violation.file}:${violation.line}:${violation.col}: ${violation.message}`);
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Implicit config violations detected', { details, fix: FIX });
   }
 
-  console.warn("✅ Implicit config check passed: no forbidden env access in app/ or lib/");
+  process.stdout.write(
+    "✅ Implicit config check passed: no forbidden env access in app/ or lib/\n"
+  );
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

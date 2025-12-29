@@ -3,15 +3,16 @@ import path from 'node:path';
 import { z } from 'zod';
 import { readTsConfig } from './lib/read-tsconfig.mts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { readJsonFile } from './guardrails/lib/read-json.mts';
+import { fail as guardrailFail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
-
-const jsonParse = JSON.parse;
+const PREFIX = 'check:guardrails-core';
+const DEFAULT_FIX = 'Restore guardrail enforcement in ESLint and tsconfig.';
 
 function fail(message: string): never {
-  process.stderr.write(`[guardrails] ${message}\n`);
-  process.exit(1);
+  guardrailFail(PREFIX, message, { fix: DEFAULT_FIX });
 }
 
 const PackageJsonSchema = z
@@ -22,8 +23,7 @@ const PackageJsonSchema = z
 
 function readJson<T>(filePath: string, schema: z.ZodType<T>): T {
   try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    return schema.parse(jsonParse(raw));
+    return schema.parse(readJsonFile(filePath));
   } catch (err: unknown) {
     fail(`Failed to read JSON file ${filePath}: ${(err as Error).message}`);
   }
@@ -273,8 +273,7 @@ function main(): void {
   assertPrismaAssumptions();
   assertCriticalFilesExist();
   assertTestsPresent();
-  // eslint-disable-next-line no-console
-  console.log('[guardrails] all checks passed');
+  process.stdout.write('[guardrails] all checks passed\n');
 }
 
 main();

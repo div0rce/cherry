@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
@@ -47,6 +49,8 @@ const ALLOW_STATIC_COMMENT = '// guardrail: allow-static-user-page';
 const DYNAMIC_DECLARATION = /export\s+const\s+dynamic\s*=\s*['"]force-dynamic['"];?/;
 
 const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx'];
+const PREFIX = 'check:user-pages-runtime';
+const FIX = 'Add force-dynamic to user pages or remove forbidden server tokens.';
 
 function resolveImport(fromFile: string, specifier: string): string | null {
   if (specifier.startsWith('@/')) {
@@ -149,6 +153,7 @@ function hasAllowStaticComment(content: string): boolean {
 
 function main(): void {
   const pages = fg.sync(PAGE_PATTERNS, { cwd: root, absolute: true }).sort();
+  const violations: string[] = [];
 
   for (const file of pages) {
     const relative = path.normalize(path.relative(root, file));
@@ -160,29 +165,38 @@ function main(): void {
       const forbidden = findForbiddenToken(file);
       if (forbidden !== null) {
         const tokenFile = path.normalize(path.relative(root, forbidden.file));
-        console.error(
-          `user-pages-runtime: ${relative}: forbidden token ${forbidden.token} (${tokenFile})`
+        violations.push(
+          `${relative}:1:1: forbidden token ${forbidden.token} (${tokenFile})`
         );
-        process.exit(1);
       }
       continue;
     }
 
     if (!allowStatic) {
-      console.error(`user-pages-runtime: ${relative}: missing force-dynamic`);
-      process.exit(1);
+      violations.push(`${relative}:1:1: missing force-dynamic`);
     }
 
     const forbidden = findForbiddenToken(file);
     if (forbidden !== null) {
       const token = forbidden.token;
       const tokenFile = path.normalize(path.relative(root, forbidden.file));
-      console.error(`user-pages-runtime: ${relative}: ${token} (${tokenFile})`);
-      process.exit(1);
+      violations.push(`${relative}:1:1: ${token} (${tokenFile})`);
     }
   }
 
-  console.warn('check-user-pages-runtime: ok');
+  if (violations.length > 0) {
+    fail(PREFIX, 'User pages runtime violations detected', {
+      details: violations,
+      fix: FIX,
+    });
+  }
+
+  process.stdout.write('check-user-pages-runtime: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: FIX });
+}

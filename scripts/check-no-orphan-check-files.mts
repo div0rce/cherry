@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { importUnknown } from './guardrails/lib/import-typed.mts';
+import { GuardrailRegistrySchema } from './guardrails/lib/read-json.mts';
 import { GUARDRAILS as DEFAULT_GUARDRAILS } from './guardrails/registry.mts';
 
 ensureTsEsm();
@@ -13,7 +16,7 @@ type Violation = {
 
 type GuardrailRegistry = Record<string, string>;
 
-const PREFIX = 'ORPHAN_CHECK_FILE';
+const PREFIX = 'check:no-orphan-check-files';
 const ROOT_ENV = process.env['CHERRY_GUARDRAIL_REGISTRY_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
   ? path.resolve(ROOT_ENV)
@@ -22,25 +25,27 @@ const SCRIPT_ROOT = 'scripts';
 const CHECK_PREFIX = 'check-';
 const CHECK_EXTENSIONS = new Set(['.ts', '.mts', '.js', '.mjs']);
 
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
-}
-
 async function loadGuardrails(): Promise<GuardrailRegistry> {
   if (ROOT === process.cwd()) {
-    return DEFAULT_GUARDRAILS as GuardrailRegistry;
+    const guardrails: GuardrailRegistry = DEFAULT_GUARDRAILS;
+    return guardrails;
   }
-  const registryPath = path.join(ROOT, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathMts = path.join(ROOT, 'scripts', 'guardrails', 'registry.mts');
+  const registryPathTs = path.join(ROOT, 'scripts', 'guardrails', 'registry.ts');
+  const registryPath = fs.existsSync(registryPathMts) ? registryPathMts : registryPathTs;
   if (fs.existsSync(registryPath) === false) {
-    fail(`Guardrail registry missing at ${registryPath}`);
+    fail(PREFIX, `Guardrail registry missing at ${registryPath}`, {
+      fix: 'Restore scripts/guardrails/registry.mts.',
+    });
   }
-  const mod = await import(pathToFileURL(registryPath).href);
-  const guardrails = mod.GUARDRAILS as GuardrailRegistry | undefined;
-  if (guardrails === undefined) {
-    fail(`Guardrail registry missing exports in ${registryPath}`);
+  const mod: unknown = await importUnknown(registryPath);
+  const parsed = GuardrailRegistrySchema.safeParse(mod);
+  if (!parsed.success) {
+    fail(PREFIX, `Guardrail registry missing exports in ${registryPath}`, {
+      fix: 'Ensure GUARDRAILS is exported from the registry.',
+    });
   }
-  return guardrails;
+  return parsed.data.GUARDRAILS;
 }
 
 function walk(dir: string): string[] {
@@ -60,7 +65,7 @@ function walk(dir: string): string[] {
 
 function isCheckScript(filePath: string): boolean {
   const base = path.basename(filePath);
-  if (base.startsWith(CHECK_PREFIX) === false) return false;
+  if (!base.startsWith(CHECK_PREFIX)) return false;
   return CHECK_EXTENSIONS.has(path.extname(base));
 }
 
@@ -76,7 +81,7 @@ async function main(): Promise<void> {
   const violations: Violation[] = [];
 
   for (const file of files) {
-    if (isCheckScript(file) === false) continue;
+    if (!isCheckScript(file)) continue;
     const relative = normalize(path.relative(ROOT, file));
     if (guardrailPaths.has(relative)) continue;
     violations.push({
@@ -86,13 +91,21 @@ async function main(): Promise<void> {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(`${PREFIX}: ${violation.message}\n`);
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${violation.file}:1:1: ${violation.message}`
+    );
+    fail(PREFIX, 'Orphan guardrail scripts detected', {
+      details,
+      fix: 'Register guardrail scripts in scripts/guardrails/registry.mts or delete them.',
+    });
   }
 
   process.stdout.write('no-orphan-check-files: ok\n');
 }
 
-void main();
+void main().catch((error: unknown) => {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, {
+    fix: 'Inspect check-no-orphan-check-files.mts for errors.',
+  });
+});

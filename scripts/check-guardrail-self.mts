@@ -1,6 +1,9 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 import { BRAND_PROPERTIES } from '../lib/util/brand-registry';
 
 ensureTsEsm();
@@ -13,7 +16,7 @@ type Violation = {
 };
 
 const ROOT = process.cwd();
-const GUARDRAIL_PREFIX = 'GUARDRAIL SCRIPT VIOLATION';
+const PREFIX = 'check:guardrail-self';
 const FIXTURE_MODE = process.env['CHERRY_GUARDRAIL_SELF_FIXTURE'] === '1';
 const FIXTURE_PATH = path.join(
   ROOT,
@@ -22,6 +25,8 @@ const FIXTURE_PATH = path.join(
   'guardrails',
   'guardrail-self-consistency.ts'
 );
+const GUARDRAIL_HELPER_DIR = path.join(ROOT, 'scripts', 'guardrails', 'lib');
+const REQUIRED_HELPERS = new Set(['fail.mts', 'error.mts', 'read-json.mts', 'import-typed.mts']);
 const POLICY_FIELD_NAMES = new Set(['tier', 'timestampSource', 'expiresBy', 'source']);
 const COMPARISON_OPERATORS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.EqualsEqualsToken,
@@ -36,9 +41,10 @@ const COMPARISON_OPERATORS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.InstanceOfKeyword,
 ]);
 
-function fail(message: string): never {
-  process.stderr.write(`${GUARDRAIL_PREFIX}: ${message}\n`);
-  process.exit(1);
+const DEFAULT_FIX = 'Fix guardrail scripts to satisfy the self-consistency checks.';
+
+function guardrailFail(message: string, fix: string = DEFAULT_FIX): never {
+  fail(PREFIX, message, { fix });
 }
 
 function addViolation(
@@ -330,17 +336,17 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
 function resolveRootNames(): string[] {
   if (FIXTURE_MODE) {
     if (!ts.sys.fileExists(FIXTURE_PATH)) {
-      fail(`Fixture not found: ${path.relative(ROOT, FIXTURE_PATH)}`);
+      guardrailFail(`Fixture not found: ${path.relative(ROOT, FIXTURE_PATH)}`);
     }
     return [FIXTURE_PATH];
   }
   const configPath = ts.findConfigFile(ROOT, ts.sys.fileExists, 'tsconfig.eslint.json');
   if (configPath === undefined) {
-    fail('tsconfig.eslint.json not found');
+    guardrailFail('tsconfig.eslint.json not found');
   }
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    fail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -354,7 +360,7 @@ function resolveRootNames(): string[] {
     configPath
   );
   if (parsed.errors.length > 0) {
-    fail(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext(parsed.errors, {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -375,11 +381,11 @@ function resolveCompilerOptions(): ts.CompilerOptions {
   }
   const configPath = ts.findConfigFile(ROOT, ts.sys.fileExists, 'tsconfig.eslint.json');
   if (configPath === undefined) {
-    fail('tsconfig.eslint.json not found');
+    guardrailFail('tsconfig.eslint.json not found');
   }
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    fail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
+    guardrailFail(ts.formatDiagnosticsWithColorAndContext([configFile.error], {
       getCanonicalFileName: (fileName) => fileName,
       getCurrentDirectory: () => ROOT,
       getNewLine: () => '\n',
@@ -395,7 +401,27 @@ function resolveCompilerOptions(): ts.CompilerOptions {
   return parsed.options;
 }
 
+function assertGuardrailHelpers(): void {
+  if (fs.existsSync(GUARDRAIL_HELPER_DIR) === false) {
+    guardrailFail('Guardrail helper directory missing', 'Create scripts/guardrails/lib.');
+  }
+  const entries = fs.readdirSync(GUARDRAIL_HELPER_DIR, { withFileTypes: true });
+  const files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
+  const missing = [...REQUIRED_HELPERS].filter((name) => !files.includes(name));
+  const extra = files.filter((name) => !REQUIRED_HELPERS.has(name));
+  if (missing.length === 0 && extra.length === 0) return;
+  const details = [
+    ...missing.map((name) => `${path.join('scripts', 'guardrails', 'lib', name)}:1:1: missing`),
+    ...extra.map((name) => `${path.join('scripts', 'guardrails', 'lib', name)}:1:1: unexpected`),
+  ];
+  fail(PREFIX, 'Guardrail helper set mismatch', {
+    details,
+    fix: 'Keep only fail.mts, error.mts, read-json.mts, and import-typed.mts in scripts/guardrails/lib.',
+  });
+}
+
 function main(): void {
+  assertGuardrailHelpers();
   const rootNames = resolveRootNames();
   const options = resolveCompilerOptions();
   const program = ts.createProgram({ rootNames, options });
@@ -413,15 +439,21 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(
-        `${GUARDRAIL_PREFIX}: ${violation.file}:${violation.line}:${violation.col}: ${violation.message}\n`
-      );
-    }
-    process.exit(1);
+    const details = violations.map(
+      (violation) => `${violation.file}:${violation.line}:${violation.col}: ${violation.message}`
+    );
+    fail(PREFIX, 'Guardrail self-consistency violations detected', {
+      details,
+      fix: DEFAULT_FIX,
+    });
   }
 
   process.stdout.write('guardrail-self-consistency: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, { fix: DEFAULT_FIX });
+}
