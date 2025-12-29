@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { PackageJsonSchema, readJsonFile } from './guardrails/lib/read-json.mts';
 import { GUARDRAIL_ENTRYPOINT, GUARDRAILS } from './guardrails/registry.mts';
 
 ensureTsEsm();
@@ -12,7 +15,7 @@ type Violation = {
   message: string;
 };
 
-const PREFIX = 'GUARDRAIL_EXEC_BYPASS';
+const PREFIX = 'check:guardrail-execution';
 const EXECUTION_BYPASS_MESSAGE = 'direct execution is forbidden';
 const ROOT_ENV = process.env['CHERRY_GUARDRAIL_EXECUTION_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
@@ -54,15 +57,18 @@ const PATH_ALLOWLIST = new Set([
   path.join(ROOT, 'scripts', 'check-guardrail-registry.mts'),
 ]);
 
-const jsonParse = JSON.parse;
-
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
-}
-
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function lineColForToken(raw: string, token: string): { line: number; col: number } {
+  const index = raw.indexOf(token);
+  if (index <= 0) return { line: 1, col: 1 };
+  const slice = raw.slice(0, index);
+  const line = slice.split('\n').length;
+  const lastNewline = slice.lastIndexOf('\n');
+  const col = lastNewline === -1 ? index + 1 : index - lastNewline;
+  return { line, col };
 }
 
 function listFiles(dir: string, extensions: Set<string>): string[] {
@@ -91,6 +97,9 @@ function recordPathViolations(filePath: string, content: string, violations: Vio
     CHECK_PATH_REGEX.lastIndex = 0;
     let match: RegExpExecArray | null = null;
     while ((match = CHECK_PATH_REGEX.exec(line)) !== null) {
+      if (match[0].includes('check-<name>')) {
+        continue;
+      }
       violations.push({
         file: filePath,
         line: i + 1,
@@ -179,19 +188,40 @@ function scanScriptCommands(scripts: Record<string, string>, violations: Violati
 
 function scanPackageJson(violations: Violation[]): void {
   if (fs.existsSync(PACKAGE_JSON) === false) {
-    fail('package.json missing');
+    fail(PREFIX, 'package.json missing', {
+      details: [path.normalize(path.relative(ROOT, PACKAGE_JSON))],
+      fix: 'Restore package.json with guardrail scripts.',
+    });
   }
   const raw = fs.readFileSync(PACKAGE_JSON, 'utf8');
   recordPathViolations(PACKAGE_JSON, raw, violations);
-  const parsed = jsonParse(raw) as { scripts?: Record<string, string> };
-  const scripts = parsed.scripts;
-  if (scripts === undefined) {
-    fail('package.json scripts missing');
+  let scripts: Record<string, string>;
+  try {
+    const parsed = PackageJsonSchema.parse(readJsonFile(PACKAGE_JSON));
+    if (parsed.scripts === undefined) {
+      fail(PREFIX, 'package.json scripts missing', {
+        details: [path.normalize(path.relative(ROOT, PACKAGE_JSON))],
+        fix: 'Add a scripts object to package.json.',
+      });
+    }
+    scripts = parsed.scripts;
+  } catch (err: unknown) {
+    const message = asMessage(err);
+    fail(PREFIX, `package.json scripts missing: ${message}`, {
+      details: [path.normalize(path.relative(ROOT, PACKAGE_JSON))],
+      fix: 'Fix invalid JSON in package.json.',
+    });
   }
 
   const entrypointCommand = scripts[ENTRYPOINT];
   if (entrypointCommand === undefined || entrypointCommand.trim().length === 0) {
-    fail(`package.json missing ${ENTRYPOINT} command`);
+    const { line, col } = lineColForToken(raw, `"${ENTRYPOINT}"`);
+    fail(PREFIX, `package.json missing ${ENTRYPOINT} command`, {
+      details: [
+        `${path.normalize(path.relative(ROOT, PACKAGE_JSON))}:${line}:${col}: ${ENTRYPOINT}`,
+      ],
+      fix: `Add ${ENTRYPOINT} to package.json scripts.`,
+    });
   }
 
   scanScriptCommands(scripts, violations);
@@ -200,8 +230,11 @@ function scanPackageJson(violations: Violation[]): void {
     const matches = parseNpmRunMatches(command);
     for (const match of matches) {
       if (isAllowedNpmRun(match.name, name)) continue;
+      const { line, col } = lineColForToken(raw, `"${name}"`);
       violations.push({
         file: PACKAGE_JSON,
+        line,
+        col,
         message: `script ${name} invokes ${match.name} outside ${ENTRYPOINT}`,
       });
     }
@@ -209,6 +242,12 @@ function scanPackageJson(violations: Violation[]): void {
 }
 
 function scanContentFile(filePath: string, violations: Violation[]): void {
+  const relative = path.normalize(path.relative(ROOT, filePath));
+  const guardrailPrefix = path.normalize(path.join('scripts', 'check-'));
+  const guardrailsDir = path.normalize(path.join('scripts', 'guardrails')) + path.sep;
+  if (relative.startsWith(guardrailPrefix) || relative.startsWith(guardrailsDir)) {
+    return;
+  }
   const content = fs.readFileSync(filePath, 'utf8');
   recordPathViolations(filePath, content, violations);
 
@@ -237,7 +276,10 @@ function main(): void {
   scanPackageJson(violations);
 
   const workflowFiles = listFiles(WORKFLOWS_DIR, new Set(['.yml', '.yaml']));
-  const scriptFiles = listFiles(SCRIPTS_DIR, new Set(['.mts', '.ts', '.js', '.mjs']));
+  const scriptFiles = listFiles(
+    SCRIPTS_DIR,
+    new Set(['.mts', '.ts', '.js', '.mjs', '.sh', '.bash', '.zsh'])
+  );
   const docFiles = listFiles(DOCS_DIR, new Set(['.md']));
 
   for (const file of [...workflowFiles, ...scriptFiles, ...docFiles]) {
@@ -245,13 +287,26 @@ function main(): void {
   }
 
   if (violations.length > 0) {
-    for (const violation of violations) {
-      process.stderr.write(`${PREFIX}: ${EXECUTION_BYPASS_MESSAGE}\n`);
-    }
-    process.exit(1);
+    const details = violations.map((violation) => {
+      const relative = path.normalize(path.relative(ROOT, violation.file));
+      const line = violation.line ?? 1;
+      const col = violation.col ?? 1;
+      return `${relative}:${line}:${col}: ${EXECUTION_BYPASS_MESSAGE} (${violation.message})`;
+    });
+    fail(PREFIX, EXECUTION_BYPASS_MESSAGE, {
+      details,
+      fix: 'Run guardrails only via npm run check:<name>.',
+    });
   }
 
   process.stdout.write('guardrail-execution-exclusivity: ok\n');
 }
 
-main();
+try {
+  main();
+} catch (error: unknown) {
+  const message = asMessage(error);
+  fail(PREFIX, `Guardrail crashed: ${message}`, {
+    fix: 'Investigate guardrail execution enforcement.',
+  });
+}

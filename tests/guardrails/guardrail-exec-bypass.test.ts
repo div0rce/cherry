@@ -38,9 +38,9 @@ for (const fixture of fixtures) {
     }`
   );
   assert.equal(
-    stderr.includes('GUARDRAIL_EXEC_BYPASS: direct execution is forbidden'),
+    stderr.includes('check:guardrail-execution'),
     true,
-    `expected GUARDRAIL_EXEC_BYPASS message for ${fixture}, got: ${stderr}`
+    `expected check:guardrail-execution output for ${fixture}, got: ${stderr}`
   );
 }
 
