@@ -75,4 +75,4 @@ if (!nestedMutationThrew && mutatedWalletEnabled !== baseConfig.wallet.enabled) 
   throw new Error('Nested server config mutation should be prevented after lock');
 }
 
-process.stdout.write('check-config-locking: ok\n');
+process.stdout.write('check-config-lock: ok\n');

@@ -17,7 +17,7 @@ fs.writeFileSync(tempFileB, "import { createHash } from 'crypto';\nexport const 
 
 const result = spawnSync(
   'npm',
-  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-identity.mts'],
+  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-identity.mts'],
   {
     cwd: repoRoot,
     stdio: 'ignore',
@@ -27,7 +27,7 @@ const result = spawnSync(
 fs.rmSync(tempDir, { recursive: true, force: true });
 
 if (result.status === 0) {
-  throw new Error('check-no-implicit-identity should fail on implicit identity constructs');
+  throw new Error('check-identity should fail on implicit identity constructs');
 }
 
 process.stdout.write('implicit-identity-guardrail: ok\n');

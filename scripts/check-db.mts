@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { PrismaClient } from '@prisma/client';
 
-if (!process.env.DATABASE_URL) {
-  console.error('check:db-smoke failed: DATABASE_URL is missing');
+const databaseUrl = process.env['DATABASE_URL'];
+if (databaseUrl === undefined || databaseUrl === '') {
+  console.error('check:db failed: DATABASE_URL is missing');
   process.exit(1);
 }
 
@@ -14,9 +15,9 @@ async function main() {
     await prisma.user.count();
     await prisma.recommendationSession.count({ where: { source: 'AUTOPILOT' } });
     await prisma.autopilotCommit.count();
-    console.log('check:db-smoke ok');
+    console.log('check:db ok');
   } catch (err) {
-    console.error('check:db-smoke failed');
+    console.error('check:db failed');
     console.error(err instanceof Error ? err.stack ?? err.message : err);
     process.exitCode = 1;
   } finally {

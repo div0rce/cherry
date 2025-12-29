@@ -15,7 +15,7 @@ fs.writeFileSync(tempFile, 'export const xs = [3,2,1].sort();\n');
 
 const result = spawnSync(
   'npm',
-  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-ordering.mts'],
+  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-ordering.mts'],
   {
     cwd: repoRoot,
     stdio: 'ignore',
@@ -25,7 +25,7 @@ const result = spawnSync(
 fs.rmSync(tempDir, { recursive: true, force: true });
 
 if (result.status === 0) {
-  throw new Error('check-no-implicit-ordering should fail on implicit ordering constructs');
+  throw new Error('check-ordering should fail on implicit ordering constructs');
 }
 
 process.stdout.write('implicit-ordering-guardrail: ok\n');

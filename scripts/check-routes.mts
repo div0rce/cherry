@@ -6,18 +6,21 @@ const ALLOWED_GROUPS = new Set(['marketing', 'user', 'dev']);
 const ROUTE_KINDS = ['page', 'layout', 'route'];
 const ROUTE_EXTENSIONS = new Set(['.tsx', '.jsx', '.ts', '.js']);
 
-const errors = [];
-const routeMap = new Map();
+const errors: string[] = [];
+const routeMap = new Map<
+  string,
+  { pages: string[]; layouts: string[]; routes: string[] }
+>();
 
-function isGroupSegment(segment) {
+function isGroupSegment(segment: string): boolean {
   return segment.startsWith('(') && segment.endsWith(')');
 }
 
-function stripGroup(segment) {
+function stripGroup(segment: string): string {
   return segment.slice(1, -1);
 }
 
-function computeResolvedPath(filePath, groupStack) {
+function computeResolvedPath(filePath: string, groupStack: string[]): string {
   const relativePath = path.relative(APP_DIR, filePath);
   const segments = relativePath.split(path.sep);
   segments.pop(); // drop filename
@@ -34,7 +37,7 @@ function computeResolvedPath(filePath, groupStack) {
   return joined === '/' || joined === '//' ? '/' : joined.replace(/\/+/g, '/');
 }
 
-function recordRoute(filePath, kind, groupStack) {
+function recordRoute(filePath: string, kind: string, groupStack: string[]): void {
   const resolvedPath = computeResolvedPath(filePath, groupStack);
   const entry =
     routeMap.get(resolvedPath) ?? { pages: [], layouts: [], routes: [] };
@@ -44,7 +47,7 @@ function recordRoute(filePath, kind, groupStack) {
   routeMap.set(resolvedPath, entry);
 }
 
-function walk(dir, groupStack) {
+function walk(dir: string, groupStack: string[]): void {
   const entries = readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
     a.name.localeCompare(b.name),
   );
@@ -53,7 +56,7 @@ function walk(dir, groupStack) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       const nextGroupStack = [...groupStack];
-      if (isGroupSegment(entry.name)) {
+      if (isGroupSegment(entry.name) === true) {
         const groupName = stripGroup(entry.name);
         nextGroupStack.push(groupName);
 
@@ -73,7 +76,7 @@ function walk(dir, groupStack) {
         continue;
       }
 
-      if (groupStack.some((group) => !ALLOWED_GROUPS.has(group))) {
+      if (groupStack.some((group) => ALLOWED_GROUPS.has(group) === false)) {
         errors.push(`Route file outside allowed segment groups: ${fullPath}`);
       }
 
@@ -82,7 +85,7 @@ function walk(dir, groupStack) {
   }
 }
 
-function checkDuplicates() {
+function checkDuplicates(): void {
   for (const [resolvedPath, entry] of routeMap.entries()) {
     [
       { key: 'pages', label: 'page' },
@@ -99,7 +102,7 @@ function checkDuplicates() {
   }
 }
 
-function main() {
+function main(): void {
   walk(APP_DIR, []);
   checkDuplicates();
 

@@ -5,16 +5,23 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '..', '..');
+const fixtureRoot = path.join(
+  repoRoot,
+  'tests',
+  'fixtures',
+  'guardrails',
+  'orphan-exec-script'
+);
 
 const result = spawnSync(
   'npm',
-  ['run', 'ts:esm', '--', 'scripts/check-guardrail-self.mts'],
+  ['run', 'ts:esm', '--', 'scripts/check-no-orphan-scripts.mts'],
   {
     cwd: repoRoot,
     encoding: 'utf8',
     env: {
       ...process.env,
-      CHERRY_GUARDRAIL_SELF_FIXTURE: '1',
+      CHERRY_EXECUTION_REGISTRY_ROOT: fixtureRoot,
     },
   }
 );
@@ -24,12 +31,12 @@ const stderr = result.stderr ?? '';
 assert.notEqual(
   result.status,
   0,
-  `expected guardrail self-consistency check to fail, got status=${result.status ?? 'null'}`
+  `expected no-orphan-scripts to fail, got status=${result.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('GUARDRAIL SCRIPT VIOLATION'),
+  stderr.includes('ORPHAN_NPM_SCRIPT'),
   true,
-  `expected guardrail violation output, got: ${stderr}`
+  `expected ORPHAN_NPM_SCRIPT prefix, got: ${stderr}`
 );
 
-process.stdout.write('guardrail-self-consistency: ok\n');
+process.stdout.write('orphan-exec-script: ok\n');

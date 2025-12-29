@@ -81,12 +81,13 @@ function assertEslintRules(): void {
 }
 
 function assertNoNewEslintDisables(): void {
+  const guardrailSelfPath = path.join('scripts', 'check-guardrails-core.mts');
   const allowList = new Set([
     'lib/logger.ts',
     'scripts/debug-bucket-balance.mts',
     'lib/unified-activity.ts',
     'scripts/ingest-moustafa-bank-csv.mts',
-    'scripts/check-guardrails.mts',
+    guardrailSelfPath,
     'tests/engine-solver.test.js',
     'tests/vine-security.test.js',
     'tests/offline-evaluator-regimes.test.js',
@@ -193,15 +194,16 @@ function assertPackageScripts(): void {
     fail('lint script must run lint:tailwind and lint:eslint');
   }
   const testScript = scripts['test'] as string;
-  if (!testScript.includes('check:prisma-assumptions')) {
-    fail('test script must include check:prisma-assumptions');
+  if (!testScript.includes('check:guardrails')) {
+    fail('test script must include check:guardrails');
   }
 }
 
 function assertPrismaAssumptions(): void {
   const filePath = path.join(process.cwd(), 'scripts', 'check-prisma-assumptions.mts');
   if (!fs.existsSync(filePath)) {
-    fail('scripts/check-prisma-assumptions.mts missing');
+    const relative = path.join('scripts', 'check-prisma-assumptions.mts');
+    fail(`${relative} missing`);
   }
 }
 

@@ -1,0 +1,7 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "dev:rogue": "node scripts/rogue.mts"
+  }
+}

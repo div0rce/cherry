@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const scriptPath = path.join(repoRoot, 'scripts', 'check-user-pages-runtime-only.mts');
+const scriptPath = path.join(repoRoot, 'scripts', 'check-user-pages-runtime.mts');
 const tsNodeBin = path.join(
   repoRoot,
   'node_modules',

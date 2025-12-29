@@ -13,7 +13,7 @@ try {
   fs.writeFileSync(tempFile, 'export const bad = Date.now();\n');
   const result = spawnSync(
     'npm',
-    ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-server-entropy.mts'],
+    ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-server-entropy.mts'],
     {
       cwd: repoRoot,
       stdio: 'ignore',
@@ -21,7 +21,7 @@ try {
   );
 
   if (result.status === 0) {
-    throw new Error('check-no-server-entropy should fail on forbidden usage');
+    throw new Error('check-server-entropy should fail on forbidden usage');
   }
 
   process.stdout.write('server-entropy-guardrail: ok\n');

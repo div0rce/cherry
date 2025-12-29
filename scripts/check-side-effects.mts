@@ -339,7 +339,7 @@ function main(): void {
     process.exit(1);
   }
 
-  console.warn('check-no-side-effects: ok');
+  console.warn('check-side-effects: ok');
 }
 
 main();

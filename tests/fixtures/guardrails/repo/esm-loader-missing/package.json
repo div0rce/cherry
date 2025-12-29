@@ -2,6 +2,6 @@
   "name": "fixture",
   "private": true,
   "scripts": {
-    "check:side-effects": "npm run ts:esm -- scripts/check-no-side-effects.mts"
+    "check:side-effects": "npm run ts:esm -- scripts/check-side-effects.mts"
   }
 }

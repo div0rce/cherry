@@ -10,7 +10,7 @@ import {
 ensureTsEsm();
 
 type GuardrailRegistry = {
-  guardrails: readonly string[];
+  guardrails: Record<string, string>;
   entrypoint: string;
 };
 
@@ -19,6 +19,7 @@ const ROOT = process.cwd();
 const FIXTURE_MODE = process.env['CHERRY_GUARDRAIL_REGISTRY_FIXTURE'] === '1';
 const FIXTURE_ROOT = path.join(ROOT, 'tests', 'fixtures', 'guardrails', 'guardrail-registry');
 const OVERRIDE_ROOT = process.env['CHERRY_GUARDRAIL_REGISTRY_ROOT'];
+const RUNNER_PATH = path.join('scripts', 'guardrails', 'run.mts');
 
 function fail(message: string): never {
   process.stderr.write(`${PREFIX}: ${message}\n`);
@@ -45,7 +46,7 @@ async function loadRegistry(rootDir: string): Promise<GuardrailRegistry> {
     fail(`Missing guardrail registry at ${path.relative(ROOT, registryPath)}`);
   }
   const mod = await import(pathToFileURL(registryPath).href);
-  const guardrails = mod.GUARDRAILS as readonly string[] | undefined;
+  const guardrails = mod.GUARDRAILS as Record<string, string> | undefined;
   const entrypoint = mod.GUARDRAIL_ENTRYPOINT as string | undefined;
   if (guardrails === undefined || entrypoint === undefined) {
     fail(`Guardrail registry exports missing in ${path.relative(ROOT, registryPath)}`);
@@ -94,6 +95,13 @@ function commandReferencesFile(command: string, relativePath: string): boolean {
   return normalizedCommand.includes(`./${normalizedPath}`);
 }
 
+function commandReferencesGuardrail(command: string, name: string): boolean {
+  const normalizedCommand = command.replace(/\\/g, '/');
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(^|\\s)${escaped}(\\s|$)`);
+  return pattern.test(normalizedCommand);
+}
+
 function parseGuardrailCalls(command: string): string[] {
   const calls: string[] = [];
   const regex = /npm\s+run\s+([^\s&]+)/g;
@@ -110,11 +118,12 @@ async function main(): Promise<void> {
   const rootDir = resolveRoot();
   const registry = await loadRegistry(rootDir);
   const scripts = readPackageScripts(rootDir);
-  const guardrails = [...registry.guardrails];
-  const guardrailSet = new Set(guardrails);
+  const guardrails = registry.guardrails;
+  const guardrailNames = Object.keys(guardrails);
+  const guardrailSet = new Set(guardrailNames);
   const errors: string[] = [];
 
-  for (const name of guardrails) {
+  for (const name of guardrailNames) {
     const script = scripts[name];
     if (script === undefined || script.trim().length === 0) {
       errors.push(`${name} missing from package.json scripts`);
@@ -123,6 +132,21 @@ async function main(): Promise<void> {
     if (script.includes('ts:esm') === false) {
       errors.push(`${name} must use ts:esm`);
     }
+    const expectedPath = guardrails[name];
+    if (expectedPath === undefined || expectedPath.length === 0) {
+      errors.push(`${name} missing guardrail path`);
+      continue;
+    }
+    const expectedAbsolute = path.join(rootDir, expectedPath);
+    if (fs.existsSync(expectedAbsolute) === false) {
+      errors.push(`${name} references missing file ${expectedPath}`);
+    }
+    if (commandReferencesFile(script, RUNNER_PATH) === false) {
+      errors.push(`${name} must invoke ${RUNNER_PATH}`);
+    }
+    if (commandReferencesGuardrail(script, name) === false) {
+      errors.push(`${name} must pass guardrail name ${name}`);
+    }
   }
 
   const guardrailCommand = scripts[registry.entrypoint];
@@ -130,7 +154,7 @@ async function main(): Promise<void> {
     errors.push(`${registry.entrypoint} missing from package.json scripts`);
   } else {
     const calls = parseGuardrailCalls(guardrailCommand);
-    const missing = guardrails.filter((name) => !calls.includes(name));
+    const missing = guardrailNames.filter((name) => !calls.includes(name));
     const extra = calls.filter((name) => guardrailSet.has(name) === false);
     if (missing.length > 0) {
       errors.push(`${registry.entrypoint} missing guardrails: ${missing.join(', ')}`);
@@ -138,8 +162,8 @@ async function main(): Promise<void> {
     if (extra.length > 0) {
       errors.push(`${registry.entrypoint} has extra entries: ${extra.join(', ')}`);
     }
-    if (calls.length === guardrails.length) {
-      const orderedMismatch = calls.some((name, idx) => name !== guardrails[idx]);
+    if (calls.length === guardrailNames.length) {
+      const orderedMismatch = calls.some((name, idx) => name !== guardrailNames[idx]);
       if (orderedMismatch) {
         errors.push(`${registry.entrypoint} guardrail order must match registry`);
       }
@@ -150,17 +174,10 @@ async function main(): Promise<void> {
   const checkFiles = fs.existsSync(scriptsDir)
     ? walk(scriptsDir).filter((file) => isCheckScript(file))
     : [];
+  const guardrailPaths = new Set(Object.values(guardrails));
   for (const file of checkFiles) {
     const relative = path.relative(rootDir, file);
-    const matchingScripts = Object.entries(scripts).filter(([, command]) =>
-      commandReferencesFile(command, relative)
-    );
-    if (matchingScripts.length === 0) {
-      errors.push(`${relative} exists but no npm script references it`);
-      continue;
-    }
-    const registered = matchingScripts.some(([name]) => guardrailSet.has(name));
-    if (!registered) {
+    if (guardrailPaths.has(relative) === false) {
       errors.push(`${relative} exists but is not registered`);
     }
   }

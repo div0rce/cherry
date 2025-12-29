@@ -142,7 +142,7 @@ function main(): void {
     process.exit(1);
   }
 
-  console.warn('check-no-engine-date: ok');
+  console.warn('check-engine-date: ok');
 }
 
 main();

@@ -182,7 +182,7 @@ function main(): void {
     }
   }
 
-  console.warn('check-user-pages-runtime-only: ok');
+  console.warn('check-user-pages-runtime: ok');
 }
 
 main();

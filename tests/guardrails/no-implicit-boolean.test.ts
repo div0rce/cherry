@@ -8,7 +8,7 @@ const repoRoot = path.resolve(path.dirname(__filename), '..', '..');
 
 const result = spawnSync(
   'npm',
-  ['run', 'ts:esm', '--', 'scripts/check-no-implicit-boolean.mts'],
+  ['run', 'ts:esm', '--', 'scripts/check-implicit-boolean.mts'],
   {
     cwd: repoRoot,
     encoding: 'utf8',

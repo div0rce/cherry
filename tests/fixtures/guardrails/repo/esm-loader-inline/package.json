@@ -3,6 +3,6 @@
   "private": true,
   "scripts": {
     "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json",
-    "check:side-effects": "tsx --tsconfig tsconfig.scripts.json scripts/check-no-side-effects.mts"
+    "check:side-effects": "tsx --tsconfig tsconfig.scripts.json scripts/check-side-effects.mts"
   }
 }

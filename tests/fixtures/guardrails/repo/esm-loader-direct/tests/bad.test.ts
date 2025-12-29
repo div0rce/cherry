@@ -1,1 +1,1 @@
-node scripts/check-no-side-effects.mts
+node scripts/check-side-effects.mts

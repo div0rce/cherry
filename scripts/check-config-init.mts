@@ -123,7 +123,7 @@ function main(): void {
     process.exit(1);
   }
 
-  console.warn('check-config-init-boundaries: ok');
+  console.warn('check-config-init: ok');
 }
 
 main();

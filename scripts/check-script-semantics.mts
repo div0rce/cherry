@@ -295,7 +295,7 @@ function main(): void {
     process.exit(1);
   }
 
-  console.warn("check-script-module-semantics: ok");
+  console.warn("check-script-semantics: ok");
 }
 
 main();

@@ -15,7 +15,7 @@ fs.writeFileSync(tempFile, 'export const val = process.env.SECRET;\n');
 
 const result = spawnSync(
   'npm',
-  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-no-implicit-config.mts'],
+  ['run', 'ts:esm', '--', '-r', 'tsconfig-paths/register', 'scripts/check-config.mts'],
   {
     cwd: repoRoot,
     stdio: 'ignore',
@@ -25,7 +25,7 @@ const result = spawnSync(
 fs.rmSync(tempDir, { recursive: true, force: true });
 
 if (result.status === 0) {
-  throw new Error('check-no-implicit-config should fail on implicit config constructs');
+  throw new Error('check-config should fail on implicit config constructs');
 }
 
 process.stdout.write('implicit-config-guardrail: ok\n');

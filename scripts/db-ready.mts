@@ -8,12 +8,12 @@ function loadEnv() {
   const envFiles = ['.env.local', '.env'];
   for (const file of envFiles) {
     const fullPath = path.join(process.cwd(), file);
-    if (!fs.existsSync(fullPath)) continue;
+    if (fs.existsSync(fullPath) === false) continue;
 
     const lines = fs.readFileSync(fullPath, 'utf8').split(/\r?\n/);
     for (const line of lines) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
+      if (trimmed.length === 0 || trimmed.startsWith('#')) continue;
       const equalsIndex = trimmed.indexOf('=');
       if (equalsIndex === -1) continue;
 
@@ -26,7 +26,7 @@ function loadEnv() {
         value = value.slice(1, -1);
       }
 
-      if (!Object.prototype.hasOwnProperty.call(process.env, key)) {
+      if (Object.prototype.hasOwnProperty.call(process.env, key) === false) {
         process.env[key] = value;
       }
     }
@@ -37,7 +37,7 @@ loadEnv();
 
 const schema = 'prisma/schema.prisma';
 
-function fail(message) {
+function fail(message: string): void {
   console.error(message);
   console.error('\nFix:');
   console.error('  - Ensure DATABASE_URL is set and reachable');
@@ -46,7 +46,8 @@ function fail(message) {
   process.exit(1);
 }
 
-if (!process.env.DATABASE_URL) {
+const databaseUrl = process.env['DATABASE_URL'];
+if (databaseUrl === undefined || databaseUrl === '') {
   fail('DATABASE_URL is missing. Start your database or set DATABASE_URL, then apply migrations.');
 }
 

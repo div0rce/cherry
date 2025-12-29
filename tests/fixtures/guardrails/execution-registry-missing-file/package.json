@@ -1,0 +1,8 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "dev:missing": "npm run ts:esm -- scripts/execution/run.mts dev:missing",
+    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json"
+  }
+}
