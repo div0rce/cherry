@@ -1,18 +1,18 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
-const PREFIX = 'GUARDRAIL DOC SYNC';
-const ROOT = process.cwd();
+const PREFIX = 'check:guardrail-doc-sync';
+const FIX = 'Update docs/guardrails.md whenever the registry changes.';
 const REGISTRY_FILE = path.join('scripts', 'guardrails', 'registry.mts');
 const DOC_FILE = path.join('docs', 'guardrails.md');
 const OVERRIDE_BASE = process.env['CHERRY_GUARDRAIL_DOC_SYNC_BASE'];
 
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
+function guardrailFail(message: string): never {
+  fail(PREFIX, message, { fix: FIX });
 }
 
 function runDiff(args: string[]): string[] | null {
@@ -30,7 +30,7 @@ function resolveDiff(): string[] {
   if (OVERRIDE_BASE !== undefined && OVERRIDE_BASE !== '') {
     const diff = runDiff([OVERRIDE_BASE]);
     if (diff === null) {
-      fail(`Unable to compute git diff for base ${OVERRIDE_BASE}`);
+      guardrailFail(`Unable to compute git diff for base ${OVERRIDE_BASE}`);
     }
     return diff;
   }
@@ -45,7 +45,7 @@ function resolveDiff(): string[] {
     return headDiff;
   }
 
-  fail('Unable to compute git diff for guardrail doc sync');
+  guardrailFail('Unable to compute git diff for guardrail doc sync');
 }
 
 function main(): void {
@@ -57,7 +57,7 @@ function main(): void {
   }
   const docChanged = changed.includes(DOC_FILE);
   if (docChanged === false) {
-    fail(`Registry changed without ${DOC_FILE}`);
+    guardrailFail(`Registry changed without ${DOC_FILE}`);
   }
   process.stdout.write('guardrail-doc-sync: ok\n');
 }
