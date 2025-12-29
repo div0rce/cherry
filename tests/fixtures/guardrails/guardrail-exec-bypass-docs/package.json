@@ -1,0 +1,7 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "check:guardrails": "echo ok"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "fixture",
+  "private": true,
+  "scripts": {
+    "check:guardrails": "npm run foo",
+    "foo": "npm run bar",
+    "bar": "node scripts/check-side-effects.mts"
+  }
+}
