@@ -188,12 +188,6 @@ export default defineConfig([
     },
   },
   {
-    files: ['scripts/check-repo-guardrails.js'],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-    },
-  },
-  {
     files: ['app/api/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-syntax': [
