@@ -46,9 +46,9 @@ for (const file of testFiles) {
       '-r',
       'tsconfig-paths/register',
       '--import',
-      './scripts/config-register.mts',
+      './scripts/lib/config-register.mts',
       '--import',
-      './scripts/prisma-mock.mts',
+      './scripts/lib/prisma-mock.mts',
       file,
     ],
     {

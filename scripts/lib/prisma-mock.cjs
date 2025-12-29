@@ -208,7 +208,7 @@ function buildEnum(values) {
 }
 
 function parseEnumsFromSchema() {
-  const schemaPath = path.resolve(__dirname, '..', 'prisma', 'schema.prisma');
+  const schemaPath = path.resolve(__dirname, '..', '..', 'prisma', 'schema.prisma');
   if (!fs.existsSync(schemaPath)) return {};
   const text = fs.readFileSync(schemaPath, 'utf8');
   const enums = {};

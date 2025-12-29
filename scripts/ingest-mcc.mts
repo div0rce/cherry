@@ -20,6 +20,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { z } from 'zod';
 import {
   MerchantVertical,
   MerchantChannel,
@@ -31,12 +32,14 @@ import { prisma } from '../lib/prisma.ts';
 import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.ts';
 import { logError, logInfo } from '../lib/logger.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { readJsonFile } from './guardrails/lib/read-json.mts';
 
 ensureTsEsm();
 
 
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');
+const UnmappedSchema = z.array(z.number().int());
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value.trim() !== '';
@@ -56,10 +59,7 @@ function logUnmapped(mcc: number) {
   let list: number[] = [];
   if (fs.existsSync(unmappedPath)) {
     try {
-      const parsed = Reflect.apply(JSON.parse, JSON, [fs.readFileSync(unmappedPath, 'utf8')]) as unknown;
-      if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) {
-        list = parsed;
-      }
+      list = UnmappedSchema.parse(readJsonFile(unmappedPath));
     } catch (error: unknown) {
       void error;
       list = [];
@@ -345,7 +345,7 @@ async function main() {
 }
 
 main()
-  .catch((err) => {
+  .catch((err: unknown) => {
     logError('Ingest failed', err);
     process.exit(1);
   })

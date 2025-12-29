@@ -11,7 +11,9 @@ EMAIL="${1:-dev@example.com}"
 BASE_URL="${BASE_URL:-http://localhost:3000}"
 
 CSRFTOKEN_JSON=$(curl -s -c cookies.txt "$BASE_URL/api/auth/csrf")
-CSRF_TOKEN=$(node -e "const res = JSON.parse(process.argv[1] || '{}'); console.log(res.csrfToken || '');" "$CSRFTOKEN_JSON")
+CSRF_TOKEN=$(
+  node --input-type=module -e "import { z } from 'zod'; import { parseJson } from './scripts/guardrails/lib/read-json.mts'; const raw = process.argv[1] || '{}'; const data = z.object({ csrfToken: z.string().optional() }).passthrough().parse(parseJson(raw)); process.stdout.write(`${data.csrfToken ?? ''}\\n`);" "$CSRFTOKEN_JSON"
+)
 
 if [ -z "$CSRF_TOKEN" ]; then
   echo "Failed to fetch csrfToken from $BASE_URL/api/auth/csrf"

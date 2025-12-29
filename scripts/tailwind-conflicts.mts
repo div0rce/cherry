@@ -4,6 +4,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import fg from 'fast-glob';
+import { z } from 'zod';
+import { parseJson } from './guardrails/lib/read-json.mts';
 
 const ROOT = process.cwd();
 const SERVER_BIN = path.resolve(ROOT, 'node_modules/.bin/tailwindcss-language-server');
@@ -17,13 +19,72 @@ const FILE_PATTERNS = [
 const IGNORE_PATTERNS = ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/build/**'];
 
 const jsonrpc = '2.0';
+const JsonRpcMessageSchema = z
+  .object({
+    jsonrpc: z.string().optional(),
+    id: z.union([z.number(), z.string()]).optional(),
+    method: z.string().optional(),
+    params: z.unknown().optional(),
+    result: z.unknown().optional(),
+  })
+  .passthrough();
 
-function makeContentMessage(payload) {
+const DiagnosticRangeSchema = z
+  .object({
+    start: z
+      .object({
+        line: z.number().optional(),
+        character: z.number().optional(),
+      })
+      .strict()
+      .optional(),
+    end: z
+      .object({
+        line: z.number().optional(),
+        character: z.number().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .passthrough();
+
+const DiagnosticSchema = z
+  .object({
+    code: z.union([z.string(), z.number()]).optional(),
+    message: z.string().optional(),
+    range: DiagnosticRangeSchema.optional(),
+  })
+  .passthrough();
+
+const DiagnosticsItemSchema = z
+  .object({
+    uri: z.string().optional(),
+    diagnostics: z.array(DiagnosticSchema).optional(),
+  })
+  .passthrough();
+
+const DiagnosticsResultSchema = z
+  .object({
+    items: z.array(DiagnosticsItemSchema).optional(),
+  })
+  .passthrough();
+
+const PublishDiagnosticsSchema = z
+  .object({
+    uri: z.string().optional(),
+    diagnostics: z.array(DiagnosticSchema).optional(),
+  })
+  .passthrough();
+
+type JsonRpcMessage = z.infer<typeof JsonRpcMessageSchema>;
+type Diagnostic = z.infer<typeof DiagnosticSchema>;
+
+function makeContentMessage(payload: Record<string, unknown>): string {
   const json = JSON.stringify(payload);
   return `Content-Length: ${Buffer.byteLength(json, 'utf8')}\r\n\r\n${json}`;
 }
 
-function languageIdFor(filePath) {
+function languageIdFor(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   switch (ext) {
     case '.tsx':
@@ -37,7 +98,7 @@ function languageIdFor(filePath) {
   }
 }
 
-async function readProjectFiles() {
+async function readProjectFiles(): Promise<string[]> {
   return fg(FILE_PATTERNS, {
     cwd: ROOT,
     absolute: true,
@@ -46,11 +107,23 @@ async function readProjectFiles() {
   });
 }
 
-async function main() {
+function parseJsonRpcMessage(body: string): JsonRpcMessage {
+  const parsed = JsonRpcMessageSchema.parse(parseJson(body));
+  return parsed;
+}
+
+function isConflictCode(code: unknown): boolean {
+  return code === 'cssConflict' || code === 'css-conflict';
+}
+
+async function main(): Promise<void> {
   try {
     await fs.access(SERVER_BIN);
-  } catch {
-    throw new Error('Tailwind language server not found; install tailwindcss-language-server.');
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    throw new Error(
+      `Tailwind language server not found; install tailwindcss-language-server. (${error.message})`
+    );
   }
 
   const files = await readProjectFiles();
@@ -59,9 +132,9 @@ async function main() {
   }
 
   let nextId = 1;
-  const pendingUris = new Set();
-  const conflictDiagnostics = [];
-  const requestIdToUri = new Map();
+  const pendingUris = new Set<string>();
+  const conflictDiagnostics: Array<{ uri?: string; diagnostic: Diagnostic }> = [];
+  const requestIdToUri = new Map<number, string>();
 
   const server = spawn(SERVER_BIN, ['--stdio'], {
     stdio: ['pipe', 'pipe', 'inherit'],
@@ -72,16 +145,16 @@ async function main() {
   });
   let serverClosed = false;
 
-  let initResolve;
-  let initReject;
-  const initPromise = new Promise((resolve, reject) => {
+  let initResolve: ((value: void | PromiseLike<void>) => void) | null = null;
+  let initReject: ((reason?: unknown) => void) | null = null;
+  const initPromise = new Promise<void>((resolve, reject) => {
     initResolve = resolve;
     initReject = reject;
   });
 
-  let diagsResolve;
-  let diagsReject;
-  const diagnosticsPromise = new Promise((resolve, reject) => {
+  let diagsResolve: ((value: void | PromiseLike<void>) => void) | null = null;
+  let diagsReject: ((reason?: unknown) => void) | null = null;
+  const diagnosticsPromise = new Promise<void>((resolve, reject) => {
     diagsResolve = resolve;
     diagsReject = reject;
   });
@@ -91,10 +164,13 @@ async function main() {
     serverClosed = true;
     try {
       server.kill();
-    } catch {
-      // ignore
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      void error;
     }
-    diagsReject?.(new Error(`Timed out waiting for Tailwind diagnostics after ${MAX_WAIT_MS}ms.`));
+    diagsReject?.(
+      new Error(`Timed out waiting for Tailwind diagnostics after ${MAX_WAIT_MS}ms.`)
+    );
   }, MAX_WAIT_MS);
 
   let buffer = Buffer.alloc(0);
@@ -118,31 +194,38 @@ async function main() {
 
   const INIT_REQUEST_ID = nextId++;
 
-  function send(payload) {
+  function send(payload: Record<string, unknown>): void {
     if (serverClosed || server.killed) return;
     server.stdin.write(makeContentMessage(payload));
   }
 
-  function parseBuffer() {
+  function parseBuffer(): void {
     while (true) {
       const headerEnd = buffer.indexOf(Buffer.from('\r\n\r\n'));
       if (headerEnd === -1) return;
       const header = buffer.subarray(0, headerEnd).toString('utf8');
       const match = /Content-Length: (\d+)/i.exec(header);
-      if (!match) {
+      if (match === null) {
         diagsReject?.(new Error('Tailwind language server response missing Content-Length header.'));
         return;
       }
       const length = Number(match[1]);
+      if (!Number.isFinite(length) || length < 0) {
+        diagsReject?.(
+          new Error('Tailwind language server response has invalid Content-Length header.')
+        );
+        return;
+      }
       const messageStart = headerEnd + 4;
       const messageEnd = messageStart + length;
       if (buffer.length < messageEnd) return;
       const body = buffer.subarray(messageStart, messageEnd).toString('utf8');
       buffer = buffer.subarray(messageEnd);
-      let message;
+      let message: JsonRpcMessage;
       try {
-        message = JSON.parse(body);
-      } catch (error) {
+        message = parseJsonRpcMessage(body);
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
         diagsReject?.(error);
         return;
       }
@@ -150,7 +233,7 @@ async function main() {
     }
   }
 
-  function sendResponse(id, result) {
+  function sendResponse(id: number, result: unknown): void {
     send({
       jsonrpc,
       id,
@@ -158,17 +241,17 @@ async function main() {
     });
   }
 
-  function handleMessage(message) {
-    if (message.id === INIT_REQUEST_ID) {
-      initResolve();
+  function handleMessage(message: JsonRpcMessage): void {
+    if (typeof message.id === 'number' && message.id === INIT_REQUEST_ID) {
+      initResolve?.();
       return;
     }
-    if (message.method === 'workspace/configuration' && message.id != null) {
+    if (message.method === 'workspace/configuration' && typeof message.id === 'number') {
       // Minimal configuration response to satisfy tailwind language server.
       sendResponse(message.id, [{}]);
       return;
     }
-    if (message.method === 'tailwindcss/getConfiguration' && message.id != null) {
+    if (message.method === 'tailwindcss/getConfiguration' && typeof message.id === 'number') {
       sendResponse(message.id, {
         includeLanguages: {
           javascript: 'javascript',
@@ -179,37 +262,54 @@ async function main() {
       });
       return;
     }
-    if (message.id && requestIdToUri.has(message.id)) {
+    if (typeof message.id === 'number' && requestIdToUri.has(message.id)) {
       const uri = requestIdToUri.get(message.id);
+      if (uri === undefined) {
+        requestIdToUri.delete(message.id);
+        return;
+      }
       requestIdToUri.delete(message.id);
       pendingUris.delete(uri);
-      const items = message.result?.items ?? [];
+      const result = DiagnosticsResultSchema.safeParse(message.result);
+      const items = result.success ? result.data.items ?? [] : [];
       for (const item of items) {
-        for (const diagnostic of item.diagnostics ?? []) {
-          if (diagnostic.code === 'cssConflict' || diagnostic.code === 'css-conflict') {
-            conflictDiagnostics.push({ uri: item.uri ?? uri, diagnostic });
+        const diagnostics = item.diagnostics ?? [];
+        for (const diagnostic of diagnostics) {
+          if (isConflictCode(diagnostic.code)) {
+            const resolvedUri = item.uri ?? uri;
+            if (resolvedUri !== undefined) {
+              conflictDiagnostics.push({ uri: resolvedUri, diagnostic });
+            } else {
+              conflictDiagnostics.push({ diagnostic });
+            }
           }
         }
       }
       if (pendingUris.size === 0) {
         clearTimeout(timeoutId);
-        diagsResolve();
+        diagsResolve?.();
       }
       return;
     }
     if (message.method === 'textDocument/publishDiagnostics') {
-      const uri = message.params?.uri;
-      if (uri) {
+      const params = PublishDiagnosticsSchema.safeParse(message.params);
+      const uri = params.success ? params.data.uri : undefined;
+      if (typeof uri === 'string') {
         pendingUris.delete(uri);
       }
-      for (const diagnostic of message.params?.diagnostics ?? []) {
-        if (diagnostic.code === 'cssConflict' || diagnostic.code === 'css-conflict') {
-          conflictDiagnostics.push({ uri, diagnostic });
+      const diagnostics = params.success ? params.data.diagnostics ?? [] : [];
+      for (const diagnostic of diagnostics) {
+        if (isConflictCode(diagnostic.code)) {
+          if (uri !== undefined) {
+            conflictDiagnostics.push({ uri, diagnostic });
+          } else {
+            conflictDiagnostics.push({ diagnostic });
+          }
         }
       }
       if (pendingUris.size === 0) {
         clearTimeout(timeoutId);
-        diagsResolve();
+        diagsResolve?.();
       }
     }
   }
@@ -287,7 +387,8 @@ async function main() {
       const start = diagnostic.range?.start ?? { line: 0, character: 0 };
       const line = (start.line ?? 0) + 1;
       const column = (start.character ?? 0) + 1;
-      const relativePath = uri ? path.relative(ROOT, fileURLToPath(uri)) : '<unknown>';
+      const relativePath =
+        typeof uri === 'string' ? path.relative(ROOT, fileURLToPath(uri)) : '<unknown>';
       console.error(
         `${relativePath}:${line}:${column} - ${diagnostic.message ?? 'Tailwind cssConflict detected.'}`
       );
@@ -297,18 +398,25 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error('Tailwind conflict check failed:', error.message ?? error);
+main().catch((err: unknown) => {
+  const error = err instanceof Error ? err : new Error(String(err));
+  console.error('Tailwind conflict check failed:', error.message);
   process.exit(1);
 });
 
-function findOutlineConflicts(text, uri) {
-  const conflicts = [];
+type ConflictDiagnostic = { uri: string; diagnostic: Diagnostic };
+
+function findOutlineConflicts(text: string, uri: string): ConflictDiagnostic[] {
+  const conflicts: ConflictDiagnostic[] = [];
   const classRegex = /className\s*=\s*["'`]([^"'`]+)["'`]/g;
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = classRegex.exec(text)) !== null) {
-    const classes = match[1].split(/\s+/).filter(Boolean);
-    const variants = new Map(); // key: variant prefix (including trailing colon), value: array of outline width/style classes
+    const rawClasses = match[1] ?? '';
+    if (rawClasses.length === 0) {
+      continue;
+    }
+    const classes = rawClasses.split(/\s+/).filter(Boolean);
+    const variants = new Map<string, string[]>(); // key: variant prefix (including trailing colon)
     const preText = text.slice(0, match.index);
     const line = preText.split('\n').length;
     const column = match.index - preText.lastIndexOf('\n');
@@ -316,8 +424,8 @@ function findOutlineConflicts(text, uri) {
     for (const cls of classes) {
       const parts = cls.split(':');
       const name = parts.pop();
-      const variant = parts.length ? `${parts.join(':')}:` : '';
-      if (!name) continue;
+      const variant = parts.length > 0 ? `${parts.join(':')}:` : '';
+      if (name === undefined || name.length === 0) continue;
       // Flag only outline width/style utilities; allow colors/offsets to co-exist.
       const isOutlineWidth =
         name === 'outline' ||
@@ -331,11 +439,12 @@ function findOutlineConflicts(text, uri) {
     }
     for (const [variant, list] of variants.entries()) {
       if (list.length > 1) {
+        const variantLabel = variant.length > 0 ? variant : 'base';
         conflicts.push({
           uri,
           diagnostic: {
             code: 'cssConflict',
-            message: `${list.join(' + ')} apply conflicting outline styles under variant "${variant || 'base'}".`,
+            message: `${list.join(' + ')} apply conflicting outline styles under variant "${variantLabel}".`,
             range: {
               start: {
                 line: line - 1,

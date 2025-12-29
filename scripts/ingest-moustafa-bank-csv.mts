@@ -84,12 +84,11 @@ async function main() {
   const normalized = csvTxs.map((tx) => toNormalized(user.id, tx));
   const result = await upsertBankTransactions(normalized);
 
-  // eslint-disable-next-line no-console
-  console.log('Ingest result:', result);
+  process.stdout.write(`Ingest result: ${JSON.stringify(result)}\n`);
 }
 
 main()
-  .catch((err) => {
+  .catch((err: unknown) => {
     console.error(err);
     process.exit(1);
   })

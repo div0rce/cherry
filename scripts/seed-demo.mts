@@ -82,7 +82,7 @@ async function main() {
 }
 
 main()
-  .catch((err) => {
+  .catch((err: unknown) => {
     logError('Demo seed failed', err);
     process.exit(1);
   })

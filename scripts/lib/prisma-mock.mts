@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { ensureTsEsm } from './ensure-ts-esm.mts';
 
 ensureTsEsm();
 
@@ -267,7 +267,7 @@ function buildEnum(values: string[]) {
 }
 
 function parseEnumsFromSchema(): Record<string, Record<string, string>> {
-  const schemaPath = path.resolve(__dirname, '..', 'prisma', 'schema.prisma');
+  const schemaPath = path.resolve(__dirname, '..', '..', 'prisma', 'schema.prisma');
   if (!fs.existsSync(schemaPath)) return {};
   const text = fs.readFileSync(schemaPath, 'utf8');
   const enums: Record<string, string[]> = {};
