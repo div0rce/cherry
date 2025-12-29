@@ -1,6 +1,129 @@
 Status: Draft
 Last updated: 2025-12-29
 
+## Guardrails & Script Hygiene — Fixed-Point Migration (P0, Blocking)
+
+### Status
+
+* Current state: **Migration incomplete**
+* Risk: **CI will fail despite correct architecture**
+* Cause: **Runtime-grade strictness applied before scripts were refactored**
+
+---
+
+### Goal (Non-negotiable)
+
+Reach a fixed point where **all** of the following pass with zero warnings:
+
+```
+npm run check
+npm run lint -- --max-warnings=0
+npm run lint:scripts
+npm run typecheck
+npm run typecheck:scripts
+npm test
+npm run build
+```
+
+No allowlists. No exceptions. No TODOs.
+
+---
+
+### Phase 1 — Make the rules explicit (so it errors next time)
+
+* [ ] Add guardrail: `check:scripts-must-be-strict`
+* [ ] Scope: `scripts/**/*.mts`
+* [ ] Enforce:
+
+  * no `any`
+  * no `JSON.parse`
+  * no implicit booleans
+  * no untyped `catch`
+  * no `console.log`
+* [ ] Failure format **must** be:
+
+```
+SCRIPT_HYGIENE_VIOLATION
+Script: <file>
+Rule: <rule>
+Fix: <exact fix>
+```
+
+**Outcome:** future violations fail immediately and loudly.
+
+---
+
+### Phase 2 — Mechanical cleanup (mandatory, boring, correct)
+
+* [ ] Replace all `JSON.parse` → `readJson(path, Schema)`
+* [ ] Replace `any` → `unknown` + explicit narrowing or Zod inference
+* [ ] Fix all `catch` blocks:
+
+```ts
+catch (err: unknown) {
+  const e = asError(err)
+  fail(...)
+}
+```
+
+* [ ] Replace `console.log` → `fail()` or approved stdout write
+* [ ] Remove unused variables (or prefix with `_`)
+* [ ] Replace all implicit boolean checks with explicit comparisons
+
+**Outcome:** scripts obey their own guardrails.
+
+---
+
+### Phase 3 — Guardrails must obey guardrails
+
+* [ ] Enforce that **all guardrail scripts** pass:
+
+  * `lint:scripts`
+  * `typecheck:scripts`
+* [ ] No `eslint-disable` allowed in scripts
+* [ ] Add guardrail: `check:guardrail-script-lint`
+
+**Outcome:** no meta-exceptions, no self-violations.
+
+---
+
+### Phase 4 — Lock the fixed point (extinction step)
+
+* [ ] Update `docs/guardrails.md`:
+
+  * Any new script must pass `lint:scripts` and `typecheck:scripts`
+* [ ] Update CI to run explicitly:
+
+  * `npm run lint:scripts`
+  * `npm run typecheck:scripts`
+* [ ] Add guardrail asserting CI runs both **directly**, not transitively
+
+**Outcome:** this bug class cannot reappear.
+
+---
+
+### Definition of Done (Bug Class Extinct)
+
+* `npm run check` is the single correctness entrypoint
+* Scripts contain:
+
+  * no `any`
+  * no `JSON.parse`
+  * no implicit booleans
+  * no untyped catches
+  * no console logging
+* Guardrails are idempotent and self-consistent
+* Registry is the only source of truth
+* CI failures are local, actionable, and deterministic
+
+---
+
+## Metadata
+
+* Priority: **P0**
+* Category: **Infrastructure / Correctness**
+* Blocking: **Yes — blocks new development**
+
 ## Guardrails Fixed-Point Convergence (Blocking)
 
 ### 1. Script Substrate Unification (P0)
