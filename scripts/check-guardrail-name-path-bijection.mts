@@ -40,6 +40,12 @@ async function loadGuardrails(): Promise<Record<GuardrailName, string>> {
   return guardrails;
 }
 
+/**
+ * Naming invariant:
+ * - npm script: check:<name>
+ * - file path: scripts/check-<name>.mts
+ * - registry key must equal npm script name
+ */
 function normalizeName(name: GuardrailName): string {
   if (name.startsWith(SCRIPT_PREFIX) === false) {
     fail(`Guardrail name must start with ${SCRIPT_PREFIX}: ${name}`);
@@ -65,9 +71,15 @@ async function main(): Promise<void> {
   for (const name of guardrailNames) {
     const expected = expectedPathFor(name);
     const actual = guardrails[name];
+    if (typeof actual !== 'string' || actual.length === 0) {
+      violations.push({
+        message: `${name} missing guardrail path`,
+      });
+      continue;
+    }
     if (actual !== expected) {
       violations.push({
-        message: `${name} ↔ ${actual}`,
+        message: `${name} ↔ ${actual} (expected ${expected})`,
       });
     }
     const existing = seenPaths.get(expected) ?? [];

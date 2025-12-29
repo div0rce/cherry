@@ -4,7 +4,13 @@ const SCRIPT_ROOT = 'scripts' as const;
 const CHECK_PREFIX = 'check-' as const;
 const CHECK_PATH_BASE = `${SCRIPT_ROOT}/${CHECK_PREFIX}` as const;
 
-export const GUARDRAILS = {
+/**
+ * Naming invariant:
+ * - npm script: check:<name>
+ * - file path: scripts/check-<name>.mts
+ * - registry key must equal npm script name
+ */
+export const GUARDRAILS = Object.freeze({
   'check:side-effects': `${CHECK_PATH_BASE}side-effects.mts`,
   'check:side-effects:diff': `${CHECK_PATH_BASE}side-effects-diff.mts`,
   'check:script-semantics': `${CHECK_PATH_BASE}script-semantics.mts`,
@@ -45,8 +51,11 @@ export const GUARDRAILS = {
   'check:engine-freeze': `${CHECK_PATH_BASE}engine-freeze.mts`,
   'check:migrations': `${CHECK_PATH_BASE}migrations.mts`,
   'check:db': `${CHECK_PATH_BASE}db.mts`,
-} as const;
+} as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;
 export type GuardrailPath = (typeof GUARDRAILS)[GuardrailName];
-export const GUARDRAIL_NAMES = Object.keys(GUARDRAILS) as GuardrailName[];
+export function guardrailNameToPath(name: GuardrailName): GuardrailPath {
+  return GUARDRAILS[name];
+}
+export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as GuardrailName[]);
