@@ -17,6 +17,8 @@ export const GUARDRAILS = {
   'check:guardrail-name-path-bijection': `${CHECK_PATH_BASE}guardrail-name-path-bijection.mts`,
   'check:guardrail-doc-sync': `${CHECK_PATH_BASE}guardrail-doc-sync.mts`,
   'check:guardrail-execution': `${CHECK_PATH_BASE}guardrail-execution.mts`,
+  'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
+  'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,
   'check:no-orphan-check-files': `${CHECK_PATH_BASE}no-orphan-check-files.mts`,
   'check:no-orphan-scripts': `${CHECK_PATH_BASE}no-orphan-scripts.mts`,
