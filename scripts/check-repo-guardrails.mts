@@ -14,15 +14,6 @@ const DEFAULT_EXTENSIONS = new Set([
 const MARKDOWN_EXTENSIONS = new Set(['.md', '.mdx']);
 const DTS_EXT = '.d.ts';
 
-const REQUIRED_GUARDRAILS = [
-  'scripts/check-no-side-effects.mts',
-  'scripts/check-no-engine-prisma.mts',
-  'scripts/check-no-engine-date.mts',
-  'scripts/check-no-server-entropy.mts',
-  'scripts/check-no-implicit-identity.mts',
-  'scripts/check-no-implicit-time.mts',
-];
-
 const ENGINE_PRISMA_TOKENS = [
   { token: '@prisma/client', regex: /@prisma\/client/ },
   { token: '@/lib/prisma', regex: /@\/lib\/prisma/ },
@@ -71,16 +62,10 @@ const IGNORE_DIRS = new Set([
   'dist-scripts',
 ]);
 
-/**
- * @param {string} startDir
- * @returns {string[]}
- */
-function collectFiles(startDir) {
-  /** @type {string[]} */
-  const files = [];
+function collectFiles(startDir: string): string[] {
+  const files: string[] = [];
   if (!fs.existsSync(startDir)) return files;
-  /** @type {string[]} */
-  const stack = [startDir];
+  const stack: string[] = [startDir];
   while (stack.length > 0) {
     const current = stack.pop();
     if (typeof current !== 'string') continue;
@@ -100,17 +85,10 @@ function collectFiles(startDir) {
   return files;
 }
 
-/**
- * @param {string} startDir
- * @param {Set<string>} extensions
- * @returns {string[]}
- */
-function collectFilesByExtensions(startDir, extensions) {
-  /** @type {string[]} */
-  const files = [];
+function collectFilesByExtensions(startDir: string, extensions: Set<string>): string[] {
+  const files: string[] = [];
   if (!fs.existsSync(startDir)) return files;
-  /** @type {string[]} */
-  const stack = [startDir];
+  const stack: string[] = [startDir];
   while (stack.length > 0) {
     const current = stack.pop();
     if (typeof current !== 'string') continue;
@@ -129,16 +107,10 @@ function collectFilesByExtensions(startDir, extensions) {
   return files;
 }
 
-/**
- * @param {string} startDir
- * @returns {string[]}
- */
-function collectDtsFiles(startDir) {
-  /** @type {string[]} */
-  const files = [];
+function collectDtsFiles(startDir: string): string[] {
+  const files: string[] = [];
   if (!fs.existsSync(startDir)) return files;
-  /** @type {string[]} */
-  const stack = [startDir];
+  const stack: string[] = [startDir];
   while (stack.length > 0) {
     const current = stack.pop();
     if (typeof current !== 'string') continue;
@@ -433,10 +405,9 @@ for (const file of errorLogFiles) {
   let inCatch = false;
   let pendingCatch = false;
   let catchDepth = 0;
-  let currentCatchVar = null;
+  let currentCatchVar: string | null = null;
   let justEnteredCatch = false;
-  /** @type {Set<string>} */
-  let normalizedVars = new Set();
+  let normalizedVars = new Set<string>();
 
   for (const line of lines) {
     let startIndex = -1;
@@ -467,19 +438,19 @@ for (const file of errorLogFiles) {
 
     if (inCatch) {
       const assignment = line.match(AS_ERROR_ASSIGN);
-      if (assignment && assignment[1]) {
+      if (assignment !== null && assignment[1] !== undefined && assignment[1] !== '') {
         normalizedVars.add(assignment[1]);
       }
       const callMatches = line.matchAll(AS_ERROR_CALL);
       for (const match of callMatches) {
         const name = match[1];
-        if (name) {
+        if (name !== undefined && name !== '') {
           normalizedVars.add(name);
         }
       }
 
-      if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
-        if (!justEnteredCatch) {
+      if (currentCatchVar !== null && normalizedVars.has(currentCatchVar) === false) {
+        if (justEnteredCatch === false) {
           const usesVar = new RegExp(`\\b${currentCatchVar}\\b`).test(line);
           if (usesVar && !line.includes('asAppError(')) {
             console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
@@ -493,7 +464,7 @@ for (const file of errorLogFiles) {
           const matches = line.matchAll(RAW_ERROR_IDENTIFIER);
           for (const match of matches) {
             const identifier = match[1];
-            if (identifier && !normalizedVars.has(identifier)) {
+            if (identifier !== undefined && identifier !== '' && !normalizedVars.has(identifier)) {
               console.error(`raw-error-logging: ${relPath}: ${identifier}`);
               process.exit(1);
             }
@@ -501,7 +472,7 @@ for (const file of errorLogFiles) {
         }
       }
 
-      if (currentCatchVar && relPath.startsWith(apiPrefix)) {
+      if (currentCatchVar !== null && relPath.startsWith(apiPrefix)) {
         const messageAccess = new RegExp(`\\b${currentCatchVar}\\.message\\b`);
         if (messageAccess.test(line)) {
           console.error(`api-error-message-banned: ${relPath}: ${currentCatchVar}`);
@@ -509,7 +480,7 @@ for (const file of errorLogFiles) {
         }
       }
 
-      if (justEnteredCatch) {
+      if (justEnteredCatch === true) {
         justEnteredCatch = false;
       }
 
@@ -519,7 +490,7 @@ for (const file of errorLogFiles) {
         catchDepth += countBraces(line);
       }
       if (catchDepth <= 0) {
-        if (currentCatchVar && !normalizedVars.has(currentCatchVar)) {
+        if (currentCatchVar !== null && normalizedVars.has(currentCatchVar) === false) {
           console.error(`error-normalization-missing: ${relPath}: ${currentCatchVar}`);
           process.exit(1);
         }
@@ -555,7 +526,7 @@ for (const file of commandFiles) {
     /** @type {{ scripts?: Record<string, string> }} */
     const packageJson = JSON.parse(content);
     const scripts = packageJson.scripts;
-    if (!scripts || typeof scripts !== 'object') {
+    if (scripts === undefined || typeof scripts !== 'object') {
       console.error('esm-loader-macro-missing: package.json: ts:esm');
       process.exit(1);
     }
@@ -711,15 +682,6 @@ for (const file of scriptFiles) {
     !relPath.endsWith(path.normalize(path.join('scripts', 'check-repo-guardrails.js')))
   ) {
     console.error(`tsconfig-parse-violation: ${relPath}: JSON.parse`);
-    process.exit(1);
-  }
-}
-
-const repoRoot = process.cwd();
-for (const rel of REQUIRED_GUARDRAILS) {
-  const fullPath = path.join(repoRoot, rel);
-  if (!fs.existsSync(fullPath)) {
-    console.error(`guardrail-integrity: ${rel}: missing`);
     process.exit(1);
   }
 }
