@@ -55,7 +55,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
     {
       name: 'Guardrails + lint config',
       status: 'OK',
-      description: 'Static guardrail rules validated by scripts/check-guardrails.mts',
+      description: 'Static guardrail rules validated by scripts/check-guardrails-core.mts',
     },
     {
       name: 'Dev UI parity',

@@ -137,7 +137,7 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - CI runs on every push/PR via `.github/workflows/ci.yml` and must not be bypassed. Steps: `check:guardrails` → `lint` → `typecheck` → `typecheck:scripts` → `test` (includes `check:prisma-assumptions`) → `build`.
 - `check:guardrails` enforces ESLint rule presence/severity, TypeScript strict flags, package scripts, no new `eslint-disable`, guardrail files/tests existence. Any deviation is a hard error; fix code/tests, not the guardrails.
 - Agents may not relax lint rules, TS strictness, or remove guardrail tests to “fix” CI. Any change to guardrails must be explicitly documented and reviewed; weakening is prohibited.
-- Do not add new `eslint-disable` comments outside the allowlist encoded in `scripts/check-guardrails.mts`; fix the underlying code instead.
+- Do not add new `eslint-disable` comments outside the allowlist encoded in `scripts/check-guardrails-core.mts`; fix the underlying code instead.
 
 ## Guardrails / Scripts
 ### Script Module Semantics (Non-Negotiable)

@@ -1,9 +1,11 @@
 Status: Active
-Last updated: 2025-12-04
+Last updated: 2025-12-28
 
 # Dev UI Parity
 
 Cherry policy: no important backend behavior is allowed to exist without a Dev Console surface.
+
+## Current behavior
 
 | Backend feature ID | Description | Code location | Effect | Dev UI surface | Status |
 |--------------------|-------------|---------------|--------|----------------|--------|
@@ -14,6 +16,10 @@ Cherry policy: no important backend behavior is allowed to exist without a Dev C
 | VINE_CONTEXT_PIPELINE | Vine BLE/NFC ingest + run recommendation shim | lib/vine/run-recommendation.ts | Translates Vine device payloads into recommendation sessions | /vine-simulator | implemented |
 | BUCKET_RUNTIME_GUARDRAILS | Bucket runtime math and guardrails | lib/buckets-runtime.ts | Computes remaining/committed spend for guardrails | /buckets | implemented |
 | OFFLINE_EVALUATOR | Offline evaluator against historical spend | lib/evaluator/offline-history.ts | Scores historical spend snapshots for diagnostics | /dev/evaluator | implemented |
-| INVARIANTS_AND_ASSUMPTIONS | Engine invariants + guardrail enforcement checks | lib/engine-invariants.ts, scripts/check-guardrails.mts | Validates solver + session guardrails before deploy | /admin (Invariants panel) | implemented |
+| INVARIANTS_AND_ASSUMPTIONS | Engine invariants + guardrail enforcement checks | lib/engine-invariants.ts, `check:guardrails-core` | Validates solver + session guardrails before deploy | /admin (Invariants panel) | implemented |
 
-Script hook: `npm run check:dev-ui-parity` logs the current implemented vs missing counts (non-blocking for now).
+Script hook: `check:dev-ui-parity` logs the current implemented vs missing counts (non-blocking for now).
+
+## Future/Target behavior
+
+- TODO: Add parity coverage for new backend subsystems as they ship.
