@@ -10,9 +10,12 @@ export const EXECUTION = {
   'backfill:seed-demo': 'scripts/seed-demo.mts',
   'ingest:mcc': 'scripts/ingest-mcc.mts',
   'audit:integrity': 'scripts/audit-integrity.mts',
+  'backfill:bucket-last-reset-at': 'scripts/backfill_bucket_last_reset_at.mts',
   'backfill:category-preference-enum': 'scripts/backfill_category_preference_enum.mts',
   'cleanup:vine-sessions': 'scripts/cleanup_expired_vine_sessions.mts',
+  'cleanup:kill-alias-imports': 'scripts/codemod-kill-alias-imports.mts',
   'report:authority': 'scripts/authority-coverage.mts',
+  'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
 } as const;
 
 export type ExecutionName = keyof typeof EXECUTION;
