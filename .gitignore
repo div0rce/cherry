@@ -52,3 +52,6 @@ certs/
 *.p12
 *.pem
 *.pkpass
+
+# Local temp + Node compile cache
+.tmp/
