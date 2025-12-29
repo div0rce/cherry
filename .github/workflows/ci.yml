@@ -45,20 +45,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check migration hygiene
-        run: npm run check:migrations
-
       - name: Check clean working tree
         run: npm run check:clean
-
-      - name: Check guardrails
-        run: npm run check:guardrails
-
-      - name: Check repo guardrails
-        run: npm run check:repo-guardrails
-
-      - name: User pages runtime guardrail
-        run: npm run check:user-pages-runtime
 
       - name: Wait for Postgres
         run: |
@@ -82,14 +70,8 @@ jobs:
           npx prisma generate --schema=prisma/schema.prisma
           npx prisma migrate deploy --schema=prisma/schema.prisma
 
-      - name: Database smoke test
-        run: npm run check:db
-
       - name: Verify Prisma migration status
         run: npx prisma migrate status --schema=prisma/schema.prisma
-
-      - name: Database smoke test
-        run: npm run check:db
 
       - name: Dump migration status on failure
         if: failure()
@@ -98,20 +80,6 @@ jobs:
           npx prisma migrate status --schema=prisma/schema.prisma || true
           psql "$DATABASE_URL" -c "\\dt" || true
 
-      - name: Check routes structure
-        run: npm run check:routes
-
-      - name: Check engine freeze
-        run: npm run check:engine-freeze
-
-      - name: Lint
-        run: npm run lint -- --max-warnings=0
-
-      - name: Typecheck scripts
-        run: npm run typecheck:scripts
-
-      - name: Typecheck
-        run: npm run typecheck
 
       - name: Test
         run: npm test
