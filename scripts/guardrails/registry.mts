@@ -3,7 +3,15 @@ export const GUARDRAIL_ENTRYPOINT = 'check:guardrails' as const;
 const SCRIPT_ROOT = 'scripts' as const;
 const CHECK_PREFIX = 'check-' as const;
 const CHECK_PATH_BASE = `${SCRIPT_ROOT}/${CHECK_PREFIX}` as const;
+const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
 
+/**
+ * TODO (non-optional):
+ * - Disallow inline template literals in GUARDRAILS values
+ * - Require all paths to be named constants
+ * - Enforce alphabetical key order
+ * - Generate docs + CI checks from this file
+ */
 /**
  * Naming invariant:
  * - npm script: check:<name>
@@ -44,7 +52,7 @@ export const GUARDRAILS = Object.freeze({
   'check:shell-boundaries': `${CHECK_PATH_BASE}shell-boundaries.mts`,
   'check:route-collisions': `${CHECK_PATH_BASE}route-collisions.mts`,
   'check:user-pages-runtime': `${CHECK_PATH_BASE}user-pages-runtime.mts`,
-  'check:catch-unknown': `${CHECK_PATH_BASE}catch-unknown.mts`,
+  'check:catch-unknown': CATCH_UNKNOWN_PATH,
   'check:guardrails-core': `${CHECK_PATH_BASE}guardrails-core.mts`,
   'check:repo-guardrails': `${CHECK_PATH_BASE}repo-guardrails.mts`,
   'check:routes': `${CHECK_PATH_BASE}routes.mts`,
