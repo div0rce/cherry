@@ -32,7 +32,7 @@ main()
     console.warn('cleanup_expired_vine_sessions complete');
     process.exit(0);
   })
-  .catch((err) => {
+  .catch((err: unknown) => {
     console.error(err);
     process.exit(1);
   });

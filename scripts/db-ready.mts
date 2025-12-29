@@ -53,7 +53,9 @@ if (databaseUrl === undefined || databaseUrl === '') {
 
 try {
   execSync(`npx prisma migrate status --schema=${schema}`, { stdio: 'inherit' });
-} catch {
+} catch (err: unknown) {
+  const error = err instanceof Error ? err : new Error(String(err));
+  void error;
   fail(
     'Prisma database is not ready (unapplied migrations or unreachable DB). See above for details.'
   );
