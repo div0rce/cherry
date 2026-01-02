@@ -263,6 +263,11 @@ function loadAllowlist(): Record<string, AllowlistEntry> {
 
 function main(): void {
   const writeAllowlist = process.argv.includes('--write-allowlist');
+  if (writeAllowlist) {
+    fail(PREFIX, 'write-allowlist is disabled; guardrails must be pure', {
+      fix: 'Edit scripts/side-effects.allowlist.json manually.',
+    });
+  }
   const files = walk(TARGET);
   const violations: Violation[] = [];
 
@@ -274,24 +279,6 @@ function main(): void {
   }
 
   violations.sort((a, b) => a.file.localeCompare(b.file));
-
-  if (writeAllowlist) {
-    const allowlist: Record<string, AllowlistEntry> = {};
-    for (const v of violations) {
-      const tier = inferTier(v.effects);
-      const entry: AllowlistEntry = { effects: v.effects, source: 'legacy', tier };
-      if (tier === 'legacy-combo') {
-        entry.expiresBy = asIsoDate('2026-03-01');
-      }
-      allowlist[v.file] = entry;
-    }
-    const json = `${JSON.stringify(allowlist, null, 2)}\n`;
-    fs.writeFileSync(ALLOWLIST_PATH, json, 'utf8');
-    process.stdout.write(
-      `Wrote side-effects allowlist to ${path.relative(ROOT, ALLOWLIST_PATH)}\n`
-    );
-    return;
-  }
 
   const allowlist = loadAllowlist();
   const allowlistedWarnings: string[] = [];

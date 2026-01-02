@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 import { asMessage } from './guardrails/lib/error.mts';
@@ -16,15 +17,42 @@ type ModelBlock = {
   body: string;
 };
 
+function redactDatabaseUrl(value: string): string {
+  if (value.length === 0) return '<empty>';
+  return value.replace(/\/\/([^:/@]+):([^@]+)@/g, '//***:***@');
+}
+
 function assertNoRuntimeDbAccess(): void {
-  const isCi = process.env['CI'] === 'true' || process.env['VERCEL'] === '1';
-  const databaseUrl = process.env['DATABASE_URL'] ?? '';
-  if (isCi && databaseUrl.includes('localhost')) {
+  const selfPath = fileURLToPath(import.meta.url);
+  const self = fs.readFileSync(selfPath, 'utf8');
+  const prismaImportToken = ['@prisma', 'client'].join('/');
+  const prismaClientToken = ['Prisma', 'Client'].join('');
+  const violations: string[] = [];
+  if (self.includes(prismaImportToken)) {
+    violations.push(`import ${prismaImportToken}`);
+  }
+  if (self.includes(prismaClientToken)) {
+    violations.push(`${prismaClientToken} identifier`);
+  }
+  if (/\bprisma\.[A-Za-z0-9_]+\.(findFirst|findMany|findUnique|count|create|update|delete|upsert)\s*\(/.test(self)) {
+    violations.push('prisma.* query invocation');
+  }
+  if (violations.length > 0) {
+    const databaseUrl = redactDatabaseUrl(process.env['DATABASE_URL'] ?? '');
     fail(
       'PRISMA_ASSUMPTION_ENV_VIOLATION',
-      'check:prisma-assumptions attempted to access a live database in CI',
+      'check:prisma-assumptions attempted to use Prisma runtime access',
       {
-        fix: 'Rewrite guardrail to be schema-only. Runtime DB access is forbidden.',
+        details: [
+          `CI=${process.env['CI'] ?? '<unset>'}`,
+          `VERCEL=${process.env['VERCEL'] ?? '<unset>'}`,
+          `NODE_ENV=${process.env['NODE_ENV'] ?? '<unset>'}`,
+          `DATABASE_URL=${databaseUrl}`,
+          `file=${selfPath}`,
+          `violations=${violations.join(', ')}`,
+          `note=This guardrail must not instantiate ${prismaClientToken}; grep for ${prismaClientToken}/new ${prismaClientToken}/prisma.*find`,
+        ],
+        fix: 'Keep check:prisma-assumptions schema-only (no Prisma runtime or DB queries).',
       },
     );
   }

@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/client';
 import {
   recordDecisionEventWithWriter,
   simulateSpendAuthorityFromSnapshot,
@@ -26,25 +25,28 @@ const fixedPeriodEndMs = 1706745600000;
 const digest = Sha256Digest;
 const PREFIX = 'check:authority-invariants';
 const FIX = 'Fix authority invariants or update the guardrail expectations.';
+const STATUS_SAFE = 'SAFE' as const;
+const REWARD_DINING = 'DINING' as const;
+const BUDGET_MODE_BUDGETED = 'BUDGETED' as const;
 
 function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySnapshot {
   return {
     dailyState: {
-      status: DailyStateStatus.SAFE,
+      status: STATUS_SAFE,
       safeToSpendCents: 15_000,
       inputsVersion: 'ds-hash',
     },
     buckets: [
       {
         id: 'bucket-1',
-        category: RewardCategory.DINING,
+        category: REWARD_DINING,
         budgetAmount: 10_000,
         remainingCents: 9_000,
         strictMode: true,
         periodEndMs: fixedPeriodEndMs,
       },
     ],
-    categoryPreferenceMode: CategoryBudgetMode.BUDGETED,
+    categoryPreferenceMode: BUDGET_MODE_BUDGETED,
     pendingSessions: 0,
     pendingPoints: 0,
     ...overrides,
@@ -61,7 +63,7 @@ async function main(): Promise<void> {
   const baseParams: SimulateSpendParams = {
     userId: 'user-1',
     amountCents: 2_500,
-    category: RewardCategory.DINING,
+    category: REWARD_DINING,
     surface: 'simulate',
   };
 

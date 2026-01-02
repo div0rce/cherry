@@ -7,7 +7,10 @@ ensureTsEsm();
 
 const PREFIX = 'check:guardrail-no-runtime-io';
 const FIX = 'Guardrails must be pure and deterministic (no runtime I/O).';
-const TARGETS = [path.join('scripts', 'guardrails')];
+const ROOT = process.cwd();
+const SCRIPTS_ROOT = path.join(ROOT, 'scripts');
+const GUARDRAILS_ROOT = path.join(SCRIPTS_ROOT, 'guardrails');
+const TARGETS = [SCRIPTS_ROOT];
 
 type Violation = {
   file: string;
@@ -31,6 +34,18 @@ function parseRgLine(line: string): Violation {
   };
 }
 
+function normalizePath(filePath: string): string {
+  return path.normalize(path.resolve(filePath));
+}
+
+function isGuardrailScript(filePath: string): boolean {
+  const absolute = normalizePath(filePath);
+  if (absolute.startsWith(GUARDRAILS_ROOT)) return true;
+  if (!absolute.startsWith(SCRIPTS_ROOT)) return false;
+  const base = path.basename(absolute);
+  return base.startsWith('check-') && base.endsWith('.mts');
+}
+
 function runRg(pattern: string): string[] {
   const result = runTool('rg', ['-n', pattern, ...TARGETS]);
   if (result.exitCode !== 0 && result.exitCode !== 1) {
@@ -47,34 +62,49 @@ function runRg(pattern: string): string[] {
 
 const checks: Array<{ pattern: string; illegal: string; fix: string }> = [
   {
+    pattern: '^\\s*import\\s+.*\\s+from\\s+[\'"]@prisma\\/client[\'"]',
+    illegal: 'import @prisma/client',
+    fix: 'Guardrails must not import Prisma runtime.',
+  },
+  {
+    pattern: '\\brequire\\s*\\(\\s*[\'"]@prisma\\/client[\'"]\\s*\\)',
+    illegal: 'require @prisma/client',
+    fix: 'Guardrails must not import Prisma runtime.',
+  },
+  {
     pattern: '\\bnew\\s+PrismaClient\\b',
     illegal: 'new PrismaClient',
     fix: 'Guardrails must not instantiate PrismaClient.',
   },
   {
-    pattern: '\\bfetch\\s*\\(',
+    pattern: '\\bprisma\\.[A-Za-z0-9_]+\\.(findFirst|findMany|findUnique|count|create|update|delete|upsert)\\s*\\(',
+    illegal: 'prisma.* query invocation',
+    fix: 'Guardrails must not issue Prisma queries.',
+  },
+  {
+    pattern: '(^|[^A-Za-z0-9_\'"`])fetch\\s*\\(',
     illegal: 'fetch',
     fix: 'Guardrails must not perform network I/O.',
   },
   {
-    pattern: '\\bhttps?\\.request\\b|\\bhttps?\\.get\\b',
+    pattern: '\\bhttps?\\.(request|get)\\s*\\(',
     illegal: 'http/https request',
     fix: 'Guardrails must not open sockets.',
   },
   {
-    pattern: '\\bnet\\.[A-Za-z]+\\b|\\btls\\.[A-Za-z]+\\b',
+    pattern: '\\b(net|tls)\\.(connect|createConnection|createServer|Socket)\\b',
     illegal: 'net/tls socket',
     fix: 'Guardrails must not open sockets.',
   },
   {
     pattern:
-      '\\bfs\\.(writeFileSync|appendFileSync|createWriteStream|rmSync|unlinkSync|renameSync|mkdirSync)\\b',
+      '\\bfs\\.(writeFileSync|appendFileSync|createWriteStream|rmSync|unlinkSync|renameSync|mkdirSync)\\s*\\(',
     illegal: 'fs write',
     fix: 'Guardrails must not perform filesystem writes.',
   },
   {
     pattern:
-      '\\bfs\\.promises\\.(writeFile|appendFile|rm|unlink|rename|mkdir)\\b',
+      '\\bfs\\.promises\\.(writeFile|appendFile|rm|unlink|rename|mkdir)\\s*\\(',
     illegal: 'fs promises write',
     fix: 'Guardrails must not perform filesystem writes.',
   },
@@ -85,11 +115,12 @@ const violations: Violation[] = [];
 for (const check of checks) {
   for (const line of runRg(check.pattern)) {
     const parsed = parseRgLine(line);
+    if (isGuardrailScript(parsed.file) === false) continue;
     violations.push({
       file: parsed.file,
       line: parsed.line,
       col: parsed.col,
-      illegal: check.illegal,
+      illegal: `${check.illegal}: ${parsed.illegal}`,
       fix: check.fix,
     });
   }
