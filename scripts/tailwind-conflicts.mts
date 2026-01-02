@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -8,6 +7,7 @@ import { z } from 'zod';
 import { parseJson } from './guardrails/lib/read-json.mts';
 import { asMessage } from './guardrails/lib/error.mts';
 import { fail } from './guardrails/lib/fail.mts';
+import { spawnTool } from './guardrails/lib/run-tool.mts';
 
 const ROOT = process.cwd();
 const SERVER_BIN = path.resolve(ROOT, 'node_modules/.bin/tailwindcss-language-server');
@@ -140,13 +140,15 @@ async function main(): Promise<void> {
   const conflictDiagnostics: Array<{ uri?: string; diagnostic: Diagnostic }> = [];
   const requestIdToUri = new Map<number, string>();
 
-  const server = spawn(SERVER_BIN, ['--stdio'], {
+  const server = spawnTool(SERVER_BIN, ['--stdio'], {
     stdio: ['pipe', 'pipe', 'inherit'],
     env: {
       ...process.env,
       TAILWIND_DISABLE_WRITE_CHECK: '1',
     },
   });
+  const stdout = server.stdout ?? fail(PREFIX, 'Tailwind language server stdout is unavailable.', { fix: FIX });
+  const stdin = server.stdin ?? fail(PREFIX, 'Tailwind language server stdin is unavailable.', { fix: FIX });
   let serverClosed = false;
 
   let initResolve: ((value: void | PromiseLike<void>) => void) | null = null;
@@ -178,7 +180,7 @@ async function main(): Promise<void> {
 
   let buffer = Buffer.alloc(0);
 
-  server.stdout.on('data', (chunk) => {
+  stdout.on('data', (chunk) => {
     buffer = Buffer.concat([buffer, chunk]);
     parseBuffer();
   });
@@ -199,7 +201,7 @@ async function main(): Promise<void> {
 
   function send(payload: Record<string, unknown>): void {
     if (serverClosed || server.killed) return;
-    server.stdin.write(makeContentMessage(payload));
+    stdin.write(makeContentMessage(payload));
   }
 
   function parseBuffer(): void {

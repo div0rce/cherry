@@ -6,10 +6,13 @@ import { runTool } from './guardrails/lib/run-tool.mts';
 ensureTsEsm();
 
 const PREFIX = 'check:guardrail-subprocess-totality';
-const FIX = 'Use scripts/guardrails/lib/run-tool.mts for all guardrail subprocesses.';
+const FIX = 'Use runTool() from scripts/guardrails/lib/run-tool.mts.';
 const ROOT = process.cwd();
 const RUN_TOOL_PATH = path.normalize(
   path.resolve(ROOT, 'scripts', 'guardrails', 'lib', 'run-tool.mts')
+);
+const SELF_PATH = path.normalize(
+  path.resolve(ROOT, 'scripts', 'check-guardrail-subprocess-totality.mts')
 );
 
 type Violation = {
@@ -22,9 +25,7 @@ type Violation = {
 
 const GLOBS = [
   '-g',
-  'scripts/check-*.mts',
-  '-g',
-  'scripts/guardrails/**/*.mts',
+  'scripts/**/*.{ts,tsx,mts,cts,js,mjs,cjs}',
   '-g',
   '!scripts/guardrails/lib/run-tool.mts',
 ];
@@ -42,7 +43,7 @@ function parseRgLine(line: string): { file: string; line: number; col: number } 
 }
 
 function reportViolations(violations: Violation[]): void {
-  process.stderr.write('GUARDRAIL_SUBPROCESS_TOTALITY\n');
+  process.stderr.write('SUBPROCESS_TOTALITY_VIOLATION\n');
   for (const violation of violations) {
     process.stderr.write(`File: ${violation.file}\n`);
     process.stderr.write(`Illegal: ${violation.illegal}\n`);
@@ -88,6 +89,14 @@ const patterns = [
     illegal: 'child_process namespace',
   },
   {
+    regex: '\\bspawnSync\\b',
+    illegal: 'spawnSync',
+  },
+  {
+    regex: '\\bexecSync\\b',
+    illegal: 'execSync',
+  },
+  {
     regex: "from\\s+['\"]execa['\"]",
     illegal: 'execa import',
   },
@@ -95,12 +104,21 @@ const patterns = [
     regex: '\\bexeca\\s*\\(',
     illegal: 'execa',
   },
+  {
+    regex: '\\bBun\\.spawn\\b',
+    illegal: 'Bun.spawn',
+  },
+  {
+    regex: '\\bDeno\\.run\\b',
+    illegal: 'Deno.run',
+  },
 ];
 
 for (const pattern of patterns) {
   for (const line of runRg(pattern.regex)) {
     const parsed = parseRgLine(line);
     const absolute = path.normalize(path.resolve(parsed.file));
+    if (absolute === SELF_PATH) continue;
     if (absolute === RUN_TOOL_PATH) continue;
     violations.push({
       file: parsed.file,

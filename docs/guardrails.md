@@ -174,6 +174,14 @@ Any duplication is a hard CI failure.
 - Returning `undefined` is forbidden.
 - Guardrail: `check:esm-loader-totality`.
 
+### Guardrail 26 — Tool Determinism
+
+**Tool Determinism Invariant**
+- External tools (`rg`, `git`, `node`) must be preflight-checked before guardrail execution.
+- All external tools must be invoked exclusively via `scripts/guardrails/lib/run-tool.mts`.
+- Missing tools are fatal and must fail with actionable output.
+- Guardrail: `check:guardrail-subprocess-totality`.
+
 ## Future/Target behavior
 
 - TODO: Expand guardrail coverage and tests as new risk areas are identified.

@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { asMessage } from '../guardrails/lib/error.mts';
 import { fail } from '../guardrails/lib/fail.mts';
 import { ensureTsEsm } from './ensure-ts-esm.mts';
 
@@ -411,6 +412,18 @@ function isValidSource(source: unknown): source is string | ArrayBuffer | ArrayB
   return ArrayBuffer.isView(source);
 }
 
+function loadSourceFromFile(url: string): ArrayBufferView | null {
+  if (!url.startsWith('file:')) return null;
+  try {
+    const filePath = fileURLToPath(url);
+    if (!fs.existsSync(filePath)) return null;
+    return fs.readFileSync(filePath);
+  } catch (error: unknown) {
+    void asMessage(error);
+    return null;
+  }
+}
+
 function isThenable(value: unknown): value is Promise<unknown> {
   return typeof value === 'object' && value !== null && 'then' in value;
 }
@@ -445,10 +458,11 @@ function assertLoadResult(
   };
   const { source, format } = normalized;
   if (!url.startsWith('node:') && format !== 'addon') {
-    if (format === 'commonjs' && source == null) {
-      return normalized;
-    }
     if (!isValidSource(source)) {
+      const fallbackSource = loadSourceFromFile(url);
+      if (fallbackSource !== null) {
+        return { ...normalized, source: fallbackSource };
+      }
       fail('PRISMA_MOCK_LOADER_BUG', 'load() returned invalid source', {
         details: [`url=${url}`, `format=${String(format ?? 'undefined')}`],
         fix: 'Ensure every load() path returns a valid source or delegates to defaultLoad().',

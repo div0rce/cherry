@@ -1,0 +1,89 @@
+import path from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+import fg from 'fast-glob';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { fail } from './guardrails/lib/fail.mts';
+import { runTool } from './guardrails/lib/run-tool.mts';
+
+ensureTsEsm();
+
+const PREFIX = 'check:run-tests';
+const FIX = 'Run tests via npm run check:run-tests after installing dependencies.';
+
+const __filename = fileURLToPath(import.meta.url);
+const repoRoot = path.resolve(path.dirname(__filename), '..');
+
+const tsNodeCompilerOptions = JSON.stringify({
+  module: 'CommonJS',
+  moduleResolution: 'node',
+  baseUrl: '.',
+  paths: { '@/*': ['./*'] },
+  allowJs: true,
+  jsx: 'react-jsx',
+});
+
+const env = process.env as NodeJS.ProcessEnv;
+env['TS_NODE_PROJECT'] = path.join(repoRoot, 'tsconfig.scripts.json');
+env['TS_NODE_COMPILER_OPTIONS'] = tsNodeCompilerOptions;
+const nodeEnv = env['NODE_ENV'] ?? 'test';
+
+const testFiles = fg
+  .sync(['tests/**/*.test.{js,ts,tsx}'], {
+    cwd: repoRoot,
+    absolute: true,
+    ignore: ['**/__mocks__/**', 'tests/fixtures/**'],
+  })
+  .sort();
+
+if (testFiles.length === 0) {
+  fail(PREFIX, 'No tests found under tests/**/*.test.{js,ts,tsx}', { fix: FIX });
+}
+
+process.stdout.write(`TS_NODE_COMPILER_OPTIONS=${tsNodeCompilerOptions}\n`);
+
+for (const file of testFiles) {
+  process.stdout.write(`RUN ${path.relative(repoRoot, file)}\n`);
+  const result = runTool(
+    'npm',
+    [
+      'run',
+      'ts:esm',
+      '--',
+      '-r',
+      'tsconfig-paths/register',
+      '--import',
+      './scripts/lib/config-register.mts',
+      '--import',
+      './scripts/lib/prisma-mock.mts',
+      file,
+    ],
+    {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        NODE_ENV: nodeEnv,
+        TS_NODE_COMPILER_OPTIONS: tsNodeCompilerOptions,
+      },
+    }
+  );
+
+  if (result.stdout.length > 0) {
+    process.stdout.write(result.stdout);
+  }
+  if (result.stderr.length > 0) {
+    process.stderr.write(result.stderr);
+  }
+
+  if (result.exitCode !== 0) {
+    const details = [`exit=${result.exitCode}`];
+    const relPath = path.relative(repoRoot, file);
+    if (result.stdout.trim().length > 0) {
+      details.push(`stdout=${result.stdout.trim()}`);
+    }
+    if (result.stderr.trim().length > 0) {
+      details.push(`stderr=${result.stderr.trim()}`);
+    }
+    fail(PREFIX, `FAILED ${relPath}`, { details, fix: 'Fix the failing test(s) and rerun.' });
+  }
+}

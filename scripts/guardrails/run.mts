@@ -13,6 +13,32 @@ ensureTsEsm();
 const PREFIX = 'GUARDRAIL_RUNNER';
 const ROOT = process.cwd();
 const SUMMARY_PREFIX = 'GUARDRAIL_SUMMARY';
+const REQUIRED_TOOLS = ['rg', 'git', 'node'] as const;
+
+function verifyTool(tool: (typeof REQUIRED_TOOLS)[number]): string {
+  // Invariant: guardrails only run if required tools are available on PATH.
+  try {
+    const result = runTool(tool, ['--version'], { allowMissingTool: true });
+    if (result.exitCode !== 0) {
+      const details = [
+        `stdout=${result.stdout.trim()}`,
+        `stderr=${result.stderr.trim()}`,
+      ];
+      fail('GUARDRAIL_TOOL_MISSING', `${tool} is not available`, {
+        details,
+        fix: `Install ${tool} and ensure it is on PATH before running guardrails.`,
+      });
+    }
+    const firstLine = result.stdout.split('\n')[0] ?? '';
+    return firstLine.trim().length > 0 ? firstLine.trim() : 'unknown';
+  } catch (err: unknown) {
+    const message = asMessage(err);
+    fail('GUARDRAIL_TOOL_MISSING', `${tool} is not available`, {
+      details: [`error=${message}`],
+      fix: `Install ${tool} and ensure it is on PATH before running guardrails.`,
+    });
+  }
+}
 
 function isGuardrailName(value: string): value is GuardrailName {
   return Object.prototype.hasOwnProperty.call(GUARDRAILS, value);
@@ -71,23 +97,11 @@ async function runGuardrail(): Promise<void> {
   }) as typeof process.exit;
 
   try {
-    const rgVersion = runTool('rg', ['--version']);
-    if (rgVersion.exitCode !== 0) {
-      const details: string[] = [];
-      if (rgVersion.stdout.trim().length > 0) {
-        details.push(`stdout: ${rgVersion.stdout.trim()}`);
-      }
-      if (rgVersion.stderr.trim().length > 0) {
-        details.push(`stderr: ${rgVersion.stderr.trim()}`);
-      }
-      fail(PREFIX, `rg --version failed with status ${rgVersion.exitCode}`, {
-        details,
-        fix: 'Install ripgrep and ensure it is available on PATH.',
-      });
+    const versions = new Map<string, string>();
+    for (const tool of REQUIRED_TOOLS) {
+      versions.set(tool, verifyTool(tool));
     }
-    const versionLine = rgVersion.stdout.split('\n')[0] ?? '';
-    const versionLabel = versionLine.trim().length > 0 ? versionLine.trim() : 'unknown';
-    process.stdout.write(`GUARDRAIL_TOOL_VERSION: rg=${versionLabel}\n`);
+    process.stdout.write(`GUARDRAIL_TOOL_VERSION: rg=${versions.get('rg') ?? 'unknown'}\n`);
 
     await importUnknown(absolutePath);
   } catch (err: unknown) {

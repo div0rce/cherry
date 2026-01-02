@@ -35,6 +35,8 @@ npm install
 npm run dev
 ```
 
+Guardrail tooling requires Node 22.x and a stable PATH (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
+
 Health checks before pushing:
 ```bash
 npm run lint

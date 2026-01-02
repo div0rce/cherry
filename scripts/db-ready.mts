@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { asMessage } from './guardrails/lib/error.mts';
 import { fail } from './guardrails/lib/fail.mts';
+import { runTool } from './guardrails/lib/run-tool.mts';
 
 // Load local env files so the predev check works before Next.js hydrates env vars
 function loadEnv() {
@@ -52,11 +52,18 @@ if (databaseUrl === undefined || databaseUrl === '') {
   });
 }
 
-try {
-  execSync(`npx prisma migrate status --schema=${schema}`, { stdio: 'inherit' });
-} catch (err: unknown) {
-  void asMessage(err);
+const result = runTool('npx', ['prisma', 'migrate', 'status', '--schema', schema]);
+if (result.stdout.length > 0) {
+  process.stdout.write(result.stdout);
+}
+if (result.stderr.length > 0) {
+  process.stderr.write(result.stderr);
+}
+if (result.exitCode !== 0) {
+  const message = asMessage(result.stderr);
+  const details = message.length > 0 ? [`stderr=${message}`] : undefined;
   fail(PREFIX, 'Prisma database is not ready (unapplied migrations or unreachable DB). See above for details.', {
+    details,
     fix: FIX,
   });
 }
