@@ -4,9 +4,13 @@ import {
   deriveLegacyCurrentAmount,
 } from '../lib/buckets-runtime.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'debug-bucket-balance';
+const FIX = 'Set DEBUG_BUCKET_ID to a valid bucket id.';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -14,7 +18,7 @@ const hasText = (value?: string | null): value is string =>
 async function main() {
   const bucketId = process.env['DEBUG_BUCKET_ID'];
   if (!hasText(bucketId)) {
-    throw new Error('Set DEBUG_BUCKET_ID to the bucket you want to debug.');
+    throw Error('Set DEBUG_BUCKET_ID to the bucket you want to debug.');
   }
 
   const limitCents = 100_00;
@@ -46,8 +50,8 @@ async function main() {
 
 main()
   .catch((err: unknown) => {
-    process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
-    process.exit(1);
+    const message = asMessage(err);
+    fail(PREFIX, `Debug bucket balance failed: ${message}`, { fix: FIX });
   })
   .finally(async () => {
     await prisma.$disconnect();

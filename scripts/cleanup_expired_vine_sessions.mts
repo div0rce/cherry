@@ -2,14 +2,18 @@ import { RecommendationStatus, RecommendationSource } from '@prisma/client';
 import { prisma } from '../lib/prisma.ts';
 import { logInvariant } from '../lib/user-context.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'cleanup-expired-vine-sessions';
+const FIX = 'Run only in non-production environments with valid Prisma access.';
 
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
     logInvariant('cleanup_expired_vine_sessions invoked in production', {});
-    throw new Error('This cleanup script is disabled in production');
+    fail(PREFIX, 'This cleanup script is disabled in production', { fix: FIX });
   }
 
   const now = new Date();
@@ -30,9 +34,8 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     console.warn('cleanup_expired_vine_sessions complete');
-    process.exit(0);
   })
   .catch((err: unknown) => {
-    console.error(err);
-    process.exit(1);
+    const message = asMessage(err);
+    fail(PREFIX, `Cleanup failed: ${message}`, { fix: FIX });
   });

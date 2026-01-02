@@ -1,8 +1,12 @@
 import { prisma } from '../lib/prisma.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'backfill-bucket-last-reset-at';
+const FIX = 'Ensure prisma is connected and the Bucket model is migrated.';
 
 async function main(): Promise<void> {
   const buckets = await prisma.bucket.findMany({
@@ -22,8 +26,8 @@ async function main(): Promise<void> {
 
 main()
   .catch((err: unknown) => {
-    console.error(err);
-    process.exit(1);
+    const message = asMessage(err);
+    fail(PREFIX, `Backfill failed: ${message}`, { fix: FIX });
   })
   .finally(async () => {
     await prisma.$disconnect();

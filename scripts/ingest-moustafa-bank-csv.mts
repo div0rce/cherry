@@ -7,9 +7,13 @@ import { prisma } from '../lib/prisma.ts';
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
 import { getDevIngestUser } from '../lib/dev/dev-user.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'ingest-moustafa-bank-csv';
+const FIX = 'Ensure prisma access and provide a valid user id or email.';
 
 type CsvDevTransaction = import('../lib/bank/csv-dev-provider.ts').CsvDevTransaction;
 type NormalizedBankTransactionInput = import('../lib/bank/ingest.ts').NormalizedBankTransactionInput;
@@ -19,7 +23,7 @@ const hasText = (value?: string | null): value is string =>
 
 async function resolveDevUser() {
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('Dev CSV ingest is disabled in production environments');
+    throw Error('Dev CSV ingest is disabled in production environments');
   }
 
   const cliArg = process.argv[2];
@@ -33,7 +37,7 @@ async function resolveDevUser() {
     }
     const byId = await prisma.user.findUnique({ where: { id: cliArg } });
     if (byId === null) {
-      throw new Error(`No user found for id "${cliArg}". Provide an email to auto-create.`);
+      throw Error(`No user found for id "${cliArg}". Provide an email to auto-create.`);
     }
     return byId;
   }
@@ -89,8 +93,8 @@ async function main() {
 
 main()
   .catch((err: unknown) => {
-    console.error(err);
-    process.exit(1);
+    const message = asMessage(err);
+    fail(PREFIX, `CSV ingest failed: ${message}`, { fix: FIX });
   })
   .finally(async () => {
     await prisma.$disconnect();

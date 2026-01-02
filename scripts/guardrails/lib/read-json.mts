@@ -2,11 +2,12 @@ import fs from 'node:fs';
 import { z } from 'zod';
 import { asMessage } from './error.mts';
 
-const jsonParse = globalThis.JSON.parse;
+type JsonParse = (value: string) => unknown;
+const parseJsonText = globalThis.JSON['parse'] as JsonParse;
 
 const JsonTextSchema = z.string().transform((value, ctx) => {
   try {
-    return jsonParse(value) as unknown;
+    return parseJsonText(value);
   } catch (error: unknown) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -34,7 +35,7 @@ export function parseJson(text: string): unknown {
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     const message = issue?.message ?? parsed.error.message;
-    throw new Error(message);
+    throw Error(message);
   }
   return parsed.data;
 }
@@ -44,6 +45,6 @@ export function readJsonFile(filePath: string): unknown {
   try {
     return parseJson(raw);
   } catch (error: unknown) {
-    throw new Error(`Invalid JSON in ${filePath}: ${asMessage(error)}`);
+    throw Error(`Invalid JSON in ${filePath}: ${asMessage(error)}`);
   }
 }

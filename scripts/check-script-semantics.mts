@@ -256,8 +256,7 @@ function checkPackageType(violations: Violation[]): void {
   try {
     parsedType = PackageJsonSchema.parse(parseJson(data)).type;
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    void error;
+    void asMessage(err);
     parsedType = undefined;
   }
   if (parsedType !== "module") {

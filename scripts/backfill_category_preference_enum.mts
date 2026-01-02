@@ -1,9 +1,13 @@
 import { RewardCategory } from '@prisma/client';
 import { prisma } from '../lib/prisma.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'backfill-category-preference-enum';
+const FIX = 'Ensure prisma access and the CategoryPreference table schema.';
 
 async function main(): Promise<void> {
   // Check if legacy column still exists; if not, exit early.
@@ -48,9 +52,8 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     console.warn('Done.');
-    process.exit(0);
   })
   .catch((err: unknown) => {
-    console.error(err);
-    process.exit(1);
+    const message = asMessage(err);
+    fail(PREFIX, `Backfill failed: ${message}`, { fix: FIX });
   });

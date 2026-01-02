@@ -137,7 +137,9 @@ function createCollection(name: string) {
       const key =
         (data['id'] as string | undefined) ?? compositeKey ?? `${name}-${counter++}`;
       if (store.has(key)) {
-        const err = new Error(`Unique constraint failed on the fields: (${name}.id)`) as Error & {
+        const err = Error(
+          `Unique constraint failed on the fields: (${name}.id)`
+        ) as Error & {
           code?: string;
         };
         err.code = 'P2002';
@@ -183,7 +185,7 @@ function createCollection(name: string) {
     },
     update: async ({ where, data }: { where: Where; data: RecordShape }) => {
       const existing = await api.findUnique({ where });
-      if (existing === null) throw new Error(`Record not found in ${name}`);
+      if (existing === null) throw Error(`Record not found in ${name}`);
       const key = resolveKey(where) ?? (existing['id'] as string);
       const updated = { ...existing, ...data };
       store.set(key, updated);

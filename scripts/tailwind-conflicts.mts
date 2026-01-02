@@ -6,9 +6,13 @@ import fs from 'node:fs/promises';
 import fg from 'fast-glob';
 import { z } from 'zod';
 import { parseJson } from './guardrails/lib/read-json.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 const ROOT = process.cwd();
 const SERVER_BIN = path.resolve(ROOT, 'node_modules/.bin/tailwindcss-language-server');
+const PREFIX = 'tailwind-conflicts';
+const FIX = 'Resolve Tailwind cssConflict diagnostics before continuing.';
 
 const FILE_PATTERNS = [
   'app/**/*.{ts,tsx,js,jsx}',
@@ -120,9 +124,9 @@ async function main(): Promise<void> {
   try {
     await fs.access(SERVER_BIN);
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    throw new Error(
-      `Tailwind language server not found; install tailwindcss-language-server. (${error.message})`
+    const message = asMessage(err);
+    throw Error(
+      `Tailwind language server not found; install tailwindcss-language-server. (${message})`
     );
   }
 
@@ -165,11 +169,10 @@ async function main(): Promise<void> {
     try {
       server.kill();
     } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      void error;
+      void asMessage(err);
     }
     diagsReject?.(
-      new Error(`Timed out waiting for Tailwind diagnostics after ${MAX_WAIT_MS}ms.`)
+      Error(`Timed out waiting for Tailwind diagnostics after ${MAX_WAIT_MS}ms.`)
     );
   }, MAX_WAIT_MS);
 
@@ -188,7 +191,7 @@ async function main(): Promise<void> {
   server.on('exit', (code) => {
     serverClosed = true;
     if (code !== 0 && code !== null) {
-      diagsReject?.(new Error(`Tailwind language server exited with code ${code}`));
+      diagsReject?.(Error(`Tailwind language server exited with code ${code}`));
     }
   });
 
@@ -206,13 +209,13 @@ async function main(): Promise<void> {
       const header = buffer.subarray(0, headerEnd).toString('utf8');
       const match = /Content-Length: (\d+)/i.exec(header);
       if (match === null) {
-        diagsReject?.(new Error('Tailwind language server response missing Content-Length header.'));
+        diagsReject?.(Error('Tailwind language server response missing Content-Length header.'));
         return;
       }
       const length = Number(match[1]);
       if (!Number.isFinite(length) || length < 0) {
         diagsReject?.(
-          new Error('Tailwind language server response has invalid Content-Length header.')
+          Error('Tailwind language server response has invalid Content-Length header.')
         );
         return;
       }
@@ -225,8 +228,7 @@ async function main(): Promise<void> {
       try {
         message = parseJsonRpcMessage(body);
       } catch (err: unknown) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        diagsReject?.(error);
+        diagsReject?.(err instanceof Error ? err : Error(asMessage(err)));
         return;
       }
       handleMessage(message);
@@ -383,25 +385,21 @@ async function main(): Promise<void> {
   send({ jsonrpc, method: 'exit' });
 
   if (conflictDiagnostics.length > 0) {
-    for (const { uri, diagnostic } of conflictDiagnostics) {
+    const details = conflictDiagnostics.map(({ uri, diagnostic }) => {
       const start = diagnostic.range?.start ?? { line: 0, character: 0 };
       const line = (start.line ?? 0) + 1;
       const column = (start.character ?? 0) + 1;
       const relativePath =
         typeof uri === 'string' ? path.relative(ROOT, fileURLToPath(uri)) : '<unknown>';
-      console.error(
-        `${relativePath}:${line}:${column} - ${diagnostic.message ?? 'Tailwind cssConflict detected.'}`
-      );
-    }
-    console.error(`\n${conflictDiagnostics.length} Tailwind cssConflict issue(s) found.`);
-    process.exit(1);
+      return `${relativePath}:${line}:${column} - ${diagnostic.message ?? 'Tailwind cssConflict detected.'}`;
+    });
+    fail(PREFIX, 'Tailwind cssConflict issues detected', { details, fix: FIX });
   }
 }
 
 main().catch((err: unknown) => {
-  const error = err instanceof Error ? err : new Error(String(err));
-  console.error('Tailwind conflict check failed:', error.message);
-  process.exit(1);
+  const message = asMessage(err);
+  fail(PREFIX, `Tailwind conflict check failed: ${message}`, { fix: FIX });
 });
 
 type ConflictDiagnostic = { uri: string; diagnostic: Diagnostic };

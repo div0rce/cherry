@@ -2,6 +2,8 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 // Load local env files so the predev check works before Next.js hydrates env vars
 function loadEnv() {
@@ -36,27 +38,25 @@ function loadEnv() {
 loadEnv();
 
 const schema = 'prisma/schema.prisma';
-
-function fail(message: string): void {
-  console.error(message);
-  console.error('\nFix:');
-  console.error('  - Ensure DATABASE_URL is set and reachable');
-  console.error('  - Apply migrations: npx prisma migrate deploy');
-  console.error('  - For local dev only: npx prisma migrate reset --force');
-  process.exit(1);
-}
+const PREFIX = 'db-ready';
+const FIX = [
+  'Ensure DATABASE_URL is set and reachable.',
+  'Apply migrations: npx prisma migrate deploy.',
+  'For local dev only: npx prisma migrate reset --force.',
+];
 
 const databaseUrl = process.env['DATABASE_URL'];
 if (databaseUrl === undefined || databaseUrl === '') {
-  fail('DATABASE_URL is missing. Start your database or set DATABASE_URL, then apply migrations.');
+  fail(PREFIX, 'DATABASE_URL is missing. Start your database or set DATABASE_URL, then apply migrations.', {
+    fix: FIX,
+  });
 }
 
 try {
   execSync(`npx prisma migrate status --schema=${schema}`, { stdio: 'inherit' });
 } catch (err: unknown) {
-  const error = err instanceof Error ? err : new Error(String(err));
-  void error;
-  fail(
-    'Prisma database is not ready (unapplied migrations or unreachable DB). See above for details.'
-  );
+  void asMessage(err);
+  fail(PREFIX, 'Prisma database is not ready (unapplied migrations or unreachable DB). See above for details.', {
+    fix: FIX,
+  });
 }

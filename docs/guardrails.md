@@ -132,6 +132,11 @@ Guardrail checks: `check:branded-literal` and `tests/guardrails/branded-type-enf
 - Zero allowlists, zero parallel helper stacks.
 - Guardrail check: `check:guardrail-helpers-exclusive`.
 
+**Invariant — Helper Exclusivity**
+All guardrail and script helpers must be imported exclusively from
+`scripts/guardrails/lib/*`.
+Any duplication is a hard CI failure.
+
 ### Guardrail 20 — Name/Path Bijection
 
 - Guardrail names must map to canonical script filenames: `check:<name>` → `check-<name>.mts` with `:` normalized to `-` under `scripts/`.

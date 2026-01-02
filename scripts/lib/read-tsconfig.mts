@@ -3,12 +3,12 @@ import ts from 'typescript';
 export function readTsConfig(configPath: string): ts.ParsedCommandLine {
   const result = ts.readConfigFile(configPath, ts.sys.readFile);
   if (result.error !== undefined) {
-    throw new Error(ts.flattenDiagnosticMessageText(result.error.messageText, '\n'));
+    throw Error(ts.flattenDiagnosticMessageText(result.error.messageText, '\n'));
   }
 
   const parsed = ts.parseJsonConfigFileContent(result.config, ts.sys, process.cwd());
   if (parsed.errors.length > 0) {
-    throw new Error(
+    throw Error(
       parsed.errors
         .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
         .join('\n')

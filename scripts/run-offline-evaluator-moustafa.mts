@@ -8,9 +8,13 @@ import { classifyIncomeAndP2PForUser } from '../lib/income/classifier.ts';
 import { rebuildIncomeRegimesAndBuckets } from '../lib/buckets/regimes.ts';
 import { RegimeBucketTracker } from '../lib/evaluator/regime-buckets.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'run-offline-evaluator-moustafa';
+const FIX = 'Run in non-production with valid user data and database access.';
 
 type ClassifiedBankTransaction = import('../lib/income/types.ts').ClassifiedBankTransaction;
 
@@ -19,7 +23,7 @@ const hasText = (value?: string | null): value is string =>
 
 async function resolveDevUser() {
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('Offline evaluator is disabled in production');
+    throw Error('Offline evaluator is disabled in production');
   }
 
   const cliArg = process.argv[2];
@@ -33,7 +37,7 @@ async function resolveDevUser() {
     }
     const user = await prisma.user.findUnique({ where: { id: cliArg } });
     if (user !== null) return user;
-    throw new Error(`No user found for id "${cliArg}". Provide an email to auto-create.`);
+    throw Error(`No user found for id "${cliArg}". Provide an email to auto-create.`);
   }
 
   const resolved = await getDevIngestUser(prisma);
@@ -64,7 +68,7 @@ async function main() {
       const user = await resolveDevUser();
       return user.id;
     } catch (error: unknown) {
-      void error;
+      void asMessage(error);
       return null;
     }
   })();
@@ -172,8 +176,8 @@ async function main() {
 
 main()
   .catch((err: unknown) => {
-    console.error(err);
-    process.exit(1);
+    const message = asMessage(err);
+    fail(PREFIX, `Offline evaluator failed: ${message}`, { fix: FIX });
   })
   .finally(async () => {
     await prisma.$disconnect();

@@ -6,20 +6,24 @@ import {
   setServerConfig,
 } from '../lib/config/store.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'check-config-lock';
+const FIX = 'Restore config lock invariants in lib/config/store.ts.';
 
 function expectThrow(fn: () => void, message: string): void {
   let threw = false;
   try {
     fn();
   } catch (error: unknown) {
-    void error;
+    void asMessage(error);
     threw = true;
   }
   if (!threw) {
-    throw new Error(message);
+    fail(PREFIX, message, { fix: FIX });
   }
 }
 
@@ -40,7 +44,7 @@ setServerConfig(baseConfig, { allowOverwrite: true, lock: false });
 lockServerConfig();
 
 if (!isServerConfigLocked()) {
-  throw new Error('Server config should be locked after lockServerConfig()');
+  fail(PREFIX, 'Server config should be locked after lockServerConfig()', { fix: FIX });
 }
 
 expectThrow(
@@ -53,26 +57,26 @@ let mutationThrew = false;
 try {
   (config as Record<string, unknown>)['environment'] = 'production';
 } catch (error: unknown) {
-  void error;
+  void asMessage(error);
   mutationThrew = true;
 }
 
 const mutatedEnvironment = (config as Record<string, unknown>)['environment'];
 if (!mutationThrew && mutatedEnvironment !== 'test') {
-  throw new Error('Server config mutation should be prevented after lock');
+  fail(PREFIX, 'Server config mutation should be prevented after lock', { fix: FIX });
 }
 
 let nestedMutationThrew = false;
 try {
   (config.wallet as Record<string, unknown>)['enabled'] = true;
 } catch (error: unknown) {
-  void error;
+  void asMessage(error);
   nestedMutationThrew = true;
 }
 
 const mutatedWalletEnabled = (config.wallet as Record<string, unknown>)['enabled'];
 if (!nestedMutationThrew && mutatedWalletEnabled !== baseConfig.wallet.enabled) {
-  throw new Error('Nested server config mutation should be prevented after lock');
+  fail(PREFIX, 'Nested server config mutation should be prevented after lock', { fix: FIX });
 }
 
 process.stdout.write('check-config-lock: ok\n');

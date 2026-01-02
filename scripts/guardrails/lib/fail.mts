@@ -31,5 +31,8 @@ export function fail(
   }
 
   process.stderr.write(`${lines.join('\n')}\n`);
-  process.exit(1);
+  process.exitCode = 1;
+  const error = Error(lines.join('\n'));
+  error.name = 'GuardrailFailure';
+  throw error;
 }

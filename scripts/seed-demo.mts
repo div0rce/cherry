@@ -13,9 +13,13 @@ import { logError, logInfo } from '../lib/logger.ts';
 import { seedDemoForUser } from '../lib/demo-seeder.ts';
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'seed-demo';
+const FIX = 'Run in non-production and provide a valid user id/email.';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -27,7 +31,7 @@ async function resolveTargetUser() {
   const isProd = process.env.NODE_ENV === 'production';
 
   if (isProd) {
-    throw new Error('Demo seeding scripts are disabled in production');
+    throw Error('Demo seeding scripts are disabled in production');
   }
 
   const findByEmail = (email: string) =>
@@ -51,7 +55,7 @@ async function resolveTargetUser() {
     }
     const user = await findById(cliArg);
     if (user !== null) return user;
-    throw new Error(
+    throw Error(
       `No user found for ${selectorLabel}. Use an email to auto-create or sign in through the app, then rerun the seed command with a valid account.`
     );
   }
@@ -63,7 +67,7 @@ async function resolveTargetUser() {
   if (hasText(envUserId)) {
     const user = await findById(envUserId);
     if (user === null) {
-      throw new Error(
+      throw Error(
         `SEED_USER_ID is set to "${envUserId}", but no matching user exists. Sign in first, then rerun the seed command.`
       );
     }
@@ -83,8 +87,9 @@ async function main() {
 
 main()
   .catch((err: unknown) => {
-    logError('Demo seed failed', err);
-    process.exit(1);
+    const message = asMessage(err);
+    logError('Demo seed failed', { message });
+    fail(PREFIX, `Demo seed failed: ${message}`, { fix: FIX });
   })
   .finally(async () => {
     await prisma.$disconnect();

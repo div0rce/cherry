@@ -8,9 +8,13 @@ import {
 import { prisma } from '../lib/prisma.ts';
 import { logInfo, logWarn } from '../lib/logger.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'audit-integrity';
+const FIX = 'Resolve ledger/session integrity violations before rerunning.';
 
 const LEDGER_STATUS_FOR_BALANCE = CherryPointLedgerStatus.POSTED;
 const SESSION_EXPIRY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -96,6 +100,7 @@ main()
     logInfo('Audit complete');
   })
   .catch((error: unknown) => {
-    logWarn('Audit failed', error);
-    process.exit(1);
+    const message = asMessage(error);
+    logWarn('Audit failed', { message });
+    fail(PREFIX, `Audit failed: ${message}`, { fix: FIX });
   });

@@ -1,19 +1,15 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { fail as guardrailFail } from './guardrails/lib/fail.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 const migrationsDir = path.join(process.cwd(), 'prisma', 'migrations');
 const banned = [/TODO/i, /STUB/i, /FIXME/i];
 const PREFIX = 'check:migrations';
 const FIX = 'Fix migration SQL or remove banned markers.';
 
-function fail(msg: string): void {
-  guardrailFail(PREFIX, msg, { fix: FIX });
-}
-
 if (!fs.existsSync(migrationsDir)) {
-  fail('prisma/migrations directory not found.');
+  fail(PREFIX, 'prisma/migrations directory not found.', { fix: FIX });
 }
 
 const entries = fs
@@ -24,15 +20,17 @@ for (const entry of entries) {
   if (entry.name === 'migration_lock.toml') continue;
   const migrationPath = path.join(migrationsDir, entry.name, 'migration.sql');
   if (!fs.existsSync(migrationPath)) {
-    fail(`Migration ${entry.name} is missing migration.sql`);
+    fail(PREFIX, `Migration ${entry.name} is missing migration.sql`, { fix: FIX });
   }
   const content = fs.readFileSync(migrationPath, 'utf8');
   if (content.trim().length === 0) {
-    fail(`Migration ${entry.name} has empty migration.sql`);
+    fail(PREFIX, `Migration ${entry.name} has empty migration.sql`, { fix: FIX });
   }
   for (const pattern of banned) {
     if (pattern.test(content)) {
-      fail(`Migration ${entry.name} contains banned marker (${pattern.source}).`);
+      fail(PREFIX, `Migration ${entry.name} contains banned marker (${pattern.source}).`, {
+        fix: FIX,
+      });
     }
   }
 }

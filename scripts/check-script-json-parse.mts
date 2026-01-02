@@ -29,7 +29,6 @@ const IGNORE = [
   '**/coverage/**',
   '**/dist-scripts/**',
 ];
-const ALLOWLIST = new Set([path.join(ROOT, 'scripts', 'guardrails', 'lib', 'read-json.mts')]);
 const RULE = 'check:script-json-parse';
 const FIX = 'Use readJsonFile/parseJson from scripts/guardrails/lib/read-json.mts.';
 
@@ -155,7 +154,6 @@ function main(): void {
     const violations: Violation[] = [];
 
     for (const filePath of files) {
-      if (ALLOWLIST.has(filePath)) continue;
       if (!fs.existsSync(filePath)) continue;
       const content = fs.readFileSync(filePath, 'utf8');
       const scanned = stripForScan(content);

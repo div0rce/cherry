@@ -1,7 +1,12 @@
 import { prisma } from '../lib/prisma.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
+
+const PREFIX = 'authority-coverage';
+const FIX = 'Ensure the database is reachable and decision events exist.';
 
 
 async function main(): Promise<void> {
@@ -81,6 +86,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error(err);
-  process.exit(1);
+  const message = asMessage(err);
+  fail(PREFIX, `Authority coverage failed: ${message}`, { fix: FIX });
 });

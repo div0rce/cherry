@@ -81,11 +81,25 @@ async function runGuardrail(): Promise<void> {
       );
       const output = stderrChunks.join('').trim();
       if (output.length === 0) {
-        fail(name, 'Guardrail failed without output', {
-          fix: `Run npm run ${name} for details.`,
-        });
+        process.stderr.write(
+          `${name}: Guardrail failed without output\nFix:\nRun npm run ${name} for details.\n`
+        );
       }
-      originalExit(err.code);
+      process.exitCode = err.code;
+      return;
+    }
+
+    if (err instanceof Error && err.name === 'GuardrailFailure') {
+      process.stdout.write(
+        `${SUMMARY_PREFIX}: guardrail=${name} exit=1 timeMs=${durationMs} next="npm run ${name}"\n`
+      );
+      const output = stderrChunks.join('').trim();
+      if (output.length === 0) {
+        process.stderr.write(
+          `${name}: Guardrail failed without output\nFix:\nRun npm run ${name} for details.\n`
+        );
+      }
+      process.exitCode = 1;
       return;
     }
 
@@ -93,12 +107,17 @@ async function runGuardrail(): Promise<void> {
     process.stdout.write(
       `${SUMMARY_PREFIX}: guardrail=${name} exit=1 timeMs=${durationMs} next="npm run ${name}"\n`
     );
-    fail(name, `Guardrail crashed: ${message}`, {
-      fix: `Inspect ${relativePath} for errors.`,
-    });
+    process.stderr.write(
+      `${name}: Guardrail crashed: ${message}\nFix:\nInspect ${relativePath} for errors.\n`
+    );
+    process.exitCode = 1;
   } finally {
     restore();
   }
 }
 
-void runGuardrail();
+void runGuardrail().catch((err: unknown) => {
+  const message = asMessage(err);
+  process.stderr.write(`${PREFIX}: ${message}\n`);
+  process.exitCode = 1;
+});

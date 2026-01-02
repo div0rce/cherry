@@ -33,9 +33,13 @@ import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.ts';
 import { logError, logInfo } from '../lib/logger.ts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 import { readJsonFile } from './guardrails/lib/read-json.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
+const PREFIX = 'ingest-mcc';
+const FIX = 'Ensure the TSV path exists and prisma is connected.';
 
 const DEFAULT_PATH = path.join(process.cwd(), 'data', 'mcc', 'sanitized-mcc.tsv');
 const unmappedPath = path.join(process.cwd(), 'data', 'mcc', 'unmapped-mcc.json');
@@ -272,7 +276,7 @@ async function main() {
   const sourceArg = process.argv[2];
   const source = hasText(sourceArg) ? path.resolve(sourceArg) : DEFAULT_PATH;
   if (!fs.existsSync(source)) {
-    throw new Error(`MCC TSV not found at ${source}`);
+    throw Error(`MCC TSV not found at ${source}`);
   }
 
   const rows = parseTsv(source);
@@ -346,8 +350,9 @@ async function main() {
 
 main()
   .catch((err: unknown) => {
-    logError('Ingest failed', err);
-    process.exit(1);
+    const message = asMessage(err);
+    logError('Ingest failed', { message });
+    fail(PREFIX, `Ingest failed: ${message}`, { fix: FIX });
   })
   .finally(async () => {
     await prisma.$disconnect();

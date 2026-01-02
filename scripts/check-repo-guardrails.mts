@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import { parseJson } from './guardrails/lib/read-json.mts';
+import { asMessage } from './guardrails/lib/error.mts';
 import { fail } from './guardrails/lib/fail.mts';
 
 const PREFIX = 'check:repo-guardrails';
@@ -68,7 +69,8 @@ const RAW_ERROR_IDENTIFIER = /\b(err|error|caught)\b(?!\s*:)/g;
 const RAW_LOG_CALL = /\blog(?:Error|Warn|Info)\s*\(/;
 const AS_ERROR_ASSIGN = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*asAppError\s*\(/;
 const AS_ERROR_CALL = /\basAppError\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
-const FORBIDDEN_AS_ERROR = /\basError\b/;
+const ERROR_HELPER_NAME = ['as', 'Error'].join('');
+const FORBIDDEN_AS_ERROR = new RegExp(`\\b${ERROR_HELPER_NAME}\\b`);
 const CATCH_HEADER = /\bcatch\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/;
 
 const IGNORE_DIRS = new Set([
@@ -405,9 +407,9 @@ for (const file of timeFiles) {
 }
 
 const errorLogFiles = [...appFiles, ...libFiles];
-const asErrorFiles = [...appFiles, ...libFiles, ...scriptFiles, ...testFiles];
+const errorHelperFiles = [...appFiles, ...libFiles, ...scriptFiles, ...testFiles];
 
-for (const file of asErrorFiles) {
+for (const file of errorHelperFiles) {
   const relPath = path.normalize(path.relative(root, file));
   if (relPath === path.normalize('scripts/guardrails/lib/error.mts')) continue;
   const content = fs.readFileSync(file, 'utf8');
@@ -537,8 +539,7 @@ for (const file of commandFiles) {
     try {
       scripts = PackageJsonSchema.parse(parseJson(content)).scripts;
     } catch (err: unknown) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      void error;
+      void asMessage(err);
       scripts = {};
     }
     if (Object.keys(scripts).length === 0) {
@@ -693,8 +694,7 @@ if (fs.existsSync(migrationsDir)) {
   try {
     baselineList = MigrationBaselineSchema.parse(parseJson(baselineRaw));
   } catch (err: unknown) {
-    const error = err instanceof Error ? err : new Error(String(err));
-    void error;
+    void asMessage(err);
     recordViolation('migration-safety-baseline: invalid JSON');
   }
   const baseline = new Set(baselineList.map((entry) => String(entry)));

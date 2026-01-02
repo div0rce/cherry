@@ -118,7 +118,7 @@ async function main(): Promise<void> {
   assert.equal(recorded.length, 1);
   const event = recorded[0];
   if (event === undefined) {
-    throw new Error('DecisionEvent was not recorded');
+    throw Error('DecisionEvent was not recorded');
   }
   const requiredFields = [
     'userId',

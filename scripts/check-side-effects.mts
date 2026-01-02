@@ -232,15 +232,17 @@ function inferTier(effects: string[]): AllowlistTier {
 function assertTier(entry: AllowlistEntry, file: string): void {
   const expected = inferTier(entry.effects);
   if (entry.tier !== expected) {
-    throw new Error(
-      `Allowlist tier mismatch for ${file}: expected ${expected}, got ${entry.tier}`
-    );
+    fail(PREFIX, `Allowlist tier mismatch for ${file}: expected ${expected}, got ${entry.tier}`, {
+      fix: FIX,
+    });
   }
 }
 
 function loadAllowlist(): Record<string, AllowlistEntry> {
   if (!fs.existsSync(ALLOWLIST_PATH)) {
-    throw new Error(`Side-effects allowlist missing at ${path.relative(ROOT, ALLOWLIST_PATH)}`);
+    fail(PREFIX, `Side-effects allowlist missing at ${path.relative(ROOT, ALLOWLIST_PATH)}`, {
+      fix: FIX,
+    });
   }
   const data = fs.readFileSync(ALLOWLIST_PATH, 'utf8');
   const parsed = AllowlistSchema.parse(parseJson(data));
@@ -288,7 +290,7 @@ function main(): void {
     process.stdout.write(
       `Wrote side-effects allowlist to ${path.relative(ROOT, ALLOWLIST_PATH)}\n`
     );
-    process.exit(0);
+    return;
   }
 
   const allowlist = loadAllowlist();

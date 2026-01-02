@@ -4,16 +4,13 @@ import { z } from 'zod';
 import { readTsConfig } from './lib/read-tsconfig.mts';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 import { readJsonFile } from './guardrails/lib/read-json.mts';
-import { fail as guardrailFail } from './guardrails/lib/fail.mts';
+import { asMessage } from './guardrails/lib/error.mts';
+import { fail } from './guardrails/lib/fail.mts';
 
 ensureTsEsm();
 
 const PREFIX = 'check:guardrails-core';
 const DEFAULT_FIX = 'Restore guardrail enforcement in ESLint and tsconfig.';
-
-function fail(message: string): never {
-  guardrailFail(PREFIX, message, { fix: DEFAULT_FIX });
-}
 
 const PackageJsonSchema = z
   .object({
@@ -21,23 +18,17 @@ const PackageJsonSchema = z
   })
   .passthrough();
 
-function readJson<T>(filePath: string, schema: z.ZodType<T>): T {
-  try {
-    return schema.parse(readJsonFile(filePath));
-  } catch (err: unknown) {
-    fail(`Failed to read JSON file ${filePath}: ${(err as Error).message}`);
-  }
-}
-
 function assertEslintRules(): void {
   const eslintPath = path.join(process.cwd(), 'eslint.config.mjs');
   if (!fs.existsSync(eslintPath)) {
-    fail('eslint.config.mjs missing');
+    fail(PREFIX, 'eslint.config.mjs missing', { fix: DEFAULT_FIX });
   }
   const legacyConfigs = ['.eslintrc', '.eslintrc.js', '.eslintrc.cjs', '.eslintrc.json', '.eslintrc.yml', '.eslintrc.yaml'];
   legacyConfigs.forEach((file) => {
     if (fs.existsSync(path.join(process.cwd(), file))) {
-      fail(`Legacy ESLint config ${file} must not exist; use eslint.config.mjs only.`);
+      fail(PREFIX, `Legacy ESLint config ${file} must not exist; use eslint.config.mjs only.`, {
+        fix: DEFAULT_FIX,
+      });
     }
   });
   const text = fs.readFileSync(eslintPath, 'utf8');
@@ -59,7 +50,7 @@ function assertEslintRules(): void {
   ];
   requiredSnippets.forEach((snippet) => {
     if (!text.includes(snippet)) {
-      fail(`ESLint guardrail missing: ${snippet}`);
+      fail(PREFIX, `ESLint guardrail missing: ${snippet}`, { fix: DEFAULT_FIX });
     }
   });
 
@@ -75,7 +66,9 @@ function assertEslintRules(): void {
   ];
   strictBooleanTokens.forEach((token) => {
     if (!text.includes(token)) {
-      fail(`Strict boolean expressions config missing token: ${token}`);
+      fail(PREFIX, `Strict boolean expressions config missing token: ${token}`, {
+        fix: DEFAULT_FIX,
+      });
     }
   });
 }
@@ -133,7 +126,9 @@ function assertNoNewEslintDisables(): void {
       const content = fs.readFileSync(fullPath, 'utf8');
       if (content.includes('eslint-disable')) {
         if (!allowList.has(relPath)) {
-          fail(`New eslint-disable found in ${relPath}. Fix code instead of disabling rules.`);
+          fail(PREFIX, `New eslint-disable found in ${relPath}. Fix code instead of disabling rules.`, {
+            fix: DEFAULT_FIX,
+          });
         }
       }
     }
@@ -161,16 +156,21 @@ function assertTsconfigStrict(): void {
   const compilerOptions = tsconfig.options;
   requiredTrueFlags.forEach((flag) => {
     if ((compilerOptions as Record<string, unknown>)[flag] !== true) {
-      fail(`tsconfig compilerOptions.${flag} must be true`);
+      fail(PREFIX, `tsconfig compilerOptions.${flag} must be true`, { fix: DEFAULT_FIX });
     }
   });
 }
 
 function assertPackageScripts(): void {
   const pkgPath = path.join(process.cwd(), 'package.json');
-  const pkg = readJson(pkgPath, PackageJsonSchema);
+  let pkg: z.infer<typeof PackageJsonSchema>;
+  try {
+    pkg = PackageJsonSchema.parse(readJsonFile(pkgPath));
+  } catch (err: unknown) {
+    fail(PREFIX, `Failed to read JSON file ${pkgPath}: ${asMessage(err)}`, { fix: DEFAULT_FIX });
+  }
   const scripts = pkg.scripts;
-  if (scripts === undefined) fail('package.json missing scripts');
+  if (scripts === undefined) fail(PREFIX, 'package.json missing scripts', { fix: DEFAULT_FIX });
   const requiredScripts = [
     'lint',
     'lint:eslint',
@@ -186,16 +186,16 @@ function assertPackageScripts(): void {
   ];
   requiredScripts.forEach((name) => {
     if (typeof scripts[name] !== 'string') {
-      fail(`package.json scripts missing ${name}`);
+      fail(PREFIX, `package.json scripts missing ${name}`, { fix: DEFAULT_FIX });
     }
   });
   const lintScript = scripts['lint'] as string;
   if (!lintScript.includes('lint:tailwind') || !lintScript.includes('lint:eslint')) {
-    fail('lint script must run lint:tailwind and lint:eslint');
+    fail(PREFIX, 'lint script must run lint:tailwind and lint:eslint', { fix: DEFAULT_FIX });
   }
   const testScript = scripts['test'] as string;
   if (!testScript.includes('check:guardrails')) {
-    fail('test script must include check:guardrails');
+    fail(PREFIX, 'test script must include check:guardrails', { fix: DEFAULT_FIX });
   }
 }
 
@@ -203,7 +203,7 @@ function assertPrismaAssumptions(): void {
   const filePath = path.join(process.cwd(), 'scripts', 'check-prisma-assumptions.mts');
   if (!fs.existsSync(filePath)) {
     const relative = path.join('scripts', 'check-prisma-assumptions.mts');
-    fail(`${relative} missing`);
+    fail(PREFIX, `${relative} missing`, { fix: DEFAULT_FIX });
   }
 }
 
@@ -217,7 +217,7 @@ function assertCriticalFilesExist(): void {
   ];
   requiredFiles.forEach((file) => {
     if (!fs.existsSync(path.join(process.cwd(), file))) {
-      fail(`Required guardrail file missing: ${file}`);
+      fail(PREFIX, `Required guardrail file missing: ${file}`, { fix: DEFAULT_FIX });
     }
   });
 
@@ -226,7 +226,9 @@ function assertCriticalFilesExist(): void {
     fs.existsSync(path.join(process.cwd(), file))
   );
   if (!hasEvaluatorPage) {
-    fail(`Required guardrail file missing: one of ${evaluatorPaths.join(', ')}`);
+    fail(PREFIX, `Required guardrail file missing: one of ${evaluatorPaths.join(', ')}`, {
+      fix: DEFAULT_FIX,
+    });
   }
 }
 
@@ -260,7 +262,7 @@ function assertTestsPresent(): void {
   ];
   requiredTests.forEach((file) => {
     if (!fs.existsSync(path.join(process.cwd(), file))) {
-      fail(`Required guardrail test missing: ${file}`);
+      fail(PREFIX, `Required guardrail test missing: ${file}`, { fix: DEFAULT_FIX });
     }
   });
 }

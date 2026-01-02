@@ -2,17 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ensureTsEsm } from '../lib/ensure-ts-esm.mts';
+import { fail } from '../guardrails/lib/fail.mts';
 import { EXECUTION, type ExecutionName } from './registry.mts';
 
 ensureTsEsm();
 
 const PREFIX = 'EXECUTION RUNNER';
 const ROOT = process.cwd();
-
-function fail(message: string): never {
-  process.stderr.write(`${PREFIX}: ${message}\n`);
-  process.exit(1);
-}
+const FIX = 'Use a valid execution name from scripts/execution/registry.mts.';
 
 function isExecutionName(value: string): value is ExecutionName {
   return Object.prototype.hasOwnProperty.call(EXECUTION, value);
@@ -22,16 +19,16 @@ async function runExecution(): Promise<void> {
   const args = process.argv.slice(2);
   const name = args[0];
   if (name === undefined || name.length === 0) {
-    fail('Execution name required');
+    fail(PREFIX, 'Execution name required', { fix: FIX });
   }
   if (!isExecutionName(name)) {
-    fail(`Unknown execution script: ${name}`);
+    fail(PREFIX, `Unknown execution script: ${name}`, { fix: FIX });
   }
 
   const relativePath = EXECUTION[name];
   const absolutePath = path.join(ROOT, relativePath);
   if (fs.existsSync(absolutePath) === false) {
-    fail(`Execution script missing: ${relativePath}`);
+    fail(PREFIX, `Execution script missing: ${relativePath}`, { fix: FIX });
   }
 
   const executable = process.argv[0] ?? 'node';

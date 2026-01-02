@@ -18,7 +18,7 @@ function assertOfflineEvaluatorModelsPresent() {
   const hasBucketTemplate = typeof prisma.historicalBucketTemplate?.findFirst === 'function';
 
   if (!hasIncomeRegime || !hasBucketTemplate) {
-    throw new Error(
+    throw Error(
       'Prisma client missing offline evaluator models (historicalIncomeRegime/historicalBucketTemplate). Run migrations and `npx prisma generate`.',
     );
   }
@@ -29,7 +29,7 @@ async function main() {
   if (fs.existsSync(schemaPath)) {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     if (/@default\s*\(\s*uuid\s*\(\s*\)\s*\)/.test(schema)) {
-      throw new Error('Prisma schema uses @default(uuid()) — derive or inject IDs explicitly for engine-visible models.');
+      throw Error('Prisma schema uses @default(uuid()) — derive or inject IDs explicitly for engine-visible models.');
     }
   }
 
@@ -37,7 +37,7 @@ async function main() {
   for (const file of sourceFiles) {
     const content = fs.readFileSync(file, 'utf8');
     if (content.includes('findMany(') && !content.includes('orderBy')) {
-      throw new Error(`findMany without orderBy detected in ${path.relative(process.cwd(), file)}`);
+      throw Error(`findMany without orderBy detected in ${path.relative(process.cwd(), file)}`);
     }
   }
 
@@ -56,7 +56,7 @@ async function main() {
       },
     },
   }).catch((error: unknown) => {
-    void error;
+    void asMessage(error);
     return undefined;
   });
 
@@ -71,7 +71,7 @@ async function main() {
       select: { runId: true, userId: true, bankTransactionId: true },
     })
     .catch((error: unknown) => {
-      void error;
+      void asMessage(error);
       return undefined;
     });
 
