@@ -15,5 +15,6 @@
   "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "eslint.run": "onType",
   "tailwindCSS.validate": true,
-  "tailwindCSS.lint.cssConflict": "error"
+  "tailwindCSS.lint.cssConflict": "error",
+  "prisma.pinToPrisma6": true
 }
