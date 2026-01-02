@@ -1,0 +1,8 @@
+{
+  "name": "script-runner-contract-bad",
+  "private": true,
+  "scripts": {
+    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
+    "check:clean": "node scripts/execution/run.mjs check:clean"
+  }
+}

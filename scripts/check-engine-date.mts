@@ -22,7 +22,7 @@ const TARGETS = [
   'lib/engine/**/*.{ts,tsx,js,jsx}',
   'lib/authority/**/*.{ts,tsx,js,jsx}',
 ];
-const IGNORE = ['**/__tests__/**', '**/__mocks__/**'];
+const IGNORE = ['**/__tests__/**', '**/__mocks__/**', '**/.tmp/**'];
 
 const PATTERNS: Array<{ message: string; regex: RegExp }> = [
   { message: 'uses Date constructor or type', regex: /\bDate\b/ },

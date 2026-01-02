@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-01-02
+Last updated: 2026-01-03
 
 # CI and guardrails
 
@@ -10,7 +10,7 @@ Last updated: 2026-01-02
 - Steps (fail-fast):
   1) `npm ci` (postinstall runs `prisma generate`)
   2) `npm run ci:verify` (composite truth gate: check + test + build)
-- Optional env lane (`.github/workflows/env-checks.yml`) runs `CHERRY_STRICT=1 npm run check:env` when secrets are available.
+- Optional env lane (`.github/workflows/env-checks.yml`) runs `CHERRY_STRICT=1 npm run check:db:required` with a provisioned Postgres service.
 
 ### Why CI Runs `npm run ci:verify`
 

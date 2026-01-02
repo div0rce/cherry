@@ -12,7 +12,7 @@ BASE_URL="${BASE_URL:-http://localhost:3000}"
 
 CSRFTOKEN_JSON=$(curl -s -c cookies.txt "$BASE_URL/api/auth/csrf")
 CSRF_TOKEN=$(
-  node --input-type=module -e "import { z } from 'zod'; import { parseJson } from './scripts/guardrails/lib/read-json.mts'; const raw = process.argv[1] || '{}'; const data = z.object({ csrfToken: z.string().optional() }).passthrough().parse(parseJson(raw)); process.stdout.write(`${data.csrfToken ?? ''}\\n`);" "$CSRFTOKEN_JSON"
+  npm run -s ts:esm -- scripts/dev-login.mts -- "$CSRFTOKEN_JSON"
 )
 
 if [ -z "$CSRF_TOKEN" ]; then

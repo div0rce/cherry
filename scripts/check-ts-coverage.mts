@@ -26,6 +26,7 @@ const IGNORE = [
   '**/dist-scripts/**',
   '**/build/**',
   '**/coverage/**',
+  '**/.tmp/**',
   'tests/fixtures/**',
 ];
 const CORE_CONFIG = path.join(ROOT, 'tsconfig.core.typecheck.json');

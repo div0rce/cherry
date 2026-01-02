@@ -183,8 +183,10 @@ function assertPackageScripts(): void {
     'check:prisma-assumptions',
     'check:guardrails',
     'test',
+    'test:strict',
     'dev:ingest:moustafa-bank',
     'dev:evaluator:moustafa',
+    'build:strict',
   ];
   requiredScripts.forEach((name) => {
     if (typeof scripts[name] !== 'string') {
@@ -194,10 +196,6 @@ function assertPackageScripts(): void {
   const lintScript = scripts['lint'] as string;
   if (!lintScript.includes('lint:tailwind') || !lintScript.includes('lint:eslint')) {
     fail(PREFIX, 'lint script must run lint:tailwind and lint:eslint', { fix: DEFAULT_FIX });
-  }
-  const testScript = scripts['test'] as string;
-  if (!testScript.includes('check:guardrails')) {
-    fail(PREFIX, 'test script must include check:guardrails', { fix: DEFAULT_FIX });
   }
 }
 

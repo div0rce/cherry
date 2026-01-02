@@ -9,11 +9,13 @@
   "scripts": {
     "predev": "npm run check:db-ready",
     "dev": "next dev",
-    "build": "npm run check:guardrails && next build",
+    "build": "next build",
+    "build:strict": "npm run check:guardrails && next build",
     "start": "next start",
     "ci:verify": "npm run check && npm run test && npm run build",
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run.mts check:db-ready",
+    "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
@@ -95,7 +97,8 @@
     "check:authority-lint": "npm run ts:esm -- scripts/guardrails/run.mts check:authority-lint",
     "check:authority-invariants": "npm run ts:esm -- scripts/guardrails/run.mts check:authority-invariants",
     "postinstall": "prisma generate --schema=prisma/schema.prisma",
-    "test": "npm run check:guardrails && npm run check:run-tests"
+    "test": "npm run check:run-tests",
+    "test:strict": "npm run check:guardrails && npm run check:run-tests"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

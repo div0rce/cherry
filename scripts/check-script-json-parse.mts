@@ -28,6 +28,7 @@ const IGNORE = [
   '**/out/**',
   '**/coverage/**',
   '**/dist-scripts/**',
+  '**/.tmp/**',
 ];
 const RULE = 'check:script-json-parse';
 const FIX = 'Use readJsonFile/parseJson from scripts/guardrails/lib/read-json.mts.';

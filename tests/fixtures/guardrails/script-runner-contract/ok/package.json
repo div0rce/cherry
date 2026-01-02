@@ -1,0 +1,9 @@
+{
+  "name": "script-runner-contract-ok",
+  "private": true,
+  "scripts": {
+    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
+    "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
+    "lint": "eslint ."
+  }
+}

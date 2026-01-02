@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-01-03
 
 # Guardrails
 
@@ -207,6 +207,7 @@ Any duplication is a hard CI failure.
 
 - `ci:verify` must run `check`, `test`, and `build` in order.
 - `check` must remain pure (no env-dependent scripts).
+- `test` and `build` must not invoke guardrails; use `test:strict` and `build:strict` when needed.
 - Guardrail: `check:check-contract`.
 
 ### Guardrail 31 — Script Runner Contract

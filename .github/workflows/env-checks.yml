@@ -5,14 +5,29 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
-  env:
+  env-checks:
     runs-on: ubuntu-latest
-    if: ${{ secrets.DATABASE_URL != '' }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cherry_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d cherry_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      CHERRY_STRICT: "1"
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
+      NODE_OPTIONS: "--conditions=development"
+      PATH: "/usr/bin:/bin:/usr/local/bin"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +40,21 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client ripgrep
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Run env checks
-        run: npm run check:env
+      - name: Apply Prisma migrations
+        run: |
+          npx prisma generate --schema=prisma/schema.prisma
+          npx prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Verify Prisma migration status
+        run: npx prisma migrate status --schema=prisma/schema.prisma
+
+      - name: Verify database required checks
+        run: CHERRY_STRICT=1 npm run check:db:required

@@ -12,7 +12,7 @@ const ROOT_ENV = process.env['CHERRY_CHECK_CONTRACT_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== '' ? path.resolve(ROOT_ENV) : process.cwd();
 const PACKAGE_JSON = path.join(ROOT, 'package.json');
 const FIX = 'Restore CI truth scripts: check, test, build, and ci:verify.';
-const REQUIRED_SCRIPTS = ['check', 'test', 'build', 'ci:verify'] as const;
+const REQUIRED_SCRIPTS = ['check', 'test', 'build', 'ci:verify', 'test:strict', 'build:strict'] as const;
 const ENV_SCRIPTS = new Set([
   'check:db',
   'check:db:optional',
@@ -95,10 +95,10 @@ function assertCheckIsPure(command: string): void {
   const calls = parseRunCalls(command);
   const hasTest = calls.includes('test');
   const hasBuild = calls.includes('build');
-  if (hasTest !== hasBuild) {
-    fail(PREFIX, 'check must either include both test+build or neither', {
+  if (hasTest || hasBuild) {
+    fail(PREFIX, 'check must be pure (guardrails + lint + typecheck only)', {
       details: [`check=${command}`],
-      fix: 'Keep check pure or include both test and build.',
+      fix: 'Remove test/build from check and keep them in ci:verify.',
     });
   }
   for (const call of calls) {
@@ -108,6 +108,24 @@ function assertCheckIsPure(command: string): void {
         fix: 'Move env checks into check:env.',
       });
     }
+  }
+
+  const guardrailCalls = calls.filter((call) => call === 'check:guardrails');
+  if (guardrailCalls.length !== 1) {
+    fail(PREFIX, 'check must invoke check:guardrails exactly once', {
+      details: [`check=${command}`],
+      fix: 'Add a single `npm run check:guardrails` to check.',
+    });
+  }
+}
+
+function assertTestBuildPure(name: 'test' | 'build', command: string): void {
+  const calls = parseRunCalls(command);
+  if (calls.includes('check:guardrails') || calls.includes('check')) {
+    fail(PREFIX, `${name} must be pure (no guardrails execution)`, {
+      details: [`${name}=${command}`],
+      fix: `Remove guardrail/check invocations from ${name}.`,
+    });
   }
 }
 
@@ -129,6 +147,18 @@ function main(): void {
     fail(PREFIX, 'package.json missing script: check', { fix: FIX });
   }
   assertCheckIsPure(checkScript);
+
+  const testScript = scripts['test'];
+  if (testScript === undefined) {
+    fail(PREFIX, 'package.json missing script: test', { fix: FIX });
+  }
+  assertTestBuildPure('test', testScript);
+
+  const buildScript = scripts['build'];
+  if (buildScript === undefined) {
+    fail(PREFIX, 'package.json missing script: build', { fix: FIX });
+  }
+  assertTestBuildPure('build', buildScript);
 
   process.stdout.write('check-contract: ok\n');
 }

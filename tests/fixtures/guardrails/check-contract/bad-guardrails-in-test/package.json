@@ -1,0 +1,12 @@
+{
+  "name": "check-contract-bad-guardrails-in-test",
+  "private": true,
+  "scripts": {
+    "check": "npm run check:guardrails && npm run lint",
+    "test": "npm run check:guardrails && npm run check:run-tests",
+    "build": "next build",
+    "ci:verify": "npm run check && npm run test && npm run build",
+    "test:strict": "npm run check:guardrails && npm run check:run-tests",
+    "build:strict": "npm run check:guardrails && next build"
+  }
+}
