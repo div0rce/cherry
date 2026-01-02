@@ -7,7 +7,8 @@ ensureTsEsm();
 
 const PREFIX = 'check:no-script-alias-imports';
 const FIX = 'Use relative imports in scripts instead of @/ aliases.';
-const ROOT = process.cwd();
+const ROOT_ENV = process.env['CHERRY_NO_SCRIPT_ALIAS_IMPORTS_ROOT'];
+const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== '' ? path.resolve(ROOT_ENV) : process.cwd();
 const TARGETS = [path.join(ROOT, 'scripts'), path.join(ROOT, 'prisma', 'scripts')];
 const PATTERN =
   "(from\\s+['\"]@/|import\\s+['\"]@/|import\\s*\\(\\s*['\"]@/|require\\s*\\(\\s*['\"]@/)";

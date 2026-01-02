@@ -24,6 +24,7 @@ const ROOT = process.cwd();
 const WORKFLOWS_DIR = path.join(ROOT, '.github', 'workflows');
 const CI_WORKFLOW = path.join(WORKFLOWS_DIR, 'ci.yml');
 const CHECK_SCRIPT = 'check';
+const CI_ENTRYPOINT = 'ci:verify';
 
 function readPackageScripts(): PackageScripts {
   const packagePath = path.join(ROOT, 'package.json');
@@ -196,21 +197,22 @@ function assertCiRunsCheck(errors: Violation[]): void {
   const ciGuardrails = calls.filter((name) => guardrailSet.has(name));
   const runsCheck = calls.includes(CHECK_SCRIPT);
   const runsEntry = calls.includes(GUARDRAIL_ENTRYPOINT);
+  const runsCiVerify = calls.includes(CI_ENTRYPOINT);
 
-  if (!runsCheck && !runsEntry) {
+  if (!runsCiVerify) {
     errors.push({
       file: ciPath,
       line: 1,
       col: 1,
-      message: `CI is missing guardrail coverage: ${guardrailNames.join(', ')}`,
+      message: `CI must run ${CI_ENTRYPOINT} to ensure guardrail coverage`,
     });
   }
-  if (ciGuardrails.length > 0 && !runsEntry && !runsCheck) {
+  if (runsCheck || runsEntry || ciGuardrails.length > 0) {
     errors.push({
       file: ciPath,
       line: 1,
       col: 1,
-      message: `CI runs guardrails directly without ${GUARDRAIL_ENTRYPOINT}: ${ciGuardrails.join(', ')}`,
+      message: `CI must not run guardrails directly; use ${CI_ENTRYPOINT} only`,
     });
   }
 }
@@ -227,7 +229,7 @@ function main(): void {
     );
     fail(PREFIX, 'CI does not cover all guardrails', {
       details,
-      fix: 'Ensure CI runs npm run check and includes check:guardrails coverage.',
+      fix: 'Ensure CI runs npm run ci:verify and check includes guardrail entrypoint coverage.',
     });
   }
 

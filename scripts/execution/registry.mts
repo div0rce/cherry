@@ -3,6 +3,8 @@ export const EXECUTION_RUNNER = 'scripts/execution/run.mts' as const;
 export const EXECUTION = {
   'check:clean': 'scripts/assert-clean-tree.mts',
   'check:db-ready': 'scripts/db-ready.mts',
+  'check:db:optional': 'scripts/db-check-optional.mts',
+  'check:db:required': 'scripts/db-check-required.mts',
   'check:run-tests': 'scripts/run-tests.mts',
   'check:tailwind-conflicts': 'scripts/tailwind-conflicts.mts',
   'ingest:moustafa-bank': 'scripts/ingest-moustafa-bank-csv.mts',

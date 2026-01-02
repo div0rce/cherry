@@ -1,0 +1,9 @@
+{
+  "name": "script-runner-contract-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
+    "check:bad": "node scripts/check-bad.mts"
+  }
+}

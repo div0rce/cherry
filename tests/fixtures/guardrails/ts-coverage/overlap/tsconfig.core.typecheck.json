@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true
+  },
+  "include": [
+    "types/**/*.d.ts"
+  ]
+}

@@ -7,7 +7,7 @@ import { fail } from './guardrails/lib/fail.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:ci-must-run-check';
-const MISSING_CHECK_MESSAGE = 'CI must run `npm run check`';
+const MISSING_CHECK_MESSAGE = 'CI must run `npm run ci:verify`';
 const ROOT_ENV = process.env['CHERRY_CI_MUST_RUN_CHECK_ROOT'];
 const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
   ? path.resolve(ROOT_ENV)
@@ -15,14 +15,28 @@ const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
 const WORKFLOWS_DIR = path.join(ROOT, '.github', 'workflows');
 const CI_WORKFLOW = path.join(WORKFLOWS_DIR, 'ci.yml');
 
-const FIX = 'Add `npm run check` as the final CI command in ci.yml.';
+const FIX = 'Run only `npm run ci:verify` as the final CI command in ci.yml.';
 
 type RunStep = {
   commands: string[];
 };
 
-function commandIsRunCheck(command: string): boolean {
-  return /^npm\s+run\s+check\s*(#.*)?$/.test(command.trim());
+function commandIsCiVerify(command: string): boolean {
+  return /^npm\s+run\s+ci:verify\s*(#.*)?$/.test(command.trim());
+}
+
+function collectNpmRunCalls(commands: string[]): string[] {
+  const calls: string[] = [];
+  for (const command of commands) {
+    const matches = command.matchAll(/npm\s+run\s+([^\s&]+)/g);
+    for (const match of matches) {
+      const name = match[1];
+      if (typeof name === 'string' && name.length > 0) {
+        calls.push(name);
+      }
+    }
+  }
+  return calls;
 }
 
 function parseRunSteps(lines: string[]): RunStep[] {
@@ -68,25 +82,25 @@ function collectCommands(steps: RunStep[]): string[] {
   return commands;
 }
 
-function fileHasCheck(filePath: string): { hasCheck: boolean; lastCommand: string | null } {
+function fileHasCiVerify(filePath: string): { hasCiVerify: boolean; lastCommand: string | null } {
   const content = fs.readFileSync(filePath, 'utf8');
   const lines = content.split(/\r?\n/);
   const steps = parseRunSteps(lines);
-  if (steps.length === 0) return { hasCheck: false, lastCommand: null };
+  if (steps.length === 0) return { hasCiVerify: false, lastCommand: null };
   const commands = collectCommands(steps);
-  const hasCheck = commands.some((command) => commandIsRunCheck(command));
+  const hasCiVerify = commands.some((command) => commandIsCiVerify(command));
   const lastStep = steps[steps.length - 1];
   if (lastStep === undefined) {
-    return { hasCheck, lastCommand: null };
+    return { hasCiVerify, lastCommand: null };
   }
   for (let i = lastStep.commands.length - 1; i >= 0; i -= 1) {
     const command = lastStep.commands[i];
     if (command === undefined) continue;
     const trimmed = command.trim();
     if (trimmed.length === 0) continue;
-    return { hasCheck, lastCommand: trimmed };
+    return { hasCiVerify, lastCommand: trimmed };
   }
-  return { hasCheck, lastCommand: null };
+  return { hasCiVerify, lastCommand: null };
 }
 
 function main(): void {
@@ -96,16 +110,31 @@ function main(): void {
       fix: FIX,
     });
   }
-  const result = fileHasCheck(CI_WORKFLOW);
-  if (!result.hasCheck) {
+  const result = fileHasCiVerify(CI_WORKFLOW);
+  if (!result.hasCiVerify) {
     fail(PREFIX, MISSING_CHECK_MESSAGE, {
-      details: [path.normalize(path.relative(ROOT, CI_WORKFLOW)) + ':1:1: missing npm run check'],
+      details: [path.normalize(path.relative(ROOT, CI_WORKFLOW)) + ':1:1: missing npm run ci:verify'],
       fix: FIX,
     });
   }
-  if (result.lastCommand === null || !commandIsRunCheck(result.lastCommand)) {
+  if (result.lastCommand === null || !commandIsCiVerify(result.lastCommand)) {
     fail(PREFIX, MISSING_CHECK_MESSAGE, {
-      details: [path.normalize(path.relative(ROOT, CI_WORKFLOW)) + ':1:1: npm run check must be last'],
+      details: [path.normalize(path.relative(ROOT, CI_WORKFLOW)) + ':1:1: npm run ci:verify must be last'],
+      fix: FIX,
+    });
+  }
+
+  const content = fs.readFileSync(CI_WORKFLOW, 'utf8');
+  const steps = parseRunSteps(content.split(/\r?\n/));
+  const commands = collectCommands(steps);
+  const calls = collectNpmRunCalls(commands);
+  const forbidden = calls.filter((name) => name !== 'ci:verify');
+  if (forbidden.length > 0) {
+    fail(PREFIX, 'CI must run only ci:verify via npm run', {
+      details: [
+        path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
+          `:1:1: forbidden npm scripts: ${forbidden.join(', ')}`,
+      ],
       fix: FIX,
     });
   }

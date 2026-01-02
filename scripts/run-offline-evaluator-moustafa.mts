@@ -22,7 +22,7 @@ const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
 async function resolveDevUser() {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env['NODE_ENV'] === 'production') {
     throw Error('Offline evaluator is disabled in production');
   }
 

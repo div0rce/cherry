@@ -8,7 +8,9 @@ const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as 
 const NO_SCRIPT_ALIAS_IMPORTS_PATH = `${CHECK_PATH_BASE}no-script-alias-imports.mts` as const;
 const NO_TS_EXTENSION_IMPORTS_PATH = `${CHECK_PATH_BASE}no-ts-extension-imports.mts` as const;
 const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
+const SCRIPT_RUNNER_CONTRACT_PATH = `${CHECK_PATH_BASE}script-runner-contract.mts` as const;
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
+const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
@@ -29,6 +31,7 @@ const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
  */
 export const GUARDRAILS = Object.freeze({
   'check:ts-coverage': TS_COVERAGE_PATH,
+  'check:check-contract': CHECK_CONTRACT_PATH,
   'check:side-effects': `${CHECK_PATH_BASE}side-effects.mts`,
   'check:side-effects:diff': `${CHECK_PATH_BASE}side-effects-diff.mts`,
   'check:script-semantics': `${CHECK_PATH_BASE}script-semantics.mts`,
@@ -37,6 +40,7 @@ export const GUARDRAILS = Object.freeze({
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
+  'check:script-runner-contract': SCRIPT_RUNNER_CONTRACT_PATH,
   'check:no-script-alias-imports': NO_SCRIPT_ALIAS_IMPORTS_PATH,
   'check:no-ts-extension-imports': NO_TS_EXTENSION_IMPORTS_PATH,
   'check:guardrail-no-runtime-io': GUARDRAIL_NO_RUNTIME_IO_PATH,
@@ -77,7 +81,6 @@ export const GUARDRAILS = Object.freeze({
   'check:routes': `${CHECK_PATH_BASE}routes.mts`,
   'check:engine-freeze': `${CHECK_PATH_BASE}engine-freeze.mts`,
   'check:migrations': `${CHECK_PATH_BASE}migrations.mts`,
-  'check:db': `${CHECK_PATH_BASE}db.mts`,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;

@@ -29,6 +29,7 @@ const IGNORE = [
   "**/out/**",
   "**/coverage/**",
   "**/dist-scripts/**",
+  "**/tests/fixtures/**",
 ];
 
 const PackageJsonSchema = z

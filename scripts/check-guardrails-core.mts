@@ -178,6 +178,8 @@ function assertPackageScripts(): void {
     'typecheck',
     'typecheck:scripts',
     'check',
+    'ci:verify',
+    'check:check-contract',
     'check:prisma-assumptions',
     'check:guardrails',
     'test',

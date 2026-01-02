@@ -5,6 +5,7 @@ import {
   lockServerConfig,
   setServerConfig,
 } from '../lib/config/store.js';
+import type { ServerConfig } from '../lib/config/server.js';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
@@ -48,11 +49,13 @@ if (!isServerConfigLocked()) {
 }
 
 expectThrow(
-  () => setServerConfig({ ...baseConfig, engineVersion: 'mutated' }),
+  () => {
+    void setServerConfig({ ...baseConfig, engineVersion: 'mutated' });
+  },
   'Server config reset should be rejected after lock'
 );
 
-const config = getServerConfig();
+const config = getServerConfig() as ServerConfig;
 let mutationThrew = false;
 try {
   (config as Record<string, unknown>)['environment'] = 'production';

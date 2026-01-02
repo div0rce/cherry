@@ -7,7 +7,8 @@ ensureTsEsm();
 
 const PREFIX = 'check:no-ts-extension-imports';
 const FIX = 'Use runtime extensions (.js/.mjs/.cjs) in Node scripts.';
-const ROOT = process.cwd();
+const ROOT_ENV = process.env['CHERRY_NO_TS_EXTENSION_IMPORTS_ROOT'];
+const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== '' ? path.resolve(ROOT_ENV) : process.cwd();
 const TARGETS = [path.join(ROOT, 'scripts'), path.join(ROOT, 'prisma', 'scripts')];
 const PATTERN =
   "(from\\s+['\"][^'\"]+\\.(?:ts|mts|cts)['\"]|import\\s*\\(\\s*['\"][^'\"]+\\.(?:ts|mts|cts)['\"]\\s*\\))";

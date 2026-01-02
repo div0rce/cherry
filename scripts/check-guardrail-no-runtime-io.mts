@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
@@ -7,10 +8,12 @@ ensureTsEsm();
 
 const PREFIX = 'check:guardrail-no-runtime-io';
 const FIX = 'Guardrails must be pure and deterministic (no runtime I/O).';
-const ROOT = process.cwd();
+const ROOT_ENV = process.env['CHERRY_GUARDRAIL_NO_RUNTIME_IO_ROOT'];
+const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== '' ? path.resolve(ROOT_ENV) : process.cwd();
 const SCRIPTS_ROOT = path.join(ROOT, 'scripts');
 const GUARDRAILS_ROOT = path.join(SCRIPTS_ROOT, 'guardrails');
 const TARGETS = [SCRIPTS_ROOT];
+const SELF_PATH = path.normalize(path.resolve(fileURLToPath(import.meta.url)));
 
 type Violation = {
   file: string;
@@ -47,7 +50,7 @@ function isGuardrailScript(filePath: string): boolean {
 }
 
 function runRg(pattern: string): string[] {
-  const result = runTool('rg', ['-n', pattern, ...TARGETS]);
+  const result = runTool('rg', ['--column', '-n', pattern, ...TARGETS]);
   if (result.exitCode !== 0 && result.exitCode !== 1) {
     fail(PREFIX, `rg failed with status ${result.exitCode}`, {
       details: [`stdout=${result.stdout.trim()}`, `stderr=${result.stderr.trim()}`],
@@ -115,6 +118,13 @@ const violations: Violation[] = [];
 for (const check of checks) {
   for (const line of runRg(check.pattern)) {
     const parsed = parseRgLine(line);
+    const absolutePath = normalizePath(parsed.file);
+    if (
+      absolutePath === SELF_PATH &&
+      (/pattern:\s*['"]/.test(parsed.illegal) || /illegal:\s*['"]/.test(parsed.illegal))
+    ) {
+      continue;
+    }
     if (isGuardrailScript(parsed.file) === false) continue;
     violations.push({
       file: parsed.file,

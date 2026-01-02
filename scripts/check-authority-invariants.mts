@@ -19,10 +19,12 @@ import type {
   SimulateSpendParams,
   SimulatedAuthorityDecision,
 } from '../lib/authority/simulateSpendAuthority.js';
+import type { Digest } from '../lib/adapters/digest.js';
+import type { ServerConfig } from '../lib/config/server.js';
 
 const fixedNowMs = 1704153600000;
 const fixedPeriodEndMs = 1706745600000;
-const digest = Sha256Digest;
+const digest = Sha256Digest as Digest;
 const PREFIX = 'check:authority-invariants';
 const FIX = 'Fix authority invariants or update the guardrail expectations.';
 const STATUS_SAFE = 'SAFE' as const;
@@ -58,7 +60,8 @@ async function main(): Promise<void> {
     process.env['NEXT_PUBLIC_SITE_VERSION'] = 'dev';
   }
   initConfigFromEnv(process.env);
-  const engineVersion = getServerConfig().engineVersion;
+  const serverConfig = getServerConfig() as ServerConfig;
+  const engineVersion = serverConfig.engineVersion;
   const snapshot = buildSnapshot();
   const baseParams: SimulateSpendParams = {
     userId: 'user-1',

@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true
+  },
+  "references": [
+    { "path": "./tsconfig.core.typecheck.json" }
+  ],
+  "include": [
+    "app/**/*.ts",
+    "scripts/**/*.ts"
+  ]
+}

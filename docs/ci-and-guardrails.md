@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2025-12-29
+Last updated: 2026-01-02
 
 # CI and guardrails
 
@@ -8,21 +8,17 @@ Last updated: 2025-12-29
 ### Pipeline
 - Runs on every push to `main` and all PRs via `.github/workflows/ci.yml`.
 - Steps (fail-fast):
-  1) `npm ci`
-  2) `npx prisma generate`
-  3) `check:clean`
-  4) Prisma migrate/generate
-  5) `test` (runs `check:guardrails`, including `check:prisma-assumptions`)
-  6) `build`
-  7) `check` (composite superset, final semantic gate)
-- Tests run with `DATABASE_URL=file:./tmp/test.db` for isolation.
+  1) `npm ci` (postinstall runs `prisma generate`)
+  2) `npm run ci:verify` (composite truth gate: check + test + build)
+- Optional env lane (`.github/workflows/env-checks.yml`) runs `CHERRY_STRICT=1 npm run check:env` when secrets are available.
 
-### Why CI Runs `npm run check`
+### Why CI Runs `npm run ci:verify`
 
 - CI does not enumerate guardrails.
-- CI runs one authority: `npm run check`.
+- CI runs one authority: `npm run ci:verify`.
 - `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
-- The last non-empty command in the CI job must be `npm run check`.
+- `check` stays pure (guardrails + lint + typecheck); env checks live in `check:env`.
+- The last non-empty command in the CI job must be `npm run ci:verify`.
 
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 
@@ -34,12 +30,13 @@ Last updated: 2025-12-29
 - Guardrail files/tests must not be removed (offline evaluator, ingest, engine tests, Prisma assumptions).
 - Guardrail 5 (implicit config): `process.env` access is confined to `app/api/**` and `scripts/**`; load env into typed config via `initConfigFromEnv` and thread it explicitly. `check:config` must pass without allowlists.
 - Guardrail 6 (config immutability): server config is deep-frozen and locked after boundary load; `setServerConfig` rejects writes post-lock and loader registration fails once locked. `check:config-lock` must pass.
-- `check:ci-must-run-check` enforces the composite gate in CI.
+- `check:check-contract` enforces the `ci:verify` contract and keeps `check` pure.
+- `check:ci-must-run-check` enforces the single CI entrypoint (`ci:verify`).
 - `check:guardrails-core` exits non-zero on any deviation; CI treats that as a hard failure.
 
 ### How to run locally
 
-Run the npm scripts: `check:guardrails`, `lint`, `typecheck`, `typecheck:scripts`, `test`.
+Run the npm scripts: `check` (pure), `test`, `build`, or the full gate `ci:verify`.
 
 ## Future/Target behavior
 

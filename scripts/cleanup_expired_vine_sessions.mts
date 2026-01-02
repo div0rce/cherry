@@ -9,10 +9,12 @@ ensureTsEsm();
 
 const PREFIX = 'cleanup-expired-vine-sessions';
 const FIX = 'Run only in non-production environments with valid Prisma access.';
+type LogInvariant = (message: string, data: Record<string, unknown>) => void;
+const logInvariantSafe = logInvariant as LogInvariant;
 
 async function main(): Promise<void> {
-  if (process.env.NODE_ENV === 'production') {
-    logInvariant('cleanup_expired_vine_sessions invoked in production', {});
+  if (process.env['NODE_ENV'] === 'production') {
+    logInvariantSafe('cleanup_expired_vine_sessions invoked in production', {});
     fail(PREFIX, 'This cleanup script is disabled in production', { fix: FIX });
   }
 

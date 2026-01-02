@@ -24,6 +24,7 @@
     "next-env.d.ts",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts",
+    "types/core.ts",
     "types/jsx-global.d.ts",
     "tailwind.config.ts",
     "prisma/**/*.ts"

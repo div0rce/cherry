@@ -28,7 +28,7 @@ async function resolveTargetUser() {
   const cliArg = process.argv[2];
   const envEmail = process.env['SEED_USER_EMAIL'];
   const envUserId = process.env['SEED_USER_ID'];
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env['NODE_ENV'] === 'production';
 
   if (isProd) {
     throw Error('Demo seeding scripts are disabled in production');

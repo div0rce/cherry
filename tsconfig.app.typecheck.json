@@ -1,0 +1,39 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".tmp/typecheck/app",
+    "rootDir": "."
+  },
+  "references": [
+    { "path": "./tsconfig.core.typecheck.json" }
+  ],
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "tests/**/*.ts",
+    "tests/**/*.tsx",
+    "types/compat/**/*.d.ts",
+    "types/compat/**/*.d.cts",
+    "types/jsx-global.d.ts",
+    "data/**/*.json",
+    "middleware.ts",
+    "next-env.d.ts",
+    "next.config.ts",
+    "tailwind.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "scripts/**",
+    "prisma/scripts/**",
+    "tests/fixtures/**"
+  ]
+}

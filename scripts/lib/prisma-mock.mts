@@ -542,7 +542,7 @@ export async function load(
   source?: string | ArrayBuffer | ArrayBufferView;
   shortCircuit?: boolean;
 }> {
-  if (process.env.NODE_ENV !== 'production' && typeof defaultLoad !== 'function') {
+  if (process.env['NODE_ENV'] !== 'production' && typeof defaultLoad !== 'function') {
     fail(LOADER_FAIL_CODE, 'defaultLoad missing in dev', {
       fix: 'Invalid loader contract',
     });
@@ -612,7 +612,7 @@ export function loadSync(
   source?: string | ArrayBuffer | ArrayBufferView;
   shortCircuit?: boolean;
 } {
-  if (process.env.NODE_ENV !== 'production' && typeof defaultLoad !== 'function') {
+  if (process.env['NODE_ENV'] !== 'production' && typeof defaultLoad !== 'function') {
     fail(LOADER_FAIL_CODE, 'defaultLoad missing in dev', {
       fix: 'Invalid loader contract',
     });

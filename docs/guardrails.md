@@ -1,11 +1,11 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-01-02
 
 # Guardrails
 
 ## Current behavior
 - Guardrail and execution script registration is mandatory; registries are the only authority.
-- CI runs `npm run check` as the final composite gate; direct guardrail execution by path is forbidden.
+- CI runs `npm run ci:verify` as the sole truth gate; `check` remains pure (guardrails + lint + typecheck), and env checks live in `check:env`.
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 
@@ -149,11 +149,12 @@ Any duplication is a hard CI failure.
 - Guardrail names must map to canonical script filenames: `check:<name>` → `check-<name>.mts` with `:` normalized to `-` under `scripts/`.
 - Guardrail check: `check:guardrail-name-path-bijection`.
 
-### Guardrail 22 — CI Composite Check Required
+### Guardrail 22 — CI Truth Entry Point
 
-- CI must include a step that runs `npm run check`.
-- The last non-empty command in the CI job must be `npm run check`.
-- Guardrail check: `check:ci-must-run-check`.
+- CI must include a step that runs `npm run ci:verify`.
+- The last non-empty command in the CI job must be `npm run ci:verify`.
+- CI must not invoke other npm scripts directly; `ci:verify` is the only entrypoint.
+- Guardrail checks: `check:ci-must-run-check`, `check:ci-guardrail-coverage`.
 
 ### Guardrail 23 — Execution Registry Completeness
 
@@ -201,6 +202,18 @@ Any duplication is a hard CI failure.
 - Node scripts must use runtime extensions (`.js`/`.mjs`/`.cjs`) and relative imports.
 - TS extension specifiers and `@/` aliases are forbidden in scripts.
 - Guardrails: `check:no-ts-extension-imports`, `check:no-script-alias-imports`.
+
+### Guardrail 30 — Check Contract
+
+- `ci:verify` must run `check`, `test`, and `build` in order.
+- `check` must remain pure (no env-dependent scripts).
+- Guardrail: `check:check-contract`.
+
+### Guardrail 31 — Script Runner Contract
+
+- Package scripts that invoke files under `scripts/` must go through `npm run ts:esm`.
+- Direct `node`, `tsx`, or `ts-node` usage in script commands is forbidden.
+- Guardrail: `check:script-runner-contract`.
 
 ## Future/Target behavior
 

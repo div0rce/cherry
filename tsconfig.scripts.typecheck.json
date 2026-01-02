@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.scripts.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".tmp/typecheck/scripts",
+    "rootDir": ".",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": false
+  },
+  "references": [
+    { "path": "./tsconfig.core.typecheck.json" },
+    { "path": "./tsconfig.app.typecheck.json" }
+  ],
+  "include": [
+    "scripts/**/*.ts",
+    "scripts/**/*.mts",
+    "scripts/**/*.cts",
+    "prisma/scripts/**/*.ts"
+  ]
+}
