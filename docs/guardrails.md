@@ -173,7 +173,7 @@ Any duplication is a hard CI failure.
 - Any custom Node ESM loader hook (`load`, `resolve`) must be structurally total: no implicit fallthrough, no bare `return`, no `undefined` returns.
 - Sync hooks must not return Promises.
 - Loader hooks must return a valid `{ source }` object or delegate to the provided default hook.
-- Guardrail: `check:esm-loader-totality`.
+- Guardrails: `check:esm-loader-totality`, `check:prisma-mock-loader-totality`.
 
 ### Guardrail 26 — Tool Determinism
 

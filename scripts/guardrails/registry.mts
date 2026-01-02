@@ -5,6 +5,7 @@ const CHECK_PREFIX = 'check-' as const;
 const CHECK_PATH_BASE = `${SCRIPT_ROOT}/${CHECK_PREFIX}` as const;
 const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
 const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as const;
+const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
@@ -31,6 +32,7 @@ export const GUARDRAILS = Object.freeze({
   'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
+  'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
   'check:guardrail-no-runtime-io': GUARDRAIL_NO_RUNTIME_IO_PATH,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,
