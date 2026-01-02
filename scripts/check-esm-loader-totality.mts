@@ -31,14 +31,22 @@ function listFiles(): string[] {
     .filter((line) => line.length > 0);
 }
 
+function hasLoaderHook(content: string): boolean {
+  return /\bregisterHooks\b/.test(content) || /\bload\s*\(/.test(content);
+}
+
 function hasLoadHook(content: string): boolean {
   return /\bload\s*\(/.test(content);
 }
 
 function hasDefaultLoadFallback(content: string): boolean {
-  if (/return\s+defaultLoad/.test(content)) return true;
-  if (/defaultLoad\s*\(/.test(content) && /return\s+fallback/.test(content)) return true;
+  if (/return\s+defaultLoad\s*\(/.test(content)) return true;
+  if (/defaultLoad\s*\(/.test(content) && /assertLoadResult\s*\(/.test(content)) return true;
   return false;
+}
+
+function hasBareReturn(content: string): boolean {
+  return /\breturn\s*;/.test(content) || /\breturn\s+undefined\b/.test(content);
 }
 
 const violations: Violation[] = [];
@@ -46,7 +54,15 @@ const violations: Violation[] = [];
 for (const relPath of listFiles()) {
   const absolute = path.resolve(ROOT, relPath);
   const content = fs.readFileSync(absolute, 'utf8');
+  if (!hasLoaderHook(content)) continue;
   if (!hasLoadHook(content)) continue;
+  if (hasBareReturn(content)) {
+    violations.push({
+      file: relPath,
+      reason: 'load() contains a bare return/undefined',
+    });
+    continue;
+  }
   if (!content.includes('defaultLoad')) {
     violations.push({
       file: relPath,

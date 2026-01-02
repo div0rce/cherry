@@ -170,8 +170,9 @@ Any duplication is a hard CI failure.
 ### Guardrail 25 — ESM Loader Totality
 
 **ESM Loader Totality Invariant**
-- Any custom Node ESM loader hook (`load`, `resolve`) must return a valid `{ source }` object or delegate to the provided default hook.
-- Returning `undefined` is forbidden.
+- Any custom Node ESM loader hook (`load`, `resolve`) must be structurally total: no implicit fallthrough, no bare `return`, no `undefined` returns.
+- Sync hooks must not return Promises.
+- Loader hooks must return a valid `{ source }` object or delegate to the provided default hook.
 - Guardrail: `check:esm-loader-totality`.
 
 ### Guardrail 26 — Tool Determinism

@@ -4,9 +4,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { asMessage } from '../guardrails/lib/error.mts';
 import { fail } from '../guardrails/lib/fail.mts';
 import { ensureTsEsm } from './ensure-ts-esm.mts';
+import { asMessage } from '../guardrails/lib/error.mts';
 
 ensureTsEsm();
 
@@ -269,7 +269,7 @@ class MockPrismaClient {
   idempotencyKey = createCollection('idempotencyKey');
 
   async $disconnect(): Promise<void> {
-    return;
+    return Promise.resolve();
   }
 }
 
@@ -457,17 +457,21 @@ function assertLoadResult(
     shortCircuit?: boolean;
   };
   const { source, format } = normalized;
-  if (!url.startsWith('node:') && format !== 'addon') {
-    if (!isValidSource(source)) {
-      const fallbackSource = loadSourceFromFile(url);
-      if (fallbackSource !== null) {
-        return { ...normalized, source: fallbackSource };
-      }
-      fail('PRISMA_MOCK_LOADER_BUG', 'load() returned invalid source', {
-        details: [`url=${url}`, `format=${String(format ?? 'undefined')}`],
-        fix: 'Ensure every load() path returns a valid source or delegates to defaultLoad().',
-      });
+  if (format === 'commonjs' && source == null) {
+    const fileSource = loadSourceFromFile(url);
+    if (fileSource !== null) {
+      return { ...normalized, source: fileSource };
     }
+    fail('PRISMA_MOCK_LOADER_BUG', 'load() returned missing source for commonjs module', {
+      details: [`url=${url}`],
+      fix: 'Ensure every load() path returns a valid source or delegates to defaultLoad().',
+    });
+  }
+  if (!url.startsWith('node:') && format !== 'addon' && !isValidSource(source)) {
+    fail('PRISMA_MOCK_LOADER_BUG', 'load() returned invalid source', {
+      details: [`url=${url}`, `format=${String(format ?? 'undefined')}`],
+      fix: 'Ensure every load() path returns a valid source or delegates to defaultLoad().',
+    });
   }
   return normalized;
 }
@@ -513,46 +517,37 @@ if (typeof ModuleInternal.registerHooks === 'function') {
       return nextResolve(specifier, context);
     },
     load(url, context, defaultLoad) {
+      if (process.env.NODE_ENV !== 'production' && typeof defaultLoad !== 'function') {
+        fail('PRISMA_MOCK_LOADER_BUG', 'defaultLoad missing in dev', {
+          fix: 'Invalid loader contract',
+        });
+      }
       try {
-        if (url === esmUrl) {
-          if (!isValidSource(esmSource)) {
-            if (typeof defaultLoad !== 'function') {
-              fail('PRISMA_MOCK_LOADER_BUG', 'load() missing defaultLoad delegation for esm source.', {
-                details: [`url=${url}`],
-                fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
-              });
-            }
-            const fallback = assertLoadResult(url, defaultLoad(url, context), 'esm-source');
-            return fallback;
-          }
+        if (url === esmUrl && isValidSource(esmSource)) {
           return { format: 'module', source: esmSource, shortCircuit: true };
         }
         const sentinel = buildSentinelSource(url);
         if (sentinel !== null) {
           return { format: sentinel.format, source: sentinel.source, shortCircuit: true };
         }
-      } catch (error: unknown) {
-        if (shouldLogLoaderDebug()) {
-          process.stderr.write(`[loader] mock load error: ${(error as Error).message}\n`);
+        if (typeof defaultLoad === 'function') {
+          const result = defaultLoad(url, context);
+          return assertLoadResult(url, result, 'default-delegate');
         }
-        if (typeof defaultLoad !== 'function') {
-          fail('PRISMA_MOCK_LOADER_BUG', 'load() missing defaultLoad delegation after error.', {
-            details: [`url=${url}`],
-            fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
-          });
-        }
-        const fallback = assertLoadResult(url, defaultLoad(url, context), 'error-fallback');
-        return fallback;
-      }
-
-      if (typeof defaultLoad !== 'function') {
-        fail('PRISMA_MOCK_LOADER_BUG', 'load() returned without source or defaultLoad delegation', {
+        fail('PRISMA_MOCK_LOADER_BUG', 'defaultLoad missing', {
           details: [`url=${url}`],
-          fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
+          fix: 'Always delegate or return {source}.',
+        });
+      } catch (err: unknown) {
+        const message = asMessage(err);
+        if (shouldLogLoaderDebug()) {
+          process.stderr.write(`[loader] mock load error: ${message}\n`);
+        }
+        fail('PRISMA_MOCK_LOADER_BUG', 'load() threw', {
+          details: [`url=${url}`, `error=${message}`],
+          fix: 'Ensure loader is total and synchronous.',
         });
       }
-      const fallback = assertLoadResult(url, defaultLoad(url, context), 'default-fallback');
-      return fallback;
     },
   });
 }
