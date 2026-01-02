@@ -167,6 +167,13 @@ Any duplication is a hard CI failure.
 - Any `check-*` file under `scripts/` must be registered in the guardrail registry.
 - Guardrail check: `check:no-orphan-check-files`.
 
+### Guardrail 25 — ESM Loader Totality
+
+**ESM Loader Totality Invariant**
+- Any custom Node ESM loader hook (`load`, `resolve`) must return a valid `{ source }` object or delegate to the provided default hook.
+- Returning `undefined` is forbidden.
+- Guardrail: `check:esm-loader-totality`.
+
 ## Future/Target behavior
 
 - TODO: Expand guardrail coverage and tests as new risk areas are identified.

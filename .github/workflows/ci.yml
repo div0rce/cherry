@@ -25,6 +25,7 @@ jobs:
           --health-retries=20
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
+      NODE_OPTIONS: "--conditions=development"
     steps:
       - name: Checkout
         uses: actions/checkout@v4

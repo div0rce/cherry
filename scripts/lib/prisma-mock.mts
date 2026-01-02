@@ -4,6 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { fail } from '../guardrails/lib/fail.mts';
 import { ensureTsEsm } from './ensure-ts-esm.mts';
 
 ensureTsEsm();
@@ -33,18 +34,28 @@ type ModuleWithInternals = {
     ) => Promise<{ url: string; shortCircuit?: boolean }> | { url: string; shortCircuit?: boolean };
     load?: (
       url: string,
-      context: { format?: string },
+      context: {
+        format?: string | null;
+        importAttributes?: Record<string, unknown>;
+        conditions?: string[];
+      },
       nextLoad: (
         url: string,
-        context: { format?: string },
-        defaultLoad?: (url: string, context: { format?: string }) => Promise<{
-          format: string;
-          source: string | ArrayBuffer | ArrayBufferView;
-        }>
-      ) => Promise<{ format: string; source: string | ArrayBuffer | ArrayBufferView }>
-    ) =>
-      | Promise<{ format: string; source: string | ArrayBuffer | ArrayBufferView; shortCircuit?: boolean }>
-      | { format: string; source: string | ArrayBuffer | ArrayBufferView; shortCircuit?: boolean };
+        context?: {
+          format?: string | null;
+          importAttributes?: Record<string, unknown>;
+          conditions?: string[];
+        }
+      ) => {
+        format?: string | null;
+        source?: string | ArrayBuffer | ArrayBufferView;
+        shortCircuit?: boolean;
+      }
+    ) => {
+      format?: string | null;
+      source?: string | ArrayBuffer | ArrayBufferView;
+      shortCircuit?: boolean;
+    };
   }) => unknown;
 };
 
@@ -400,6 +411,53 @@ function isValidSource(source: unknown): source is string | ArrayBuffer | ArrayB
   return ArrayBuffer.isView(source);
 }
 
+function isThenable(value: unknown): value is Promise<unknown> {
+  return typeof value === 'object' && value !== null && 'then' in value;
+}
+
+function assertLoadResult(
+  url: string,
+  result: unknown,
+  note: string
+): { format?: string | null; source?: string | ArrayBuffer | ArrayBufferView; shortCircuit?: boolean } {
+  if (result === undefined) {
+    fail('PRISMA_MOCK_LOADER_BUG', 'load() returned undefined result', {
+      details: [`url=${url}`, `note=${note}`],
+      fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
+    });
+  }
+  if (isThenable(result)) {
+    fail('PRISMA_MOCK_LOADER_BUG', 'load() returned a Promise in sync hook', {
+      details: [`url=${url}`, `note=${note}`],
+      fix: 'Ensure load() uses sync defaultLoad and returns a plain object.',
+    });
+  }
+  if (result === null || typeof result !== 'object') {
+    fail('PRISMA_MOCK_LOADER_BUG', 'load() returned a non-object result', {
+      details: [`url=${url}`, `note=${note}`],
+      fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
+    });
+  }
+  const normalized = result as {
+    format?: string | null;
+    source?: string | ArrayBuffer | ArrayBufferView;
+    shortCircuit?: boolean;
+  };
+  const { source, format } = normalized;
+  if (!url.startsWith('node:') && format !== 'addon') {
+    if (format === 'commonjs' && source == null) {
+      return normalized;
+    }
+    if (!isValidSource(source)) {
+      fail('PRISMA_MOCK_LOADER_BUG', 'load() returned invalid source', {
+        details: [`url=${url}`, `format=${String(format ?? 'undefined')}`],
+        fix: 'Ensure every load() path returns a valid source or delegates to defaultLoad().',
+      });
+    }
+  }
+  return normalized;
+}
+
 function shouldLogLoaderDebug(): boolean {
   return process.env['CHERRY_DEBUG_LOADER'] === '1';
 }
@@ -443,7 +501,16 @@ if (typeof ModuleInternal.registerHooks === 'function') {
     load(url, context, defaultLoad) {
       try {
         if (url === esmUrl) {
-          if (!isValidSource(esmSource)) return defaultLoad(url, context, defaultLoad);
+          if (!isValidSource(esmSource)) {
+            if (typeof defaultLoad !== 'function') {
+              fail('PRISMA_MOCK_LOADER_BUG', 'load() missing defaultLoad delegation for esm source.', {
+                details: [`url=${url}`],
+                fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
+              });
+            }
+            const fallback = assertLoadResult(url, defaultLoad(url, context), 'esm-source');
+            return fallback;
+          }
           return { format: 'module', source: esmSource, shortCircuit: true };
         }
         const sentinel = buildSentinelSource(url);
@@ -454,9 +521,24 @@ if (typeof ModuleInternal.registerHooks === 'function') {
         if (shouldLogLoaderDebug()) {
           process.stderr.write(`[loader] mock load error: ${(error as Error).message}\n`);
         }
-        return defaultLoad(url, context, defaultLoad);
+        if (typeof defaultLoad !== 'function') {
+          fail('PRISMA_MOCK_LOADER_BUG', 'load() missing defaultLoad delegation after error.', {
+            details: [`url=${url}`],
+            fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
+          });
+        }
+        const fallback = assertLoadResult(url, defaultLoad(url, context), 'error-fallback');
+        return fallback;
       }
-      return defaultLoad(url, context, defaultLoad);
+
+      if (typeof defaultLoad !== 'function') {
+        fail('PRISMA_MOCK_LOADER_BUG', 'load() returned without source or defaultLoad delegation', {
+          details: [`url=${url}`],
+          fix: 'Ensure every load() path returns {source} or calls defaultLoad().',
+        });
+      }
+      const fallback = assertLoadResult(url, defaultLoad(url, context), 'default-fallback');
+      return fallback;
     },
   });
 }

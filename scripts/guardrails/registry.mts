@@ -4,6 +4,7 @@ const SCRIPT_ROOT = 'scripts' as const;
 const CHECK_PREFIX = 'check-' as const;
 const CHECK_PATH_BASE = `${SCRIPT_ROOT}/${CHECK_PREFIX}` as const;
 const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
+const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as const;
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
   `${CHECK_PATH_BASE}guardrail-subprocess-totality.mts` as const;
@@ -28,6 +29,7 @@ export const GUARDRAILS = Object.freeze({
   'check:script-json-parse': `${CHECK_PATH_BASE}script-json-parse.mts`,
   'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
+  'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,
   'check:guardrail-self': `${CHECK_PATH_BASE}guardrail-self.mts`,
