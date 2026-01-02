@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
 import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 import { parseJson } from './guardrails/lib/read-json.mts';
 import { fail } from './guardrails/lib/fail.mts';
+import { runTool } from './guardrails/lib/run-tool.mts';
 import { asIsoDate, type IsoDateString } from '../lib/util/iso-date';
 
 ensureTsEsm();
@@ -130,16 +130,11 @@ function loadCurrentAllowlist(): Record<string, AllowlistEntry> {
 }
 
 function loadPreviousAllowlist(): Record<string, AllowlistEntry> | null {
-  try {
-    const raw = execSync(
-      'git show HEAD~1:scripts/side-effects.allowlist.json',
-      { encoding: 'utf8' }
-    );
-    return parseAllowlist(raw, 'previous allowlist', { allowLegacy: true });
-  } catch (error: unknown) {
-    void error;
+  const result = runTool('git', ['show', 'HEAD~1:scripts/side-effects.allowlist.json']);
+  if (result.exitCode !== 0) {
     return null;
   }
+  return parseAllowlist(result.stdout, 'previous allowlist', { allowLegacy: true });
 }
 
 function countLegacy(allowlist: Record<string, AllowlistEntry>): number {
@@ -180,7 +175,11 @@ function resolveEpochMs(): number {
     }
     return parsed > 1_000_000_000_000 ? Math.trunc(parsed) : Math.trunc(parsed * 1000);
   }
-  const gitEpochRaw = execSync('git log -1 --format=%ct', { encoding: 'utf8' }).trim();
+  const gitEpochResult = runTool('git', ['log', '-1', '--format=%ct']);
+  if (gitEpochResult.exitCode !== 0) {
+    guardrailFail('Unable to determine epoch from git log');
+  }
+  const gitEpochRaw = gitEpochResult.stdout.trim();
   if (gitEpochRaw.length === 0) {
     guardrailFail('Unable to determine epoch from git log');
   }

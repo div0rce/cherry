@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'child_process';
 import { fail } from './guardrails/lib/fail.mts';
+import { runTool } from './guardrails/lib/run-tool.mts';
 
-const diffResult = spawnSync('git', ['diff', '--name-only', 'origin/main...HEAD'], {
-  encoding: 'utf8',
-});
+const diffResult = runTool('git', ['diff', '--name-only', 'origin/main...HEAD']);
 
 const PREFIX = 'check:engine-freeze';
 const FIX = 'Update engine-freeze policy or avoid modifying engine-sensitive files.';
 
-if (diffResult.status !== 0) {
+if (diffResult.exitCode !== 0) {
   process.stdout.write(
     'check-engine-freeze: unable to compute diff against origin/main, skipping (no enforcement).\n'
   );

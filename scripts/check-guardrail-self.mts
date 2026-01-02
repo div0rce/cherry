@@ -26,7 +26,13 @@ const FIXTURE_PATH = path.join(
   'guardrail-self-consistency.ts'
 );
 const GUARDRAIL_HELPER_DIR = path.join(ROOT, 'scripts', 'guardrails', 'lib');
-const REQUIRED_HELPERS = new Set(['fail.mts', 'error.mts', 'read-json.mts', 'import-typed.mts']);
+const REQUIRED_HELPERS = new Set([
+  'fail.mts',
+  'error.mts',
+  'read-json.mts',
+  'import-typed.mts',
+  'run-tool.mts',
+]);
 const POLICY_FIELD_NAMES = new Set(['tier', 'timestampSource', 'expiresBy', 'source']);
 const COMPARISON_OPERATORS = new Set<ts.SyntaxKind>([
   ts.SyntaxKind.EqualsEqualsToken,

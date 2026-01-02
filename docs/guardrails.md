@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-29
+Last updated: 2026-01-02
 
 # Guardrails
 
@@ -129,6 +129,7 @@ Guardrail checks: `check:branded-literal` and `tests/guardrails/branded-type-enf
 - One failure API: `scripts/guardrails/lib/fail.mts`.
 - One JSON API: `scripts/guardrails/lib/read-json.mts`.
 - One import API: `scripts/guardrails/lib/import-typed.mts`.
+- One subprocess API: `scripts/guardrails/lib/run-tool.mts`.
 - Zero allowlists, zero parallel helper stacks.
 - Guardrail check: `check:guardrail-helpers-exclusive`.
 
@@ -137,25 +138,31 @@ All guardrail and script helpers must be imported exclusively from
 `scripts/guardrails/lib/*`.
 Any duplication is a hard CI failure.
 
-### Guardrail 20 — Name/Path Bijection
+### Guardrail 20 — Subprocess Totality
+
+- Guardrail scripts must execute tools via `scripts/guardrails/lib/run-tool.mts`.
+- Direct use of `child_process`, `spawn`, `exec`, or `execa` inside guardrail code is forbidden.
+- Guardrail check: `check:guardrail-subprocess-totality`.
+
+### Guardrail 21 — Name/Path Bijection
 
 - Guardrail names must map to canonical script filenames: `check:<name>` → `check-<name>.mts` with `:` normalized to `-` under `scripts/`.
 - Guardrail check: `check:guardrail-name-path-bijection`.
 
-### Guardrail 21 — CI Composite Check Required
+### Guardrail 22 — CI Composite Check Required
 
 - CI must include a step that runs `npm run check`.
 - The last non-empty command in the CI job must be `npm run check`.
 - Guardrail check: `check:ci-must-run-check`.
 
-### Guardrail 22 — Execution Registry Completeness
+### Guardrail 23 — Execution Registry Completeness
 
 - Non-guardrail scripts that reference `scripts/` must be registered in `scripts/execution/registry.mts`.
 - Registry entries must exist on disk and be present in `package.json` with a runner invocation.
 - Execution script files under `scripts/` must be registered or deleted (no allowlists).
 - Guardrail checks: `check:execution-registry-completeness`, `check:no-orphan-scripts`.
 
-### Guardrail 23 — Orphan Check Files
+### Guardrail 24 — Orphan Check Files
 
 - Any `check-*` file under `scripts/` must be registered in the guardrail registry.
 - Guardrail check: `check:no-orphan-check-files`.

@@ -5,6 +5,7 @@ import { ensureTsEsm } from '../lib/ensure-ts-esm.mts';
 import { asMessage } from './lib/error.mts';
 import { fail } from './lib/fail.mts';
 import { importUnknown } from './lib/import-typed.mts';
+import { runTool } from './lib/run-tool.mts';
 import { GUARDRAILS, type GuardrailName } from './registry.mts';
 
 ensureTsEsm();
@@ -70,6 +71,24 @@ async function runGuardrail(): Promise<void> {
   }) as typeof process.exit;
 
   try {
+    const rgVersion = runTool('rg', ['--version']);
+    if (rgVersion.exitCode !== 0) {
+      const details: string[] = [];
+      if (rgVersion.stdout.trim().length > 0) {
+        details.push(`stdout: ${rgVersion.stdout.trim()}`);
+      }
+      if (rgVersion.stderr.trim().length > 0) {
+        details.push(`stderr: ${rgVersion.stderr.trim()}`);
+      }
+      fail(PREFIX, `rg --version failed with status ${rgVersion.exitCode}`, {
+        details,
+        fix: 'Install ripgrep and ensure it is available on PATH.',
+      });
+    }
+    const versionLine = rgVersion.stdout.split('\n')[0] ?? '';
+    const versionLabel = versionLine.trim().length > 0 ? versionLine.trim() : 'unknown';
+    process.stdout.write(`GUARDRAIL_TOOL_VERSION: rg=${versionLabel}\n`);
+
     await importUnknown(absolutePath);
   } catch (err: unknown) {
     const durationMs = Math.round(performance.now() - start);

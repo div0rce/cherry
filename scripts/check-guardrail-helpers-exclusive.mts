@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 import { fail } from './guardrails/lib/fail.mts';
+import { runTool } from './guardrails/lib/run-tool.mts';
 
 ensureTsEsm();
 
@@ -32,18 +32,18 @@ function reportViolations(violations: Violation[]): void {
 }
 
 function runRg(pattern: string, targets: string[], extraArgs: string[] = []): string[] {
-  const result = spawnSync('rg', ['-n', ...extraArgs, pattern, ...targets], { encoding: 'utf8' });
-  if (result.status !== 0 && result.status !== 1) {
+  const result = runTool('rg', ['-n', ...extraArgs, pattern, ...targets]);
+  if (result.exitCode !== 0 && result.exitCode !== 1) {
     console.error('GUARDRAIL_HELPER_DUPLICATION');
-    if (typeof result.stdout === 'string' && result.stdout.trim().length > 0) {
+    if (result.stdout.trim().length > 0) {
       console.error(result.stdout.trim());
     }
-    if (typeof result.stderr === 'string' && result.stderr.trim().length > 0) {
+    if (result.stderr.trim().length > 0) {
       console.error(result.stderr.trim());
     }
-    fail(PREFIX, `rg failed with status ${result.status ?? 'null'}`, { fix: FIX });
+    fail(PREFIX, `rg failed with status ${result.exitCode}`, { fix: FIX });
   }
-  return (result.stdout ?? '')
+  return result.stdout
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
@@ -80,18 +80,18 @@ function isGuardrailScript(filePath: string): boolean {
 }
 
 function runRgFiles(glob: string): string[] {
-  const result = spawnSync('rg', ['--files', '-g', glob], { encoding: 'utf8' });
-  if (result.status !== 0 && result.status !== 1) {
+  const result = runTool('rg', ['--files', '-g', glob]);
+  if (result.exitCode !== 0 && result.exitCode !== 1) {
     console.error('GUARDRAIL_HELPER_DUPLICATION');
-    if (typeof result.stdout === 'string' && result.stdout.trim().length > 0) {
+    if (result.stdout.trim().length > 0) {
       console.error(result.stdout.trim());
     }
-    if (typeof result.stderr === 'string' && result.stderr.trim().length > 0) {
+    if (result.stderr.trim().length > 0) {
       console.error(result.stderr.trim());
     }
-    fail(PREFIX, `rg failed with status ${result.status ?? 'null'}`, { fix: FIX });
+    fail(PREFIX, `rg failed with status ${result.exitCode}`, { fix: FIX });
   }
-  return (result.stdout ?? '')
+  return result.stdout
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);

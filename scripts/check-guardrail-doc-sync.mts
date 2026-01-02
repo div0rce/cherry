@@ -1,7 +1,7 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
 import { fail } from './guardrails/lib/fail.mts';
+import { runTool } from './guardrails/lib/run-tool.mts';
 
 ensureTsEsm();
 
@@ -16,11 +16,11 @@ function guardrailFail(message: string): never {
 }
 
 function runDiff(args: string[]): string[] | null {
-  const result = spawnSync('git', ['diff', '--name-only', ...args], { encoding: 'utf8' });
-  if (result.status !== 0) {
+  const result = runTool('git', ['diff', '--name-only', ...args]);
+  if (result.exitCode !== 0) {
     return null;
   }
-  return (result.stdout ?? '')
+  return result.stdout
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
