@@ -183,6 +183,13 @@ Any duplication is a hard CI failure.
 - Missing tools are fatal and must fail with actionable output.
 - Guardrail: `check:guardrail-subprocess-totality`.
 
+### Guardrail 27 — Guardrail Execution Invariant
+
+**Guardrail Execution Invariant**
+- Guardrails must be pure, deterministic, and executable in CI without external dependencies.
+- Runtime I/O (network, sockets, filesystem writes, database clients) is forbidden.
+- Guardrail: `check:guardrail-no-runtime-io`.
+
 ## Future/Target behavior
 
 - TODO: Expand guardrail coverage and tests as new risk areas are identified.
