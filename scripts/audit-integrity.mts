@@ -5,11 +5,11 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import { prisma } from '../lib/prisma.ts';
-import { logInfo, logWarn } from '../lib/logger.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { prisma } from '../lib/prisma.js';
+import { logInfo, logWarn } from '../lib/logger.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

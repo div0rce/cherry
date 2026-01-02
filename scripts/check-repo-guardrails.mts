@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { parseJson } from './guardrails/lib/read-json.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { parseJson } from './guardrails/lib/read-json.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 const PREFIX = 'check:repo-guardrails';
 const FIX = 'Remove the violating token or update allowlists where permitted.';

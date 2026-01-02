@@ -1,8 +1,8 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

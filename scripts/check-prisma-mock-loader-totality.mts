@@ -2,10 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { load, loadSync } from './lib/prisma-mock.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { load, loadSync } from './lib/prisma-mock.mjs';
 
 ensureTsEsm();
 

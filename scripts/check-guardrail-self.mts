@@ -1,10 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { BRAND_PROPERTIES } from '../lib/util/brand-registry';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { BRAND_PROPERTIES } from '../lib/util/brand-registry.js';
 
 ensureTsEsm();
 

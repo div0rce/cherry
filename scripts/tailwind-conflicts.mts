@@ -4,10 +4,10 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import fg from 'fast-glob';
 import { z } from 'zod';
-import { parseJson } from './guardrails/lib/read-json.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { spawnTool } from './guardrails/lib/run-tool.mts';
+import { parseJson } from './guardrails/lib/read-json.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { spawnTool } from './guardrails/lib/run-tool.mjs';
 
 const ROOT = process.cwd();
 const SERVER_BIN = path.resolve(ROOT, 'node_modules/.bin/tailwindcss-language-server');

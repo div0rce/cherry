@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { ensureTsEsm } from '../lib/ensure-ts-esm.mts';
-import { asMessage } from './lib/error.mts';
-import { fail } from './lib/fail.mts';
-import { importUnknown } from './lib/import-typed.mts';
-import { runTool } from './lib/run-tool.mts';
-import { GUARDRAILS, type GuardrailName } from './registry.mts';
+import { ensureTsEsm } from '../lib/ensure-ts-esm.mjs';
+import { asMessage } from './lib/error.mjs';
+import { fail } from './lib/fail.mjs';
+import { importUnknown } from './lib/import-typed.mjs';
+import { runTool } from './lib/run-tool.mjs';
+import { GUARDRAILS, type GuardrailName } from './registry.mjs';
 
 ensureTsEsm();
 

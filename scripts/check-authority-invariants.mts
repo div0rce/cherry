@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import {
   recordDecisionEventWithWriter,
   simulateSpendAuthorityFromSnapshot,
-} from '../lib/authority/simulateSpendAuthority.ts';
-import { initConfigFromEnv } from '../lib/config/init.ts';
-import { getServerConfig } from '../lib/config/store.ts';
-import { Sha256Digest } from '../lib/adapters/runtime/digest.sha256.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+} from '../lib/authority/simulateSpendAuthority.js';
+import { initConfigFromEnv } from '../lib/config/init.js';
+import { getServerConfig } from '../lib/config/store.js';
+import { Sha256Digest } from '../lib/adapters/runtime/digest.sha256.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 
@@ -18,7 +18,7 @@ import type {
   DecisionEventWriter,
   SimulateSpendParams,
   SimulatedAuthorityDecision,
-} from '../lib/authority/simulateSpendAuthority.ts';
+} from '../lib/authority/simulateSpendAuthority.js';
 
 const fixedNowMs = 1704153600000;
 const fixedPeriodEndMs = 1706745600000;

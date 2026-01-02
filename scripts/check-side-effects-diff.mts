@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { parseJson } from './guardrails/lib/read-json.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { runTool } from './guardrails/lib/run-tool.mts';
-import { asIsoDate, type IsoDateString } from '../lib/util/iso-date';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { parseJson } from './guardrails/lib/read-json.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { runTool } from './guardrails/lib/run-tool.mjs';
+import { asIsoDate, type IsoDateString } from '../lib/util/iso-date.js';
 
 ensureTsEsm();
 

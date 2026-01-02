@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
-import { initConfigFromEnv } from '../../lib/config/init.ts';
-import { ensureTsEsm } from './ensure-ts-esm.mts';
+import { initConfigFromEnv } from '../../lib/config/init.js';
+import { ensureTsEsm } from './ensure-ts-esm.mjs';
 
 ensureTsEsm();
 
@@ -19,5 +19,5 @@ const { serverConfig } = initConfigFromEnv(process.env, {
   lockServerConfig: false,
   allowServerConfigOverwrite: true,
 });
-const store = requireFn('../../lib/config/store') as typeof import('../../lib/config/store.ts');
+const store = requireFn('../../lib/config/store') as typeof import('../../lib/config/store.js');
 store.resetServerConfigForTests(serverConfig);

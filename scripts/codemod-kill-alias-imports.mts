@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import fg from 'fast-glob';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 
 ensureTsEsm();
 

@@ -1,22 +1,22 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 
-import { parseCsvDevFile } from '../lib/bank/csv-dev-provider.ts';
-import { upsertBankTransactions } from '../lib/bank/ingest.ts';
-import { prisma } from '../lib/prisma.ts';
-import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
-import { getDevIngestUser } from '../lib/dev/dev-user.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { parseCsvDevFile } from '../lib/bank/csv-dev-provider.js';
+import { upsertBankTransactions } from '../lib/bank/ingest.js';
+import { prisma } from '../lib/prisma.js';
+import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.js';
+import { getDevIngestUser } from '../lib/dev/dev-user.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 
 const PREFIX = 'ingest-moustafa-bank-csv';
 const FIX = 'Ensure prisma access and provide a valid user id or email.';
 
-type CsvDevTransaction = import('../lib/bank/csv-dev-provider.ts').CsvDevTransaction;
-type NormalizedBankTransactionInput = import('../lib/bank/ingest.ts').NormalizedBankTransactionInput;
+type CsvDevTransaction = import('../lib/bank/csv-dev-provider.js').CsvDevTransaction;
+type NormalizedBankTransactionInput = import('../lib/bank/ingest.js').NormalizedBankTransactionInput;
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

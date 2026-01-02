@@ -1,5 +1,5 @@
-import { fail } from './guardrails/lib/fail.mts';
-import { runTool } from './guardrails/lib/run-tool.mts';
+import { fail } from './guardrails/lib/fail.mjs';
+import { runTool } from './guardrails/lib/run-tool.mjs';
 
 const PREFIX = 'check:catch-unknown';
 const FIX = 'Use `catch (error: unknown)` and normalize before access.';

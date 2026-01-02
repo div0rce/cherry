@@ -1,4 +1,4 @@
-import { fail } from '../guardrails/lib/fail.mts';
+import { fail } from '../guardrails/lib/fail.mjs';
 
 const PREFIX = 'ensure-ts-esm';
 const FIX = 'Execute via npm run ts:esm -- <script>.';

@@ -1,13 +1,13 @@
-import { assertServerConfig } from '../lib/config/server.ts';
+import { assertServerConfig } from '../lib/config/server.js';
 import {
   getServerConfig,
   isServerConfigLocked,
   lockServerConfig,
   setServerConfig,
-} from '../lib/config/store.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+} from '../lib/config/store.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

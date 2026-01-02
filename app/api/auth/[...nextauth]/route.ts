@@ -12,7 +12,7 @@ function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
-function unwrapProvider<T extends (...args: never[]) => unknown>(value: unknown): T {
+function unwrapProvider(value: unknown): (...args: unknown[]) => unknown {
   let current = value;
   for (let i = 0; i < 2; i += 1) {
     if (typeof current === 'object' && current !== null && 'default' in current) {
@@ -24,13 +24,14 @@ function unwrapProvider<T extends (...args: never[]) => unknown>(value: unknown)
   if (typeof current !== 'function') {
     throw new Error('Auth provider import is not callable');
   }
-  return current as T;
+  return current as (...args: unknown[]) => unknown;
 }
 
-const resolveEmailProvider = unwrapProvider<typeof EmailProvider>(EmailProvider);
-const resolveGoogleProvider = unwrapProvider<typeof GoogleProvider>(GoogleProvider);
-const resolveCredentialsProvider = unwrapProvider<typeof CredentialsProvider>(CredentialsProvider);
-const resolveNextAuth = unwrapProvider<(options: NextAuthOptions) => unknown>(NextAuth);
+type ProviderFactory = (...args: unknown[]) => AuthProvider;
+const resolveEmailProvider = unwrapProvider(EmailProvider) as ProviderFactory;
+const resolveGoogleProvider = unwrapProvider(GoogleProvider) as ProviderFactory;
+const resolveCredentialsProvider = unwrapProvider(CredentialsProvider) as ProviderFactory;
+const resolveNextAuth = unwrapProvider(NextAuth) as (options: NextAuthOptions) => unknown;
 
 const providers: AuthProvider[] = [
   resolveEmailProvider({

@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { z } from 'zod';
-import { asMessage } from './error.mts';
+import { asMessage } from './error.mjs';
 
 type JsonParse = (value: string) => unknown;
 const parseJsonText = globalThis.JSON['parse'] as JsonParse;

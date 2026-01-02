@@ -5,7 +5,10 @@ const CHECK_PREFIX = 'check-' as const;
 const CHECK_PATH_BASE = `${SCRIPT_ROOT}/${CHECK_PREFIX}` as const;
 const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
 const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as const;
+const NO_SCRIPT_ALIAS_IMPORTS_PATH = `${CHECK_PATH_BASE}no-script-alias-imports.mts` as const;
+const NO_TS_EXTENSION_IMPORTS_PATH = `${CHECK_PATH_BASE}no-ts-extension-imports.mts` as const;
 const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
+const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
@@ -25,6 +28,7 @@ const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
  * - registry key must equal npm script name
  */
 export const GUARDRAILS = Object.freeze({
+  'check:ts-coverage': TS_COVERAGE_PATH,
   'check:side-effects': `${CHECK_PATH_BASE}side-effects.mts`,
   'check:side-effects:diff': `${CHECK_PATH_BASE}side-effects-diff.mts`,
   'check:script-semantics': `${CHECK_PATH_BASE}script-semantics.mts`,
@@ -33,6 +37,8 @@ export const GUARDRAILS = Object.freeze({
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
+  'check:no-script-alias-imports': NO_SCRIPT_ALIAS_IMPORTS_PATH,
+  'check:no-ts-extension-imports': NO_TS_EXTENSION_IMPORTS_PATH,
   'check:guardrail-no-runtime-io': GUARDRAIL_NO_RUNTIME_IO_PATH,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,

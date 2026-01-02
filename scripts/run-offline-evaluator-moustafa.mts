@@ -1,22 +1,22 @@
 import { Prisma } from '@prisma/client';
 
-import { prisma } from '../lib/prisma.ts';
-import { defaultRunIdForUser, evaluateTransactionOffline } from '../lib/evaluator/offline-history.ts';
-import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
-import { getDevIngestUser } from '../lib/dev/dev-user.ts';
-import { classifyIncomeAndP2PForUser } from '../lib/income/classifier.ts';
-import { rebuildIncomeRegimesAndBuckets } from '../lib/buckets/regimes.ts';
-import { RegimeBucketTracker } from '../lib/evaluator/regime-buckets.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { prisma } from '../lib/prisma.js';
+import { defaultRunIdForUser, evaluateTransactionOffline } from '../lib/evaluator/offline-history.js';
+import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.js';
+import { getDevIngestUser } from '../lib/dev/dev-user.js';
+import { classifyIncomeAndP2PForUser } from '../lib/income/classifier.js';
+import { rebuildIncomeRegimesAndBuckets } from '../lib/buckets/regimes.js';
+import { RegimeBucketTracker } from '../lib/evaluator/regime-buckets.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 
 const PREFIX = 'run-offline-evaluator-moustafa';
 const FIX = 'Run in non-production with valid user data and database access.';
 
-type ClassifiedBankTransaction = import('../lib/income/types.ts').ClassifiedBankTransaction;
+type ClassifiedBankTransaction = import('../lib/income/types.js').ClassifiedBankTransaction;
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

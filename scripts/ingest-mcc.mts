@@ -28,13 +28,13 @@ import {
   MerchantRiskProfile,
   MerchantLifeCategory,
 } from '@prisma/client';
-import { prisma } from '../lib/prisma.ts';
-import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.ts';
-import { logError, logInfo } from '../lib/logger.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { readJsonFile } from './guardrails/lib/read-json.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { prisma } from '../lib/prisma.js';
+import { mapTagsToRewardCategory } from '../lib/mccCategoryMapper.js';
+import { logError, logInfo } from '../lib/logger.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { readJsonFile } from './guardrails/lib/read-json.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

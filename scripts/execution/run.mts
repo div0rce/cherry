@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import '../lib/loaders/config.loader.mts';
-import '../lib/loaders/prisma-mock.register.mts';
-import { ensureTsEsm } from '../lib/ensure-ts-esm.mts';
-import { fail } from '../guardrails/lib/fail.mts';
-import { EXECUTION, type ExecutionName } from './registry.mts';
+import '../lib/loaders/config.loader.mjs';
+import '../lib/loaders/prisma-mock.register.mjs';
+import { ensureTsEsm } from '../lib/ensure-ts-esm.mjs';
+import { fail } from '../guardrails/lib/fail.mjs';
+import { EXECUTION, type ExecutionName } from './registry.mjs';
 
 ensureTsEsm();
 

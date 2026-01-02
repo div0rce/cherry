@@ -8,13 +8,13 @@
  *   npm run seed:demo you@example.com  # CLI arg takes precedence
  */
 
-import { prisma } from '../lib/prisma.ts';
-import { logError, logInfo } from '../lib/logger.ts';
-import { seedDemoForUser } from '../lib/demo-seeder.ts';
-import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { prisma } from '../lib/prisma.js';
+import { logError, logInfo } from '../lib/logger.js';
+import { seedDemoForUser } from '../lib/demo-seeder.js';
+import { LAB_USER_EMAIL, LAB_USER_NAME } from '../lib/user-context.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

@@ -21,7 +21,7 @@ function mockModule(modulePath: string, exports: unknown): void {
 }
 
 async function runSafeSolve(): Promise<void> {
-  const world = makeTestWorld();
+  const { world } = makeTestWorld();
   const ctx: EngineContext = {
     surface: 'web',
     nowMs: 0,

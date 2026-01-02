@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { runTool } from './guardrails/lib/run-tool.mts';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { runTool } from './guardrails/lib/run-tool.mjs';
 
 // Load local env files so the predev check works before Next.js hydrates env vars
 function loadEnv() {

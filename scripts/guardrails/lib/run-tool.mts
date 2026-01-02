@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { asMessage } from './error.mts';
-import { fail } from './fail.mts';
+import { asMessage } from './error.mjs';
+import { fail } from './fail.mjs';
 
 export type ToolResult = {
   ok: boolean;

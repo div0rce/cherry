@@ -1,9 +1,9 @@
 import { RecommendationStatus, RecommendationSource } from '@prisma/client';
-import { prisma } from '../lib/prisma.ts';
-import { logInvariant } from '../lib/user-context.ts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { prisma } from '../lib/prisma.js';
+import { logInvariant } from '../lib/user-context.js';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

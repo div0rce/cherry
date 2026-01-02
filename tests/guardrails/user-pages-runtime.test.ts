@@ -6,11 +6,11 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 const scriptPath = path.join(repoRoot, 'scripts', 'check-user-pages-runtime.mts');
-const tsNodeBin = path.join(
+const tsxBin = path.join(
   repoRoot,
   'node_modules',
   '.bin',
-  process.platform === 'win32' ? 'ts-node.cmd' : 'ts-node'
+  process.platform === 'win32' ? 'tsx.cmd' : 'tsx'
 );
 const fixturesRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'user-pages');
 
@@ -23,9 +23,13 @@ function writeFixture(root: string, name: string, content: string): string {
 
 function runGuardrail(root: string) {
   return spawnSync(
-    tsNodeBin,
-    ['--project', 'tsconfig.scripts.json', scriptPath, '--root', root],
-    { encoding: 'utf8', cwd: repoRoot }
+    tsxBin,
+    ['--tsconfig', 'tsconfig.scripts.json', scriptPath, '--root', root],
+    {
+      encoding: 'utf8',
+      cwd: repoRoot,
+      env: { ...process.env, CHERRY_TSESM: '1' },
+    }
   );
 }
 

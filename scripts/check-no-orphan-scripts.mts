@@ -1,15 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { importUnknown } from './guardrails/lib/import-typed.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { importUnknown } from './guardrails/lib/import-typed.mjs';
 import {
   GuardrailRegistrySchema,
   PackageJsonSchema,
   readJsonFile,
-} from './guardrails/lib/read-json.mts';
-import { GUARDRAILS as DEFAULT_GUARDRAILS } from './guardrails/registry.mts';
+} from './guardrails/lib/read-json.mjs';
+import { GUARDRAILS as DEFAULT_GUARDRAILS } from './guardrails/registry.mjs';
 import { z } from 'zod';
 
 ensureTsEsm();

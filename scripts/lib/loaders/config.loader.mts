@@ -1,1 +1,1 @@
-import '../config-register.mts';
+import '../config-register.mjs';

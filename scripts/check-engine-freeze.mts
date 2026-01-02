@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { fail } from './guardrails/lib/fail.mts';
-import { runTool } from './guardrails/lib/run-tool.mts';
+import { fail } from './guardrails/lib/fail.mjs';
+import { runTool } from './guardrails/lib/run-tool.mjs';
 
 const diffResult = runTool('git', ['diff', '--name-only', 'origin/main...HEAD']);
 

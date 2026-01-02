@@ -4,9 +4,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { fail } from '../guardrails/lib/fail.mts';
-import { ensureTsEsm } from './ensure-ts-esm.mts';
-import { asMessage } from '../guardrails/lib/error.mts';
+import { fail } from '../guardrails/lib/fail.mjs';
+import { ensureTsEsm } from './ensure-ts-esm.mjs';
+import { asMessage } from '../guardrails/lib/error.mjs';
 
 ensureTsEsm();
 

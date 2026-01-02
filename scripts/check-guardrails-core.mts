@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import { readTsConfig } from './lib/read-tsconfig.mts';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { readJsonFile } from './guardrails/lib/read-json.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
+import { readTsConfig } from './lib/read-tsconfig.mjs';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { readJsonFile } from './guardrails/lib/read-json.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
 
 ensureTsEsm();
 

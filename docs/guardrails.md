@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-01-03
 
 # Guardrails
 
@@ -189,6 +189,18 @@ Any duplication is a hard CI failure.
 - Guardrails must be pure, deterministic, and executable in CI without external dependencies.
 - Runtime I/O (network, sockets, filesystem writes, database clients) is forbidden.
 - Guardrail: `check:guardrail-no-runtime-io`.
+
+### Guardrail 28 — TS Project Coverage
+
+- Every TS source file must be owned by exactly one tsconfig project.
+- Orphans and overlaps are CI failures.
+- Guardrail: `check:ts-coverage`.
+
+### Guardrail 29 — Script Import Policy
+
+- Node scripts must use runtime extensions (`.js`/`.mjs`/`.cjs`) and relative imports.
+- TS extension specifiers and `@/` aliases are forbidden in scripts.
+- Guardrails: `check:no-ts-extension-imports`, `check:no-script-alias-imports`.
 
 ## Future/Target behavior
 

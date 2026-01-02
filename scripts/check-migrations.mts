@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { fail } from './guardrails/lib/fail.mts';
+import { fail } from './guardrails/lib/fail.mjs';
 
 const migrationsDir = path.join(process.cwd(), 'prisma', 'migrations');
 const banned = [/TODO/i, /STUB/i, /FIXME/i];

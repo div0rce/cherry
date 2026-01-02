@@ -2,9 +2,9 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { runTool } from './guardrails/lib/run-tool.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { runTool } from './guardrails/lib/run-tool.mjs';
 
 ensureTsEsm();
 
@@ -24,7 +24,7 @@ const tsNodeCompilerOptions = JSON.stringify({
 });
 
 const env = process.env as NodeJS.ProcessEnv;
-env['TS_NODE_PROJECT'] = path.join(repoRoot, 'tsconfig.scripts.json');
+env['TS_NODE_PROJECT'] = path.join(repoRoot, 'tsconfig.eslint.json');
 env['TS_NODE_COMPILER_OPTIONS'] = tsNodeCompilerOptions;
 const nodeEnv = env['NODE_ENV'] ?? 'test';
 
@@ -51,9 +51,9 @@ for (const file of testFiles) {
       'ts:esm',
       '--',
       '--import',
-      './scripts/lib/loaders/config.loader.mts',
+      './scripts/lib/loaders/config.loader.mjs',
       '--import',
-      './scripts/lib/loaders/prisma-mock.register.mts',
+      './scripts/lib/loaders/prisma-mock.register.mjs',
       '-r',
       'tsconfig-paths/register',
       file,

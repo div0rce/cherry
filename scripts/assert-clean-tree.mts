@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { runTool } from './guardrails/lib/run-tool.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { runTool } from './guardrails/lib/run-tool.mjs';
 
 ensureTsEsm();
 

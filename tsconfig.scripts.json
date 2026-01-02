@@ -1,28 +1,22 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
+    "verbatimModuleSyntax": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
     "target": "ES2022",
     "lib": ["ES2022"],
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"],
-    "allowImportingTsExtensions": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "types": ["node"]
   },
   "include": [
     "scripts/**/*.ts",
     "scripts/**/*.mts",
     "scripts/**/*.cts",
-    "tests/guardrails/guardrail-event-totality.test.ts",
-    "types/compat/**/*.d.ts",
-    "types/compat/**/*.d.cts"
+    "prisma/scripts/**/*.ts"
   ]
 }

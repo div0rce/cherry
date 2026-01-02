@@ -1,9 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mts';
-import { asMessage } from './guardrails/lib/error.mts';
-import { fail } from './guardrails/lib/fail.mts';
-import { PackageJsonSchema, readJsonFile } from './guardrails/lib/read-json.mts';
+import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
+import { fail } from './guardrails/lib/fail.mjs';
+import { PackageJsonSchema, readJsonFile } from './guardrails/lib/read-json.mjs';
 
 ensureTsEsm();
 

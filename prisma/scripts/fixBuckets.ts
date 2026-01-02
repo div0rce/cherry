@@ -1,7 +1,7 @@
-import { prisma } from '@/lib/prisma';
+import { prisma } from '../../lib/prisma.js';
 import type { Bucket } from '@prisma/client';
-import { logError, logInfo } from '@/lib/logger';
-import { computeBucketBalanceFromNumbers } from '@/lib/buckets-runtime';
+import { logError, logInfo } from '../../lib/logger.js';
+import { computeBucketBalanceFromNumbers } from '../../lib/buckets-runtime.js';
 
 /**
  * One-off reconciliation script to normalize buckets:
