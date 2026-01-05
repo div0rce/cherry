@@ -1,9 +1,11 @@
 Status: Draft
-Last updated: 2025-12-02
+Last updated: 2026-01-02
 
 # Verification flow
 
-Current (implemented) behavior after adding bank ingest + verification signal handling.
+This document describes how sessions and ledger rows are verified today and where future automation should land.
+
+## Current behavior (enforced / in code)
 
 ## Source of truth
 - Sessions are created via `/api/sessions` or `/api/vine/order` and write `RecommendationSession` + `CherryPointLedger` (PENDING).
@@ -33,3 +35,12 @@ Current (implemented) behavior after adding bank ingest + verification signal ha
 - Manual API: `/api/sessions/[id]/verify` now delegates to `verifySessionFromSignal` using the request body `{ verified: boolean }`.
 - Dev trigger: `/api/dev/verification/trigger` accepts `sessionId`, optional `amountCents`, `merchantFingerprint`, `verified`.
 - Bank ingest: currently does not auto-trigger verification; hook by queuing signals and calling `verifySessionFromSignal` in a worker/cron.
+
+## Future/Target behavior (explicitly speculative)
+- Automated signal ingestion from bank/receipt/Vine sources with background verification workers.
+- Stronger merchant fingerprinting and receipt matching before posting ledger rows.
+
+## Related docs
+- `docs/bank-ingest-notes.md`
+- `docs/legal-constraints.md`
+- `docs/api.md`

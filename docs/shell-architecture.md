@@ -1,18 +1,18 @@
 Status: Active
-Last updated: 2025-12-28
+Last updated: 2026-01-02
 
 # Shell Architecture
 
 Cherry runs two thin shells on one headless core.
 
-## Current behavior
+## Current behavior (enforced / in code)
 
 ### Headless core (shared)
 - `lib/engine/*`, `lib/services/*`, `lib/user-context.ts`, `lib/buckets/*`, `lib/verification/*`.
 - Business logic, ingest, guardrails, and solver live here. No React in these modules.
 
 ### User shell
-- Routes: `app/(user)/**` (`/`, `/buckets`, `/history`).
+- Routes: `app/(user)/**` (`/app`, `/buckets`, `/history`).
 - Allowed imports: shared UI (`components/ui/*`), headless services in `lib/**`.
 - Forbidden: importing from `app/(dev)/**` or embedding business logic in components.
 
@@ -38,3 +38,8 @@ Cherry runs two thin shells on one headless core.
 ## Future/Target behavior
 
 - TODO: Extend shell enforcement when new route groups or shells are introduced.
+
+## Related docs
+- `docs/repo-structure.md`
+- `docs/routes-map.md`
+- `docs/ci-and-guardrails.md`

@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-01-02
 
 # Script Standards
 
@@ -19,3 +19,9 @@ Last updated: 2026-01-03
 
 ## Future/Target behavior
 - TODO: Keep execution and guardrail registries fully derivable from documented standards.
+
+## Related docs
+- `docs/guardrails.md`
+- `docs/ci-and-guardrails.md`
+- `scripts/execution/registry.mts`
+- `scripts/guardrails/registry.mts`

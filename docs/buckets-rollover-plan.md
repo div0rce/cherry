@@ -1,9 +1,11 @@
 Status: Active
-Last updated: 2025-12-05
+Last updated: 2026-01-03
 
 # Bucket Rollover & Spend Semantics
 
 This doc explains how bucket periods and spend tracking work today, what gaps remain, and what future behavior should look like. See `docs/legal-constraints.md` and `docs/cherry-vision.md` for broader guardrails.
+
+## Current behavior (enforced / in code)
 
 ## Current Schema (prisma/schema.prisma)
 - Model: `Bucket`
@@ -38,11 +40,12 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - **Spend mutation (`POST /api/sessions/[id]/confirm`)**
   - Ensures the recommended bucket is fresh via `ensureBucketFresh` before updates.
   - Increments `spentCents` by the claimed amount (or recommended amount when `actualAmountCents` is absent). Happens once per session because status checks block double-claims.
-  - Does not currently decrement on verification failure; spend remains even if ledger rows are later revoked.
+  - Reversal on verification failure is handled in `verifySessionFromSignal` when a session is rejected.
   - Cadence today: bucket spend only changes on session confirm (and optional reversal on verify-reject); bank ingest, scans, and simulations do not mutate bucket balances.
 
 - **Other paths**
   - `/api/scan`, `/api/sessions`, `/api/vine/order`, `/api/simulate` do **not** mutate buckets.
+  - `/api/autopilot/commit` may mutate buckets when the engine provides a bucket delta (simulated commit flow).
   - Engine in-memory rollover means verdicts stay time-accurate even if the DB has not been refreshed yet; persistence happens on confirm via `ensureBucketFresh`.
 
 ### Example balance
@@ -52,11 +55,17 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - remaining = $25 (`remainingCents = 2_500`, `currentAmount` mirrors this on write)
 - A $50 attempt is over budget because $50 > $25 remaining even though $50 < $100 total limit.
 
+### Hard invariant
+- Buckets are mutated only by:
+  - `/api/sessions/[id]/confirm`
+  - verification reversal logic
+  - `/api/autopilot/commit` (transitional, simulated only)
+- Bank ingest, scans, simulations, preview APIs, and authority must never mutate buckets.
+
 ## Gaps / Inconsistencies
-- Spend is not reversed if verification rejects a claim; `spentCents` remains incremented.
 - Bucket selection is naive (first created for a category) and ignores multiple buckets for the same category.
 - No background job to pre-roll buckets; freshness relies on engine reads and confirm-time `ensureBucketFresh`.
-- `lastResetAt` is only set when rollover occurs via `ensureBucketFresh`; initial creation leaves it null.
+- `lastResetAt` is only set when rollover occurs via `ensureBucketFresh`; initial creation leaves it null. This intentionally records only true period rollovers (not creation or spend) so it can detect elapsed budget windows and multi-period gaps.
 - Cadence is confirm-only: there is no per-transaction bucket ledger, no per-purchase balance updates, and no daily reconciliation sweep; Autopilot can operate on stale spend if ingests lag.
 
 ### Verification rejection semantics
@@ -66,7 +75,12 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
 - `Bucket.currentAmount` exists only as a legacy mirror of derived remaining; compute balances via `lib/buckets-runtime.ts` instead of reading it.
 - `CategoryPreference.category` is now a `RewardCategory` enum; no arbitrary strings are allowed (legacy string field has been migrated).
 
-## Future / Target Behavior
+### Accounting model invariant
+- Buckets are a derived, period-scoped cache of spend, not a source of truth.
+- The authoritative record of spend is (today) sessions and (future) a bucket ledger.
+- Direct edits to `spentCents` outside controlled mutation paths are forbidden.
+
+## Future/Target behavior
 - Keep `lib/buckets-runtime.ts` as the single source of truth for committed/remaining math; avoid adding alternative “remaining” fields.
 - Consider deriving bucket selection rules (e.g., prioritize strict buckets) and document them.
 - Add optional reversal or adjustment when verification fails, or mark rejected sessions for audit before reversing spend.
@@ -77,4 +91,8 @@ This doc explains how bucket periods and spend tracking work today, what gaps re
   - Targets/allocations: recompute on pay-period boundaries or when income events/plan edits happen (monthly/biweekly or explicit paycheck); persist `bucket_target_amount` per `(bucket_id, period_id)`. No daily recompute needed.
   - Engine policy: per swipe, pull the freshest bucket balance, compute `remaining = target - spent`, and route accordingly (`remaining <= 0` → warn/avoid; soft threshold → nudge; else optimize rewards). If data is stale (e.g., last ingest > 12h), fall back to the safe default card and log “data stale.”
   - Reconciliation: run daily to re-sync feeds, ensure all transactions are bucketed, recompute derived metrics, and verify invariants (`sum(bucket_spent) ≈ total_spend`, period boundaries intact). If reconciliation fails, mark Autopilot as degraded until corrected.
-  - Cadence stance: weekly-only updates are insufficient; balances must be event-driven, with daily sweeps for safety and pay-period recomputes for targets.
+- Cadence stance: weekly-only updates are insufficient; balances must be event-driven, with daily sweeps for safety and pay-period recomputes for targets.
+
+## Related docs
+- `docs/legal-constraints.md`
+- `docs/api.md`

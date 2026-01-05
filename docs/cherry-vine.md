@@ -1,11 +1,11 @@
-Status: Active blueprint + dev-only backend simulator
-Last updated: 2025-11-30
+Status: Active
+Last updated: 2026-01-03
 
 # Cherry Vine Design Document
 
 *Reference architecture for the Cherry in-store hardware node*
 
-Vine is **context-only hardware**, never a payment terminal. See `docs/legal-constraints.md` for the hard guardrails.
+Vine is context-only hardware, never a payment terminal. See `docs/legal-constraints.md` for the hard guardrails.
 
 Current code hooks (dev-only) and caveats:
 - Backend ingest: `app/api/vine/order/route.ts` accepts Vine terminal events or `OrderContext` and creates a `RecommendationSession` via `lib/vine/run-recommendation.ts`.
@@ -18,7 +18,7 @@ All firmware and future device work must match this document and **never** touch
 
 ---
 
-## Current implementation (dev-only)
+## Current behavior (dev-only, enforced / in code)
 - Endpoint: `POST /api/vine/order` guarded by `withUser`.
 - Accepted payloads:
   - **Terminal event form** (`lib/schemas/vine-terminal.ts`): amount (number), optional currency, merchant block (name/storeId/MCC), terminal block (terminalId), vine block with source/sessionId.
@@ -26,8 +26,9 @@ All firmware and future device work must match this document and **never** touch
 - Behavior:
   - Validates payload; rejects stale timestamps (`> ~3 minutes` old).
   - MCC is optional; when present it must pass `isValidMcc`.
-  - Maps payload to `OrderContext`, calls `runRecommendationFromOrderContext` → `runEngine`, and persists a `RecommendationSession` with `source = VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes.
-  - Returns `{ sessionId, decision, orderToken }` to the simulator/client.
+  - Maps payload to `OrderContext`, calls `runRecommendationFromOrderContext` → `safeSolveDecisionForWorld` (world-context wrapper around the user solver), and persists a `RecommendationSession` with `source = VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes.
+  - Runs `simulateSpendAuthority` and records a `DecisionEvent` when authority returns `ok: true`.
+  - Returns `{ sessionId, decision, orderToken, authority }` to the simulator/client.
 - Not implemented yet (explicit TODOs):
   - HMAC/nonce verification and device secrets.
   - Order token cleanup/expiry sweeps.
@@ -37,6 +38,18 @@ All firmware and future device work must match this document and **never** touch
   - Vine does **not** read cards or act as a terminal.
   - Vine payloads contain only merchant/order context (merchant ID/name, amount, timestamp, optional MCC/store/terminal/order IDs).
   - No EMV/ISO8583 or payment-rail protocols are emitted or consumed.
+
+### Core invariant
+- Vine may only observe and broadcast context.
+- It must never:
+  - imply approval, authorization, or reservation of funds
+  - signal success/failure of a payment
+  - block, delay, or gate a POS transaction
+
+### State boundaries
+- Vine holds only ephemeral, local state (`currentOrder`).
+- All durable state (sessions, buckets, ledger, authority events) lives exclusively in the Cherry backend.
+- Vine reboot or failure must never affect correctness of user balances, rewards, or ledger state.
 
 ## 0. Purpose of this Document
 
@@ -543,6 +556,7 @@ Cherry Vine doesn’t touch payment data, but it still must avoid being triviall
      * `orderToken = HMAC(deviceSecret, canonical(orderFields + timestampBucket))`
    * `orderToken` is included in BLE and NFC payloads.
    * Backend verifies token validity and timestamp.
+   * Order tokens are single-use and time-bound; reuse for a different order or outside the validity window must be rejected server-side.
 
 3. **Time-Bound Validity**
 
@@ -818,3 +832,14 @@ When you’re ready, we can turn this into:
 * a shorter **spec.md** for engineers
 * a mini **firmware-architecture.md**
 * or concrete code scaffolding (ESP32 pseudo-code, backend endpoints, etc.).
+
+## Future/Target behavior (explicitly speculative)
+- HMAC/nonce verification with device secrets and enforced signature lifecycle.
+- Fleet management and monitoring for real devices.
+- Production transport integrations with POS and order systems.
+
+## Related docs
+- `docs/legal-constraints.md`
+- `docs/cherry-vision.md`
+- `docs/api.md`
+- `docs/wallet-pass.md`

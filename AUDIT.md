@@ -1,4 +1,10 @@
+Status: Active
+Last updated: 2026-01-03
+
 # Cherry Audit Log
+
+## Current behavior
+- New audit entries must follow `docs/audit-format.md` and the guidance below.
 
 > For agents: see `docs/audit-format.md` for the canonical audit schema and required sections.
 
@@ -31,6 +37,8 @@ Every new audit MUST include a `### 1.b Delta since previous audit` section that
 
 ### Risk Register Requirements (for agents)
 
+The Risk Register is a mandatory control surface used to track unresolved threats to correctness, legality, and pilot safety.
+
 Each audit MUST include a `### 5. Risk Register` section with:
 
 1. A table:
@@ -51,6 +59,12 @@ Each audit MUST include a `### 5. Risk Register` section with:
    - UX/behavioral confusion for users
 
 4. IDs are stable short strings, e.g. `SEC_RATE_LIMIT`, `ENG_DEBT_MODEL`, `VINE_SIGS`.
+
+## Audit Mindset (non-negotiable)
+
+- Audits are conservative by default; absence of evidence is scored as absence of maturity.
+- Scores must be comparable across time; do not reward effort, only observable behavior.
+- If prior scores appear inflated or inconsistent, correct them and note the change in Delta.
 
 ### Handoff & Questions Requirements (for agents)
 
@@ -104,6 +118,8 @@ Example pattern:
 
 Goal: a new agent can recompute or challenge scores from concrete evidence instead of accepting them blindly.
 
+Subsystem weights reflect user harm potential and blast radius, not implementation difficulty.
+
 ### Behavioral Guidelines (for agents)
 
 - Be conservative. Prefer underestimating maturity to overestimating.
@@ -113,6 +129,13 @@ Goal: a new agent can recompute or challenge scores from concrete evidence inste
   - Updating the JSON schema example.
   - Updating the Subsystem Key Mapping.
   - Noting the change in the next `Delta since previous audit` section.
+
+## Future/Target behavior
+- Keep audit entries consistent with `docs/audit-format.md` and update the format doc if the schema evolves.
+
+## Related docs
+- `docs/audit-format.md`
+- `docs/system-overview.md`
 
 ## [2025-12-02] Repository-wide Completion Assessment
 

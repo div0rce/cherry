@@ -1,9 +1,14 @@
 Status: Active
-Last updated: 2025-11-30
+Last updated: 2026-01-02
 
 # Cherry Wallet Pass (Apple Wallet)
 
-Refer to `docs/legal-constraints.md` for hard guardrails. The pass is loyalty/advisory only—never a payment instrument.
+Refer to `docs/legal-constraints.md` for hard guardrails. The pass is loyalty/advisory only, never a payment instrument.
+
+## Current behavior (enforced / in code)
+- `GET /api/wallet/cherry-pass` returns 501 unless the feature flag is enabled and all Apple Wallet env vars are present.
+- When gated, no filesystem or cert access occurs.
+- When fully configured, a `storeCard` `.pkpass` is generated via `lib/wallet/cherryPass.ts`.
 
 ## Status and Positioning
 - **Feature type:** Non-payment `storeCard` loyalty trigger (not a payment card, not a proxy BIN).
@@ -44,7 +49,12 @@ Refer to `docs/legal-constraints.md` for hard guardrails. The pass is loyalty/ad
 - Purpose: visual brand + trigger into advisory flow, not a funding instrument.
 - Copy: avoid “pay with Cherry”; emphasize “Scan Cherry before you pay.”
 
-## Future (after certs exist)
+## Future/Target behavior (explicitly speculative)
 - Keep the gating; enable with `CHERRY_WALLET_PASS_ENABLED=true` and full env.
 - Pass payload: user name, Cherry Points snapshot (placeholder), tagline “Scan Cherry before you pay,” QR/URL into the session flow.
 - Consider adding deep link/App Clip URL when infrastructure is available.
+
+## Related docs
+- `docs/legal-constraints.md`
+- `docs/cherry-vision.md`
+- `docs/api.md`

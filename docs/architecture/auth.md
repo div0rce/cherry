@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-11-30
+Last updated: 2026-01-02
 
 # Auth Architecture (NextAuth + Prisma)
 
@@ -13,6 +13,10 @@ This document explains how authentication works in Cherry and how to keep it ali
 - Storage: `User`, `Account`, `Session`, `VerificationToken` tables in `prisma/schema.prisma`.
 - Session guard: `withUser` (`lib/with-user.ts`) extracts `userId` via `getServerSession` and returns `401` on failure.
 - Client handling: components use `useSession()` and call `signIn()` on `401` responses from APIs.
+
+## Current behavior (enforced / in code)
+- Stateful routes use `withUser` or `resolveUserContext` to require auth and supply `userId`.
+- `/api/scan` allows lab demo access (`requireAuth: false`) but still resolves user context when possible.
 
 ## Providers and Env
 - Supported providers today:
@@ -30,14 +34,15 @@ This document explains how authentication works in Cherry and how to keep it ali
 5. UI reacts to 401 by prompting sign-in (never silently fails).
 
 ## Protected Surfaces
-- All stateful APIs use `withUser`:
-  - `/api/scan`
+- Auth is required for stateful APIs (via `withUser` or `resolveUserContext`), including:
   - `/api/sessions`, `/api/sessions/[id]`, `/api/sessions/[id]/confirm`, `/api/sessions/[id]/verify`
   - `/api/vine/order`
-  - `/api/cards`, `/api/cards/[cardId]/rewards`
+  - `/api/cards`, `/api/cards/[cardId]`, `/api/cards/[cardId]/rewards`
   - `/api/buckets`, `/api/buckets/[bucketId]`
   - `/api/simulate`, `/api/simulations`, `/api/activity`
-  - Admin/dev utilities (`/api/admin/*`, `/api/seed-demo`, `/api/dev/pending-sessions`)
+  - `/api/autopilot/*`
+  - Admin/dev utilities (`/api/admin/*`, `/api/seed-demo`, `/api/dev/*`, `/api/internal/*`)
+- Advisory `/api/scan` resolves user context but allows lab/demo access.
 - Health endpoints (`/api/health`, `/api/admin/health`) are open by design.
 - UI pages calling protected endpoints must wrap in `useSession()` and redirect/prompt on unauthenticated states (`/signin?callbackUrl=...`).
 
@@ -57,3 +62,11 @@ This document explains how authentication works in Cherry and how to keep it ali
 - **Do** handle `401` intentionally in UI.
 - **Don’t** read cookies manually or create ad-hoc Prisma clients.
 - **Don’t** weaken auth on admin tools; they are local-only and should stay guarded.
+
+## Future/Target behavior (explicitly speculative)
+- Add stricter role gating for admin/dev utilities before any production exposure.
+
+## Related docs
+- `AGENTS.md`
+- `docs/ci-and-guardrails.md`
+- `docs/legal-constraints.md`

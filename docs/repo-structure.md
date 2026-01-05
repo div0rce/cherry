@@ -1,15 +1,21 @@
-Status: Canonical layout
-Last updated: 2025-11-30
+Status: Active
+Last updated: 2026-01-03
 
 # Cherry Repository Structure
 
 Use this as the source of truth for where things live and where new code should go. See `AGENTS.md` for operating rules and `docs/legal-constraints.md` for product guardrails.
 
+## Current behavior (enforced / in code)
+- App Router routes are grouped under `app/(dev)`, `app/(user)`, and `app/(marketing)` with API routes in `app/api`.
+- The engine lives in `lib/engine.ts` and `lib/engine/*` with invariants in `lib/engine-invariants.ts`.
+- Prisma is only instantiated in `lib/prisma.ts` and consumed by adapters and API routes.
+- Scripts are kept under `scripts/` and executed via the `ts:esm` runner.
+
 ## Top-Level Overview (curated)
 ```
 .
 ├─ app/              # Next.js App Router UI + API entrypoints
-│  ├─ (routes)       # pages like /scan, /sessions, /cards, /buckets, /vine-simulator
+│  ├─ (dev)/(user)/(marketing)  # route groups for console, user app, and marketing
 │  └─ api/           # REST-ish handlers (scan, sessions, vine, wallet, admin, etc.)
 ├─ components/       # Shared UI components (client/server as needed)
 ├─ lib/              # Shared domain logic (engine, validation, enums, vine, wallet, auth helpers)
@@ -39,7 +45,7 @@ Use this as the source of truth for where things live and where new code should 
 
 ### lib/
 - **Purpose:** Shared domain logic and helpers.
-- **Put here:** Engine (`lib/engine.ts`, `engine-invariants`), enums, validation schemas, auth helpers (`with-user`, `auth`), vine helpers (`lib/vine/*`), wallet helpers (`lib/wallet/*`), points/verification helpers.
+- **Put here:** Engine (`lib/engine.ts`, `lib/engine/*`, `lib/engine-invariants.ts`), enums, validation schemas, auth helpers (`with-user`, `auth`), vine helpers (`lib/vine/*`), wallet helpers (`lib/wallet/*`), points/verification helpers.
 - **Do NOT put:** Route handlers, Prisma client instantiation outside `lib/prisma`.
 
 ### prisma/
@@ -87,7 +93,7 @@ Use this as the source of truth for where things live and where new code should 
 
 ## Mapping to Cherry’s Product Model
 - **Observe/Recommend surfaces:** `app/` (UI routes like `/scan`, `/vine-simulator`, APIs like `/api/scan`, `/api/vine/order`).
-- **Evaluate (engine):** `lib/engine.ts` + invariants, enums, validation in `lib/validation`.
+- **Evaluate (engine):** `lib/engine.ts` + invariants, enums, validation in `lib/schemas/*` and `lib/validation.ts` helpers.
 - **Reward (sessions/ledger):** `app/api/sessions/*` entrypoints backed by `lib` helpers and Prisma models (`RecommendationSession`, `CherryPointLedger`).
 - **Vine context:** `lib/vine/*`, `app/api/vine/order`, UI `/vine-simulator`.
 - **Wallet pass scaffold:** `lib/wallet/*`, `app/api/wallet/cherry-pass`.
@@ -97,9 +103,17 @@ Use this as the source of truth for where things live and where new code should 
 ## Conventions for New Code
 - Keep API route handlers thin; push logic into `lib/`.
 - Use `@/lib/prisma` for DB access; no new Prisma clients elsewhere.
-- Validate inputs with Zod schemas in `lib/validation/*`.
+- Validate inputs with Zod schemas in `lib/schemas/*` (and `lib/validation/autopilot/*` for Autopilot).
 - Place new scripts in `scripts/` (source) and build to `dist-scripts/` only if needed.
 - Keep docs in `docs/`; add cross-links when adding new surfaces.
 - Maintain Next.js App Router patterns (server-first; mark client components explicitly).
 - Preserve public API paths unless intentionally versioned.
 - Use `git mv` for any relocations to keep history, and update path aliases/imports accordingly.
+
+## Future/Target behavior (explicitly speculative)
+- Route groups may be reorganized as the dev console and user surfaces evolve; update this file alongside `docs/repo-structure-plan.md`.
+
+## Related docs
+- `AGENTS.md`
+- `docs/repo-structure-plan.md`
+- `docs/ci-and-guardrails.md`

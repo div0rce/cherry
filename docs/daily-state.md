@@ -1,10 +1,5 @@
-Status: Phase 3 complete — nightly fanout live, advisory-only
-Last updated: 2025-12-17
-
-# Completion Notes
-- Clock + memory live
-- Real computation wired
-- Type-closed API boundaries
+Status: Active
+Last updated: 2026-01-03
 
 # DailyState & Cron Contract
 
@@ -13,6 +8,12 @@ Purpose: Give Cherry a clock, memory, and a single, UI-agnostic truth object tha
 Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md` (copilot, not a card), and the engine/bucket invariants in `lib/engine` and `lib/buckets-runtime.ts`.
 
 ---
+
+## Current behavior (enforced / in code)
+- Manual and batch endpoints exist: `POST /api/internal/run-daily` and `POST /api/internal/run-daily-all`.
+- Both endpoints are gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true` and require auth.
+- Scheduling is external to the repo; no cron runner is bundled here.
+- DailyState is advisory-only and does not mutate buckets, sessions, or ledger.
 
 ## Scope
 - Headless kernel only. No UI surfaces or alerts in this spec.
@@ -48,6 +49,10 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 
 ## Computation Semantics (Meaning)
 - Inputs: fresh buckets via `ensureBucketFresh`/`toBucketRuntime`, cards + reward rules, objective weights, recent sessions/ledger (last 7–30 days), bank ingest rows if present, merchant observations. Time is captured at start of run.
+### Time invariants
+- A single `now` timestamp is captured at the start of each run.
+- All bucket freshness, period checks, and anomaly aging are evaluated against this timestamp.
+- No additional wall-clock reads are permitted during computation.
 - Status mapping:
   - `SAFE`: essentials not exhausted; aggregate remaining above buffer; no blocking anomalies.
   - `TIGHT`: at least one essential bucket at/under buffer.
@@ -89,6 +94,10 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 - Per-user failure writes `status=INSUFFICIENT_DATA` with `errors` populated; no partial writes elsewhere.
 - Engine or data errors log with structured context; retries happen on next scheduled run or manual trigger.
 - No mutations to buckets/ledger/sessions on failure paths.
+### Write atomicity
+- DailyState rows are written atomically.
+- On failure, existing rows for `(userId, date)` are preserved unchanged.
+- No partial or degraded writes replace a successful prior computation.
 
 ---
 
@@ -104,3 +113,12 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 - Bucket or ledger mutation beyond `ensureBucketFresh` reads.
 - New verification sources or Vine/device changes.
 - Wallet pass behavior (remains 501 until enabled per `docs/wallet-pass.md`).
+
+## Future/Target behavior (explicitly speculative)
+- Add a production scheduler or job runner that triggers `run-daily-all` nightly.
+- Expand DailyState inputs once real bank ingest is available.
+
+## Related docs
+- `docs/authority-v1.md`
+- `docs/legal-constraints.md`
+- `docs/api.md`

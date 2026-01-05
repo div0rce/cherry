@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-05
+Last updated: 2026-01-03
 
 # Cherry Core Loop / Engine / Vine / Wallet Pass Audit (Verified)
 
@@ -22,9 +22,9 @@ Code inspected:
 - Tests: `tests/*.test.js`.
 
 Docs consulted:
-- `docs/legal-constraints.md`, `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `docs/buckets-rollover-plan.md`, `docs/master.md`, `docs/repo-structure.md`, `AGENTS.md`, `.github/copilot-instructions.md`.
+- `docs/legal-constraints.md`, `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `docs/buckets-rollover-plan.md`, `docs/system-overview.md`, `docs/repo-structure.md`, `AGENTS.md`, `.github/copilot-instructions.md`.
 
-## 1. Current Behavior (Verified)
+## 1. Current behavior (verified)
 - Bank ingest (new):
   - Dev-only endpoint `app/api/dev/bank/ingest/route.ts` validates `RawBankTransaction` payloads (`lib/schemas/bank-ingest.ts`) and upserts `BankTransaction` rows idempotently via `lib/bank/ingest.ts`, linking optional `MerchantObservation`.
   - Unified activity and statements surface these rows; admin console includes a “Bank ingest debug” panel to paste payloads and dump recent rows.
@@ -32,10 +32,14 @@ Docs consulted:
   - `lib/verification/verify-session.ts` implements `verifySessionFromSignal` with amount/time/merchant matching and bucket reversal on rejection; invoked by `/api/sessions/[id]/verify` and `/api/dev/verification/trigger`.
   - `docs/verification-flow.md` documents signal shape; auto-trigger from ingest is still a follow-up (signals can be queued).
 - Advisory scan (`POST /api/scan`, `app/api/scan/route.ts`):
-  - Auth via `withUser`; parses `ScanRequestSchema` (`lib/schemas/scan.ts`, non-negative `expectedAmountCents`).
+  - Resolves user context (`resolveUserContext`, `requireAuth: false`, `allowLabDemo: true`); parses `ScanRequestSchema` (`lib/schemas/scan.ts`, non-negative `expectedAmountCents`).
   - Category resolution uses `resolveScanCategory` (`lib/scan-helpers.ts`) with precedence: explicit → MCC map → last simulated merchant category → heuristics → `OTHER`.
   - `amountCents` defaults to 0 if missing/invalid; `runEngine` accepts 0 (guards only `amountCents < 0` in `lib/engine.ts`); incentives become 0 for amount <= 0.
-  - Stateless: no DB writes; returns bucket/card verdicts plus `engineDecision`.
+  - No sessions/ledger writes; logs a `DecisionEvent` when authority returns `ok: true`.
+
+- Authority invariant:
+  - `authority_v1` is advisory and telemetry-only; it never mutates buckets, sessions, ledger rows, or user state.
+  - Any future authority version that affects state requires a version bump plus explicit legal/spec review.
 
 - Engine (`lib/engine.ts`, `lib/engine-invariants.ts`):
   - Resolves category (MCC → explicit → heuristics).
@@ -50,7 +54,7 @@ Docs consulted:
   - Canonical math: `computeBucketBalanceFromNumbers` (pending=0 today) → `committedCents` and `remainingCents` (clamped at 0); `currentAmount` is written as the derived remaining for legacy consumers.
   - Creation sets weekly window (Monday 00:00) or monthly (1st → next 1st), derives balances via `computeBucketBalanceFromNumbers`, and persists `budgetAmount`/`spentCents`/`currentAmount`.
   - `ensureBucketFresh` applies in-memory rollover, recomputes balances, and persists updated `periodStart`/`periodEnd`/`spentCents`/`currentAmount`/`lastResetAt` when stale.
-  - No automatic reversal of `spentCents` on verification rejection.
+  - Reversal of `spentCents` on verification rejection is handled by `verifySessionFromSignal`. Reversal is idempotent and guarded (`bucketSpendReversed`), bounded at zero, and always applies after `ensureBucketFresh` to respect active period windows.
 
 - Sessions & ledger:
   - Creation (`POST /api/sessions`, `app/api/sessions/route.ts`):
@@ -72,8 +76,9 @@ Docs consulted:
   - Auth via `withUser`; reads request body once.
   - Accepts either terminal-event form (`lib/schemas/vine-terminal.ts`) or `OrderContext` form (`lib/schemas/vine.ts`); MCC optional but validated by `isValidMcc` when present.
   - Rejects stale payloads older than ~3 minutes (`ageMs > maxAgeMs`).
-  - Maps to `OrderContext` (`lib/vine/order-context.ts`), runs solver via `safeSolveDecisionForUser` inside `runRecommendationFromOrderContext` and maps to legacy shape, then creates `RecommendationSession` with `source` set to `VINE_SIM` or `VINE_DEVICE`, `orderToken` from nonce or UUID, expiry ~15 minutes.
-  - Returns `{ sessionId, decision, orderToken }`. HMAC/nonce auth is TODO.
+  - Maps to `OrderContext` (`lib/vine/order-context.ts`), runs solver via `safeSolveDecisionForWorld` inside `runRecommendationFromOrderContext` (a thin wrapper around `safeSolveDecisionForUser` with a World-injected runtime) and maps to legacy shape, then creates `RecommendationSession` with `source` set to `VINE_SIM` or `VINE_DEVICE`, `orderToken` from nonce or UUID, expiry ~15 minutes.
+  - Runs `simulateSpendAuthority` and logs `DecisionEvent` telemetry when authority returns `ok: true`.
+  - Returns `{ sessionId, decision, orderToken, authority }`. HMAC/nonce auth is TODO.
 
 - Wallet Pass (`app/api/wallet/cherry-pass/route.ts`):
   - Auth via `withUser`. Uses `getWalletPassConfigStatus` (`lib/wallet/config.ts`): requires `CHERRY_WALLET_PASS_ENABLED=true` and Apple Wallet env vars (team ID, pass type ID, org name, description, cert password/path, WWDR path).
@@ -87,13 +92,19 @@ Docs consulted:
 - Tests:
   - Engine invariants, wallet-pass config, bucket periods, engine bucket remaining vs total limit, vine order mapping, and client API smoke tests in `tests/*.test.js`; all passing as of this audit.
 
+### State hierarchy (mental model)
+- Authoritative events: `RecommendationSession`, `CherryPointLedger`.
+- Derived state: `Bucket` (period-scoped cache).
+- Advisory signals: authority decisions, scan results.
+- Engine: pure evaluation over current derived + authoritative state.
+
 ## 2. Gaps vs Vision / Legal Constraints
 - Verification is still manual/explicit: signals are processed, but ingest does not auto-queue verification; production flow needs webhook-driven or worker-triggered signals.
 - Bank ingest is dev-only: no provider auth/signature validation, and user mapping is limited to email/providerAccountId.
 - Vine security is minimal: signature enforcement remains optional/off by default; nonce cleanup and device lifecycle are missing.
 - Legacy/duplicate engine logic in `lib/simulation.ts` (archived) still exists; while balance math now reuses canonical helper, the separate category resolver risks drift if revived.
 - Wallet pass generation still reads certs when fully enabled; acceptable, but ensure feature flag stays off by default to avoid accidental filesystem access. Currently compliant.
-- Bucket cadence is confirm-only: bucket spend changes only when sessions are confirmed (and optionally reversed on reject); there is no per-transaction ledger, no per-swipe balance update, no stale-data fallback, and no daily reconciliation sweep. Autopilot can therefore operate on stale budgets.
+- Bucket cadence is confirm-only with one exception: `/api/autopilot/commit` may apply bucket deltas for simulated commits. There is no per-transaction ledger, no per-swipe balance update, no stale-data fallback, and no daily reconciliation sweep. Autopilot can therefore operate on stale budgets.
 
 ## 3. Risks and Impact (Ranked)
 - High — Verification path needs automation:
@@ -128,3 +139,14 @@ Docs consulted:
    - Enforce signature mode by default, add device lifecycle/nonce cleanup, and document failure modes in `docs/cherry-vine.md`/`docs/api.md`.
 4) Observability/rate limits:
    - Instrument engine/sessions/ingest/verification paths with structured logs + basic rate limiting on public APIs.
+
+## Future/Target behavior (explicitly speculative)
+- Automated verification signals from real bank/receipt sources with worker-backed posting.
+- Signed Vine payloads with enforced device lifecycle.
+- Bucket ledger for per-transaction reconciliation.
+- Expanded observability and rate limiting across public APIs.
+
+## Related docs
+- `docs/cherry-vision.md`
+- `docs/legal-constraints.md`
+- `docs/api.md`

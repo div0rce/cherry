@@ -1,5 +1,5 @@
-Status: Active  
-Last updated: 2025-12-06
+Status: Active
+Last updated: 2026-01-03
 
 # Autopilot Engine Adapter (UI ↔️ Backend)
 
@@ -18,6 +18,11 @@ Repo/location primers:
 - Validation: `lib/validation/autopilot/preview.ts` (input + output schemas; single source).
 - Service wrapper: `lib/autopilot/service.ts#getAutopilotPreview` (engine orchestration + DTO mapping).
 - Engine entry: `lib/engine/public.getAutopilotDecisionForUserSwipe` (solver wrapper).
+
+## Current behavior (enforced / in code)
+- `/api/autopilot/preview` is read-only; adapter maps preview output to `AutopilotSimulationResult`.
+- `lib/autopilot/runSimulation.ts` is the only place the UI performs mapping logic.
+- Autopilot preview must never create sessions, mutate buckets, write ledger rows, or advance user state.
 
 ## Data flow (verbose, end-to-end)
 1) UI sends `AutopilotPurchaseSummary` to `lib/autopilot/runSimulation.ts`. Summary is validated locally (amount > 0, merchant non-empty).
@@ -77,6 +82,7 @@ Repo/location primers:
 
 ## Mapping (preview → AutopilotSimulationResult, verbose)
 - `state`: `recommended` only when `status === "ok"` AND no warnings AND bucket has remaining > 0; otherwise `warning`.
+- `status === "blocked"` indicates a preview generation failure or guardrail stop, not an authority verdict, and must not be presented as a spend warning or denial.
 - `cards`: index 0 is the recommended card (or “Your usual card”) with `labelTone` positive/negative by state; index 1 is a neutral “Alternate card” placeholder to keep UI loops stable even when no alternate exists.
 - `rewardStrength`: derived from `expectedBenefitCents / amountCents` bands (≤1% → 1, >1% → 2, >2% → 3, >3% → 4) with `rewardStrengthLabel` (“Low”→“Strong” rewards).
 - `recommendationSummary`: `explanation.primary` or fallback “Use <card>…”.
@@ -105,3 +111,11 @@ Repo/location primers:
 
 ## Tests
 - `tests/autopilot-runSimulation.test.js` covers happy-path mapping: payload sent to preview, state resolution, reward strength bounds, and 3-segment impact bar padding.
+
+## Future/Target behavior (explicitly speculative)
+- Replace AdapterSemantics v1 with EngineSemantics v2 once the backend returns a full UI bundle.
+
+## Related docs
+- `docs/autopilot-master-spec.md`
+- `docs/autopilot-integration-summary.md`
+- `docs/legal-constraints.md`

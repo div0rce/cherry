@@ -1,9 +1,12 @@
 Status: Active
-Last updated: 2025-12-02
+Last updated: 2026-01-03
 
 # Cherry Audit Format (agents)
 
 Canonical spec for writing future audit entries in `AUDIT.md`.
+
+## Current behavior (enforced / in code)
+- `AUDIT.md` entries must follow this schema and section order.
 
 ## 0. JSON header (required for every new audit entry)
 
@@ -175,6 +178,7 @@ You must distinguish between what you know and what you are guessing.
    - If docs promise a behavior but code does not enforce it:
      - Score based on code, not docs.
      - Note the mismatch in `### 3. Evidence and Observations` and/or Risk Register.
+   - Never assign maturity or score increases based solely on documentation, comments, flags, or TODOs; only observed behavior on `main` counts.
 
 3. **Call out blind spots**
    - If you did not inspect a plausible area (e.g., mobile client, external service), note:
@@ -198,12 +202,18 @@ For each item in `### 4. Highest-Leverage Next Steps`:
 
 3. Tag each item with the affected loop stage:
    - `[OBSERVE]`, `[EVALUATE]`, `[RECOMMEND]`, `[VERIFY]`, `[REFLECT]`, `[INFRA]`.
-   - Example:
-     - `[VERIFY][INFRA] Wire webhook → verification signal → ledger auto-posting …`
+   - Example: `[VERIFY][INFRA] Wire webhook → verification signal → ledger auto-posting …`
 
 4. Prefer fewer, heavier items over many small ones:
    - 5–7 items is ideal.
    - Each item should move at least one subsystem ≥ 2–3 points if fully completed.
+
+## Future/Target behavior (explicitly speculative)
+- If the audit schema evolves, update this file and `AUDIT.md` together.
+
+## Related docs
+- `AUDIT.md`
+- `docs/system-overview.md`
 
 ## Cherry Mental Model Primer (for agents)
 

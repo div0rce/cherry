@@ -1,7 +1,13 @@
-Status: Active reference
-Last updated: 2025-12-02
+Status: Active
+Last updated: 2026-01-03
 
-# Cherry System Map and Near-Term Plan
+# Cherry System Overview
+
+## Intent
+
+This document is a descriptive system overview.
+It does not define product identity, legal scope, or future commitments.
+When conflicts arise, defer to the referenced ground-truth documents.
 
 Ground truth for product identity remains in:
 - `docs/cherry-vision.md` (copilot, not a card)
@@ -14,14 +20,16 @@ This file summarizes where those concepts live in code today and highlights gaps
 
 ---
 
-## Core Loop Mapping (Observe → Evaluate → Recommend → Reward)
+## Current behavior (enforced / in code)
+
+### Core Loop Mapping (Observe → Evaluate → Recommend → Reward)
 - **Observe**
-  - Manual inputs: `/scan` UI posts to `/api/sessions` (App Router client `app/scan/ScanClient.tsx`).
-  - Advisory-only: `/api/scan` (stateless) in `app/api/scan/route.ts` for pre-swipe lookup, App Clip/Pass hooks; accepts MCC/category hints and allows `expectedAmountCents = 0`.
-  - Context ingest: `/api/vine/order` (dev-only) accepts Vine terminal payloads or `OrderContext`, enforces freshness (~3 minutes), and creates sessions; simulator UI at `/vine-simulator`.
+  - Manual inputs: `/scan` dev UI (`app/(dev)/scan/ScanClient.tsx`) posts to `/api/scan` for advisory preview and can create sessions via `/api/sessions`.
+  - Advisory-only: `/api/scan` in `app/api/scan/route.ts` runs the engine, allows `expectedAmountCents = 0`, and logs `DecisionEvent` telemetry but does not create sessions or ledger rows.
+  - Context ingest: `/api/vine/order` (dev-only) accepts Vine terminal payloads or `OrderContext`, enforces freshness (~3 minutes), creates sessions, and logs authority decisions; simulator UI at `/vine-simulator`.
 - **Evaluate**
   - Canonical engine: `lib/engine.ts` (+ invariants in `lib/engine-invariants.ts`), MCC-aware via `resolveCategory`; buckets are rolled in-memory and normalized via `lib/buckets-runtime.ts` before verdicts.
-  - Zod schemas ensure typed inputs (`lib/validation/*`).
+  - Zod schemas ensure typed inputs (`lib/schemas/*` + `parseJsonBody` in `lib/validation.ts`).
 - **Recommend**
   - Decisions flow back to clients (`ScanClient`, Vine simulator) with bucket/card verdicts and Cherry incentive offers; `RecommendationSession` stores verdicts, coverageMode, orderToken, expiry.
 - **Reward**
@@ -51,17 +59,17 @@ This file summarizes where those concepts live in code today and highlights gaps
 ---
 
 ## Known Gaps / TODOs
-- Bucket balance reversals are not wired to verification outcomes; rejected claims leave `spentCents` incremented.
 - Multiple buckets per category are not prioritized beyond first-created; bucket selection remains naive.
 - Vine ingest lacks HMAC/nonce verification and cleanup of expired order tokens (dev-only).
 - Wallet pass remains gated; keep 501 until certs are provided and feature flag is on.
 - Auto-verification is stubbed; future bank/receipt/Vine correlation should move ledger from PENDING → POSTED without manual calls.
+ - Bucket cadence is confirm-only (plus optional Autopilot simulated commits); there is no per-transaction bucket ledger or reconciliation sweep.
 
 ---
 
 ## Next Focus Areas
 1) **Bucket integrity**
-   - Decide on spend reversal policy when verification fails; document and implement.
+   - Decide on bucket ledger semantics and multiple-bucket selection rules.
    - Keep `lib/buckets-runtime.ts` as the single source of truth for balances; ensure any legacy `currentAmount` mirrors derived remaining only.
    - Add tests for rollover, strict-mode overspend, and confirm-time spend increments.
 2) **Vine hardening**
@@ -74,6 +82,11 @@ This file summarizes where those concepts live in code today and highlights gaps
    - Keep Wallet pass 501 messaging prominent; cross-link identity/legal docs from UI where surfaced.
    - Maintain API docs when shapes change and run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` after changes.
 
+## Future/Target behavior (explicitly speculative)
+- Automated verification from bank/receipt sources with background workers.
+- Signed Vine payloads and device lifecycle enforcement.
+- Bucket ledger for per-transaction accounting and reconciliation.
+
 ---
 
 ## References
@@ -83,3 +96,77 @@ This file summarizes where those concepts live in code today and highlights gaps
 - Wallet: `docs/wallet-pass.md`
 - API contract (including `/api/scan`): `docs/api.md`
 - Agent ops: `AGENTS.md`, `.github/copilot-instructions.md`
+
+## Documentation index (all markdown, non-fixture)
+
+### Root docs
+- `README.md`
+- `AGENTS.md`
+- `CONTRIBUTING.md`
+- `AUDIT.md`
+- `DOC_REWRITE_TASK.md` (temporary)
+- `.github/copilot-instructions.md`
+- `.github/pull_request_template.md`
+- `types/compat/README.md`
+
+### Product identity and legal
+- `docs/cherry-vision.md`
+- `docs/legal-constraints.md`
+- `docs/cherry-vine.md`
+- `docs/wallet-pass.md`
+
+### API, routes, and shells
+- `docs/api.md`
+- `docs/routes-map.md`
+- `docs/information-architecture.md`
+- `docs/dev-route-inventory.md`
+- `docs/dev-ui-parity.md`
+- `docs/shell-architecture.md`
+- `docs/repo-structure.md`
+- `docs/repo-structure-plan.md` (deprecated)
+
+### Engine, authority, buckets
+- `docs/authority-v1.md`
+- `docs/authority-ui-contract.md`
+- `docs/decision-event-ledger.md`
+- `docs/buckets-rollover-plan.md`
+- `docs/engine-roadmap.md`
+- `docs/adapters.md`
+- `docs/daily-state.md`
+
+### Autopilot and UI contracts
+- `docs/autopilot-master-spec.md`
+- `docs/autopilot-engine-adapter.md`
+- `docs/autopilot-integration-summary.md`
+- `docs/home-ui-contract.md`
+- `docs/signin-tasks.md`
+
+### Verification, ingest, evaluator
+- `docs/verification-flow.md`
+- `docs/bank-ingest-notes.md`
+- `docs/offline-evaluator.md`
+- `docs/income-regimes.md`
+
+### Guardrails, CI, scripts, linting
+- `docs/ci-and-guardrails.md`
+- `docs/guardrails.md`
+- `docs/guardrails-status.md`
+- `docs/guardrails-todo.md` (deprecated)
+- `docs/script-standards.md`
+- `docs/zod-style.md`
+- `docs/audit-format.md`
+
+### Architecture notes
+- `docs/architecture/auth.md`
+- `docs/architecture/typed-eslint-postmortem.md` (deprecated)
+- `docs/architecture/compat-shims.md`
+
+### Audits, plans, and drafts
+- `docs/cherry-core-loop-engine-vine-wallet-audit.md`
+- `docs/core-loop-audit.md` (deprecated)
+- `docs/agent-run-summary.md` (deprecated)
+- `docs/marketing-hero-spec.md` (draft)
+
+## Related docs
+- `AGENTS.md`
+- `docs/ci-and-guardrails.md`

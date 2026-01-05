@@ -1,10 +1,13 @@
-Status: Active  
-Last updated: 2025-12-02
+Status: Active
+Last updated: 2026-01-03
 
 # Contributing to Cherry
 
-## Information Architecture (source of truth)
+## Current behavior (enforced / in code)
+- CI runs `npm run ci:verify` (check + test + build) on pushes and PRs.
+- Guardrails are enforced via `npm run check` and registries in `scripts/guardrails/*`.
 
+## Information Architecture (source of truth)
 - Surface placement is defined in `docs/information-architecture.md` and the canonical route list in `docs/routes-map.md`.
 - Add or move routes only after updating those docs, and keep marketing, user, and dev console pages under their respective `(marketing)`, `(user)`, or `(dev)` route groups.
 
@@ -18,14 +21,12 @@ Last updated: 2025-12-02
   - Must not push directly to `origin/main`.
 
 - **AI Agents**
-  - Operate only on `main`.
-  - Must not create branches.
+  - Follow `AGENTS.md` for operational constraints.
   - Must not rewrite history (`git reset --hard`, `git push --force`).
-  - May only perform small, atomic tasks that can be fully completed and committed in 1–2 commits.
-  - Must start from a clean working tree (no untracked, staged, or unstaged changes).
+  - Must not discard or revert existing worktree changes unless explicitly asked.
 
 - **CI**
-  - Enforces that `main` stays green by running linting, typechecking, and tests on every push and pull request.
+  - Enforces that `main` stays green by running `npm run ci:verify` on every push and pull request.
 
 ### Branch Naming
 
@@ -35,9 +36,8 @@ Last updated: 2025-12-02
 
 ### Main Branch and CI Rules
 
-- `main` must always pass the full gate:
-  - `npm run check:clean && npm run check:routes && npm run lint && npm run typecheck:scripts && npm run typecheck && npm test`
-- Pull requests into `main` may only be merged after CI passes.
+- `main` must pass the full gate:
+  - `npm run ci:verify` (composite: check + test + build)
 - If CI is red on `main`, no new feature work is allowed until `main` is green again.
 - Fixes to restore green must be done in focused changes that only repair CI, not introduce new features.
 
@@ -45,12 +45,16 @@ Last updated: 2025-12-02
 
 Before any AI agent runs on this repository:
 
-- The current branch must be `main`.
-- `git status --porcelain` must be completely empty (no untracked files, no staged changes, no unstaged changes).
-- The agent's task must be small and bounded (1–2 commits).
-- The agent must run `npm run check:clean` before any mutating operation.
+- Note the current branch and `git status --porcelain`; do not assume a clean worktree.
+- Do not discard unrelated changes; coordinate with the user if conflicts exist.
+- Keep changes scoped and justified; avoid broad refactors.
 
-If any of these conditions are not met, the agent must not proceed and must report a failed precondition instead of modifying the repository.
+### Non-negotiable preconditions
+
+- Agents must operate on `main` unless explicitly instructed otherwise.
+- Agents must not proceed if the worktree is dirty without explicit user approval.
+- Agents must keep tasks bounded (≤2 commits) and avoid broad refactors.
+- If preconditions are not met, agents must stop and report the issue instead of modifying files.
 
 ## Engine Changes and Freeze Policy
 
@@ -62,3 +66,11 @@ While the freeze is active:
 Any PR that touches engine code:
 - Must apply the `engine-change` label.
 - Must include a link to the corresponding exception entry in `docs/engine-roadmap.md` when opened during a freeze.
+
+## Future/Target behavior
+- Add a guardrail that enforces the engine freeze policy if it becomes more formal.
+
+## Related docs
+- `AGENTS.md`
+- `docs/ci-and-guardrails.md`
+- `docs/engine-roadmap.md`

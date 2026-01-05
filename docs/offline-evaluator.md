@@ -1,7 +1,12 @@
 Status: Draft
-Last updated: 2025-12-04
+Last updated: 2026-01-03
 
 # Offline evaluator (historical replay)
+
+## Current behavior (enforced / in code)
+- Offline evaluator replays historical `BankTransaction` rows through the engine and stores `HistoricalEngineEvaluation`.
+- Writes are limited to offline tables; no Sessions, Ledger, or Buckets are touched.
+- Offline evaluator results are not consumed by any user-facing or authority surfaces.
 
 ## What it is
 - Read-only replay of historical bank transactions through the Cherry engine to answer “What would Cherry have told past-Moustafa?”.
@@ -12,7 +17,7 @@ Last updated: 2025-12-04
 ## Data flow
 1) Ingest historical data: `npm run dev:ingest:moustafa-bank` → `BankTransaction` (`source="csv_dev"`).  
 2) Evaluate offline: `npm run dev:evaluator:moustafa` → `HistoricalEngineEvaluation` via `lib/evaluator/offline-history.ts`.  
-3) Inspect: `/dev/evaluator` (dev-only) + `/dev/bank` + `/history` + `/statements`.
+3) Inspect: `/dev/evaluator` (dev-only) + `/dev/bank` + `/history` + `/dev/statements`.
 
 Schema: `HistoricalEngineEvaluation` (`runId`, `bankTransactionId` unique; stores decisionType, cardId, bucketId, rawDecision, scores, createdAt).
 
@@ -41,14 +46,14 @@ Schema: `HistoricalEngineEvaluation` (`runId`, `bankTransactionId` unique; store
 ```bash
 npm run dev:ingest:moustafa-bank          # load SafeBalance CSV → BankTransaction
 npm run dev:evaluator:moustafa            # offline engine replay → HistoricalEngineEvaluation
-npm run dev                               # then open /dev/evaluator (and /dev/bank, /history, /statements)
+npm run dev                               # then open /dev/evaluator (and /dev/bank, /history, /dev/statements)
 ```
 
 Env controls:
 - `BANK_INGEST_USER_EMAIL` / `BANK_INGEST_USER_ID` — pick the target user (same as ingest script).
-- `EVALUATOR_RUN_ID` — override run id; default `moustafa-baseline-YYYY-MM-DD`.
+- `EVALUATOR_RUN_ID` — override run id; default is `defaultRunIdForUser(userId, now)`.
 
-## Future extensions
+## Future/Target behavior (explicitly speculative)
 - Swap `csv_dev` source for Plaid/Teller once live.
 - Smarter categorization (MCC → RewardCategory) before calling the engine.
 - Deeper metrics: bucket breach detection, actual card used vs. recommended, paycheck proximity.
@@ -78,3 +83,8 @@ Env controls:
 - Keep outer wrappers stable between empty/data states; only change inner content (e.g., swap empty copy vs. table rows).
 - Avoid non-deterministic JSX in server components (`Date.now()`, `Math.random()`, `typeof window` checks). Compute values on the server before render.
 - Fetch evaluator data once on the server for initial render; client refetches should not change structural markup.
+
+## Related docs
+- `docs/income-regimes.md`
+- `docs/bank-ingest-notes.md`
+- `docs/legal-constraints.md`

@@ -1,5 +1,5 @@
-Status: Active — spec frozen for authority_v1
-Last updated: 2025-12-26
+Status: Active
+Last updated: 2026-01-03
 
 # Authority v1 (advisory-only, deterministic)
 
@@ -9,9 +9,15 @@ Aligns with: `docs/legal-constraints.md` (no payments), `docs/cherry-vision.md` 
 
 ---
 
+## Current behavior (enforced / in code)
+- Authority is deterministic and pure; same inputs yield the same verdicts and inputsVersion.
+- `simulateSpendAuthority` runs in `/api/scan`, `/api/simulate`, `/api/vine/order`, and Autopilot preview/commit.
+- `DecisionEvent` rows are logged only when authority returns `ok: true`.
+- The spec is frozen for `authority_v1`; semantic changes require a new version.
+
 ## Inputs
 - `userId` (string, required)
-- `amountCents` (int, ≥ 0)
+- `amountCents` (int, ≥ 0; `0` denotes a snapshot/no-spend evaluation)
 - `category` (RewardCategory)
 - `surface` (`autopilot | vine | simulate | scan`)
 - `counterfactuals?`: array of `{ amountCents?, delayDays?, bucketId? }` (optional). Defaults: 20% amount reduction, 3-day delay.
@@ -59,6 +65,7 @@ Verdict rule (severity lattice):
 ## Invariants
 - Pure/deterministic: same inputs → identical outputs + inputsVersion.
 - Advisory only: no bucket/session/ledger mutations; no auth/routing semantics; no approval/decline language.
+- Authority outputs must never be used to gate, block, auto-expire, or otherwise alter control flow; they affect presentation and advisory messaging only.
 - Reasons are exhaustive and finite; no free-form codes.
 - `reasons` is non-empty; severity is the max of reasons.
 - `DecisionEvent` is written once per `ok: true` invocation (see below).
@@ -68,7 +75,7 @@ Verdict rule (severity lattice):
 
 ## Persistence (DecisionEvent ledger)
 - Table: `DecisionEvent`
-- Columns: `id`, `userId`, `surface`, `verdict`, `reasonCode` (top), `reasonCodes` (array), `severity`, `inputsVersion`, `createdAt`
+- Columns: `id`, `userId`, `surface`, `amountCents`, `category`, `verdict`, `reasonCode` (top), `reasonCodes` (array JSON), `severity`, `inputsVersion`, `counterfactuals` (JSON), `createdAt`
 - Rule: every `simulateSpendAuthority` call that returns `ok: true` writes exactly one `DecisionEvent`; fallback/blocked results do not write; no retries/dedup.
 
 ---
@@ -114,5 +121,14 @@ Notes:
 ---
 
 ## Surfaces consuming authority_v1
-- `/api/scan`, `/api/simulate`, `/api/autopilot/preview`, `/api/vine/order` return `authority` alongside legacy decision payloads.
+- `/api/scan`, `/api/simulate`, `/api/autopilot/preview`, `/api/autopilot/commit`, `/api/vine/order` return `authority` alongside legacy decision payloads.
 - UI must render the provided verdict/reasons/counterfactuals verbatim; no local inference or thresholds.
+
+## Future/Target behavior (explicitly speculative)
+- `authority_v2` may introduce new reason codes and scoring rules; no changes to `authority_v1` without a version bump.
+
+## Related docs
+- `docs/legal-constraints.md`
+- `docs/cherry-vision.md`
+- `docs/api.md`
+- `docs/decision-event-ledger.md`

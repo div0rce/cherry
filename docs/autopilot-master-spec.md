@@ -1,5 +1,5 @@
-Status: Current truth  
-Last updated: 2025-12-06
+Status: Active
+Last updated: 2026-01-03
 
 # Autopilot Master Spec
 
@@ -8,8 +8,13 @@ Scope: Autopilot subsystem only (UI `/app/autopilot`, `/api/autopilot/*`, adapte
 Document purpose: Define the complete architecture, lifecycle, contracts, and invariants of the Autopilot subsystem.  
 Governed subsystems: Autopilot UI (`/app/autopilot`), Autopilot adapter (`runSimulation`), Preview API (`/api/autopilot/preview`), Commit API (if present), and solver entry (`public.getAutopilotDecisionForUserSwipe`). This doc must stay aligned with `docs/autopilot-engine-adapter.md`, `docs/autopilot-integration-summary.md`, and the validation/service layers named below.
 
+## Current behavior (enforced / in code)
+- Preview is read-only and advisory; commit is transitional and may write simulated transactions and bucket updates.
+- Autopilot uses the engine solver via `getAutopilotDecisionForUserSwipe` and authority_v1 for advisory warnings.
+- UI remains render-only; mapping lives in `lib/autopilot/runSimulation.ts`.
+
 ## Implementation status
-- Phase 1 — Autopilot preview wiring (UI ↔ adapter ↔ /preview ↔ engine): **COMPLETE**. Implemented in `app/api/autopilot/preview/route.ts`, `lib/autopilot/service.ts`, `lib/autopilot/runSimulation.ts`, `lib/validation/autopilot/preview.ts`, with coverage in `tests/api-autopilot-preview.test.js`, `tests/api-autopilot-user-context.test.ts`, and `tests/autopilot-runSimulation.test.js`.
+- Phase 1 — Autopilot preview wiring (UI ↔ adapter ↔ /preview ↔ engine): **COMPLETE**. Implemented in `app/api/autopilot/preview/route.ts`, `lib/autopilot/service.ts`, `lib/autopilot/runSimulation.ts`, `lib/validation/autopilot/preview.ts`, with coverage in `tests/api-autopilot-preview.test.js`, `tests/api-autopilot.user-context.test.ts`, and `tests/autopilot-runSimulation.test.js`.
 - Phase 2 — Autopilot preview reliability/observability: **COMPLETE**. Structured errors `{ error, code }`, engine timeout (503/`ENGINE_TIMEOUT`), metrics (request counts, status breakdown, latencies, bucket pressure/warnings) added to `/api/autopilot/preview` and `lib/autopilot/service.ts`, with adapter-aware error handling in `lib/autopilot/runSimulation.ts`.
 - Phase 3 — Autopilot commit re-spec (sessions/ledger alignment): **NOT COMPLETE**. Target contract is defined in §17; implementation is gated behind `AUTOPILOT_COMMIT_V2` and pending migration/backfill off the transitional bucket-mutating commit.
 
@@ -31,6 +36,8 @@ For each:
 
 ## 3. Autopilot Invariants (MUST Hold Across All Implementations)
 - Preview (`/api/autopilot/preview`) never mutates buckets, sessions, ledger, or simulated transactions; it is read-only.
+- Autopilot commit must never be exposed in user-facing UI prior to Phase 3; any invocation before that is restricted to tests or controlled internal tooling.
+- Autopilot warnings and states are UI posture only and must not be interpreted as authority verdicts or enforcement signals.
 - Adapter output `AutopilotSimulationResult` always satisfies:
   - `impactSegments.length === 3`
   - `rewardStrength ∈ {1,2,3,4}`
@@ -180,3 +187,11 @@ Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`s
 - Errors: `{ error, code }` parity with preview plus commit-specific codes (`DECISION_MISMATCH`, `DECISION_BLOCKED`, `CARD_MISMATCH`, `COMMIT_INVARIANT_VIOLATION`), honoring `ENGINE_TIMEOUT`/`ENGINE_ERROR`.
 - Invariants: no direct bucket math in Autopilot commit; all bucket/ledger effects flow through the shared confirm service; `(userId, decisionId)` governs idempotency across sessions/ledger/artifacts; advisory-only (no payment rails).
 - Migration: add/align confirm service if needed; refactor `commitAutopilotDecision` to reuse it; add `RecommendationSession.source = 'AUTOPILOT'` if missing; feature-flag rollout (`AUTOPILOT_COMMIT_V2`), backfill/mark legacy `simulatedTransaction` rows, and remove V1 paths after rollout.
+
+## Future/Target behavior (explicitly speculative)
+- Full Phase 3 commit integration with shared confirm pipeline and session/ledger alignment.
+
+## Related docs
+- `docs/autopilot-engine-adapter.md`
+- `docs/autopilot-integration-summary.md`
+- `docs/legal-constraints.md`

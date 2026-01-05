@@ -1,15 +1,29 @@
-Status: Active
-Last updated: 2025-12-04
+Status: Draft
+Last updated: 2026-01-03
 
 # Cherry Marketing Hero Spec
 
 ## Current behavior
-- Hero landing page exists under `/` via the marketing route group, front-loading proof, single CTA, and loss-aversion framing while keeping Cherry strictly advisory.
+- No marketing page is implemented yet; `app/(marketing)` is empty. This document is a forward-looking spec only.
 
-## Future/Target behavior
+## Future/Target behavior (explicitly speculative)
 - Swap the mock animation for a live Lottie/MP4 tied to real engine traces.
 - Wire CTAs to the chosen growth funnel (sign-in, app deep link) once finalized.
 - Validate the loss-range copy with data; trim or localize once confirmed.
+
+## Advisory Constraint (Marketing)
+- All copy must describe Cherry as advisory-only.
+- Cherry does not act at the moment of payment, route transactions, or influence authorization.
+- Phrases like “picks”, “selects”, or “every purchase” must be interpreted as advisory recommendations shown before or after spend, not during authorization.
+- Marketing pages must not imply terminal-level integration, automatic routing, or payment control.
+
+Forbidden in marketing:
+- “authorize”
+- “route”
+- “at checkout”
+- “while you pay”
+- “automatic payment”
+- “tap with Cherry”
 
 ---
 
@@ -194,3 +208,8 @@ Reference implementation lives in `/app/(marketing)/page.tsx` using Button + Car
 - **Loss Banner:** frames status quo as cost; Cherry repairs it automatically.
 - **Testimonials:** relief- and simplicity-focused to match money-anxious users.
 - **How It Works:** scan/connect → private local model → one recommendation; teaches loop without over-explaining.
+
+## Related docs
+- `docs/information-architecture.md`
+- `docs/routes-map.md`
+- `docs/cherry-vision.md`

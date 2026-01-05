@@ -1,5 +1,5 @@
-Status: Active and canonical
-Last updated: 2025-12-02
+Status: Active
+Last updated: 2026-01-03
 
 # Cherry Vision & Product Identity
 
@@ -8,11 +8,32 @@ Last updated: 2025-12-02
 All other docs and code must conform to this file (and `docs/legal-constraints.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`). If reality drifts, fix the code—not this identity. See `docs/legal-constraints.md` for hard legal guardrails.
 
 Where this lives in the repo today:
-- Advisory entry: `/api/scan` (stateless) in `app/api/scan/route.ts`.
+- Advisory entry: `/api/scan` in `app/api/scan/route.ts` runs the engine and records a `DecisionEvent` for telemetry. It does not create sessions or ledger entries.
 - Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`. Bucket spend is incremented on confirm after `ensureBucketFresh` rollover.
 - Engine: `lib/engine/solver.ts` (`solveDecision` + `safeSolveDecisionForUser`) with invariants in `lib/engine-invariants.ts`; legacy shim lives in `lib/engine/legacy.ts`.
 - Vine context ingest (dev-only): `/api/vine/order` + simulator UI `/vine-simulator`.
 - Wallet pass scaffold: `/api/wallet/cherry-pass` (501 until Apple certs).
+
+## Current behavior (enforced / in code)
+- Cherry is advisory only: observe → evaluate → recommend → reward, with no authorization or routing.
+- `/api/scan` is an advisory API for recommendations; it logs a `DecisionEvent` for observability but does not create sessions or ledger rows.
+- Sessions and Cherry Points are persisted only via `/api/sessions` + confirm/verify flows.
+- Vine is a context beacon (merchant + amount + timestamp) and remains separate from payment rails.
+- Wallet pass stays gated at 501 until certs and the feature flag exist.
+
+### Core invariant
+- Cherry (including Cherry Vine) must never imply approval, authorization, reservation of funds, or transaction success.
+- All recommendations are advisory and may be ignored without consequence.
+- Cherry must not signal “go ahead”, “approved”, or “confirmed” semantics prior to user payment.
+
+### State boundaries
+- Cherry Vine and client surfaces hold only ephemeral state.
+- All durable state (sessions, buckets, ledger, rewards, verification) lives exclusively in the Cherry backend.
+- Loss, reboot, or compromise of a Vine device must never affect correctness of user balances or rewards.
+
+## Future/Target behavior (explicitly speculative)
+- Deeper verification (bank ingest + receipts + Vine) posts Cherry Points automatically once verification moves beyond the current stubbed flow.
+- Vine signature lifecycle enforcement and broader context coverage are planned but not yet in production.
 
 ---
 
@@ -246,7 +267,7 @@ For a hypothetical transaction:
 
 The engine returns a **decision object** summarizing this evaluation.
 
-In environments with Cherry Vine, the evaluation can be triggered automatically at the right second (when the POS finalizes the total) instead of waiting for the user to type, but the decision object and its semantics remain exactly the same.
+In environments with Cherry Vine, the evaluation can be triggered automatically at the right second (when the POS finalizes the total) without user confirmation and without affecting the transaction, but the decision object and its semantics remain exactly the same.
 
 ---
 
@@ -656,7 +677,7 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 
 ---
 
-## 12. Dev console surfaces (loop in the UI)
+## 13. Dev console surfaces (loop in the UI)
 
 - Dashboard (`/`): unified header + metrics view anchoring spend, engine activity, and shortcuts into Scan, Simulate, Sessions, and tools.
 - Statements (`/statements`): spend history that reflects bucket/budget impact and engine-tagged transactions.
@@ -670,9 +691,10 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 
 ---
 
-## 13. Engine Appendix
+## 14. Engine Appendix
 
 - Deterministic core: `EngineState + EngineContext → ranked actions + projections`, exposed via `solveDecision`/`safeSolveDecisionForUser` (`lib/engine/solver.ts`).
+- All public and Vine-triggered evaluations route through `safeSolveDecisionForWorld` (a wrapper around `safeSolveDecisionForUser` with a World-injected runtime); no alternate solver path is authoritative.
 - Canonical types live in `lib/engine/types.ts` (`NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`); guardrails live in `lib/engine/guardrails.ts`; context/state builders in `lib/engine/context.ts`.
 - Legacy compatibility (`runEngine`, card/bucket verdicts) sits in `lib/engine/legacy.ts` until all surfaces migrate.
 - `/api/simulate`, `/api/scan`, and `/api/sessions` all wrap the engine through `safeSolveDecisionForUser` for graceful failures while mapping back to legacy response shapes.
@@ -680,7 +702,7 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 
 ---
 
-## 14. Summary & Mantra
+## 15. Summary & Mantra
 
 **Cherry’s identity in one line:**
 
@@ -703,3 +725,10 @@ Every feature, UI screen, API, integration, and hardware product (including Cher
 
 If yes → green light.
 If no → rethink it.
+
+## Related docs
+- `docs/legal-constraints.md`
+- `docs/cherry-vine.md`
+- `docs/wallet-pass.md`
+- `docs/api.md`
+- `docs/ci-and-guardrails.md`

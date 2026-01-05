@@ -1,11 +1,32 @@
-Status: Active
-Last updated: 2025-12-28
+Status: Draft
+Last updated: 2026-01-03
 
 # Guardrails Status
 
 ## Current behavior
+- The authoritative guardrail inventory lives in `scripts/guardrails/registry.mts` and `docs/guardrails.md`.
+- This document is a legacy snapshot and is not exhaustive; treat it as historical context only.
 
-### Scoreboard (Guardrails 1–12)
+## Guardrail System Health (Human Summary)
+
+- Total registered guardrails: 51 (from `scripts/guardrails/registry.mts`).
+- Enforced in CI: 51 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
+- Partial / legacy-allowlisted: 3 (floating-point money math allowlist, idempotent writes coverage, determinism guardrail allows global fake timers).
+- Known gaps:
+  - Idempotent writes: session/ledger coverage incomplete.
+  - Deterministic time: global fake timers not banned.
+  - Floating-point money math: legacy allowlist remains for older paths.
+
+## Regression Policy
+
+- Guardrail enforcement may only move forward.
+- A guardrail marked enforced in CI must never revert to partial or advisory.
+- Any downgrade requires:
+  - explicit entry in this document
+  - PR link
+  - justification
+
+### Legacy snapshot (partial, not authoritative)
 
 | Guardrail # | Name | Enforcement (eslint/script/test/ci) | Fixtures (pos/neg) | CI wired? | Status / Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -22,7 +43,7 @@ Last updated: 2025-12-28
 | 11 | Migration safety | repo script, tests, ci | pos+neg | yes | enforced |
 | 12 | Policy totality | runtime assertion, tests, ci | pos+neg | yes | enforced (closed verdict set) |
 
-### Backstops / Boundary Guardrails (non-numbered)
+### Legacy backstops / boundary guardrails (partial)
 
 - Repo backstop: `check:repo-guardrails` (randomness/time/engine-prisma/engine-side-effects + boundary checks)
 - Side-effects boundary: `check:side-effects` (allowlist-driven)
@@ -30,9 +51,9 @@ Last updated: 2025-12-28
 - Config/identity/entropy backstops: `check:config`, `check:identity`, `check:server-entropy`
 - Registry closure: `check:guardrail-name-path-bijection`, `check:no-orphan-check-files`, `check:execution-registry-completeness`, `check:no-orphan-scripts`
 - CI gate: `check:ci-must-run-check`
-- Boundary layer frozen as of commit `c2fcb7ab7bd65962d743269d310758995a2ded52`.
+- Boundary layer commit reference is historical and not enforced today.
 
-### Command Gate (latest run)
+### Command Gate (historical)
 
 - `check:repo-guardrails`: pass
 - `lint`: pass
@@ -40,6 +61,11 @@ Last updated: 2025-12-28
 - `test`: pass
 - `build`: pass
 
-## Future/Target behavior
+## Future/Target behavior (explicitly speculative)
 
-- TODO: Expand scoreboard to cover Guardrails 13+ once their fixtures and CI wiring are audited.
+- TODO: Replace this file with a generated report sourced from the guardrail registry.
+
+## Related docs
+- `docs/guardrails.md`
+- `docs/ci-and-guardrails.md`
+- `scripts/guardrails/registry.mts`

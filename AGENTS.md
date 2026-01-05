@@ -1,359 +1,122 @@
 Status: Active
-Last updated: 2025-12-02
+Last updated: 2026-01-02
 
 # Cherry Agents — Canonical Operating Guide
 
-This file is the authoritative playbook for any AI/copilot working in this repo. It must stay aligned with:
-- `docs/cherry-vision.md` (product identity)
-- `docs/legal-constraints.md` (hard legal guardrails)
-- `docs/cherry-vine.md` (hardware/context)
-- `docs/wallet-pass.md` (Apple Wallet scaffold and 501 gate)
-- `docs/api.md` (API reference including `/api/scan`)
-- `docs/repo-structure.md` (canonical layout)
-- `docs/cherry-core-loop-engine-vine-wallet-audit.md` (core loop/engine/Vine/wallet audit)
-- `README.md` (setup/commands)
+This file is the operating contract for humans and agents working in this repo. It is authoritative after CI/workflows and guardrail registries. If something conflicts, fix the lower authority, not the higher.
 
----
+## Authority Ladder (highest to lowest)
+1. `package.json` scripts + `.github/workflows/*` (actual behavior)
+2. Guardrail registries and tests (`scripts/guardrails/*`, `tests/guardrails/*`)
+3. `AGENTS.md` (this file)
+4. `docs/*` (specs and explanations)
+5. Everything else (notes, drafts, marketing)
 
-## Product Identity & Guardrails (never violate)
-- Cherry is a **real-time spending copilot**, not a card, proxy, processor, or payment terminal. It never fronts transactions, holds funds, or touches payment rails.
-- Cherry’s loop is **Observe → Evaluate → Recommend → Reward**. Nothing beyond that (no authorization or routing).
-- Cherry Vine is a **context beacon** (merchant + amount + timestamp over BLE/NFC), not an EMV device or reader. It never accepts taps/swipes/PIN.
-- Cherry Pass is a **storeCard-style Wallet pass** that triggers advisory flows; it is not a payment instrument. `GET /api/wallet/cherry-pass` returns **501** until Apple Wallet certs exist and the feature flag is enabled.
-- Recommendation sessions and Cherry Points are **advisory/sandbox**. `RecommendationSession` + `CherryPointLedger` record what was suggested and what the user claims; they do not settle money.
-- Verification is layered and simulated today; anomalies are diagnostic only (not fraud labels).
-- When in doubt, read `docs/legal-constraints.md` and choose the legally conservative path.
+## Product Identity and Legal Guardrails (non-negotiable)
+- Cherry is a real-time spending copilot, not a card, proxy, processor, or payment terminal.
+- Cherry never fronts transactions, holds funds, or touches payment rails.
+- Cherry Vine is a context beacon (merchant + amount + timestamp), not a reader or terminal.
+- Cherry Pass is a storeCard-style advisory pass; it is not a payment instrument.
+- Recommendation sessions and Cherry Points are advisory and sandboxed.
 
 Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Cherry,” “Cherry terminal,” “payment card.”
 
----
+## Current behavior (enforced / in code)
+- Core loop: Observe → Evaluate → Recommend → Reward.
+- `/api/scan` runs the engine and logs a `DecisionEvent` for telemetry; it does not create sessions or ledger rows.
+- Sessions + ledger persistence happen via `/api/sessions` and confirm/verify flows.
+- Vine ingest (`/api/vine/order`) is dev-only and context-only; no payment rails.
+- Wallet pass (`/api/wallet/cherry-pass`) returns 501 unless fully configured and explicitly enabled.
+- Engine is deterministic and pure: it consumes `EngineState` + `EngineContext` and emits ranked decisions.
 
-## Completion snapshot (2025-12-02)
-- Audit places the repo at ~66% of a v1-quality product. Lab flows are solid; production gaps remain.
-- Highest priorities: real bank ingest (now scaffolded via `/api/dev/bank/ingest`), automated verification/ledger posting, enforced Vine signatures/lifecycle, observability/rate limits.
-- Cherry Pass stays gated at 501; Vine remains context-only; never imply payment/processing.
+## Determinism and Time Injection
+- Do not call `Date.now()` or `new Date()` in `lib/engine/*` or `lib/authority/*`.
+- Time enters at boundaries (API routes, adapters) and is passed in as `nowMs`.
+- Guardrails enforce deterministic core behavior.
 
----
+## SSR / Rendering Determinism
+- Server components must not call `Date.now()`, `Math.random()`, or locale-dependent formatting.
+- Pages must render from a single data snapshot; no structural changes on hydration.
+- Empty/data states must share a stable outer container.
 
-## Canonical Docs Index
-- Identity & legal: `docs/cherry-vision.md`, `docs/legal-constraints.md`
-- Hardware/context: `docs/cherry-vine.md`
-- Wallet pass: `docs/wallet-pass.md`
-- API surface: `docs/api.md`
-- Buckets/rollover: `docs/buckets-rollover-plan.md`
-- System map: `docs/master.md`
-- Repo layout: `docs/repo-structure.md`
-- Auth architecture: `docs/architecture/auth.md`
-- Sign-in tasks: `docs/signin-tasks.md`
-- Agent rules: this file + `.github/copilot-instructions.md`
+## Data and DB Boundaries
+- Prisma client must only be instantiated in `lib/prisma.ts` and consumed by runtime adapters.
+- Engine and authority logic must not import Prisma or `@prisma/client`.
+- Zod schemas live in `lib/schemas/*`; parse via `parseJsonBody` from `lib/validation.ts`.
+- Stateful API routes must use `withUser` and return `401` for unauthenticated requests.
+- Bank ingest invariants:
+  - `BankTransaction.id` is internal and never set from ingest data.
+  - Idempotency key is `(userId, externalId)` only.
+  - All ingest writes go through `upsertBankTransactions`.
 
-Agents must consult relevant docs before changing code. For directory layout, see `docs/repo-structure.md` and treat it as authoritative.
+## Bucket Runtime Invariants
+- Bucket math must flow through `lib/buckets-runtime.ts`.
+- Authoritative fields: `budgetAmount`, `spentCents`.
+- Derived only: `committedCents`, `remainingCents`.
+- `currentAmount` is legacy-mirror only; never authoritative.
 
----
+## Offline Evaluator (hard boundary)
+- Evaluator code is read-only with respect to Sessions, Ledger, Buckets.
+- Outputs are diagnostic only and must never affect user-facing decisions.
+- Must call `assertOfflineEvaluatorModelsReady()` before DB access.
+- Gate execution behind `CHERRY_OFFLINE_EVALUATOR_ENABLED`.
+- Never hard-code runIds; derive via `defaultRunIdForUser(userId, now)`.
 
-## Product Identity Guardrails (never violate)
-- Cherry is a **real-time spending copilot**, not a card, proxy, processor, or payment terminal. It never fronts transactions, holds funds, or touches payment rails.
-- Cherry’s loop is **Observe → Evaluate → Recommend → Reward**. Nothing beyond that (no authorization).
-- Cherry Vine is a **context beacon** (merchant + amount + timestamp over BLE/NFC), not an EMV device or reader.
-- Cherry Pass is a **storeCard-style Wallet pass** that triggers advisory flows; it is not a payment instrument. `GET /api/wallet/cherry-pass` returns **501** until Apple Wallet certs exist.
-- Recommendation sessions and Cherry Points are **advisory/sandbox**. `RecommendationSession` + `CherryPointLedger` record what was suggested and what the user claims; they do not settle money.
-- Verification is layered and simulated today; anomalies are diagnostic only (not fraud labels).
+## Guardrails Policy
+- Guardrails are registered in `scripts/guardrails/registry.mts` and must run via `npm run check`.
+- Guardrails are unaddressable by path; run them only via `npm run check`.
+- Guardrails must be deterministic and side-effect free; no network or DB I/O.
+- Do not weaken guardrail severity or bypass guardrail tests.
 
-Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Cherry,” “Cherry terminal,” “payment card.”
+## Script Runner Contract
+- Repo is ESM by extension. `.mts` is allowed only under `scripts/`.
+- `.mts` scripts must be run via `npm run ts:esm -- <script>`.
+- `.ts` files under `scripts/` must not use ESM syntax.
+- Script imports must use runtime extensions (`.js`/`.mjs`/`.cjs`); no `@/` aliases.
 
----
+## CI Truth and DB Posture
+- `.github/workflows/ci.yml` runs `npm ci` then `npm run ci:verify`.
+- Tests run with Prisma mocked; CI green does not fully prove DB behavior.
+- `.github/workflows/env-checks.yml` provisions Postgres and runs `check:db:required` with migrations.
 
-## Repository Map (authoritative paths)
-- App Router UI: `app/` (server-first; add `"use client"` only where browser state is needed).
-- Core APIs: `app/api/*`
-  - `/api/scan` — stateless advisory (pre-swipe) using `lib/engine.ts`; no persistence.
-  - `/api/sessions` + `/api/sessions/[id]/confirm|verify` — persist recommendations and Cherry Points claims.
-  - `/api/vine/order` — Vine simulator/device order ingestion → session creation (dev-only today).
-  - `/api/wallet/cherry-pass` — Wallet pass scaffold; returns 501 until certs configured.
-- Shared logic:
-  - `lib/engine.ts` + `lib/engine-invariants.ts` — canonical engine, verdicts, incentives.
-  - `lib/enums.ts` — enum aliases mirroring Prisma `$Enums`.
-  - `lib/validation/*` — Zod schemas; all routes must parse inputs through these.
-  - `lib/vine/*` — `order-context`, `run-recommendation` (session from Vine order).
-  - `lib/verification/*` — stubs for bank/receipt/vine verification orchestrator.
-  - `auth.ts`, `prisma.ts`, `with-user.ts`, `logger.ts` — auth/session helpers, Prisma client, guard, logging.
-- Database schema: `prisma/schema.prisma`; migrations under `prisma/migrations`; helper scripts in `prisma/scripts/`.
-- Data imports: `data/mcc/`; ingestion scripts in `scripts/`.
-- Public assets: `public/`; extra docs under `docs/`.
+## Change Protocol
+- Keep API handlers thin; move domain logic into `lib/`.
+- Use `safeSolveDecisionForWorld` / `safeSolveDecisionForUser` for engine decisions.
+- For schema changes:
+  - `npx prisma format`
+  - `npx prisma migrate dev --name <desc>`
+  - `npx prisma generate`
+  - Run `npm run check`, `npm test`, and `npm run build`.
+- For docs: add `Status` + `Last updated`, split Current vs Future, add Related docs.
 
----
+## PR Checklist (what each command proves)
+- `npm run check` → guardrails + lint + typecheck are green.
+- `npm test` → unit/guardrail tests green (Prisma mocked by loader).
+- `npm run build` → Next.js build passes.
+- `npm run ci:verify` → mirrors CI entrypoint.
+- If schema changed: migrations apply and Prisma client is regenerated.
 
-## Architecture Snapshot (code-level reality)
-- Frontend: Next.js 16 App Router + React 19, Tailwind tokens in `app/globals.css`. Sidebar layout in `app/layout.tsx` loads Geist fonts and session provider.
-- Auth: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`. `withUser` enforces auth on API routes. Client code uses `useSession()`/`signIn()` and handles `401` by prompting sign-in.
-- Engine: `lib/engine.ts` is the single source of decision logic. Always call it; do not fork logic in routes.
-- Persistence:
-  - `Bucket`, `Card`, `RewardRule` describe user budgets and rewards.
-  - `RecommendationSession` stores advisory decisions (manual scan or Vine) plus offered points and verdicts.
-  - `CherryPointLedger` records points movements (PENDING/POSTED/REVOKED) and anomaly flags.
-- Dev utilities: `/admin` triggers clear/seed endpoints; `/vine-simulator` exercises `/api/vine/order`.
+## Drift Policy
+- If docs conflict with code, update docs to match reality unless legal constraints require a code fix.
+- If code conflicts with legal constraints, fix code and add guardrail/tests rather than weakening docs.
+- Do not update guardrail fixtures unless you also update the corresponding tests intentionally.
 
----
+## Product-Ready Definition (Cherry terms)
+Cherry is product-ready for a pilot when:
+- Engine decisions are deterministic and stable across core surfaces.
+- Sessions + ledger lifecycle is reliable (no double-award, clear pending/posted rules).
+- Vine and Wallet remain advisory-only and correctly gated.
+- Observability (DecisionEvent logging, guardrails) is in place and CI is green.
 
-## Build, Test, and Run
-- Install: `npm install`
-- Dev server: `npm run dev` (Next.js, defaults to :3000).
-- Build/start: `npm run build` then `npm run start`.
-- Health gates:
-  - `npm run lint` (type-aware ESLint)
-  - `npm run typecheck`
-  - `npm run typecheck:scripts` (if defined)
-  - `npm run check` (composite)
-- Prisma hygiene:
-  - `npx prisma migrate dev --name <desc>` for schema changes.
-  - `npx prisma generate` after schema edits.
-  - `npx prisma studio` to inspect data.
-- Auth for curl/CLI: `./scripts/dev-login.sh [email]` → `cookies.txt`; pass with `-b cookies.txt`.
-- Data: `npm run ingest:mcc` to populate MCC map; `npm run seed:demo` to seed demo cards/buckets/sessions/ledger rows.
+## Future/Target Behavior (explicitly speculative)
+- Full bank ingest verification and automated ledger posting beyond current stubs.
+- Enforced Vine signature lifecycle and expanded device coverage.
+- Marketing and user-facing surfaces under `app/(marketing)` and richer user shell routes.
 
----
-
-## Operating Rules for Agents
-- **Always anchor to canonical docs** (Vision, Vine, Wallet, API/scan). If code diverges legally, treat as debt to fix in code, not docs.
-- **Validate inputs with Zod** schemas from `lib/validation/*`; never trust raw `request.json()`.
-- **No new Prisma clients**; import from `@/lib/prisma`.
-- **Keep server-first**; mark client components explicitly.
-- **Respect advisory boundaries**: `/api/scan` is stateless; sessions/ledger handle persistence and rewards; wallet pass stays 501 until certs exist; Vine is context-only.
-- **Handle 401s intentionally** in UI (prompt sign-in) and in API tests (provide cookies).
-- **Testing mindset**: prefer focused unit tests for engine invariants, session/ledger lifecycle, and MCC mapping. Keep lint/typecheck green.
-- **Banned changes**: do not turn Cherry into a payment card/terminal; do not bypass the Wallet 501 gate; do not store or process sensitive card data.
-
-### Offline Evaluator Behavior
-- Offline historical evaluation must run through `lib/evaluator/offline-history.ts` and write only to `HistoricalEngineEvaluation`.
-- It is read-only with respect to Sessions, CherryPointLedger, and Buckets; do not wire evaluator outputs into user-facing flows without updating legal/guardrail docs.
-- For usage and invariants see `docs/offline-evaluator.md`.
-- Do not hard-code runIds; derive with `defaultRunIdForUser(userId, now)` and align script/user with the bank ingest user.
-- Income regime and bucket synthesis is heuristic, dev-only, and diagnostic; do not use it for credit decisions or live surfaces.
-- P2P allowance/repayment classification is approximate; default to conservative mappings and never promise outcomes to users based on it.
-- `/dev/evaluator` must call `assertOfflineEvaluatorModelsReady()` before touching evaluator tables; if you add/rename models, run `npx prisma migrate deploy` + `npx prisma generate` and restart dev before loading the page.
-- Gate the offline evaluator with `CHERRY_OFFLINE_EVALUATOR_ENABLED` when an environment is not ready; do not rely on runtime errors.
-
-## CI gatekeeping and guardrails
-- CI runs on every push/PR via `.github/workflows/ci.yml` and must not be bypassed. Steps: `check:guardrails` → `lint` → `typecheck` → `typecheck:scripts` → `test` (includes `check:prisma-assumptions`) → `build`.
-- `check:guardrails` enforces ESLint rule presence/severity, TypeScript strict flags, package scripts, no new `eslint-disable`, guardrail files/tests existence. Any deviation is a hard error; fix code/tests, not the guardrails.
-- Agents may not relax lint rules, TS strictness, or remove guardrail tests to “fix” CI. Any change to guardrails must be explicitly documented and reviewed; weakening is prohibited.
-- Do not add new `eslint-disable` comments outside the allowlist encoded in `scripts/check-guardrails-core.mts`; fix the underlying code instead.
-
-## Guardrails / Scripts
-### Script Module Semantics (Non-Negotiable)
-
-The repository is ESM by default. Script semantics are determined solely by file extension.
-
-Rules:
-- Runtime code (lib/**, app/**) MUST remain `.ts` and ESM.
-- Scripts using ESM syntax MUST be `.mts`.
-- `.mts` files are ONLY allowed under `scripts/`.
-- `.ts` files under `scripts/` MUST NOT contain ESM syntax (`import`, `export`, `import.meta`, top-level await).
-
-Runtime access from scripts:
-- `.mts` scripts MUST be executed via `npm run ts:esm -- <script>`.
-- Runtime modules may be imported with standard ESM `import` statements.
-- `ts-node/register` usage is forbidden.
-
-Forbidden:
-- Bare `require()` without `createRequire`
-- Direct execution of `.mts` scripts outside `npm run ts:esm`
-- `.mts` outside `scripts/`
-
-Enforcement:
-- `npm run check:script-semantics` enforces these rules.
-- Any violation is a CI failure.
-- Do not weaken or bypass this guardrail.
-
-### Final Architecture (World + Idempotency)
-- World is the only runtime boundary; APIs build `World` and pass it into engine/authority paths.
-- Idempotency keys are per-user and persistent: uniqueness is `(userId, key)` via `IdempotencyStore`.
-
-### Bank ingest invariants (MUST follow)
-- `BankTransaction.id` is internal (`@id @default(cuid())`) and must never be set from provider/CSV data.
-- Idempotency is enforced on `(userId, externalId)` only: schema `@@unique([userId, externalId], name: "BankTransaction_userId_externalId")`; code queries via `where: { userId_externalId: { userId, externalId } }`.
-- `upsertBankTransactions` is the only entrypoint for ingest writes; it must not accept or pass an `id` field and must upsert strictly on `(userId, externalId)`.
-- New providers (csv_dev, Plaid, Teller, etc.) must emit stable `externalId` values and call `upsertBankTransactions` instead of direct `create`/`update`.
-- Keep `scripts/check-prisma-assumptions.mts` and `tests/bank-ingest-idempotent.test.js` green when touching `BankTransaction`.
-
-### Prisma change workflow (required)
-- When editing `prisma/schema.prisma`, run `npx prisma format`, create a migration (`npx prisma migrate dev --name <desc>`), and regenerate the client (`npx prisma generate`).
-- Run `npm run lint`, `npm run typecheck`, `npm run check:prisma-assumptions`, and `npm test` before depending on new/renamed fields.
-- Do not reference new Prisma fields in queries/orderBy until migration + generate are complete and checks are green.
-
-### SSR/hydration guardrails (dev surfaces)
-- Do not use `window`, `Date.now()`, `Math.random()`, or locale-dependent formatting inside server component JSX. Compute deterministic values on the server and pass as props.
-- Empty/data states must share a stable wrapper; only swap inner content (e.g., table vs. empty message), not the outer container.
-- Server pages must render from a single data snapshot; avoid first-render client refetches that change structure without seeding initial data.
-
-## Bucket Model & Invariants
-- Canonical balance fields: `budgetAmount` (limit), `spentCents` (posted), optional `pendingSpendCents` (not stored yet), `committedCents = posted + pending`, `remainingCents = max(0, limit - committed)`.
-- Single source of truth: `lib/buckets-runtime.ts`. Engine, seeds/admin scripts, and UI/API surfaces must use this helper (or wrappers around it) instead of ad hoc math.
-- `currentAmount` is legacy and only mirrors `remainingCents` on write; never treat it as authoritative input.
-- Guardrails and over-limit checks must compare against `remainingCents`, not raw `limitCents`. `/api/buckets` should return runtime buckets with derived balance fields.
-
----
-
-## Dev Console Layout & Components
-- Shell lives in `app/layout.tsx` + `components/sidebar-nav.tsx` + `components/dev-console-header.tsx`. Sidebar groups are **Spend & data**, **Setup**, **Engine**, and **Hardware & tools**; keep new pages in those buckets.
-- Page pattern: `PageHeader` → metric row (`MetricCard`) → panelized content (`Panel`) with consistent spacing. Keep headers semantic (`h1` per page, `h2` per section).
-- Shared UI primitives live under `components/ui/*`: `PageHeader`, `MetricCard`, `Panel`, `EmptyState`, `ErrorBanner`, `LoadingRows`/`LoadingMetricGrid`. Prefer these over ad hoc empty/loading/error text.
-- Engine-first surfaces (Dashboard, Statements, Scan, Sessions, Vine, Admin) should expose backend context and use the same header/metric/panel vocabulary; avoid bespoke layouts unless required by data.
-- Buckets, Cards, History/Activity, and Simulations also follow the same header → metrics → panels pattern; data-heavy areas use `LoadingRows`/`LoadingMetricGrid` during fetch and `ErrorBanner` for failures.
-- `/history` is spend history (transactions/statement-derived timeline). `/activity` is engine activity (sessions/ledger/engine events) and lives under the Engine section of the sidebar.
-
----
-
-### Empty states
-- Use the single shared `EmptyState` component from `components/ui/empty-state.tsx` (or `EmptyList` when inside `<ul>`). Do not inline custom “No X yet” markup.
-- If an action is needed, pass `actionLabel` + `onAction`/`actionHref` or `actionNode`; avoid bespoke CTA layouts.
-
-## Editor Tooling Defaults
-- VS Code in this repo is configured via `.vscode/settings.json`; do not override the shared workspace config.
-- Tailwind CSS IntelliSense treats `cssConflict` diagnostics as **errors**. Resolve conflicts (e.g., duplicate `focus-visible:outline*` utilities) instead of downgrading the rule.
-- If Tailwind linting seems out of sync, run “Developer: Reload Window” in VS Code so the extension reloads the workspace settings.
-
----
-
-## Quick File Pointers (per surface)
-- Manual advisory: `app/scan/ScanClient.tsx` → `/api/sessions` (creates session) and `/api/sessions/[id]/confirm`.
-- Vine simulator: `app/vine-simulator/page.tsx` + `client.tsx` → `/api/vine/order`.
-- Engine: `lib/engine/*` (types/solver/context/guardrails/objective/simulate/candidates), legacy shim in `lib/engine/legacy.ts`, invariants in `lib/engine-invariants.ts`, enums in `lib/enums.ts`.
-- Simulations: `/api/simulate` must use the canonical engine (`safeSolveDecisionForUser` in `lib/engine/solver.ts`); `lib/simulation.ts` is legacy/archived and must not be used for new flows.
-
-### Audit Behavior
-
-For all repository-wide completion audits written to `AUDIT.md`, follow the canonical schema and mindset in `docs/audit-format.md`:
-
-- JSON header schema and required sections.
-- Subsystem taxonomy and weights.
-- Audit mindset, longitudinal consistency rules, uncertainty handling.
-- Sprint-shaped “Highest-Leverage Next Steps”.
-- Cherry mental model and interaction style.
-
-Do not invent new audit formats or scoring schemes; extend `docs/audit-format.md` if the schema needs to evolve.
-- Category preferences: `CategoryPreference.category` is a `RewardCategory` enum; do not store free-form strings. Use Zod enum validation on write paths.
-- Buckets: balances are derived via `lib/buckets-runtime.ts` (`budgetAmount`, `spentCents` → `committedCents`/`remainingCents`); `currentAmount` is legacy-only.
-- Wallet pass scaffold: `app/api/wallet/cherry-pass/route.ts`, `lib/wallet/cherryPass.ts` (returns 501 without certs).
-- API reference: `docs/api.md` (keep in sync when endpoints change).
-- Product identity: `docs/cherry-vision.md` (copilot, not a card).
-- Hardware blueprint: `docs/cherry-vine.md` (context beacon).
-- Wallet pass status: `docs/wallet-pass.md` (501 until certs).
-
----
-
-## Cherry Engine — Solver Architecture
-- Pure solver: `EngineState` (normalized user state) + `EngineContext` (payload) → ranked `EngineDecision[]` with scores, reasons, projections, and constraint tags.
-- State model lives in `lib/engine/types.ts`: `NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`, `WorldParams`. Do not leak Prisma models into solver logic.
-- State/Context builders: `fromPrismaUserToEngineState(userId, nowMs)` maps DB → engine state; `fromExternalContextToEngineContext(payload)` maps HTTP/extension/Vine payloads → engine context.
-- Pipeline: `generateCandidateActions` → `simulateAction` → `scoreDecision` (`objective.ts`) → `evaluateConstraintsForDecision`/`enforceHardConstraints` → sorted output. Orchestrated by `solveDecision`; API-safe wrapper is `safeSolveDecisionForUser`.
-- Legacy compatibility (`runEngine`, card/bucket verdicts) is isolated in `lib/engine/legacy.ts` for now; new surfaces must consume `safeSolveDecisionForUser` and map `EngineDecision` to their payloads.
-- Add new action types or scoring tweaks in `lib/engine/objective.ts`, `lib/engine/candidates.ts`, `lib/engine/simulate.ts`, and keep `lib/engine-invariants.ts` updated when outputs change. Engine failures must degrade gracefully (structured errors/no recommendation) rather than crashing routes.
-- API usage: `/api/simulate`, `/api/scan`, and `/api/sessions` all route through `safeSolveDecisionForUser` with context builders; mapping back to legacy response shapes happens via helpers (e.g., `mapSolverDecisionToLegacyDecision`).
-
-### Engine multi-objective scoring
-- Components (`ObjectiveComponentScores`): `rewards`, `runway`, `debtRelief`, `volatility`, `ruleViolations` (positive volatility/violations are penalties).
-- Weights (`ObjectiveWeights`): non-negative weights for each component; defaults mirror the balanced profile. Profiles: `MAX_REWARDS`, `KILL_DEBT`, `DONT_GO_BROKE`, `BALANCED`.
-- Per-user control: stored on `User.engineObjectiveProfile` + optional JSON overrides in `User.engineObjectiveWeights`. Mapped to `EngineState.preferences` and merged via `getObjectiveWeightsForState` with clamping of invalid/negative/NaN values.
-- Scoring: `scoreDecision` in `lib/engine/objective.ts` computes component scores and scalar utility as `rewards*w.rewards + runway*w.runway + debtRelief*w.debtRelief - volatility*w.volatility - ruleViolations*w.ruleViolations`. Components and weights are attached to traces; `/api/simulate` response shape stays the same.
-- Guardrails: unknown profiles fall back to `BALANCED` with a warning; malformed overrides are ignored; scoring must fail soft (log + defaults) rather than throwing.
-
-### Engine logging
-- Centralized via a small helper inside `safeSolveDecisionForUser`; validation errors log as warnings, unexpected errors log as errors.
-- Logging is suppressed entirely when `NODE_ENV=test` to avoid noise from expected failure tests.
-- Do not add ad-hoc `console.error`/`console.warn` in API routes for engine failures; use the engine logger flow instead.
-
----
-
-### Engine decision vocabulary
-- Action types include: `USE_CARD`, `USE_CARD_WITH_PAYDOWN`, `DELAY_PURCHASE`, `REJECT_PURCHASE`, `SWITCH_MERCHANT`, and `PAY_DOWN_DEBT`.
-- `generateCandidateActions(state, ctx)` enumerates allowed actions based on state (cards/buckets/debts/cash) and context (surface, amount, merchant/category). Rich, multi-step actions are limited to surfaces like `web`/`extension`.
-- `simulateAction(state, ctx, action)` projects bucket/debt/cash results for each action; composite actions apply both purchase and follow-up debt paydown effects.
-- `scoreDecision(...)` combines rewards, essential-bucket runway, debt relief, and penalties into a scalar score with human-readable reasons. Delay/reject carry small penalties unless constraints force them.
-- Guardrails: `evaluateConstraintsForDecision` tags breaches (e.g., `HARD:ESSENTIAL_BUCKET_OVER_LIMIT`, `HARD:PAYDOWN_EXCEEDS_LIQUID`, `SOFT:ESSENTIAL_PURCHASE_DELAY`), and `enforceHardConstraints` drops unsafe decisions.
-- API surfaces (`/api/scan`, `/api/sessions`, `/api/simulate`) prefer card-based actions for legacy payloads but still trace the full decision set for observability.
-
----
-
-## Change Management Expectations
-- Keep diffs small and scoped; prefer follow-ups over mega-PRs.
-- When editing schema, document migration name, any backfill, and validation method.
-- When touching engine/sessions/ledger, add or update tests and run integrity scripts (`scripts/audit-integrity.mts`) if applicable.
-- Cross-link docs when you add new flows; update `docs/api.md` for any API shape changes.
-
----
-
-## Final Checklist Before You Ship
-- Lint/typecheck clean.
-- No forbidden framings added.
-- `/api/scan` stays advisory; wallet pass still gated by 501 unless certs are present.
-- Database access through `lib/prisma`.
-- Docs updated if API/schema behavior changed.
-
-## Coding Style & Naming Conventions
-- TypeScript + React; prefer async/await and typed responses in API routes. Use named exports when possible.
-- Keep components server-rendered by default; mark client components at file top. Co-locate small client helpers next to their pages (`app/<route>/client.tsx` pattern).
-- Follow ESLint guidance (2-space indent, trailing commas). Use Tailwind utility classes; avoid inline styles unless necessary.
-- File names are lowercase with hyphens or canonical Next conventions (`page.tsx`, `route.ts`).
-- All API routes must:
-  - Use Zod schemas from `lib/validation/*` to parse `request.json()`; never treat parsed JSON as `any`.
-  - Return typed responses and avoid `any`/`unknown` leaks at module boundaries.
-  - Keep switch statements on enums exhaustive (use a `never` guard for default).
-- Lint is strict: `@typescript-eslint/no-unsafe-*`, `@typescript-eslint/no-floating-promises`, and `@typescript-eslint/switch-exhaustiveness-check` are enforced. Don’t downgrade rules; fix the code instead.
-
-## Testing Guidelines
-- No formal suite yet—add focused unit tests around `lib/` utilities and API handlers as you touch them. Favor colocated `*.test.ts` or `__tests__` directories.
-- Verify lint passes and exercise critical flows manually (`/buckets`, `/cards`, `/simulate`) before submitting.
-- When adding migrations or data scripts, include a quick note on how you validated DB changes.
-- When touching the engine, sessions, or ledger:
-  - Add unit tests that assert invariants such as “no double-award for the same session”, “points remain PENDING until verified”, and “anomalous sessions/ledger rows are flagged consistently”.
-  - Prefer narrow tests around `lib/engine.ts`, `lib/verification/verify-session.ts`, and `scripts/audit-integrity.mts` instead of broad end-to-end tests.
-
-## Commit & Pull Request Guidelines
-- Commit messages follow `type: summary` from history (e.g., `feat: add bucket budgeting UI`, `chore: update prisma schema`). Keep them imperative and scoped.
-- PRs should include: what changed, why, how to test (`npm run lint`, migration commands, manual URLs), and any env var or schema impacts.
-- Attach screenshots or short notes for UI/UX changes; link issues or tickets. Keep diffs small and focused; prefer follow-ups over mega-PRs.
-- For schema changes (new enums/fields on sessions/ledger), document the migration name, any backfill strategy, and how you validated integrity (e.g., running `scripts/audit-integrity.mts` locally).
-
-## Security & Configuration Tips
-- Keep secrets in `.env.local` (`DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL`/`VERCEL_URL`). Never commit env files.
-- Run `npm run seed:demo` only against disposable data. After pulling new migrations, rerun `prisma migrate dev` and regenerate the client before local development.
-- Apple Wallet pass is scaffolded but disabled until certs are configured; `/api/wallet/cherry-pass` returns 501 by design.
-- Admin tools (`/admin`) that clear user data, sessions, or ledger entries are for local/sandbox environments only. Do not expose these endpoints in production without additional auth/role checks.
-- Integrity/audit scripts (`scripts/audit-integrity.mts`) are diagnostic; they should never mutate production data without explicit review.
-
-## Default Agent Workflow
-1. Read relevant docs (Vision, Legal Constraints, Vine, Wallet, API, System Map, Repo Structure, Auth).
-2. Inspect code: `app/api/*`, `lib/*`, `prisma/*`, and relevant UI files.
-3. Implement changes:
-   - Keep API handlers thin; push domain logic into `lib/`.
-   - Use `withUser` for auth on stateful routes.
-   - Validate payloads via `lib/validation/*`.
-4. Update docs when behavior changes (Status + Last updated required; separate Current vs Future behavior).
-5. Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` before handoff.
-
-## Doc Editing Rules
-- Preserve legal guardrails; never weaken them.
-- Every major doc must start with `Status` and `Last updated`.
-- Split **Current behavior** vs **Future/Target behavior**; mark TODOs clearly.
-- Cross-link to `docs/legal-constraints.md` for anything near payments, Vine, or Wallet.
-
-## AGENT_TASK_TEMPLATE
-For any non-trivial request, rewrite it internally into this structure:
-
-1. Context
-   - Repo path and domains involved (engine, auth, Vine, etc.).
-2. Goal
-   - One or two sentences of what must be achieved.
-3. Constraints
-   - Legal guardrails from `docs/legal-constraints.md`.
-   - Branching rules (no branches, no commits).
-   - Required commands (lint, typecheck, test, build).
-4. Plan
-   - Ordered steps: files to inspect, changes to make, docs to touch.
-5. Execution Checklist
-   - Concrete actions with file paths.
-6. Validation
-   - Which commands to run and success criteria.
-7. Reporting
-   - Summary format: what changed, where, why, and remaining TODOs.
+## Related docs
+- `docs/legal-constraints.md`
+- `docs/cherry-vision.md`
+- `docs/ci-and-guardrails.md`
+- `docs/guardrails.md`
+- `docs/script-standards.md`
+- `docs/repo-structure.md`

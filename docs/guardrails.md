@@ -9,7 +9,19 @@ Last updated: 2026-01-03
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 
-## Guardrail Registry Invariants (Authoritative)
+## Guardrail Numbering (Legacy)
+- Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.
+- Use domain headings and guardrail names for references and reviews.
+
+## Regression Policy
+- No guardrail may be weakened or removed without:
+  - an explicit doc change in this file
+  - a justification section
+  - a PR reference
+- Guardrail checks may only move from advisory → enforced or partial → enforced.
+- Downgrades are exceptional events and must be documented.
+
+## Domain: Registry Integrity (Authoritative)
 
 ### Invariant A — Name ↔ Path Bijection
 
@@ -34,6 +46,8 @@ Last updated: 2026-01-03
 - Guardrails are named capabilities, not files.
 - Enforcement: `check:guardrail-execution`, CI fixtures covering bypass attempts.
 
+## Domain: Config & Boundary Safety
+
 ### Guardrail 6 — Config Immutability
 
 - Server config is constructed once at the boundary (app/api or scripts) and then deep-frozen; `lockServerConfig()` prevents any subsequent mutation or re-registration.
@@ -48,6 +62,8 @@ Last updated: 2026-01-03
 `inputsVersion` is deterministic for a fixed `(engineVersion, inputs, snapshot)`. It is not
 guaranteed to remain stable across different `engineVersion` values. Consumers must not compare
 `inputsVersion` values across engine versions.
+
+## Domain: Loader & Guardrail Event Integrity
 
 ### Guardrail 7 — ESM Loader Totality
 
@@ -73,6 +89,8 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `legacy-combo` allowlist entries require `expiresBy: YYYY-MM-DD`.
 - CI fails when expired, removed, or increased.
 - Guardrail checks: `check:side-effects:diff`.
+
+## Domain: Engine & Authority Safety
 
 ### Guardrail 11 — Engine Boundary No-Throw
 
@@ -105,6 +123,10 @@ Rationale:
 Silent misuse of policy metadata causes long-term system rot.
 
 Guardrail checks: `check:branded-literal` and `tests/guardrails/branded-type-enforcement.test.ts`.
+
+## Meta-Guardrails (Guardrail System Integrity)
+
+These guardrails exist to ensure the guardrail system itself cannot drift, fork, or be bypassed.
 
 ### Guardrail 14 — Guardrail Self-Consistency
 
@@ -145,6 +167,7 @@ Any duplication is a hard CI failure.
 - Guardrail check: `check:guardrail-subprocess-totality`.
 
 ### Guardrail 21 — Name/Path Bijection
+- Legacy identifier; canonical definition lives under “Invariant A — Name ↔ Path Bijection.”
 
 - Guardrail names must map to canonical script filenames: `check:<name>` → `check-<name>.mts` with `:` normalized to `-` under `scripts/`.
 - Guardrail check: `check:guardrail-name-path-bijection`.
@@ -169,6 +192,7 @@ Any duplication is a hard CI failure.
 - Guardrail check: `check:no-orphan-check-files`.
 
 ### Guardrail 25 — ESM Loader Totality
+- Legacy identifier; canonical definition lives under “Guardrail 7 — ESM Loader Totality.”
 
 **ESM Loader Totality Invariant**
 - Any custom Node ESM loader hook (`load`, `resolve`) must be structurally total: no implicit fallthrough, no bare `return`, no `undefined` returns.
@@ -190,6 +214,8 @@ Any duplication is a hard CI failure.
 - Guardrails must be pure, deterministic, and executable in CI without external dependencies.
 - Runtime I/O (network, sockets, filesystem writes, database clients) is forbidden.
 - Guardrail: `check:guardrail-no-runtime-io`.
+
+## Domain: Tooling & Script Contracts
 
 ### Guardrail 28 — TS Project Coverage
 
@@ -219,3 +245,9 @@ Any duplication is a hard CI failure.
 ## Future/Target behavior
 
 - TODO: Expand guardrail coverage and tests as new risk areas are identified.
+
+## Related docs
+- `docs/ci-and-guardrails.md`
+- `docs/script-standards.md`
+- `scripts/guardrails/registry.mts`
+- `scripts/guardrails/run.mts`

@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2025-12-26
+Last updated: 2026-01-03
 
 # Cherry API Reference (App Router)
 
@@ -13,14 +13,14 @@ This file documents the server routes under `app/api/*` and how they align with 
 ---
 
 ## Dev console surfaces (UI entry points)
-- `/` Dashboard: consolidated metrics and shortcuts into engine, spend, and admin tools.
-- `/scan`: manual advisory UI for `POST /api/scan` with session handoff to `/api/sessions`.
-- `/sessions`: timeline and detail views mapped to `/api/sessions` CRUD and confirmation/verification flows.
-- `/simulate` + `/simulations`: exercise `/api/simulate` and inspect simulation history.
-- `/statements`: spend/statement view against `/api/activity`.
-- `/vine-simulator`: UI harness for `/api/vine/order`.
-- `/admin`: surface for `/api/admin/*`, seed endpoints, and `/api/health`.
-- Buckets/Cards/History pages follow the same header → metrics → panels layout with standardized Empty/Loading/Error states.
+- `/dev` dashboard consolidates metrics and shortcuts into engine, spend, and admin tools.
+- `/scan` runs the manual advisory UI for `POST /api/scan` with session handoff to `/api/sessions` (dev-only surface).
+- `/sessions` maps to `/api/sessions` CRUD and confirmation/verification flows.
+- `/simulate` + `/simulations` exercise `/api/simulate` and inspect simulation history.
+- `/dev/statements` uses `/api/activity` for statement rollups.
+- `/vine-simulator` is the UI harness for `/api/vine/order`.
+- `/admin` fronts `/api/admin/*`, seed endpoints, and `/api/health`.
+- Buckets/History pages follow the same header → metrics → panels layout with standardized Empty/Loading/Error states.
 - `/history` is spend history (statement/bank-derived timeline); `/activity` is engine activity (sessions/ledger/engine events) under the Engine section.
 
 ---
@@ -38,9 +38,9 @@ This file documents the server routes under `app/api/*` and how they align with 
 
 ---
 
-## Core Advisory API — `POST /api/scan` (stateless)
+## Core Advisory API — `POST /api/scan` (advisory with telemetry)
 - Route: `app/api/scan/route.ts`
-- Purpose: pre-swipe advisory for manual scans, Cherry Pass/App Clip triggers, or quick bucket snapshots. **No DB writes.**
+- Purpose: pre-swipe advisory for manual scans, Cherry Pass/App Clip triggers, or quick bucket snapshots. **No sessions/ledger writes; logs a `DecisionEvent` for telemetry.**
 - Request:
   ```json
   {
@@ -54,7 +54,7 @@ This file documents the server routes under `app/api/*` and how they align with 
   - `expectedAmountCents`: optional non-negative integer; defaults to `0` if omitted/invalid.
   - `category` and `mccCode`: optional. Category resolution prefers explicit → MCC map → merchant heuristics/history.
 - Behavior:
-  - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody`.
+  - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody` (`lib/validation.ts`).
   - Resolves category via `resolveScanCategory` (MCC-aware).
   - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; logs a `DecisionEvent` row per request (no session/bucket/ledger writes).
 - Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging + `authority` (authority_v1: verdict, severity, reasons[], counterfactuals[], explanation, inputsVersion).
@@ -149,7 +149,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
 - `/api/autopilot/prereqs` — returns Autopilot onboarding prerequisites (`cards/rules/buckets` counts + warnings) and the first missing step.
 
-All use Zod validation in `lib/schemas/*` and `withUser` guard.
+All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.ts`, and `withUser` guard where stateful.
 
 ---
 
@@ -167,9 +167,28 @@ All use Zod validation in `lib/schemas/*` and `withUser` guard.
 ---
 
 ## Notes and Invariants
-- `/api/scan` is stateless; persistence belongs in sessions/ledger.
+- Errors must cross boundaries only via `AppError` (API) or `ApiResult<T>` (UI); do not throw or inspect raw errors across layers.
+- `/api/scan` is a hard stateless boundary; all persistence must occur via `/api/sessions` and ledger flows only.
 - Engine solver traces multiple action types internally; public APIs still expose card-centric recommendations for compatibility.
 - Monetary values are integer cents in APIs and DB.
+- Bank ingest must be idempotent on `(userId, externalId)` only; provider data must never supply `BankTransaction.id`.
 - Do not store card PAN/CVV/track data; Vine payloads are context-only.
 - Wallet pass remains gated at 501 until Apple certs/env vars are provided and the feature flag is set.
 - All routes must respect the legal guardrails in `docs/legal-constraints.md`.
+
+## Current behavior (enforced / in code)
+- API handlers live under `app/api/*` and parse inputs with Zod schemas plus `parseJsonBody`.
+- Engine decisions run through `safeSolveDecisionForUser` or `safeSolveDecisionForWorld` with deterministic inputs.
+- `/api/scan` logs `DecisionEvent` telemetry but does not create sessions/ledger rows.
+- `/api/sessions` is the persistence boundary for recommendations and Cherry Points.
+- Wallet pass remains gated until certs and the feature flag exist.
+
+## Future/Target behavior (explicitly speculative)
+- Add enforced Vine signature lifecycle and a verified bank/receipt path that posts Cherry Points automatically.
+- Document any new API surfaces in this file before shipping.
+
+## Related docs
+- `docs/routes-map.md`
+- `docs/legal-constraints.md`
+- `docs/cherry-vision.md`
+- `docs/wallet-pass.md`

@@ -1,3 +1,6 @@
+Status: Active
+Last updated: 2026-01-03
+
 ## What Cherry Is
 Cherry is a **real-time spending copilot**. It observes context (merchant, amount, user budgets/cards), runs an engine, recommends the right card and budget impact, and offers Cherry Points for following advice. Cherry:
 - Does **not** front, proxy, or route payments.
@@ -10,9 +13,13 @@ Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cher
 
 ---
 
-## Status (2025-12-02)
-- Lab-ready engine/UI/admin; productionization needs: (1) real bank ingest (dev endpoint exists), (2) automated verification/ledger posting, (3) enforced Vine signatures + observability/rate limiting.
+## Current behavior
+- Lab-ready engine/UI/admin; productionization gaps: real bank ingest, automated verification/ledger posting, enforced Vine signatures, observability/rate limiting.
 - Wallet pass stays gated at 501 until certs/flag are configured; Vine remains context-only.
+
+## Future/Target behavior
+- Production-ready verification that posts ledger rows automatically after ingest verification.
+- Enforced Vine signature lifecycle and expanded device coverage.
 
 ---
 
@@ -22,7 +29,8 @@ Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cher
 - Auth: NextAuth (PrismaAdapter) with `with-user` guard on APIs.
 - Data: Postgres via Prisma (`prisma/schema.prisma`).
 - Core flows:
-  - `/scan` (UI) → `/api/sessions` to create a recommendation session.
+  - `/scan` (dev UI) → `/api/scan` for advisory preview, then `/api/sessions` to create a recommendation session.
+  - `/api/scan` is stateless and advisory-only; it does not persist sessions or ledger rows.
   - `/sessions` UI lists sessions and ledger statuses.
   - `/vine-simulator` exercises `/api/vine/order` (dev-only Vine ingest).
   - `/admin` exposes local-only maintenance actions.
@@ -37,11 +45,11 @@ npm run dev
 
 Guardrail tooling requires Node 22.x and a stable PATH (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
 
-Health checks before pushing:
+## Health Gates (must pass before pushing)
 ```bash
-npm run lint
-npm run typecheck
-npm run check    # composite (lint + typecheck)
+npm run check
+npm test
+npm run build
 ```
 
 ---
@@ -58,6 +66,8 @@ npm run check    # composite (lint + typecheck)
   - `npm run seed:demo` — seed demo cards/buckets/sessions/ledger rows
   - `npm run dev:ingest:moustafa-bank [userEmail|userId]` — DEV ONLY; ingest moustafa SafeBalance CSV into `BankTransaction` with `source="csv_dev"` (blocked in production)
   - `npm run dev:evaluator:moustafa [userEmail|userId]` — DEV ONLY; offline engine replay of csv_dev `BankTransaction` rows into `HistoricalEngineEvaluation`
+  - Offline evaluator commands write only to `HistoricalEngineEvaluation` and are diagnostic-only.
+  - They must never affect Sessions, Ledger, Buckets, or user-facing behavior.
 - Integrity: `npm run audit:integrity`
 - Dev login (cookies): `./scripts/dev-login.sh [email]` → writes `cookies.txt`
 
@@ -110,11 +120,11 @@ Also available via UI: `/scan`, `/sessions`, `/vine-simulator`, `/admin`.
 - `CherryPointLedger` — Cherry Points movements (PENDING/POSTED/REVOKED) tied to sessions; anomalies flagged.
 - MCC mapping tables: `MerchantCategory`, `MccToRewardCategory`.
 
-Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in `lib/validation/*`.
+Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in `lib/schemas/*` plus `parseJsonBody` from `lib/validation.ts`.
 
 ---
 
-## Docs to Read Next
+## Related docs
 - `docs/cherry-vision.md` — product identity and legal guardrails (copilot, not a card).
 - `docs/cherry-vine.md` — hardware/context blueprint and `/api/vine/order` contract.
 - `docs/wallet-pass.md` — Wallet pass scaffold and 501 gating.

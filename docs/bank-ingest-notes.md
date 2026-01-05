@@ -1,9 +1,13 @@
 Status: Draft
-Last updated: 2025-12-02
+Last updated: 2026-01-03
 
 # Bank ingest notes
 
 Quick capture of how `BankTransaction` is read today and what an ingest pipeline must populate to keep history/statements working.
+
+## Current behavior (enforced / in code)
+- Bank ingest is dev-only today; `/api/dev/bank/ingest` and CSV ingest populate `BankTransaction` rows.
+- Unified activity reads bank rows alongside simulations and ledger events; no bucket or ledger mutation occurs during ingest.
 
 ## What reads BankTransaction
 - `lib/unified-activity.ts` pulls `prisma.bankTransaction` rows (optionally period-filtered) and maps:
@@ -12,7 +16,7 @@ Quick capture of how `BankTransaction` is read today and what an ingest pipeline
   - `cardBrand`, `cardLast4`.
   - `merchantCity/Region/Country` (or from linked `merchantObservation`) for location.
   - `statementPeriod` derived from `occurredAt`.
-- `app/history/page.tsx` and `app/statements/page.tsx` consume the unified activity feed; real spend rows come from `BankTransaction`, while simulations/ledger rows are shown separately.
+- `app/(user)/history/page.tsx` and `app/(dev)/dev/statements/page.tsx` consume the unified activity feed; real spend rows come from `BankTransaction`, while simulations/ledger rows are shown separately.
 
 ## Schema fields that matter (prisma/schema.prisma)
 - `BankTransaction`:
@@ -28,11 +32,12 @@ Quick capture of how `BankTransaction` is read today and what an ingest pipeline
 ## Where fake/simulated data comes from
 - `SimulatedTransaction` (populated by `/api/simulate` and seeds) feeds the unified activity as `SIMULATED_TRANSACTION`.
 - `CherryPointLedger` rows show as `POINTS_EVENT` with inferred cash deltas.
-- No real bank ingest exists yet; `app/bank-simulator` exposes pending sessions and manual verify/reject for points, but does not create `BankTransaction` rows.
+- No production bank ingest exists yet; only dev and CSV-based ingest paths populate `BankTransaction`. `app/bank-simulator` exposes pending sessions and manual verify/reject for points, but does not create `BankTransaction` rows.
 - Offline evaluator: `HistoricalEngineEvaluation` stores engine advice for historical `BankTransaction` rows (e.g., `csv_dev` SafeBalance ingest) and is populated by `lib/evaluator/offline-history.ts` via `npm run dev:evaluator:moustafa`. It is read-only and does not create sessions/ledger rows.
 
 ## Implications for ingest
 - Ingest must upsert `BankTransaction` rows (idempotent by provider transaction id).
+- Ingest must never trigger authority, Autopilot, scan, session creation, or engine evaluation; it is strictly a historical data write.
 - `direction` and `amount` must be consistent: unified feed assumes `direction === 'CREDIT'` means positive cash delta; otherwise debit.
 - Location/merchant info should populate `merchant*` fields and optionally link/create `MerchantObservation` for reuse across ledger/points.
 - Do not touch buckets or ledgers during ingest; verification/points stay separate.
@@ -52,3 +57,12 @@ Quick capture of how `BankTransaction` is read today and what an ingest pipeline
 - `upsertBankTransactions` explicitly skips `csv_dev` rows in production to keep the CSV provider dev-only.
 - Unified activity treats `csv_dev` rows like other bank rows; merchant fallback uses `description` when merchant name is absent.
 - After ingest, run the dev classifier + regime builder (via `npm run dev:evaluator:moustafa`) to populate `incomeKind`/`p2pKind`, `HistoricalIncomeRegime`, and `HistoricalBucketTemplate` for offline evaluator metrics. These writes stay in dev tables and do not touch live Buckets or Ledger rows.
+
+## Future/Target behavior (explicitly speculative)
+- Production ingest provider support (Plaid/Teller/etc.) with stable `externalId` values and a verification pipeline.
+- Automated verification signals that post ledger rows after ingest reconciliation.
+
+## Related docs
+- `docs/offline-evaluator.md`
+- `docs/verification-flow.md`
+- `docs/legal-constraints.md`
