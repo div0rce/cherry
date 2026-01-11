@@ -16,6 +16,7 @@ const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-ex
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
   `${CHECK_PATH_BASE}guardrail-subprocess-totality.mts` as const;
 const DB_TRUTH_BOUNDARY_PATH = `${CHECK_PATH_BASE}db-truth-boundary.mts` as const;
+const DB_RUNNER_EXCLUSIVITY_PATH = `${CHECK_PATH_BASE}db-runner-exclusivity.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -83,6 +84,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-freeze': `${CHECK_PATH_BASE}engine-freeze.mts`,
   'check:migrations': `${CHECK_PATH_BASE}migrations.mts`,
   'check:db-truth-boundary': DB_TRUTH_BOUNDARY_PATH,
+  'check:db-runner-exclusivity': DB_RUNNER_EXCLUSIVITY_PATH,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;
