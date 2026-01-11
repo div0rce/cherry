@@ -8,8 +8,13 @@ import { runTool } from './guardrails/lib/run-tool.mjs';
 
 ensureTsEsm();
 
-const PREFIX = 'check:run-tests';
-const FIX = 'Run tests via npm run check:run-tests after installing dependencies.';
+const PREFIX = 'check:run-db-tests';
+const FIX = 'Run DB tests with DATABASE_URL set (npm run test:db).';
+
+const databaseUrl = process.env['DATABASE_URL'];
+if (databaseUrl === undefined || databaseUrl === '') {
+  fail(PREFIX, 'DATABASE_URL is missing', { fix: FIX });
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '..');
@@ -29,15 +34,15 @@ env['TS_NODE_COMPILER_OPTIONS'] = tsNodeCompilerOptions;
 const nodeEnv = env['NODE_ENV'] ?? 'test';
 
 const testFiles = fg
-  .sync(['tests/**/*.test.{js,ts,tsx}'], {
+  .sync(['tests/db/**/*.test.{js,ts,tsx}'], {
     cwd: repoRoot,
     absolute: true,
-    ignore: ['**/__mocks__/**', 'tests/fixtures/**', 'tests/db/**'],
+    ignore: ['**/__mocks__/**', 'tests/fixtures/**'],
   })
   .sort();
 
 if (testFiles.length === 0) {
-  fail(PREFIX, 'No tests found under tests/**/*.test.{js,ts,tsx}', { fix: FIX });
+  fail(PREFIX, 'No DB tests found under tests/db/**/*.test.{js,ts,tsx}', { fix: FIX });
 }
 
 process.stdout.write(`TS_NODE_COMPILER_OPTIONS=${tsNodeCompilerOptions}\n`);
@@ -52,8 +57,6 @@ for (const file of testFiles) {
       '--',
       '--import',
       './scripts/lib/loaders/config.loader.mjs',
-      '--import',
-      './scripts/lib/loaders/prisma-mock.register.mjs',
       '-r',
       'tsconfig-paths/register',
       file,
@@ -84,6 +87,6 @@ for (const file of testFiles) {
     if (result.stderr.trim().length > 0) {
       details.push(`stderr=${result.stderr.trim()}`);
     }
-    fail(PREFIX, `FAILED ${relPath}`, { details, fix: 'Fix the failing test(s) and rerun.' });
+    fail(PREFIX, `FAILED ${relPath}`, { details, fix: 'Fix the failing DB test(s) and rerun.' });
   }
 }

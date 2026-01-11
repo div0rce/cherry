@@ -20,6 +20,8 @@ const ENV_SCRIPTS = new Set([
   'check:env',
   'check:db-ready',
   'check:migrations:optional',
+  'check:migrations:required',
+  'check:run-db-tests',
 ]);
 
 type ScriptsMap = Record<string, string>;

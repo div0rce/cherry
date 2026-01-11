@@ -7,6 +7,7 @@ export const EXECUTION = {
   'check:dev-login': 'scripts/dev-login.mts',
   'check:db:optional': 'scripts/db-check-optional.mts',
   'check:db:required': 'scripts/db-check-required.mts',
+  'check:run-db-tests': 'scripts/run-db-tests.mts',
   'check:run-tests': 'scripts/run-tests.mts',
   'check:tailwind-conflicts': 'scripts/tailwind-conflicts.mts',
   'ingest:moustafa-bank': 'scripts/ingest-moustafa-bank-csv.mts',

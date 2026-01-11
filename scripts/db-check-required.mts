@@ -1,30 +1,21 @@
 import { PrismaClient } from '@prisma/client';
-import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
-import { asMessage } from './guardrails/lib/error.mjs';
-import { fail } from './guardrails/lib/fail.mjs';
 
-ensureTsEsm();
+const databaseUrl = process.env.DATABASE_URL;
+if (databaseUrl === undefined || databaseUrl.length === 0) {
+  throw new Error('check:db:required failed: DATABASE_URL missing');
+}
 
-const PREFIX = 'check:db:required';
-const FIX = 'Set DATABASE_URL to a reachable database before running check:db:required.';
-const databaseUrl = process.env['DATABASE_URL'];
+const prisma = new PrismaClient({
+  datasources: {
+    db: { url: databaseUrl },
+  },
+});
 
-if (databaseUrl === undefined || databaseUrl === '') {
-  fail(PREFIX, 'DATABASE_URL is missing', { fix: FIX });
-} else {
-  const prisma = new PrismaClient();
-  try {
-    await prisma.$connect();
-    await prisma.$queryRawUnsafe('SELECT 1');
-    process.stdout.write('OK check:db:required database reachable\n');
-  } catch (error: unknown) {
-    const message = asMessage(error);
-    fail(PREFIX, `Database check failed: ${message}`, { fix: FIX });
-  } finally {
-    try {
-      await prisma.$disconnect();
-    } catch (error: unknown) {
-      void asMessage(error);
-    }
-  }
+try {
+  await prisma.$connect();
+  await prisma.$queryRawUnsafe('SELECT 1');
+} catch (err) {
+  throw new Error(`check:db:required failed: ${(err as Error).message}`);
+} finally {
+  await prisma.$disconnect();
 }
