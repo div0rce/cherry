@@ -15,6 +15,7 @@ const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
   `${CHECK_PATH_BASE}guardrail-subprocess-totality.mts` as const;
+const DB_TRUTH_BOUNDARY_PATH = `${CHECK_PATH_BASE}db-truth-boundary.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -81,6 +82,7 @@ export const GUARDRAILS = Object.freeze({
   'check:routes': `${CHECK_PATH_BASE}routes.mts`,
   'check:engine-freeze': `${CHECK_PATH_BASE}engine-freeze.mts`,
   'check:migrations': `${CHECK_PATH_BASE}migrations.mts`,
+  'check:db-truth-boundary': DB_TRUTH_BOUNDARY_PATH,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;
