@@ -1,4 +1,5 @@
 export const EXECUTION_RUNNER = 'scripts/execution/run.mts' as const;
+export const EXECUTION_DB_RUNNER = 'scripts/execution/run-db.mts' as const;
 
 export const EXECUTION = {
   'check:clean': 'scripts/assert-clean-tree.mts',
@@ -24,3 +25,10 @@ export const EXECUTION = {
 export type ExecutionName = keyof typeof EXECUTION;
 export type ExecutionPath = (typeof EXECUTION)[ExecutionName];
 export const EXECUTION_NAMES = Object.keys(EXECUTION) as ExecutionName[];
+export const EXECUTION_DB_NAMES = [
+  'check:db-ready',
+  'check:db:optional',
+  'check:db:required',
+  'check:run-db-tests',
+] as const;
+export type ExecutionDbName = (typeof EXECUTION_DB_NAMES)[number];
