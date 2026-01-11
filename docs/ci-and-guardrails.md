@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-01-05
 
 # CI and guardrails
 
@@ -14,7 +14,8 @@ Last updated: 2026-01-03
   - `npx prisma generate`
   - `npx prisma migrate deploy`
   - `npx prisma migrate status`
-  - `CHERRY_STRICT=1 npm run check:db:required`
+  - `npm run check:env`
+  - `npm run test:db`
   - `prisma generate` is intentionally duplicated here to validate schema generation under a live database and migration context.
 
 ### Why CI Runs `npm run ci:verify`
@@ -57,7 +58,7 @@ Run the npm scripts: `check` (pure), `test`, `build`, or the full gate `ci:verif
 
 ### What CI green means (DB posture)
 - Standard CI (`ci:verify`) does not exercise a live database; tests run with Prisma mocked.
-- The env lane validates migrations and basic connectivity but does not prove application-level DB behavior beyond `check:db:required`.
+- The env lane validates migrations, connectivity, and a minimal DB smoke test, but it is not a full integration suite.
 - Treat DB correctness as a separate contract: run migrations locally and exercise DB paths explicitly when changing schema or persistence logic.
 
 ## Future/Target behavior

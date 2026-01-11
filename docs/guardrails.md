@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-01-05
 
 # Guardrails
 
@@ -8,6 +8,7 @@ Last updated: 2026-01-03
 - CI runs `npm run ci:verify` as the sole truth gate; `check` remains pure (guardrails + lint + typecheck), and env checks live in `check:env`.
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
+- DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
 
 ## Guardrail Numbering (Legacy)
 - Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.
@@ -62,6 +63,20 @@ Last updated: 2026-01-03
 `inputsVersion` is deterministic for a fixed `(engineVersion, inputs, snapshot)`. It is not
 guaranteed to remain stable across different `engineVersion` values. Consumers must not compare
 `inputsVersion` values across engine versions.
+
+## Domain: DB Truth Lane
+
+### Guardrail 32 — DB Truth Boundary
+
+- DB truth scripts (`scripts/db-check-*`) must not import `lib/prisma` or any app-level Prisma helper.
+- DB truth scripts must instantiate `PrismaClient` directly from `@prisma/client`.
+- Enforcement: `check:db-truth-boundary`.
+
+### Guardrail 33 — DB Runner Exclusivity
+
+- DB truth scripts must execute via `scripts/execution/run-db.mts`.
+- `check:db:*`, `check:db-ready`, and `check:run-db-tests` must not use the standard execution runner.
+- Enforcement: `check:db-runner-exclusivity`.
 
 ## Domain: Loader & Guardrail Event Integrity
 
