@@ -7,7 +7,7 @@ ensureTsEsm();
 
 const PREFIX = 'check:db:required';
 const FIX = 'Set DATABASE_URL to a reachable database before running check:db:required.';
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env['DATABASE_URL'];
 
 if (databaseUrl === undefined || databaseUrl.length === 0) {
   fail(PREFIX, 'DATABASE_URL is missing', { fix: FIX });
