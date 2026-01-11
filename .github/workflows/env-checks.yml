@@ -56,5 +56,8 @@ jobs:
       - name: Verify Prisma migration status
         run: npx prisma migrate status --schema=prisma/schema.prisma
 
-      - name: Verify database required checks
-        run: CHERRY_STRICT=1 npm run check:db:required
+      - name: Verify env checks
+        run: npm run check:env
+
+      - name: Run DB smoke tests
+        run: npm run test:db
