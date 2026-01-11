@@ -12,6 +12,8 @@ import {
 import {
   EXECUTION as DEFAULT_EXECUTION,
   EXECUTION_RUNNER as DEFAULT_RUNNER,
+  EXECUTION_DB_RUNNER as DEFAULT_DB_RUNNER,
+  EXECUTION_DB_NAMES as DEFAULT_DB_NAMES,
 } from './execution/registry.mjs';
 
 ensureTsEsm();
@@ -21,6 +23,8 @@ type ExecutionRegistry = Record<string, string>;
 type ExecutionConfig = {
   execution: ExecutionRegistry;
   runner: string;
+  dbRunner: string;
+  dbNames: Set<string>;
 };
 
 type Violation = {
@@ -50,6 +54,8 @@ const ExecutionRegistrySchema = z
   .object({
     EXECUTION: z.record(z.string(), z.string()),
     EXECUTION_RUNNER: z.string(),
+    EXECUTION_DB_RUNNER: z.string().optional(),
+    EXECUTION_DB_NAMES: z.array(z.string()).optional(),
   })
   .passthrough();
 
@@ -78,7 +84,12 @@ function lineColForToken(raw: string, token: string): { line: number; col: numbe
 async function loadRegistry(): Promise<ExecutionConfig> {
   if (ROOT === process.cwd()) {
     const execution: ExecutionRegistry = DEFAULT_EXECUTION;
-    return { execution, runner: DEFAULT_RUNNER };
+    return {
+      execution,
+      runner: DEFAULT_RUNNER,
+      dbRunner: DEFAULT_DB_RUNNER,
+      dbNames: new Set(DEFAULT_DB_NAMES),
+    };
   }
   const registryPath = resolveRegistryPath();
   if (fs.existsSync(registryPath) === false) {
@@ -93,7 +104,14 @@ async function loadRegistry(): Promise<ExecutionConfig> {
       fix: 'Ensure EXECUTION and EXECUTION_RUNNER are exported.',
     });
   }
-  return { execution: parsed.data.EXECUTION, runner: parsed.data.EXECUTION_RUNNER };
+  const dbRunner = parsed.data.EXECUTION_DB_RUNNER ?? parsed.data.EXECUTION_RUNNER;
+  const dbNames = parsed.data.EXECUTION_DB_NAMES ?? [];
+  return {
+    execution: parsed.data.EXECUTION,
+    runner: parsed.data.EXECUTION_RUNNER,
+    dbRunner,
+    dbNames: new Set(dbNames),
+  };
 }
 
 function readPackageScripts(): PackageScripts {
@@ -174,7 +192,7 @@ function listExecutionCandidates(): string[] {
 }
 
 async function main(): Promise<void> {
-  const { execution, runner } = await loadRegistry();
+  const { execution, runner, dbRunner, dbNames } = await loadRegistry();
   const { scripts, raw } = readPackageScripts();
   const violations: Violation[] = [];
   const pkgPath = path.normalize(path.relative(ROOT, path.join(ROOT, 'package.json')));
@@ -199,13 +217,14 @@ async function main(): Promise<void> {
       });
       continue;
     }
-    if (commandReferences(command, runner) === false) {
+    const requiredRunner = dbNames.has(name) ? dbRunner : runner;
+    if (commandReferences(command, requiredRunner) === false) {
       const { line, col } = lineColForToken(raw, `"${name}"`);
       violations.push({
         file: pkgPath,
         line,
         col,
-        message: `${name} must invoke ${runner}`,
+        message: `${name} must invoke ${requiredRunner}`,
       });
     }
     if (command.includes(name) === false) {
@@ -228,17 +247,21 @@ async function main(): Promise<void> {
     }
   }
 
-  const runnerNormalized = normalizePath(runner);
+  const runnerTokens = new Set([runner, dbRunner]);
+  const runnerNormalized = new Set(Array.from(runnerTokens, normalizePath));
   for (const [name, command] of Object.entries(scripts)) {
     if (Object.prototype.hasOwnProperty.call(execution, name)) continue;
     const normalizedCommand = normalizePath(command);
-    if (normalizedCommand.includes(runnerNormalized)) {
+    const hasRunner = Array.from(runnerNormalized).some((token) =>
+      normalizedCommand.includes(token)
+    );
+    if (hasRunner) {
       const { line, col } = lineColForToken(raw, `"${name}"`);
       violations.push({
         file: pkgPath,
         line,
         col,
-        message: `${name} invokes ${runner} but is not registered`,
+        message: `${name} invokes an execution runner but is not registered`,
       });
     }
   }
