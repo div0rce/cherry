@@ -312,54 +312,56 @@ export async function seedDemoForUser(
         nowMs: now.getTime(),
       });
 
-      const session = await prisma.recommendationSession.create({
-        data: {
-          userId,
-          merchantName: demo.merchantName,
-          category: decision.category,
-          amountCents: decision.amountCents,
-          currency: 'USD',
-          recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
-          recommendedBucketId: decision.budget.bucketId ?? null,
-          orderToken: `demo-order-${sessionsCreated}`,
-          source: RecommendationSource.APP_SCAN,
-          verdict:
-            decision.budget.verdict === 'BREAKS_BUDGET'
-              ? RecommendationVerdict.BREAKS_BUDGET
-              : decision.budget.verdict === 'BORDERLINE'
-                ? RecommendationVerdict.BORDERLINE
-                : RecommendationVerdict.HEALTHY,
-          budgetVerdict: decision.budget.verdict,
-          cardVerdict: decision.card.verdict,
-          overallVerdict: decision.overallVerdict as OverallVerdict,
-          coverageMode:
-            (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
-            CategoryCoverageModeDb.UNCONFIGURED,
-          status: RecommendationStatus.VERIFIED,
-          verificationStatus: VerificationStatus.VERIFIED,
-          anomalyCode: SessionAnomalyCode.NONE,
-          anomalyDetails: null,
-          expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
-          verifiedAt: new Date(now),
-          cherryPointsOffered: decision.cherryIncentive.pointsIfFollowed,
-        },
+      const points = decision.cherryIncentive.pointsIfFollowed;
+      await prisma.$transaction(async (tx) => {
+        const session = await tx.recommendationSession.create({
+          data: {
+            userId,
+            merchantName: demo.merchantName,
+            category: decision.category,
+            amountCents: decision.amountCents,
+            currency: 'USD',
+            recommendedCardId: decision.card.cardId ?? cardMap['Demo Flat Cashback'] ?? null,
+            recommendedBucketId: decision.budget.bucketId ?? null,
+            orderToken: `demo-order-${sessionsCreated}`,
+            source: RecommendationSource.APP_SCAN,
+            verdict:
+              decision.budget.verdict === 'BREAKS_BUDGET'
+                ? RecommendationVerdict.BREAKS_BUDGET
+                : decision.budget.verdict === 'BORDERLINE'
+                  ? RecommendationVerdict.BORDERLINE
+                  : RecommendationVerdict.HEALTHY,
+            budgetVerdict: decision.budget.verdict,
+            cardVerdict: decision.card.verdict,
+            overallVerdict: decision.overallVerdict as OverallVerdict,
+            coverageMode:
+              (decision.budget.coverageMode as CategoryCoverageModeDb | undefined) ??
+              CategoryCoverageModeDb.UNCONFIGURED,
+            status: RecommendationStatus.VERIFIED,
+            verificationStatus: VerificationStatus.VERIFIED,
+            anomalyCode: SessionAnomalyCode.NONE,
+            anomalyDetails: null,
+            expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+            verifiedAt: new Date(now),
+            cherryPointsOffered: points,
+          },
+        });
+
+        await tx.cherryPointLedger.create({
+          data: {
+            userId,
+            sessionId: session.id,
+            points,
+            reason: `Demo: ${demo.merchantName}`,
+            status: CherryPointLedgerStatus.POSTED,
+            isAnomalous: false,
+            anomalyCode: LedgerAnomalyCode.NONE,
+            awardedAt: new Date(now),
+            postedAt: new Date(now),
+          },
+        });
       });
       sessionsCreated += 1;
-
-      const points = decision.cherryIncentive.pointsIfFollowed;
-      await prisma.cherryPointLedger.create({
-        data: {
-          userId,
-          sessionId: session.id,
-          points,
-          reason: `Demo: ${demo.merchantName}`,
-          status: CherryPointLedgerStatus.POSTED,
-          isAnomalous: false,
-          anomalyCode: LedgerAnomalyCode.NONE,
-          awardedAt: new Date(now),
-          postedAt: new Date(now),
-        },
-      });
       ledgerCreated += 1;
     }
 
