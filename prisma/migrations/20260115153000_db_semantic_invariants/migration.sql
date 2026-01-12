@@ -162,7 +162,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE CONSTRAINT TRIGGER "cherry_point_ledger__status_final__check"
+CREATE TRIGGER "cherry_point_ledger__status_final__check"
 BEFORE UPDATE ON "CherryPointLedger"
 FOR EACH ROW
 EXECUTE FUNCTION "cherry_point_ledger__status_final__check_fn"();
@@ -179,7 +179,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE CONSTRAINT TRIGGER "recommendation_session__status_final__check"
+CREATE TRIGGER "recommendation_session__status_final__check"
 BEFORE UPDATE ON "RecommendationSession"
 FOR EACH ROW
 EXECUTE FUNCTION "recommendation_session__status_final__check_fn"();
