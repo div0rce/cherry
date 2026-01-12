@@ -3,7 +3,15 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const CONSTRAINTS = [
+type ConstraintEntry = {
+  id: string;
+  type: 'UNIQUE' | 'FOREIGN_KEY' | 'CHECK' | 'NOT_NULL';
+  name?: string;
+  table?: string;
+  columns?: string[];
+};
+
+const CONSTRAINTS: ConstraintEntry[] = [
   {
     "id": "CHECK:amount_cents_nonnegative",
     "type": "CHECK",
@@ -1815,42 +1823,46 @@ const CONSTRAINTS = [
     "type": "UNIQUE",
     "name": "VineDevice_deviceId_key"
   }
-] as const;
+];
 
 async function checkUnique(name: string): Promise<void> {
-  const rows = await prisma.$queryRawUnsafe(
-    'SELECT COUNT(*)::int AS count FROM pg_indexes WHERE schemaname = "public" AND indexname = $1',
+  const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+    "SELECT COUNT(*)::int AS count FROM pg_indexes WHERE schemaname = 'public' AND indexname = $1",
     name
   );
-  const count = Number(rows?.[0]?.count ?? 0);
+  const row = rows[0];
+  const count = row === undefined ? 0 : Number(row.count);
   assert.ok(count > 0, 'missing unique index: ' + name);
 }
 
 async function checkForeignKey(name: string): Promise<void> {
-  const rows = await prisma.$queryRawUnsafe(
-    'SELECT COUNT(*)::int AS count FROM pg_constraint WHERE conname = $1 AND contype = "f"',
+  const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+    "SELECT COUNT(*)::int AS count FROM pg_constraint WHERE conname = $1 AND contype = 'f'",
     name
   );
-  const count = Number(rows?.[0]?.count ?? 0);
+  const row = rows[0];
+  const count = row === undefined ? 0 : Number(row.count);
   assert.ok(count > 0, 'missing foreign key: ' + name);
 }
 
 async function checkCheck(name: string): Promise<void> {
-  const rows = await prisma.$queryRawUnsafe(
-    'SELECT COUNT(*)::int AS count FROM pg_constraint WHERE conname = $1 AND contype = "c"',
+  const rows = await prisma.$queryRawUnsafe<Array<{ count: number }>>(
+    "SELECT COUNT(*)::int AS count FROM pg_constraint WHERE conname = $1 AND contype = 'c'",
     name
   );
-  const count = Number(rows?.[0]?.count ?? 0);
+  const row = rows[0];
+  const count = row === undefined ? 0 : Number(row.count);
   assert.ok(count > 0, 'missing check constraint: ' + name);
 }
 
 async function checkNotNull(table: string, column: string): Promise<void> {
-  const rows = await prisma.$queryRawUnsafe(
-    'SELECT is_nullable FROM information_schema.columns WHERE table_schema = "public" AND table_name = $1 AND column_name = $2',
+  const rows = await prisma.$queryRawUnsafe<Array<{ is_nullable: 'YES' | 'NO' }>>(
+    "SELECT is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2",
     table,
     column
   );
-  const value = rows?.[0]?.is_nullable;
+  const row = rows[0];
+  const value = row === undefined ? undefined : row.is_nullable;
   assert.equal(value, 'NO', 'missing NOT NULL: ' + table + '.' + column);
 }
 
@@ -1884,7 +1896,12 @@ async function run(): Promise<void> {
   for (const entry of notNulls) {
     const table = entry.table;
     const column = entry.columns?.[0];
-    if (!table || !column) {
+    if (
+      table === undefined ||
+      table.length === 0 ||
+      column === undefined ||
+      column.length === 0
+    ) {
       throw new Error('Missing NOT NULL metadata for ' + entry.id);
     }
     await checkNotNull(table, column);

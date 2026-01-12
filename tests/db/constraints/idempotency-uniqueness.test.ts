@@ -3,6 +3,8 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+type IdempotencyKeyRecord = Awaited<ReturnType<PrismaClient['idempotencyKey']['create']>>;
+
 async function run(): Promise<void> {
   const email = 'db-constraints-idempotency@cherry.local';
   const key = 'idem-key-1';
@@ -51,7 +53,7 @@ async function run(): Promise<void> {
     assert.equal(count, 1, 'expected single idempotency row');
 
     await prisma.idempotencyKey.deleteMany({ where: { userId, key: concurrentKey } });
-    const results = await Promise.allSettled([
+    const operations: Array<Promise<IdempotencyKeyRecord>> = [
       prisma.idempotencyKey.create({
         data: {
           userId,
@@ -66,7 +68,9 @@ async function run(): Promise<void> {
           payload: { run: 2 },
         },
       }),
-    ]);
+    ];
+
+    const results = await Promise.allSettled(operations);
 
     const successCount = results.filter((result) => result.status === 'fulfilled').length;
     const failure = results.find((result) => result.status === 'rejected');
@@ -74,7 +78,7 @@ async function run(): Promise<void> {
     assert.ok(failure, 'expected one concurrent insert to fail');
 
     if (failure?.status === 'rejected') {
-      const failureError = failure.reason;
+      const failureError: unknown = failure.reason;
       if (failureError instanceof Prisma.PrismaClientKnownRequestError) {
         assert.equal(failureError.code, 'P2002', 'expected unique constraint violation');
       } else {

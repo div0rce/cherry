@@ -53,8 +53,11 @@ function addConstraint(store: Map<string, Constraint>, constraint: Constraint): 
 function listMigrationFiles(): string[] {
   const result = runTool('rg', ['--files', '-g', 'migration.sql', MIGRATIONS_DIR]);
   if (result.exitCode !== 0) {
+    const stderr = result.stderr.trim();
+    const stdout = result.stdout.trim();
+    const detail = stderr.length > 0 ? stderr : stdout;
     fail(PREFIX, 'Failed to list migration.sql files', {
-      details: [result.stderr.trim() || result.stdout.trim()].filter((item) => item.length > 0),
+      details: [detail].filter((item) => item.length > 0),
       fix: FIX,
     });
   }
@@ -131,32 +134,35 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
       const name = addConstraintMatch[1] ?? '';
       const table = alterMatch?.[1] ?? currentAlterTable ?? undefined;
       if (trimmed.includes('FOREIGN KEY')) {
-        addConstraint(store, {
+        const constraint: Constraint = {
           id: `FOREIGN_KEY:${name}`,
           type: 'FOREIGN_KEY',
           name,
-          table,
           source: relPath,
           line: lineNumber,
-        });
+          ...(table === undefined ? {} : { table }),
+        };
+        addConstraint(store, constraint);
       } else if (trimmed.includes('CHECK')) {
-        addConstraint(store, {
+        const constraint: Constraint = {
           id: `CHECK:${name}`,
           type: 'CHECK',
           name,
-          table,
           source: relPath,
           line: lineNumber,
-        });
+          ...(table === undefined ? {} : { table }),
+        };
+        addConstraint(store, constraint);
       } else if (trimmed.includes('UNIQUE')) {
-        addConstraint(store, {
+        const constraint: Constraint = {
           id: `UNIQUE:${name}`,
           type: 'UNIQUE',
           name,
-          table,
           source: relPath,
           line: lineNumber,
-        });
+          ...(table === undefined ? {} : { table }),
+        };
+        addConstraint(store, constraint);
       }
     }
 
@@ -199,8 +205,11 @@ function collectConstraints(): Constraint[] {
 function listTestFiles(): string[] {
   const result = runTool('rg', ['--files', '-g', TEST_GLOB, ROOT]);
   if (result.exitCode !== 0) {
+    const stderr = result.stderr.trim();
+    const stdout = result.stdout.trim();
+    const detail = stderr.length > 0 ? stderr : stdout;
     fail(PREFIX, 'Failed to list DB constraint tests', {
-      details: [result.stderr.trim() || result.stdout.trim()].filter((item) => item.length > 0),
+      details: [detail].filter((item) => item.length > 0),
       fix: FIX,
     });
   }
