@@ -7,6 +7,8 @@ const EMAIL = 'db-semantics-ledger-unique@cherry.local';
 const ORDER_TOKEN = 'semantics-ledger-unique-order';
 const EXPIRES_AT = new Date('2026-01-08T00:00:00.000Z');
 const UNIQUE_CONSTRAINT = ['cherry_point_ledger__session_id__unique'] as const;
+const DUPLICATE_TIMESTAMP = new Date('2026-01-08T02:00:00.000Z');
+const DUPLICATE_REASON = 'semantics-ledger-unique-dup';
 
 async function run(): Promise<void> {
   let userId: string | null = null;
@@ -57,18 +59,17 @@ async function run(): Promise<void> {
         throw new Error('Expected session id to be set');
       }
       const duplicateId = `dup-ledger-${sessionId}`;
-      const timestamp = new Date('2026-01-08T02:00:00.000Z');
       await prisma.$executeRawUnsafe(
         'INSERT INTO "CherryPointLedger" ("id","userId","sessionId","points","reason","status","awardedAt","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,($6)::"CherryPointLedgerStatus",$7,$8,$9)',
         duplicateId,
         ensuredUserId,
         sessionId,
         3,
-        'semantics-ledger-unique-dup',
+        DUPLICATE_REASON,
         'PENDING',
-        timestamp,
-        timestamp,
-        timestamp
+        DUPLICATE_TIMESTAMP,
+        DUPLICATE_TIMESTAMP,
+        DUPLICATE_TIMESTAMP
       );
     } catch (err) {
       error = err;

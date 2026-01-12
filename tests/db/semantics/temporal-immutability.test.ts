@@ -10,6 +10,8 @@ const CREATED_AT = new Date('2026-01-09T00:00:00.000Z');
 const EXPIRES_AT = new Date('2026-01-10T00:00:00.000Z');
 const POSTED_AT = new Date('2026-01-09T01:00:00.000Z');
 const REVOKED_AT = new Date('2026-01-09T01:10:00.000Z');
+const VERIFIED_AT = POSTED_AT;
+const REJECTED_AT = REVOKED_AT;
 
 const LEDGER_IMMUTABLE = ['cherry_point_ledger__status_final__check'] as const;
 const SESSION_IMMUTABLE = ['recommendation_session__status_final__check'] as const;
@@ -42,7 +44,7 @@ async function run(): Promise<void> {
           overallVerdict: 'GREEN',
           coverageMode: 'BUDGETED',
           verificationStatus: 'VERIFIED',
-          verifiedAt: POSTED_AT,
+          verifiedAt: VERIFIED_AT,
           anomalyCode: 'NONE',
           anomalyDetails: null,
           createdAt: CREATED_AT,
@@ -80,7 +82,7 @@ async function run(): Promise<void> {
           overallVerdict: 'GREEN',
           coverageMode: 'BUDGETED',
           verificationStatus: 'FAILED',
-          rejectedAt: REVOKED_AT,
+          rejectedAt: REJECTED_AT,
           anomalyCode: 'NONE',
           anomalyDetails: null,
           createdAt: CREATED_AT,
