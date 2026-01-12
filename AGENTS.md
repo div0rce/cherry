@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-01-13
 
 # Cherry Agents — Canonical Operating Guide
 
@@ -68,6 +68,12 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - Guardrails must be deterministic and side-effect free; no network or DB I/O.
 - Do not weaken guardrail severity or bypass guardrail tests.
 
+## DB Truth Surface (hard boundary)
+- DB truth scripts and DB tests may assert only: existence, impossibility, conservation.
+- Allowed: constraint exists, duplicate key fails, FK missing parent fails, NOT NULL fails, count stays 1.
+- Forbidden: preferred outcomes, query plans, performance targets, business logic behaviors, ordering.
+- Rule of thumb: if the DB could allow multiple valid outcomes, do not assert a preference in DB truth.
+
 ## Script Runner Contract
 - Repo is ESM by extension. `.mts` is allowed only under `scripts/`.
 - `.mts` scripts must be run via `npm run ts:esm -- <script>`.
@@ -77,7 +83,7 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 ## CI Truth and DB Posture
 - `.github/workflows/ci.yml` runs `npm ci` then `npm run ci:verify`.
 - Tests run with Prisma mocked; CI green does not fully prove DB behavior.
-- `.github/workflows/env-checks.yml` provisions Postgres and runs `check:db:required` with migrations.
+- `.github/workflows/env-checks.yml` provisions Postgres and runs `check:env` plus `test:db`.
 
 ## Change Protocol
 - Keep API handlers thin; move domain logic into `lib/`.

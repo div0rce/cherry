@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-12
+Last updated: 2026-01-13
 
 # Guardrails
 
@@ -85,6 +85,12 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Guardrail parses migrations for new constraints and fails if none of the `tests/db/constraints` tests
   reference the constraint identifier.
 - Enforcement: `check:db-constraint-coverage`.
+
+### Guardrail 35 — DB Truth Surface
+
+- DB truth scripts and DB tests are limited to assertions about existence, impossibility, and conservation.
+- DB truth must not assert preferred outcomes, performance, query shape, or business logic behaviors.
+- Enforcement: policy guardrail; changes require explicit review.
 
 ## Domain: Loader & Guardrail Event Integrity
 
