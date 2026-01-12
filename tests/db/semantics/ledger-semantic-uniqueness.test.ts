@@ -56,15 +56,20 @@ async function run(): Promise<void> {
       if (sessionId === null) {
         throw new Error('Expected session id to be set');
       }
-      await prisma.cherryPointLedger.create({
-        data: {
-          userId: ensuredUserId,
-          sessionId,
-          points: 3,
-          reason: 'semantics-ledger-unique-dup',
-          status: 'PENDING',
-        },
-      });
+      const duplicateId = `dup-ledger-${sessionId}`;
+      const timestamp = new Date('2026-01-08T02:00:00.000Z');
+      await prisma.$executeRawUnsafe(
+        'INSERT INTO "CherryPointLedger" ("id","userId","sessionId","points","reason","status","awardedAt","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,($6)::"CherryPointLedgerStatus",$7,$8,$9)',
+        duplicateId,
+        ensuredUserId,
+        sessionId,
+        3,
+        'semantics-ledger-unique-dup',
+        'PENDING',
+        timestamp,
+        timestamp,
+        timestamp
+      );
     } catch (err) {
       error = err;
     }

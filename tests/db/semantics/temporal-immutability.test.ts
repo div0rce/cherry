@@ -6,7 +6,10 @@ const prisma = new PrismaClient();
 const EMAIL = 'db-semantics-immutable@cherry.local';
 const ORDER_TOKEN = 'semantics-immutable-order';
 const ORDER_TOKEN_REVOKED = 'semantics-immutable-order-revoked';
-const EXPIRES_AT = new Date('2026-01-09T00:00:00.000Z');
+const CREATED_AT = new Date('2026-01-09T00:00:00.000Z');
+const EXPIRES_AT = new Date('2026-01-10T00:00:00.000Z');
+const POSTED_AT = new Date('2026-01-09T01:00:00.000Z');
+const REVOKED_AT = new Date('2026-01-09T01:10:00.000Z');
 
 const LEDGER_IMMUTABLE = ['cherry_point_ledger__status_final__check'] as const;
 const SESSION_IMMUTABLE = ['recommendation_session__status_final__check'] as const;
@@ -39,9 +42,11 @@ async function run(): Promise<void> {
           overallVerdict: 'GREEN',
           coverageMode: 'BUDGETED',
           verificationStatus: 'VERIFIED',
-          verifiedAt: new Date('2026-01-09T01:00:00.000Z'),
+          verifiedAt: POSTED_AT,
           anomalyCode: 'NONE',
           anomalyDetails: null,
+          createdAt: CREATED_AT,
+          updatedAt: CREATED_AT,
         },
       });
       sessionId = session.id;
@@ -53,7 +58,9 @@ async function run(): Promise<void> {
           points: 7,
           reason: 'semantics-immutable',
           status: 'POSTED',
-          postedAt: new Date('2026-01-09T01:00:00.000Z'),
+          postedAt: POSTED_AT,
+          createdAt: CREATED_AT,
+          updatedAt: CREATED_AT,
         },
       });
       ledgerId = ledger.id;
@@ -73,9 +80,11 @@ async function run(): Promise<void> {
           overallVerdict: 'GREEN',
           coverageMode: 'BUDGETED',
           verificationStatus: 'FAILED',
-          rejectedAt: new Date('2026-01-09T01:10:00.000Z'),
+          rejectedAt: REVOKED_AT,
           anomalyCode: 'NONE',
           anomalyDetails: null,
+          createdAt: CREATED_AT,
+          updatedAt: CREATED_AT,
         },
       });
 
@@ -86,7 +95,9 @@ async function run(): Promise<void> {
           points: 7,
           reason: 'semantics-immutable-revoked',
           status: 'REVOKED',
-          revokedAt: new Date('2026-01-09T01:10:00.000Z'),
+          revokedAt: REVOKED_AT,
+          createdAt: CREATED_AT,
+          updatedAt: CREATED_AT,
         },
       });
       revokedLedgerId = revokedLedger.id;
