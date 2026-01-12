@@ -368,7 +368,7 @@ export default function AdminClient(): JSX.Element {
           <textarea
             value={bankPayload}
             onChange={(e) => setBankPayload(e.target.value)}
-            className="min-h-[140px] rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#05060f] px-3 py-2 text-xs text-[#eef2fb] focus-visible:outline-[2px_solid_#ff6b8a] focus-visible:outline-offset-2"
+            className="min-h-35 rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#05060f] px-3 py-2 text-xs text-[#eef2fb] focus-visible:outline-[2px_solid_#ff6b8a] focus-visible:outline-offset-2"
             spellCheck={false}
           />
           <div className="flex flex-wrap items-center gap-2">
