@@ -22,6 +22,12 @@ type Violation = {
   suggestion: string;
 };
 
+type SeenName = {
+  file: string;
+  line: number;
+  enforced: boolean;
+};
+
 function normalizePath(target: string): string {
   return target.replace(/\\/g, '/');
 }
@@ -133,8 +139,37 @@ function recordViolation(
   violations.push({ file, line, message, suggestion });
 }
 
-function parseMigration(filePath: string, violations: Violation[]): void {
-  if (isEnforcedMigration(filePath) === false) return;
+function recordName(
+  seenNames: Map<string, SeenName>,
+  violations: Violation[],
+  name: string,
+  enforced: boolean,
+  file: string,
+  line: number,
+  suggestion: string
+): void {
+  const existing = seenNames.get(name);
+  if (existing !== undefined) {
+    if (enforced) {
+      recordViolation(
+        violations,
+        file,
+        line,
+        `Duplicate constraint name "${name}" (first seen at ${existing.file}:${existing.line})`,
+        suggestion
+      );
+    }
+    return;
+  }
+  seenNames.set(name, { file, line, enforced });
+}
+
+function parseMigration(
+  filePath: string,
+  violations: Violation[],
+  seenNames: Map<string, SeenName>
+): void {
+  const enforced = isEnforcedMigration(filePath);
   const raw = fs.readFileSync(filePath, 'utf8');
   const lines = raw.split(/\r?\n/);
   const relPath = normalizePath(path.relative(ROOT, filePath));
@@ -170,7 +205,7 @@ function parseMigration(filePath: string, violations: Violation[]): void {
       const table = tableMatch === null ? undefined : tableMatch[1];
       const columns = parseColumns(/\(([^)]+)\)/, trimmed);
       const suggestion = buildSuggestion(table, columns, 'unique');
-      if (isNameValid(name, 'unique') === false) {
+      if (isNameValid(name, 'unique') === false && enforced) {
         recordViolation(
           violations,
           relPath,
@@ -179,6 +214,7 @@ function parseMigration(filePath: string, violations: Violation[]): void {
           suggestion
         );
       }
+      recordName(seenNames, violations, name, enforced, relPath, lineNumber, suggestion);
       continue;
     }
 
@@ -190,7 +226,7 @@ function parseMigration(filePath: string, violations: Violation[]): void {
         const table = alterMatch?.[1] ?? currentAlterTable ?? currentCreateTable ?? undefined;
         const columns = inferColumns(kind, trimmed);
         const suggestion = buildSuggestion(table, columns, kind);
-        if (isNameValid(name, kind) === false) {
+        if (isNameValid(name, kind) === false && enforced) {
           recordViolation(
             violations,
             relPath,
@@ -199,33 +235,38 @@ function parseMigration(filePath: string, violations: Violation[]): void {
             suggestion
           );
         }
+        recordName(seenNames, violations, name, enforced, relPath, lineNumber, suggestion);
       }
       continue;
     }
 
     if (trimmed.match(/\bCREATE UNIQUE INDEX\b/i) !== null) {
-      recordViolation(
-        violations,
-        relPath,
-        lineNumber,
-        'Unique index is missing an explicit name',
-        buildSuggestion(currentAlterTable ?? currentCreateTable ?? undefined, [], 'unique')
-      );
+      if (enforced) {
+        recordViolation(
+          violations,
+          relPath,
+          lineNumber,
+          'Unique index is missing an explicit name',
+          buildSuggestion(currentAlterTable ?? currentCreateTable ?? undefined, [], 'unique')
+        );
+      }
       continue;
     }
 
     if (trimmed.match(/\bADD CONSTRAINT\b/i) !== null) {
       const kind = inferKind(trimmed);
       if (kind !== null) {
-        const table = alterMatch?.[1] ?? currentAlterTable ?? currentCreateTable ?? undefined;
-        const columns = inferColumns(kind, trimmed);
-        recordViolation(
-          violations,
-          relPath,
-          lineNumber,
-          'Constraint is missing an explicit name',
-          buildSuggestion(table, columns, kind)
-        );
+        if (enforced) {
+          const table = alterMatch?.[1] ?? currentAlterTable ?? currentCreateTable ?? undefined;
+          const columns = inferColumns(kind, trimmed);
+          recordViolation(
+            violations,
+            relPath,
+            lineNumber,
+            'Constraint is missing an explicit name',
+            buildSuggestion(table, columns, kind)
+          );
+        }
       }
       continue;
     }
@@ -234,15 +275,17 @@ function parseMigration(filePath: string, violations: Violation[]): void {
 
     const unnamedKind = inferKind(trimmed);
     if (unnamedKind !== null) {
-      const table = currentAlterTable ?? currentCreateTable ?? undefined;
-      const columns = inferColumns(unnamedKind, trimmed);
-      recordViolation(
-        violations,
-        relPath,
-        lineNumber,
-        `Constraint is missing an explicit name for ${unnamedKind.toUpperCase()}`,
-        buildSuggestion(table, columns, unnamedKind)
-      );
+      if (enforced) {
+        const table = currentAlterTable ?? currentCreateTable ?? undefined;
+        const columns = inferColumns(unnamedKind, trimmed);
+        recordViolation(
+          violations,
+          relPath,
+          lineNumber,
+          `Constraint is missing an explicit name for ${unnamedKind.toUpperCase()}`,
+          buildSuggestion(table, columns, unnamedKind)
+        );
+      }
     }
 
     if (currentAlterTable !== null && trimmed.includes(';')) {
@@ -253,9 +296,10 @@ function parseMigration(filePath: string, violations: Violation[]): void {
 
 function main(): void {
   const violations: Violation[] = [];
+  const seenNames = new Map<string, SeenName>();
   const files = listMigrationFiles();
   for (const file of files) {
-    parseMigration(file, violations);
+    parseMigration(file, violations, seenNames);
   }
 
   if (violations.length > 0) {

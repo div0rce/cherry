@@ -96,6 +96,7 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 
 - Migrations must use explicit names for `UNIQUE`, `FOREIGN KEY`, and `CHECK` constraints.
 - Naming format: `{table}__{columns}__{type}` where type is `unique`, `fk`, or `check`.
+- Constraint names must be unique across the schema.
 - Forward-only enforcement for migrations with a timestamp prefix >= `20260113000000`.
 - Enforcement: `check:db-constraint-naming`.
 
