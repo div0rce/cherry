@@ -11,7 +11,8 @@ const FIX = 'Name constraints using {table}__{columns}__{type} with explicit CON
 const ROOT = process.cwd();
 const MIGRATIONS_DIR = path.join(ROOT, 'prisma', 'migrations');
 const ENFORCED_SINCE = '20260113000000';
-const NAME_REGEX = /^[a-z0-9]+__(?:[a-z0-9]+_?)+__(unique|fk|check)$/i;
+const NAME_REGEX =
+  /^[a-z0-9]+(?:_[a-z0-9]+)*__(?:[a-z0-9]+(?:_[a-z0-9]+)*)__(unique|fk|check)$/i;
 
 type ConstraintKind = 'unique' | 'fk' | 'check';
 
@@ -25,6 +26,13 @@ type Violation = {
 type SeenName = {
   file: string;
   line: number;
+  enforced: boolean;
+};
+
+type PendingConstraint = {
+  name: string;
+  line: number;
+  table: string | undefined;
   enforced: boolean;
 };
 
@@ -175,12 +183,44 @@ function parseMigration(
   const relPath = normalizePath(path.relative(ROOT, filePath));
   let currentCreateTable: string | null = null;
   let currentAlterTable: string | null = null;
+  let pendingConstraint: PendingConstraint | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? '';
     const trimmed = line.trim();
     if (trimmed.length === 0) continue;
     const lineNumber = index + 1;
+
+    if (pendingConstraint !== null) {
+      const pendingKind = inferKind(trimmed);
+      if (pendingKind !== null) {
+        const columns = inferColumns(pendingKind, trimmed);
+        const suggestion = buildSuggestion(pendingConstraint.table, columns, pendingKind);
+        if (isNameValid(pendingConstraint.name, pendingKind) === false && pendingConstraint.enforced) {
+          recordViolation(
+            violations,
+            relPath,
+            pendingConstraint.line,
+            `Constraint name "${pendingConstraint.name}" does not match naming format`,
+            suggestion
+          );
+        }
+        recordName(
+          seenNames,
+          violations,
+          pendingConstraint.name,
+          pendingConstraint.enforced,
+          relPath,
+          pendingConstraint.line,
+          suggestion
+        );
+        pendingConstraint = null;
+        continue;
+      }
+      if (trimmed.includes(';')) {
+        pendingConstraint = null;
+      }
+    }
 
     const createTableMatch = trimmed.match(/^CREATE TABLE\s+"([^"]+)"/i);
     if (createTableMatch !== null) {
@@ -236,6 +276,14 @@ function parseMigration(
           );
         }
         recordName(seenNames, violations, name, enforced, relPath, lineNumber, suggestion);
+      } else if (pendingConstraint === null) {
+        const table = alterMatch?.[1] ?? currentAlterTable ?? currentCreateTable ?? undefined;
+        pendingConstraint = {
+          name,
+          line: lineNumber,
+          table,
+          enforced,
+        };
       }
       continue;
     }
