@@ -78,10 +78,13 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `check:db:*`, `check:db-ready`, and `check:run-db-tests` must not use the standard execution runner.
 - Enforcement: `check:db-runner-exclusivity`.
 
-### Policy — Constraint Coverage (Docs-Only)
+### Guardrail 34 — DB Constraint Coverage
 
 - Any migration that adds a `UNIQUE`, `FOREIGN KEY`, `NOT NULL`, or `CHECK` constraint must include a
-  `tests/db/constraints/*` test that asserts the constraint fails on invalid data.
+  `tests/db/constraints/*` test that references the constraint.
+- Guardrail parses migrations for new constraints and fails if none of the `tests/db/constraints` tests
+  reference the constraint identifier.
+- Enforcement: `check:db-constraint-coverage`.
 
 ## Domain: Loader & Guardrail Event Integrity
 
