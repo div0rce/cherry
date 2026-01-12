@@ -78,7 +78,7 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
     const lineNumber = index + 1;
 
     const createTableMatch = trimmed.match(/^CREATE TABLE\s+"([^"]+)"/);
-    if (createTableMatch) {
+    if (createTableMatch !== null) {
       currentCreateTable = createTableMatch[1] ?? null;
       continue;
     }
@@ -90,7 +90,7 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
       }
       const columnMatch = trimmed.match(/^"([^"]+)"\s+/);
       if (
-        columnMatch &&
+        columnMatch !== null &&
         trimmed.includes('NOT NULL') &&
         trimmed.includes('DROP NOT NULL') === false
       ) {
@@ -110,12 +110,12 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
     }
 
     const alterMatch = trimmed.match(/^ALTER TABLE\s+"([^"]+)"/);
-    if (alterMatch) {
+    if (alterMatch !== null) {
       currentAlterTable = alterMatch[1] ?? null;
     }
 
     const uniqueIndexMatch = trimmed.match(/^CREATE UNIQUE INDEX\s+"([^"]+)"/);
-    if (uniqueIndexMatch) {
+    if (uniqueIndexMatch !== null) {
       const name = uniqueIndexMatch[1] ?? '';
       addConstraint(store, {
         id: `UNIQUE:${name}`,
@@ -127,7 +127,7 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
     }
 
     const addConstraintMatch = trimmed.match(/ADD CONSTRAINT\s+"([^"]+)"/);
-    if (addConstraintMatch) {
+    if (addConstraintMatch !== null) {
       const name = addConstraintMatch[1] ?? '';
       const table = alterMatch?.[1] ?? currentAlterTable ?? undefined;
       if (trimmed.includes('FOREIGN KEY')) {
@@ -165,7 +165,7 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
       const alterColumnMatch = trimmed.match(/ALTER COLUMN\s+"([^"]+)"/i);
       const column = addColumnMatch?.[1] ?? alterColumnMatch?.[1];
       if (
-        column &&
+        column !== undefined &&
         trimmed.includes('NOT NULL') &&
         trimmed.includes('DROP NOT NULL') === false
       ) {
@@ -217,7 +217,7 @@ function readTestContent(files: string[]): string {
 
 function isConstraintCovered(constraint: Constraint, testContent: string): boolean {
   if (testContent.includes(constraint.id)) return true;
-  if (constraint.name && testContent.includes(constraint.name)) return true;
+  if (constraint.name !== undefined && testContent.includes(constraint.name)) return true;
   return false;
 }
 
@@ -241,7 +241,7 @@ function main(): void {
   for (const constraint of constraints) {
     if (isConstraintCovered(constraint, testContent)) continue;
     const code = CONSTRAINT_CODES.get(constraint.type);
-    const codeHint = code ? ` code=${code}` : '';
+    const codeHint = code !== undefined ? ` code=${code}` : '';
     const suggestion = `tests/db/constraints/${constraint.id
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')}.test.ts`;
