@@ -92,6 +92,13 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - DB truth must not assert preferred outcomes, performance, query shape, or business logic behaviors.
 - Enforcement: policy guardrail; changes require explicit review.
 
+### Guardrail 36 — DB Constraint Naming
+
+- Migrations must use explicit names for `UNIQUE`, `FOREIGN KEY`, and `CHECK` constraints.
+- Naming format: `{table}__{columns}__{type}` where type is `unique`, `fk`, or `check`.
+- Forward-only enforcement for migrations with a timestamp prefix >= `20260113000000`.
+- Enforcement: `check:db-constraint-naming`.
+
 ## Domain: Loader & Guardrail Event Integrity
 
 ### Guardrail 7 — ESM Loader Totality

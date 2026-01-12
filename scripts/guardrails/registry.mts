@@ -18,6 +18,7 @@ const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
 const DB_TRUTH_BOUNDARY_PATH = `${CHECK_PATH_BASE}db-truth-boundary.mts` as const;
 const DB_RUNNER_EXCLUSIVITY_PATH = `${CHECK_PATH_BASE}db-runner-exclusivity.mts` as const;
 const DB_CONSTRAINT_COVERAGE_PATH = `${CHECK_PATH_BASE}db-constraint-coverage.mts` as const;
+const DB_CONSTRAINT_NAMING_PATH = `${CHECK_PATH_BASE}db-constraint-naming.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -87,6 +88,7 @@ export const GUARDRAILS = Object.freeze({
   'check:db-truth-boundary': DB_TRUTH_BOUNDARY_PATH,
   'check:db-runner-exclusivity': DB_RUNNER_EXCLUSIVITY_PATH,
   'check:db-constraint-coverage': DB_CONSTRAINT_COVERAGE_PATH,
+  'check:db-constraint-naming': DB_CONSTRAINT_NAMING_PATH,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;
