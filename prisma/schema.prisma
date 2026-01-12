@@ -542,8 +542,8 @@ model CherryPointLedger {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([sessionId], map: "cherry_point_ledger__session_id__unique")
   @@index([userId])
-  @@index([sessionId])
   @@index([merchantObservationId])
   @@index([cardId])
 }
