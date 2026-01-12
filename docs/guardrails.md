@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-05
+Last updated: 2026-01-12
 
 # Guardrails
 
@@ -77,6 +77,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - DB truth scripts must execute via `scripts/execution/run-db.mts`.
 - `check:db:*`, `check:db-ready`, and `check:run-db-tests` must not use the standard execution runner.
 - Enforcement: `check:db-runner-exclusivity`.
+
+### Policy — Constraint Coverage (Docs-Only)
+
+- Any migration that adds a `UNIQUE`, `FOREIGN KEY`, `NOT NULL`, or `CHECK` constraint must include a
+  `tests/db/constraints/*` test that asserts the constraint fails on invalid data.
 
 ## Domain: Loader & Guardrail Event Integrity
 
