@@ -50,6 +50,13 @@ function addConstraint(store: Map<string, Constraint>, constraint: Constraint): 
   }
 }
 
+function removeConstraintByName(store: Map<string, Constraint>, name: string): void {
+  const types: ConstraintType[] = ['UNIQUE', 'FOREIGN_KEY', 'CHECK'];
+  for (const type of types) {
+    store.delete(`${type}:${name}`);
+  }
+}
+
 function listMigrationFiles(): string[] {
   const result = runTool('rg', ['--files', '-g', 'migration.sql', MIGRATIONS_DIR]);
   if (result.exitCode !== 0) {
@@ -65,7 +72,8 @@ function listMigrationFiles(): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((file) => path.resolve(ROOT, file));
+    .map((file) => path.resolve(ROOT, file))
+    .sort();
 }
 
 function parseMigrationFile(filePath: string, store: Map<string, Constraint>): void {
@@ -115,6 +123,18 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
     const alterMatch = trimmed.match(/^ALTER TABLE\s+"([^"]+)"/);
     if (alterMatch !== null) {
       currentAlterTable = alterMatch[1] ?? null;
+    }
+
+    const dropIndexMatch = trimmed.match(/^DROP INDEX(?: IF EXISTS)?\s+"([^"]+)"/i);
+    if (dropIndexMatch !== null) {
+      const name = dropIndexMatch[1] ?? '';
+      store.delete(`UNIQUE:${name}`);
+    }
+
+    const dropConstraintMatch = trimmed.match(/DROP CONSTRAINT\s+"([^"]+)"/i);
+    if (dropConstraintMatch !== null) {
+      const name = dropConstraintMatch[1] ?? '';
+      removeConstraintByName(store, name);
     }
 
     const uniqueIndexMatch = trimmed.match(/^CREATE UNIQUE INDEX\s+"([^"]+)"/);
@@ -170,6 +190,10 @@ function parseMigrationFile(filePath: string, store: Map<string, Constraint>): v
       const addColumnMatch = trimmed.match(/ADD COLUMN\s+"([^"]+)"/i);
       const alterColumnMatch = trimmed.match(/ALTER COLUMN\s+"([^"]+)"/i);
       const column = addColumnMatch?.[1] ?? alterColumnMatch?.[1];
+      if (column !== undefined && trimmed.includes('DROP NOT NULL')) {
+        const id = `NOT_NULL:${hashConstraint(currentAlterTable, [column], 'NOT_NULL')}`;
+        store.delete(id);
+      }
       if (
         column !== undefined &&
         trimmed.includes('NOT NULL') &&
