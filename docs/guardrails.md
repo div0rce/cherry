@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-13
+Last updated: 2026-01-17
 
 # Guardrails
 
@@ -99,6 +99,33 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Constraint names must be unique across the schema.
 - Forward-only enforcement for migrations with a timestamp prefix >= `20260113000000`.
 - Enforcement: `check:db-constraint-naming`.
+
+### Guardrail 37 — DB Semantic Suite Minimum
+
+- The DB semantic suite must include baseline tests for idempotency, atomicity, ledger conservation,
+  cross-row conservation, causality, semantic uniqueness, and temporal immutability.
+- Required files:
+  - `tests/db/semantics/idempotency-no-double-apply.test.ts`
+  - `tests/db/semantics/atomicity-no-partial-writes.test.ts`
+  - `tests/db/semantics/ledger-conservation.test.ts`
+  - `tests/db/semantics/ledger-cross-row-conservation.test.ts`
+  - `tests/db/semantics/status-causality.test.ts`
+  - `tests/db/semantics/ledger-semantic-uniqueness.test.ts`
+  - `tests/db/semantics/temporal-immutability.test.ts`
+- Enforcement: `check:db-semantic-suite-minimum`.
+
+### Guardrail 38 — DB Semantic ORM Agnosticism
+
+- DB semantic tests must assert violations using SQLSTATE codes or constraint identifiers.
+- ORM-specific error types or error codes are forbidden in `tests/db/semantics`.
+- Do not branch on Prisma error classes, `error.code`, or vendor-specific error strings.
+- Enforcement: `check:db-semantic-orm-agnostic`.
+
+### Guardrail 39 — Ledger Write Entry Points
+
+- Direct `CherryPointLedger` writes are allowed only in approved entrypoints.
+- Approved entrypoints: persistence adapter, session confirm/verify flows, demo seeding, and admin clear routes.
+- Enforcement: `check:db-ledger-entrypoints`.
 
 ## Domain: Loader & Guardrail Event Integrity
 
