@@ -38,6 +38,7 @@ WHERE "id" IN (
     SELECT "id",
            row_number() OVER (
              PARTITION BY "sessionId"
+             -- Preserve terminal truth before chronological ordering.
              ORDER BY
                CASE "status"
                  WHEN 'REVOKED' THEN 3
