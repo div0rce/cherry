@@ -19,6 +19,9 @@ const DB_TRUTH_BOUNDARY_PATH = `${CHECK_PATH_BASE}db-truth-boundary.mts` as cons
 const DB_RUNNER_EXCLUSIVITY_PATH = `${CHECK_PATH_BASE}db-runner-exclusivity.mts` as const;
 const DB_CONSTRAINT_COVERAGE_PATH = `${CHECK_PATH_BASE}db-constraint-coverage.mts` as const;
 const DB_CONSTRAINT_NAMING_PATH = `${CHECK_PATH_BASE}db-constraint-naming.mts` as const;
+const DB_SEMANTIC_ORM_AGNOSTIC_PATH = `${CHECK_PATH_BASE}db-semantic-orm-agnostic.mts` as const;
+const DB_SEMANTIC_SUITE_MINIMUM_PATH = `${CHECK_PATH_BASE}db-semantic-suite-minimum.mts` as const;
+const DB_LEDGER_ENTRYPOINTS_PATH = `${CHECK_PATH_BASE}db-ledger-entrypoints.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -89,6 +92,9 @@ export const GUARDRAILS = Object.freeze({
   'check:db-runner-exclusivity': DB_RUNNER_EXCLUSIVITY_PATH,
   'check:db-constraint-coverage': DB_CONSTRAINT_COVERAGE_PATH,
   'check:db-constraint-naming': DB_CONSTRAINT_NAMING_PATH,
+  'check:db-semantic-orm-agnostic': DB_SEMANTIC_ORM_AGNOSTIC_PATH,
+  'check:db-semantic-suite-minimum': DB_SEMANTIC_SUITE_MINIMUM_PATH,
+  'check:db-ledger-entrypoints': DB_LEDGER_ENTRYPOINTS_PATH,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;
