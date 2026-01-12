@@ -19,10 +19,22 @@ const CONSTRAINTS: ConstraintEntry[] = [
     "table": "RecommendationSession"
   },
   {
+    "id": "CHECK:cherry_point_ledger__status_posted_at_revoked_at__check",
+    "type": "CHECK",
+    "name": "cherry_point_ledger__status_posted_at_revoked_at__check",
+    "table": "CherryPointLedger"
+  },
+  {
     "id": "CHECK:points_nonnegative",
     "type": "CHECK",
     "name": "points_nonnegative",
     "table": "CherryPointLedger"
+  },
+  {
+    "id": "CHECK:recommendation_session__status_verified_at_rejected_at__check",
+    "type": "CHECK",
+    "name": "recommendation_session__status_verified_at_rejected_at__check",
+    "table": "RecommendationSession"
   },
   {
     "id": "FOREIGN_KEY:Account_userId_fkey",
@@ -686,14 +698,6 @@ const CONSTRAINTS: ConstraintEntry[] = [
     "table": "Bucket",
     "columns": [
       "createdAt"
-    ]
-  },
-  {
-    "id": "NOT_NULL:5ab0bd313b6c",
-    "type": "NOT_NULL",
-    "table": "BankTransaction",
-    "columns": [
-      "occurredAt"
     ]
   },
   {
@@ -1649,14 +1653,6 @@ const CONSTRAINTS: ConstraintEntry[] = [
     ]
   },
   {
-    "id": "NOT_NULL:f6e09212d232",
-    "type": "NOT_NULL",
-    "table": "BankTransaction",
-    "columns": [
-      "description"
-    ]
-  },
-  {
     "id": "NOT_NULL:f6ed19217b06",
     "type": "NOT_NULL",
     "table": "MerchantCategory",
@@ -1749,9 +1745,9 @@ const CONSTRAINTS: ConstraintEntry[] = [
     "name": "BankTransaction_userId_externalId"
   },
   {
-    "id": "UNIQUE:BankTransaction_userId_externalId_key",
+    "id": "UNIQUE:cherry_point_ledger__session_id__unique",
     "type": "UNIQUE",
-    "name": "BankTransaction_userId_externalId_key"
+    "name": "cherry_point_ledger__session_id__unique"
   },
   {
     "id": "UNIQUE:CategoryPreference_userId_category_key",
