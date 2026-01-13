@@ -1,0 +1,152 @@
+import assert from 'node:assert/strict';
+import {
+  applyLedgerEvent,
+  balanceAt,
+  computeBalances,
+  createLedgerState,
+  replayLedgerEvents,
+  validateLedgerState,
+  type AccountId,
+  type LedgerState,
+} from '../../lib/accounting/ledger';
+import { SeededRng, generateEventStream, snapshotLedger } from './harness';
+
+const DEFAULT_FIXED_SEED = 20260113;
+const DEFAULT_ROTATING_SEEDS = [20260114, 20260115, 20260116, 20260117];
+const DEFAULT_EVENT_COUNT = 160;
+const DEFAULT_TIME_CHECKS = 8;
+
+function parseIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseSeedList(raw: string | undefined, fallback: number[]): number[] {
+  if (raw === undefined || raw.trim().length === 0) return fallback;
+  return raw
+    .split(',')
+    .map((token) => Number.parseInt(token.trim(), 10))
+    .filter((value) => Number.isFinite(value));
+}
+
+function resolveSeeds(): number[] {
+  const fixedSeed = parseIntEnv('CHERRY_ACCOUNTING_FIXED_SEED', DEFAULT_FIXED_SEED);
+  const rotatingSeeds = parseSeedList(
+    process.env['CHERRY_ACCOUNTING_ROTATING_SEEDS'],
+    DEFAULT_ROTATING_SEEDS
+  );
+  if (rotatingSeeds.length === 0) {
+    return [fixedSeed];
+  }
+  const rotation = parseIntEnv('CHERRY_ACCOUNTING_SEED_ROTATION', 0);
+  const windowSize = Math.min(3, rotatingSeeds.length);
+  const rotated: number[] = [];
+  for (let i = 0; i < windowSize; i += 1) {
+    rotated.push(rotatingSeeds[(rotation + i) % rotatingSeeds.length]);
+  }
+  return [fixedSeed, ...rotated];
+}
+
+function serializeBalances(state: LedgerState): Array<{ accountId: string; balance: number }> {
+  return [...state.balances.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([accountId, balance]) => ({ accountId, balance }));
+}
+
+function sumPostingsAt(txns: LedgerState['txns'], accountId: AccountId, atMs: number): number {
+  let total = 0;
+  for (const txn of txns) {
+    if (txn.effectiveAtMs > atMs) continue;
+    for (const posting of txn.postings) {
+      if (posting.accountId === accountId) {
+        total += posting.amount;
+      }
+    }
+  }
+  return total;
+}
+
+function assertTimeBalances(state: LedgerState, seed: number): void {
+  if (state.txns.length === 0) return;
+  const times = state.txns.map((txn) => txn.effectiveAtMs);
+  const minTime = Math.min(...times);
+  const maxTime = Math.max(...times);
+  const rng = new SeededRng(seed ^ 0x9e3779b9);
+  const accountIds = [...state.accounts.keys()];
+  for (let i = 0; i < DEFAULT_TIME_CHECKS; i += 1) {
+    const atMs = rng.int(minTime, maxTime);
+    const accountId = rng.pick(accountIds);
+    const expected = sumPostingsAt(state.txns, accountId, atMs);
+    const actual = balanceAt(state.txns, accountId, atMs);
+    assert.equal(actual, expected, `balanceAt mismatch for ${accountId} at ${atMs}`);
+  }
+}
+
+const seeds = resolveSeeds();
+const eventCount = parseIntEnv('CHERRY_ACCOUNTING_EVENT_COUNT', DEFAULT_EVENT_COUNT);
+
+for (const seed of seeds) {
+  const run = generateEventStream(seed, eventCount);
+  const rerun = generateEventStream(seed, eventCount);
+  assert.deepEqual(
+    snapshotLedger(run.finalState),
+    snapshotLedger(rerun.finalState),
+    `determinism mismatch for seed=${seed}`
+  );
+
+  let state = createLedgerState(run.accounts, run.currency);
+  for (const event of run.events) {
+    const prevTxns = state.txns;
+    const next = applyLedgerEvent(state, event);
+    const violations = validateLedgerState(next);
+    assert.equal(
+      violations.length,
+      0,
+      `ledger violations for seed=${seed}: ${JSON.stringify(violations)}`
+    );
+    const recomputed = computeBalances(next.accounts, next.txns);
+    assert.deepEqual(
+      serializeBalances(next),
+      serializeBalances({ ...next, balances: recomputed }),
+      `balance mismatch for seed=${seed}`
+    );
+    assert.equal(
+      next.txns.length >= prevTxns.length,
+      true,
+      `txn history shrank for seed=${seed}`
+    );
+    for (let i = 0; i < prevTxns.length; i += 1) {
+      assert.equal(next.txns[i], prevTxns[i], `txn history mutated for seed=${seed}`);
+    }
+    state = next;
+  }
+
+  assert.deepEqual(
+    snapshotLedger(state),
+    snapshotLedger(run.finalState),
+    `materialized mismatch for seed=${seed}`
+  );
+
+  const replayed = replayLedgerEvents(run.accounts, run.currency, run.events);
+  assert.deepEqual(
+    snapshotLedger(replayed),
+    snapshotLedger(state),
+    `replay mismatch for seed=${seed}`
+  );
+
+  let idempotent = state;
+  for (const event of run.events) {
+    idempotent = applyLedgerEvent(idempotent, event);
+  }
+  assert.deepEqual(
+    snapshotLedger(idempotent),
+    snapshotLedger(state),
+    `idempotency mismatch for seed=${seed}`
+  );
+
+  assertTimeBalances(state, seed);
+}
+
+console.log('accounting property: ok');
