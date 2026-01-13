@@ -27,6 +27,12 @@ import type {
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
 import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types';
 import { asAppError } from '../errors';
+import {
+  attachAccountingProof,
+  buildAccountingSnapshot,
+  filterAccountingSafeDecisions,
+  type EngineDecisionWithAccounting,
+} from '../accounting/engine-proof';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
@@ -182,7 +188,7 @@ export async function solveDecision(
 export type SafeDecisionOutcome =
   | {
       ok: true;
-      decisions: EngineDecision[];
+      decisions: EngineDecisionWithAccounting[];
       trace: EngineDecisionTrace;
       legacyDecision?: LegacyEngineDecision;
       state: EngineState;
@@ -206,7 +212,15 @@ export async function safeSolveDecisionForUser(
         options.includeLegacyDecision == null ? true : options.includeLegacyDecision,
       runtime,
     });
-    const successResult: SafeDecisionOutcome = { ok: true, decisions, trace, state };
+    const snapshot = buildAccountingSnapshot(state, ctx.nowMs);
+    const provedDecisions = attachAccountingProof({ decisions, ctx, snapshot });
+    const safeDecisions = filterAccountingSafeDecisions(provedDecisions);
+    const successResult: SafeDecisionOutcome = {
+      ok: true,
+      decisions: safeDecisions,
+      trace,
+      state,
+    };
     if (legacyDecision !== undefined) {
       successResult.legacyDecision = legacyDecision;
     }
