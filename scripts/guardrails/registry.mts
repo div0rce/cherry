@@ -22,6 +22,10 @@ const DB_CONSTRAINT_NAMING_PATH = `${CHECK_PATH_BASE}db-constraint-naming.mts` a
 const DB_SEMANTIC_ORM_AGNOSTIC_PATH = `${CHECK_PATH_BASE}db-semantic-orm-agnostic.mts` as const;
 const DB_SEMANTIC_SUITE_MINIMUM_PATH = `${CHECK_PATH_BASE}db-semantic-suite-minimum.mts` as const;
 const DB_LEDGER_ENTRYPOINTS_PATH = `${CHECK_PATH_BASE}db-ledger-entrypoints.mts` as const;
+const ACCOUNTING_INVARIANTS_PATH = `${CHECK_PATH_BASE}accounting-invariants.mts` as const;
+const REPLAY_EQUALS_MATERIALIZED_PATH =
+  `${CHECK_PATH_BASE}replay-equals-materialized.mts` as const;
+const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -95,6 +99,9 @@ export const GUARDRAILS = Object.freeze({
   'check:db-semantic-orm-agnostic': DB_SEMANTIC_ORM_AGNOSTIC_PATH,
   'check:db-semantic-suite-minimum': DB_SEMANTIC_SUITE_MINIMUM_PATH,
   'check:db-ledger-entrypoints': DB_LEDGER_ENTRYPOINTS_PATH,
+  'check:accounting-invariants': ACCOUNTING_INVARIANTS_PATH,
+  'check:replay-equals-materialized': REPLAY_EQUALS_MATERIALIZED_PATH,
+  'check:no-mutation': NO_MUTATION_PATH,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;

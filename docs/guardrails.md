@@ -9,6 +9,7 @@ Last updated: 2026-01-17
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 - DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
+- Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
 
 ## Guardrail Numbering (Legacy)
 - Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.
@@ -126,6 +127,23 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Direct `CherryPointLedger` writes are allowed only in approved entrypoints.
 - Approved entrypoints: persistence adapter, session confirm/verify flows, demo seeding, and admin clear routes.
 - Enforcement: `check:db-ledger-entrypoints`.
+
+## Domain: Accounting Integrity
+
+### Guardrail 40 — Accounting Invariants
+
+- Property-based accounting invariants must remain green under fixed and rotating seed sets.
+- Enforcement: `check:accounting-invariants`.
+
+### Guardrail 41 — Replay Equals Materialized
+
+- Event replay must match the incrementally materialized ledger state.
+- Enforcement: `check:replay-equals-materialized`.
+
+### Guardrail 42 — Append-Only Ledger
+
+- Accounting transactions are immutable; corrections are append-only.
+- Enforcement: `check:no-mutation`.
 
 ## Domain: Loader & Guardrail Event Integrity
 
