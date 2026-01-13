@@ -145,6 +145,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Accounting transactions are immutable; corrections are append-only.
 - Enforcement: `check:no-mutation`.
 
+### Guardrail 43 — DB Accounting Replay
+
+- DB materialized balances must match in-memory replayed ledger balances.
+- Enforcement: `check:db-accounting-replay`.
+
 ## Domain: Loader & Guardrail Event Integrity
 
 ### Guardrail 7 — ESM Loader Totality

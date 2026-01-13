@@ -548,6 +548,41 @@ model CherryPointLedger {
   @@index([cardId])
 }
 
+model AccountingTransaction {
+  id        String @id @default(cuid())
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  currency  String
+  txnType   String
+  effectiveAt DateTime
+  externalId  String?
+
+  postings AccountingPosting[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, externalId], map: "accounting_transaction__user_id_external_id__unique")
+  @@index([userId])
+  @@index([effectiveAt])
+}
+
+model AccountingPosting {
+  id            String @id @default(cuid())
+  transaction   AccountingTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  transactionId String
+
+  accountId   String
+  accountType String
+  role        String
+  amount      Int
+  currency    String
+
+  createdAt DateTime @default(now())
+
+  @@index([transactionId])
+  @@index([accountId])
+}
+
 model CategoryPreference {
   id     String @id @default(cuid())
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
