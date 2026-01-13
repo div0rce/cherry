@@ -13,7 +13,7 @@ Last updated: 2026-01-17
 
 ### Entities
 - Account: a bucket with a currency and overdraft policy.
-- Posting: an atomic signed amount applied to exactly one account.
+- Posting: an atomic signed amount applied to exactly one account, with a semantic role.
 - Transaction: an ordered set of postings (length >= 2).
 - Ledger: the set of transactions plus derived balances.
 - External event id: idempotency key for dedup.
@@ -32,13 +32,14 @@ Last updated: 2026-01-17
 - `EQUITY:OPENING`
 
 ### Transaction templates
-- `SPEND`: `EXPENSE` (+) and `ASSET:CASH` or `LIABILITY:CREDIT_CARD` (-)
-- `INCOME`: `ASSET:CASH` (+) and `INCOME` (-)
-- `TRANSFER`: `ASSET` (+) and `ASSET` (-)
-- `REFUND`: `ASSET:CASH` (+) and `EXPENSE` (-)
-- `ADJUSTMENT`: target account (+/-) and `EQUITY:OPENING` (-/+)
+- `SPEND`: `SINK` = `EXPENSE` (+), `SOURCE` = `ASSET:CASH` (-) or `LIABILITY_DRAW` = `LIABILITY:CREDIT_CARD` (-)
+- `INCOME`: `SINK` = `ASSET:CASH` (+), `OFFSET` = `INCOME` (-)
+- `TRANSFER`: `SOURCE` = `ASSET` (-), `SINK` = `ASSET` (+) or `LIABILITY_REPAY` = `LIABILITY` (+)
+- `REFUND`: `SINK` = `ASSET:CASH` (+), `OFFSET` = `EXPENSE` (-)
+- `ADJUSTMENT`: `SINK`/`SOURCE` = `ASSET` (+/-) or `LIABILITY` (+/-), offset by equity
+- `REVERSAL`: same roles as original txn, signs inverted per role rules
 
-## Invariants (I1-I8)
+## Invariants (I1-I9)
 
 ### I1 — Conservation (double-entry)
 For every transaction, postings sum to zero in the ledger currency.
@@ -65,6 +66,9 @@ All postings must share the ledger currency (USD). Cross-currency requires an ex
 
 ### I8 — Time correctness
 Balance as of time `T` equals the sum of postings with `effectiveAtMs <= T`.
+
+### I9 — External ID uniqueness
+Each `externalId` maps to exactly one immutable transaction, and the map is replay-stable.
 
 ## Operations and preservation arguments (Ops)
 
@@ -97,7 +101,7 @@ Balance as of time `T` equals the sum of postings with `effectiveAtMs <= T`.
 - Preservation: decisions never invent money and must pass I1-I5 before execution.
 
 ## Enforcement and proofs (Current)
-- Structural: `balancePostings` and branded types (`Currency`, `AccountId`, `TxnId`, `NonZeroAmount`).
+- Structural: `balancePostings`, posting roles + sign matrix, and branded types (`Currency`, `AccountId`, `TxnId`, `NonZeroAmount`).
 - Procedural: deterministic, append-only event application in `lib/accounting/ledger.ts`.
 - Tests: property-based invariants and replay checks in `tests/accounting/*.spec.ts`.
 - Guardrails: `check:accounting-invariants`, `check:replay-equals-materialized`, `check:no-mutation`.

@@ -4,6 +4,13 @@ export type TxnId = string & { __txnIdBrand: true };
 export type NonZeroAmount = number & { __nonZeroAmountBrand: true };
 
 export type AccountType = 'ASSET' | 'EXPENSE' | 'INCOME' | 'LIABILITY' | 'EQUITY';
+export type PostingRole =
+  | 'SOURCE'
+  | 'SINK'
+  | 'OFFSET'
+  | 'LIABILITY_DRAW'
+  | 'LIABILITY_REPAY'
+  | 'EQUITY_OFFSET';
 export type TxnType =
   | 'OPENING'
   | 'SPEND'
@@ -24,6 +31,7 @@ export type Posting = {
   accountId: AccountId;
   amount: NonZeroAmount;
   currency: Currency;
+  role: PostingRole;
 };
 
 export type BalancedPostings = ReadonlyArray<Posting> & { __balancedPostingsBrand: true };
@@ -40,29 +48,87 @@ export type LedgerState = {
   currency: Currency;
   accounts: Map<AccountId, Account>;
   txns: Transaction[];
-  externalIds: Set<string>;
+  externalIndex: Map<string, TxnId>;
   balances: Map<AccountId, number>;
 };
 
-export type LedgerEvent =
-  | { type: 'TXN'; txn: Transaction }
-  | { type: 'DEDUP'; externalId: string }
-  | { type: 'RECOMPUTE' };
+export type LedgerEvent = { type: 'TXN'; txn: Transaction } | { type: 'RECOMPUTE' };
 
 export type LedgerViolation = {
-  invariant: 'I1' | 'I4' | 'I5' | 'I7';
+  invariant: 'I1' | 'I4' | 'I5' | 'I7' | 'I9';
   message: string;
 };
 
-const BASE_SIGN: Record<AccountType, 1 | -1> = {
-  ASSET: 1,
-  EXPENSE: 1,
-  INCOME: -1,
-  LIABILITY: -1,
-  EQUITY: -1,
-};
+type PostingRule = { accountType: AccountType; sign: 1 | -1 };
+type PostingRuleMatrix = Record<TxnType, Record<PostingRole, PostingRule[]>>;
 
-const REVERSAL_TYPES = new Set<TxnType>(['REFUND', 'REVERSAL', 'ADJUSTMENT']);
+const POSTING_RULES: PostingRuleMatrix = {
+  OPENING: {
+    SOURCE: [],
+    SINK: [{ accountType: 'ASSET', sign: 1 }],
+    OFFSET: [],
+    LIABILITY_DRAW: [],
+    LIABILITY_REPAY: [],
+    EQUITY_OFFSET: [{ accountType: 'EQUITY', sign: -1 }],
+  },
+  SPEND: {
+    SOURCE: [{ accountType: 'ASSET', sign: -1 }],
+    SINK: [{ accountType: 'EXPENSE', sign: 1 }],
+    OFFSET: [],
+    LIABILITY_DRAW: [{ accountType: 'LIABILITY', sign: -1 }],
+    LIABILITY_REPAY: [],
+    EQUITY_OFFSET: [],
+  },
+  INCOME: {
+    SOURCE: [],
+    SINK: [{ accountType: 'ASSET', sign: 1 }],
+    OFFSET: [{ accountType: 'INCOME', sign: -1 }],
+    LIABILITY_DRAW: [],
+    LIABILITY_REPAY: [],
+    EQUITY_OFFSET: [],
+  },
+  TRANSFER: {
+    SOURCE: [{ accountType: 'ASSET', sign: -1 }],
+    SINK: [{ accountType: 'ASSET', sign: 1 }],
+    OFFSET: [],
+    LIABILITY_DRAW: [],
+    LIABILITY_REPAY: [{ accountType: 'LIABILITY', sign: 1 }],
+    EQUITY_OFFSET: [],
+  },
+  REFUND: {
+    SOURCE: [],
+    SINK: [{ accountType: 'ASSET', sign: 1 }],
+    OFFSET: [{ accountType: 'EXPENSE', sign: -1 }],
+    LIABILITY_DRAW: [],
+    LIABILITY_REPAY: [],
+    EQUITY_OFFSET: [],
+  },
+  ADJUSTMENT: {
+    SOURCE: [{ accountType: 'ASSET', sign: -1 }],
+    SINK: [{ accountType: 'ASSET', sign: 1 }],
+    OFFSET: [{ accountType: 'EQUITY', sign: 1 }],
+    LIABILITY_DRAW: [{ accountType: 'LIABILITY', sign: -1 }],
+    LIABILITY_REPAY: [{ accountType: 'LIABILITY', sign: 1 }],
+    EQUITY_OFFSET: [{ accountType: 'EQUITY', sign: -1 }],
+  },
+  REVERSAL: {
+    SOURCE: [{ accountType: 'ASSET', sign: 1 }],
+    SINK: [
+      { accountType: 'ASSET', sign: -1 },
+      { accountType: 'EXPENSE', sign: -1 },
+    ],
+    OFFSET: [
+      { accountType: 'INCOME', sign: 1 },
+      { accountType: 'EXPENSE', sign: 1 },
+      { accountType: 'EQUITY', sign: -1 },
+    ],
+    LIABILITY_DRAW: [{ accountType: 'LIABILITY', sign: 1 }],
+    LIABILITY_REPAY: [{ accountType: 'LIABILITY', sign: -1 }],
+    EQUITY_OFFSET: [{ accountType: 'EQUITY', sign: 1 }],
+  },
+} as const;
+
+const POSTING_RULES_OK = validatePostingRules(POSTING_RULES);
 
 export function asCurrency(value: string): Currency {
   if (value !== 'USD') {
@@ -130,7 +196,7 @@ export function createLedgerState(accounts: Account[], currency: Currency): Ledg
     currency,
     accounts: accountMap,
     txns: [],
-    externalIds: new Set<string>(),
+    externalIndex: new Map<string, TxnId>(),
     balances,
   };
 }
@@ -157,8 +223,8 @@ export function createTransaction(
     if (posting.currency !== ledger.currency || posting.currency !== account.currency) {
       throw new Error(`Currency mismatch for account: ${posting.accountId}`);
     }
-    if (!isAllowedSign(account.type, posting.amount, input.type)) {
-      throw new Error(`Disallowed sign for ${posting.accountId} in ${input.type}`);
+    if (!isAllowedPosting(account.type, posting.amount, input.type, posting.role)) {
+      throw new Error(`Disallowed posting for ${posting.accountId} in ${input.type}`);
     }
   }
   return {
@@ -190,32 +256,31 @@ export function reverseTransaction(
 }
 
 export function applyLedgerEvent(state: LedgerState, event: LedgerEvent): LedgerState {
-  if (event.type === 'DEDUP') {
-    if (state.externalIds.has(event.externalId)) {
-      return state;
-    }
-    const externalIds = new Set(state.externalIds);
-    externalIds.add(event.externalId);
-    return { ...state, externalIds };
-  }
-
   if (event.type === 'RECOMPUTE') {
     return { ...state, balances: computeBalances(state.accounts, state.txns) };
   }
 
   const externalId = event.txn.externalId;
-  if (externalId !== null && state.externalIds.has(externalId)) {
-    return state;
+  if (externalId !== null) {
+    const existing = state.externalIndex.get(externalId);
+    if (existing !== undefined) {
+      if (existing === event.txn.id) {
+        return state;
+      }
+      throw new Error(`External id already mapped: ${externalId}`);
+    }
   }
   const txns = [...state.txns, event.txn];
   const balances = applyTxnToBalances(state.balances, event.txn);
-  const externalIds =
-    externalId === null ? state.externalIds : new Set(state.externalIds).add(externalId);
+  const externalIndex = new Map(state.externalIndex);
+  if (externalId !== null) {
+    externalIndex.set(externalId, event.txn.id);
+  }
   return {
     ...state,
     txns,
     balances,
-    externalIds,
+    externalIndex,
   };
 }
 
@@ -275,7 +340,7 @@ export function validateLedgerState(state: LedgerState): LedgerViolation[] {
       }
       const account = state.accounts.get(posting.accountId);
       if (account !== undefined) {
-        if (!isAllowedSign(account.type, posting.amount, txn.type)) {
+        if (!isAllowedPosting(account.type, posting.amount, txn.type, posting.role)) {
           violations.push({
             invariant: 'I5',
             message: `Sign not allowed for ${posting.accountId} in ${txn.type}`,
@@ -303,7 +368,47 @@ export function validateLedgerState(state: LedgerState): LedgerViolation[] {
     }
   }
 
+  for (const [externalId, txnId] of state.externalIndex.entries()) {
+    const txn = state.txns.find((candidate) => candidate.id === txnId);
+    if (txn === undefined) {
+      violations.push({
+        invariant: 'I9',
+        message: `External id ${externalId} maps to missing txn ${txnId}`,
+      });
+      continue;
+    }
+    if (txn.externalId !== externalId) {
+      violations.push({
+        invariant: 'I9',
+        message: `External id ${externalId} mismatched on txn ${txnId}`,
+      });
+    }
+  }
+
+  for (const txn of state.txns) {
+    if (txn.externalId === null) continue;
+    const mapped = state.externalIndex.get(txn.externalId);
+    if (mapped !== txn.id) {
+      violations.push({
+        invariant: 'I9',
+        message: `External id ${txn.externalId} missing for txn ${txn.id}`,
+      });
+    }
+  }
+
   return violations;
+}
+
+export function getTxnByExternalId(state: LedgerState, externalId: string): Transaction {
+  const txnId = state.externalIndex.get(externalId);
+  if (txnId === undefined) {
+    throw new Error(`Unknown external id: ${externalId}`);
+  }
+  const txn = state.txns.find((candidate) => candidate.id === txnId);
+  if (txn === undefined) {
+    throw new Error(`Missing txn for external id ${externalId}`);
+  }
+  return txn;
 }
 
 function applyTxnToBalances(
@@ -318,13 +423,37 @@ function applyTxnToBalances(
   return next;
 }
 
-function isAllowedSign(accountType: AccountType, amount: number, txnType: TxnType): boolean {
+function isAllowedPosting(
+  accountType: AccountType,
+  amount: number,
+  txnType: TxnType,
+  role: PostingRole
+): boolean {
   if (amount === 0) return false;
-  if (accountType === 'ASSET' || accountType === 'LIABILITY') {
-    return true;
-  }
-  const sign = Math.sign(amount);
-  const expected = BASE_SIGN[accountType];
-  if (sign === expected) return true;
-  return REVERSAL_TYPES.has(txnType);
+  if (POSTING_RULES_OK === false) return false;
+  const rules = POSTING_RULES[txnType][role];
+  if (rules.length === 0) return false;
+  const sign = amount > 0 ? 1 : -1;
+  return rules.some((rule) => rule.accountType === accountType && rule.sign === sign);
 }
+
+function validatePostingRules(rules: PostingRuleMatrix): boolean {
+  for (const [txnType, roleMap] of Object.entries(rules)) {
+    for (const [role, entries] of Object.entries(roleMap)) {
+      const seen = new Set<string>();
+      for (const entry of entries) {
+        const key = `${entry.accountType}:${entry.sign}`;
+        if (seen.has(key)) {
+          throw new Error(`Duplicate posting rule for ${txnType}/${role}: ${key}`);
+        }
+        if (entry.sign !== 1 && entry.sign !== -1) {
+          throw new Error(`Invalid sign for ${txnType}/${role}: ${entry.sign}`);
+        }
+        seen.add(key);
+      }
+    }
+  }
+  return true;
+}
+
+void POSTING_RULES_OK;

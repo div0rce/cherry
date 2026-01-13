@@ -4,6 +4,7 @@ import {
   balanceAt,
   computeBalances,
   createLedgerState,
+  getTxnByExternalId,
   replayLedgerEvents,
   validateLedgerState,
   type AccountId,
@@ -55,6 +56,12 @@ function serializeBalances(state: LedgerState): Array<{ accountId: string; balan
     .map(([accountId, balance]) => ({ accountId, balance }));
 }
 
+function serializeExternalIndex(state: LedgerState): Array<{ externalId: string; txnId: string }> {
+  return [...state.externalIndex.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([externalId, txnId]) => ({ externalId, txnId }));
+}
+
 function sumPostingsAt(txns: LedgerState['txns'], accountId: AccountId, atMs: number): number {
   let total = 0;
   for (const txn of txns) {
@@ -81,6 +88,35 @@ function assertTimeBalances(state: LedgerState, seed: number): void {
     const expected = sumPostingsAt(state.txns, accountId, atMs);
     const actual = balanceAt(state.txns, accountId, atMs);
     assert.equal(actual, expected, `balanceAt mismatch for ${accountId} at ${atMs}`);
+  }
+}
+
+function assertSignFlipViolations(state: LedgerState, seed: number): void {
+  if (state.txns.length === 0) return;
+  const rng = new SeededRng(seed ^ 0x85ebca6b);
+  for (let i = 0; i < Math.min(10, state.txns.length); i += 1) {
+    const txn = rng.pick(state.txns);
+    if (txn.postings.length === 0) continue;
+    const flippedPostings = txn.postings.map((posting) => ({
+      ...posting,
+      amount: (posting.amount * -1) as typeof posting.amount,
+    }));
+    const mutated = { ...txn, postings: flippedPostings };
+    const externalIndex = new Map<string, typeof txn.id>();
+    if (mutated.externalId !== null) {
+      externalIndex.set(mutated.externalId, mutated.id);
+    }
+    const violations = validateLedgerState({
+      ...state,
+      txns: [mutated],
+      balances: computeBalances(state.accounts, [mutated]),
+      externalIndex,
+    });
+    assert.equal(
+      violations.length > 0,
+      true,
+      `expected sign flip violations for seed=${seed}`
+    );
   }
 }
 
@@ -136,6 +172,17 @@ for (const seed of seeds) {
     `replay mismatch for seed=${seed}`
   );
 
+  assert.deepEqual(
+    serializeExternalIndex(replayed),
+    serializeExternalIndex(state),
+    `external index mismatch for seed=${seed}`
+  );
+
+  for (const [externalId, txnId] of state.externalIndex.entries()) {
+    const txn = getTxnByExternalId(state, externalId);
+    assert.equal(txn.id, txnId, `external lookup mismatch for seed=${seed}`);
+  }
+
   let idempotent = state;
   for (const event of run.events) {
     idempotent = applyLedgerEvent(idempotent, event);
@@ -147,6 +194,7 @@ for (const seed of seeds) {
   );
 
   assertTimeBalances(state, seed);
+  assertSignFlipViolations(state, seed);
 }
 
 console.log('accounting property: ok');

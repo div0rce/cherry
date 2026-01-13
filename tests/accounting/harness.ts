@@ -13,6 +13,7 @@ import {
   type Currency,
   type LedgerEvent,
   type LedgerState,
+  type PostingRole,
   type Transaction,
 } from '../../lib/accounting/ledger';
 
@@ -96,7 +97,6 @@ export function generateEventStream(seed: number, length: number): GeneratedStre
   const { accounts, currency, ids } = buildDefaultAccounts();
   let state = createLedgerState(accounts, currency);
   const events: LedgerEvent[] = [];
-  const externalIds: string[] = [];
   let txnCounter = 0;
   let externalCounter = 0;
   let nowMs = 1_700_000_000_000 + seed;
@@ -105,11 +105,8 @@ export function generateEventStream(seed: number, length: number): GeneratedStre
     asTxnId(`${label}-${seed}-${txnCounter++}`);
   const nextExternalId = (label: string): string => {
     const id = `${label}-${seed}-${externalCounter++}`;
-    externalIds.push(id);
     return id;
   };
-  const pickExternalId = (label: string): string =>
-    externalIds.length > 0 && rng.bool(0.2) ? rng.pick(externalIds) : nextExternalId(label);
 
   const pushEvent = (event: LedgerEvent): void => {
     state = applyLedgerEvent(state, event);
@@ -122,8 +119,18 @@ export function generateEventStream(seed: number, length: number): GeneratedStre
       id: nextTxnId('opening'),
       type: 'OPENING',
       postings: balancePostings([
-        { accountId: ids.cash, amount: asNonZeroAmount(openingAmount), currency },
-        { accountId: ids.equity, amount: asNonZeroAmount(-openingAmount), currency },
+        {
+          accountId: ids.cash,
+          amount: asNonZeroAmount(openingAmount),
+          currency,
+          role: 'SINK',
+        },
+        {
+          accountId: ids.equity,
+          amount: asNonZeroAmount(-openingAmount),
+          currency,
+          role: 'EQUITY_OFFSET',
+        },
       ]),
       effectiveAtMs: nowMs,
       externalId: nextExternalId('opening'),
@@ -136,12 +143,14 @@ export function generateEventStream(seed: number, length: number): GeneratedStre
     nowMs += rng.int(1, 10_000);
     const roll = rng.int(0, 99);
 
-    if (roll < 5) {
+    if (roll < 6) {
       pushEvent({ type: 'RECOMPUTE' });
       continue;
     }
     if (roll < 12) {
-      pushEvent({ type: 'DEDUP', externalId: pickExternalId('dedup') });
+      if (events.length > 0) {
+        pushEvent(rng.pick(events));
+      }
       continue;
     }
 
@@ -158,7 +167,7 @@ export function generateEventStream(seed: number, length: number): GeneratedStre
                 ? 'ADJUSTMENT'
                 : 'REVERSAL';
 
-    const externalId = pickExternalId(eventType.toLowerCase());
+    const externalId = nextExternalId(eventType.toLowerCase());
     let txn: Transaction | null = null;
 
     if (eventType === 'SPEND') {
@@ -199,15 +208,17 @@ export function snapshotLedger(state: LedgerState): {
     type: string;
     effectiveAtMs: number;
     externalId: string | null;
-    postings: Array<{ accountId: string; amount: number; currency: string }>;
+    postings: Array<{ accountId: string; amount: number; currency: string; role: PostingRole }>;
   }>;
   balances: Array<{ accountId: string; balance: number }>;
-  externalIds: string[];
+  externalIndex: Array<{ externalId: string; txnId: string }>;
 } {
   const balances = [...state.balances.entries()]
     .sort(([a], [b]) => compareStrings(a, b))
     .map(([accountId, balance]) => ({ accountId, balance }));
-  const externalIds = [...state.externalIds].sort(compareStrings);
+  const externalIndex = [...state.externalIndex.entries()]
+    .sort(([a], [b]) => compareStrings(a, b))
+    .map(([externalId, txnId]) => ({ externalId, txnId }));
   const txns = state.txns.map((txn) => ({
     id: txn.id,
     type: txn.type,
@@ -217,13 +228,14 @@ export function snapshotLedger(state: LedgerState): {
       accountId: posting.accountId,
       amount: posting.amount,
       currency: posting.currency,
+      role: posting.role,
     })),
   }));
   return {
     currency: state.currency,
     txns,
     balances,
-    externalIds,
+    externalIndex,
   };
 }
 
@@ -244,8 +256,18 @@ function buildSpendTxn(
       id: txnId,
       type: 'SPEND',
       postings: balancePostings([
-        { accountId: expense, amount: asNonZeroAmount(amount), currency: state.currency },
-        { accountId: funding, amount: asNonZeroAmount(-amount), currency: state.currency },
+        {
+          accountId: expense,
+          amount: asNonZeroAmount(amount),
+          currency: state.currency,
+          role: 'SINK',
+        },
+        {
+          accountId: funding,
+          amount: asNonZeroAmount(-amount),
+          currency: state.currency,
+          role: funding === ids.credit ? 'LIABILITY_DRAW' : 'SOURCE',
+        },
       ]),
       effectiveAtMs: nowMs,
       externalId,
@@ -268,8 +290,18 @@ function buildIncomeTxn(
       id: txnId,
       type: 'INCOME',
       postings: balancePostings([
-        { accountId: ids.cash, amount: asNonZeroAmount(amount), currency: state.currency },
-        { accountId: ids.income, amount: asNonZeroAmount(-amount), currency: state.currency },
+        {
+          accountId: ids.cash,
+          amount: asNonZeroAmount(amount),
+          currency: state.currency,
+          role: 'SINK',
+        },
+        {
+          accountId: ids.income,
+          amount: asNonZeroAmount(-amount),
+          currency: state.currency,
+          role: 'OFFSET',
+        },
       ]),
       effectiveAtMs: nowMs,
       externalId,
@@ -298,8 +330,18 @@ function buildTransferTxn(
         id: txnId,
         type: 'TRANSFER',
         postings: balancePostings([
-          { accountId: ids.reserved, amount: asNonZeroAmount(amount), currency: state.currency },
-          { accountId: ids.cash, amount: asNonZeroAmount(-amount), currency: state.currency },
+          {
+            accountId: ids.reserved,
+            amount: asNonZeroAmount(amount),
+            currency: state.currency,
+            role: 'SINK',
+          },
+          {
+            accountId: ids.cash,
+            amount: asNonZeroAmount(-amount),
+            currency: state.currency,
+            role: 'SOURCE',
+          },
         ]),
         effectiveAtMs: nowMs,
         externalId,
@@ -315,8 +357,18 @@ function buildTransferTxn(
         id: txnId,
         type: 'TRANSFER',
         postings: balancePostings([
-          { accountId: ids.cash, amount: asNonZeroAmount(amount), currency: state.currency },
-          { accountId: ids.reserved, amount: asNonZeroAmount(-amount), currency: state.currency },
+          {
+            accountId: ids.cash,
+            amount: asNonZeroAmount(amount),
+            currency: state.currency,
+            role: 'SINK',
+          },
+          {
+            accountId: ids.reserved,
+            amount: asNonZeroAmount(-amount),
+            currency: state.currency,
+            role: 'SOURCE',
+          },
         ]),
         effectiveAtMs: nowMs,
         externalId,
@@ -332,8 +384,18 @@ function buildTransferTxn(
         id: txnId,
         type: 'TRANSFER',
         postings: balancePostings([
-          { accountId: ids.reserved, amount: asNonZeroAmount(amount), currency: state.currency },
-          { accountId: ids.cash, amount: asNonZeroAmount(-amount), currency: state.currency },
+          {
+            accountId: ids.reserved,
+            amount: asNonZeroAmount(amount),
+            currency: state.currency,
+            role: 'SINK',
+          },
+          {
+            accountId: ids.cash,
+            amount: asNonZeroAmount(-amount),
+            currency: state.currency,
+            role: 'SOURCE',
+          },
         ]),
         effectiveAtMs: nowMs,
         externalId,
@@ -360,8 +422,18 @@ function buildRefundTxn(
       id: txnId,
       type: 'REFUND',
       postings: balancePostings([
-        { accountId: ids.cash, amount: asNonZeroAmount(amount), currency: state.currency },
-        { accountId: expense, amount: asNonZeroAmount(-amount), currency: state.currency },
+        {
+          accountId: ids.cash,
+          amount: asNonZeroAmount(amount),
+          currency: state.currency,
+          role: 'SINK',
+        },
+        {
+          accountId: expense,
+          amount: asNonZeroAmount(-amount),
+          currency: state.currency,
+          role: 'OFFSET',
+        },
       ]),
       effectiveAtMs: nowMs,
       externalId,
@@ -387,8 +459,18 @@ function buildAdjustmentTxn(
       id: txnId,
       type: 'ADJUSTMENT',
       postings: balancePostings([
-        { accountId: ids.cash, amount: asNonZeroAmount(cashAmount), currency: state.currency },
-        { accountId: ids.equity, amount: asNonZeroAmount(-cashAmount), currency: state.currency },
+        {
+          accountId: ids.cash,
+          amount: asNonZeroAmount(cashAmount),
+          currency: state.currency,
+          role: cashAmount > 0 ? 'SINK' : 'SOURCE',
+        },
+        {
+          accountId: ids.equity,
+          amount: asNonZeroAmount(-cashAmount),
+          currency: state.currency,
+          role: cashAmount > 0 ? 'EQUITY_OFFSET' : 'OFFSET',
+        },
       ]),
       effectiveAtMs: nowMs,
       externalId,
