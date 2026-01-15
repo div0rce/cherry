@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const purchaseFormPath = path.resolve(
   __dirname,
-  '../components/autopilot/AutopilotPurchaseForm.tsx'
+  '../components/autopilot/AutopilotPurchaseForm.client.tsx'
 );
 
 /**

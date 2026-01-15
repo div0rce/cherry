@@ -12,7 +12,7 @@ import type {
   AutopilotTimingOption,
 } from '../../lib/autopilot/uiSpec';
 import { asAppError } from '../../lib/errors';
-import { AutopilotPurchaseForm } from './AutopilotPurchaseForm';
+import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.client';
 import { AutopilotDecisionPanel } from './AutopilotDecisionPanel';
 
 export type AutopilotPurchaseSummary = {
