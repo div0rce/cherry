@@ -35,4 +35,4 @@ function testMapTerminalEvent() {
 }
 
 testMapTerminalEvent();
-console.log('vine order mapping: ok');
+console.warn('vine order mapping: ok');

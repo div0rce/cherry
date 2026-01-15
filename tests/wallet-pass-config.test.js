@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url);
 const { getWalletPassConfigStatus } = require('../lib/wallet/config');
 const { assertServerConfig } = require('../lib/config/server');
 
-console.log('wallet-pass-config: running tests');
+console.warn('wallet-pass-config: running tests');
 
 const baseConfig = {
   appBaseUrl: 'http://localhost:3000',
@@ -61,4 +61,4 @@ function buildConfig(walletOverrides) {
   if (!status.ok) throw new Error(`expected ok, got ${status.reason}`);
 }
 
-console.log('wallet-pass-config: ok');
+console.warn('wallet-pass-config: ok');

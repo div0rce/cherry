@@ -72,7 +72,7 @@ async function testUsesRemainingNotLimit() {
 
   const result = await solveDecision(state, ctx, { includeLegacyDecision: false });
   // TEMP debug to understand actual action types in case mapping fails
-  // console.log(
+  // console.warn(
   //   'engine-bucket-remaining decisions:',
   //   JSON.stringify(result.decisions.map((d) => d.action.type), null, 2)
   // );

@@ -57,4 +57,4 @@ function makeBucket(overrides = {}) {
   assert(rolled.periodEnd > now);
 }
 
-console.log('buckets-periods: ok');
+console.warn('buckets-periods: ok');

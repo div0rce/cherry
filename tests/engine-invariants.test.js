@@ -73,4 +73,4 @@ function run() {
 }
 
 run();
-console.log('engine invariants: ok');
+console.warn('engine invariants: ok');
