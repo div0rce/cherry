@@ -1,3 +1,22 @@
+// tsconfig.json
 {
-  "extends": "./tsconfig.app.json"
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "app",
+    "components",
+    "lib",
+    "scripts",
+    "tests",
+    "types",
+    "prisma"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "tests/fixtures/**"
+  ]
 }

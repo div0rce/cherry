@@ -2,39 +2,12 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowJs": false,
-    "allowImportingTsExtensions": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "noEmit": true
   },
   "include": [
-    "app/**/*.ts",
-    "app/**/*.tsx",
-    "components/**/*.ts",
-    "components/**/*.tsx",
-    "lib/**/*.ts",
-    "lib/**/*.tsx",
-    "tests/**/*.ts",
-    "tests/**/*.tsx",
-    "types/compat/**/*.d.ts",
-    "types/compat/**/*.d.cts",
-    "types/jsx-global.d.ts",
-    "middleware.ts",
-    "next-env.d.ts",
-    "next.config.ts",
-    "tailwind.config.ts"
+    "app",
+    "components",
+    "lib"
   ],
   "exclude": [
     "node_modules",

@@ -1,5 +1,7 @@
+// tsconfig.base.json
 {
   "compilerOptions": {
+    // --- Language correctness ---
     "strict": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
@@ -15,10 +17,19 @@
     "noPropertyAccessFromIndexSignature": true,
     "exactOptionalPropertyTypes": true,
     "useUnknownInCatchVariables": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "verbatimModuleSyntax": true,
+
+    // --- Runtime / emit model ---
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    // --- Interop (NON-NEGOTIABLE) ---
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
     "resolveJsonModule": true,
+
+    // --- Hygiene ---
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": false
   }

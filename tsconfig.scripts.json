@@ -1,21 +1,14 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "verbatimModuleSyntax": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "jsx": "react-jsx",
-    "esModuleInterop": true,
-    "noEmit": true,
-    "skipLibCheck": true,
-    "types": ["node"]
+    "verbatimModuleSyntax": true,
+    "types": ["node"],
+    "noEmit": true
   },
   "include": [
-    "scripts/**/*.ts",
-    "scripts/**/*.mts",
-    "scripts/**/*.cts",
-    "prisma/scripts/**/*.ts"
+    "scripts",
+    "prisma/scripts"
   ]
 }

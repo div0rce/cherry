@@ -24,7 +24,7 @@
     "types/compat/**/*.d.cts",
     "types/jsx-global.d.ts",
     "data/**/*.json",
-    "middleware.ts",
+    "proxy.ts",
     "next-env.d.ts",
     "next.config.ts",
     "tailwind.config.ts"
