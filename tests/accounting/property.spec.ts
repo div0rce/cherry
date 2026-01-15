@@ -47,7 +47,9 @@ function resolveSeeds(): number[] {
   const windowSize = Math.min(3, rotatingSeeds.length);
   const rotated: number[] = [];
   for (let i = 0; i < windowSize; i += 1) {
-    rotated.push(rotatingSeeds[(rotation + i) % rotatingSeeds.length]);
+    const index = (rotation + i) % rotatingSeeds.length;
+    const seed = requireSeed(rotatingSeeds, index);
+    rotated.push(seed);
   }
   return [fixedSeed, ...rotated];
 }
@@ -62,6 +64,14 @@ function serializeExternalIndex(state: LedgerState): Array<{ externalId: string;
   return [...state.externalIndex.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([externalId, txnId]) => ({ externalId, txnId }));
+}
+
+function requireSeed(seeds: number[], index: number): number {
+  const value = seeds[index];
+  if (value === undefined) {
+    throw new Error(`Missing seed at index ${index}`);
+  }
+  return value;
 }
 
 function sumPostingsAt(txns: LedgerState['txns'], accountId: AccountId, atMs: number): number {
@@ -101,19 +111,10 @@ function assertSignFlipViolations(state: LedgerState, seed: number): void {
     if (txn.postings.length === 0) continue;
     const flippedPostings = txn.postings.map((posting) => ({
       ...posting,
-      amount: (posting.amount * -1) as typeof posting.amount,
+      amount: asNonZeroAmount(posting.amount * -1),
     }));
     const mutated = { ...txn, postings: flippedPostings };
-    const externalIndex = new Map<string, typeof txn.id>();
-    if (mutated.externalId !== null) {
-      externalIndex.set(mutated.externalId, mutated.id);
-    }
-    const violations = validateLedgerState({
-      ...state,
-      txns: [mutated],
-      balances: computeBalances(state.accounts, [mutated]),
-      externalIndex,
-    });
+    const violations = validateTransactionLike(state, mutated);
     assert.equal(
       violations.length > 0,
       true,
@@ -199,4 +200,4 @@ for (const seed of seeds) {
   assertSignFlipViolations(state, seed);
 }
 
-console.log('accounting property: ok');
+console.warn('accounting property: ok');

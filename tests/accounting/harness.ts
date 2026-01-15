@@ -42,7 +42,7 @@ export class SeededRng {
     return this.next() < probability;
   }
 
-  pick<T>(items: T[]): T {
+  pick<T>(items: readonly T[]): T {
     const idx = this.int(0, Math.max(0, items.length - 1));
     return items[idx] as T;
   }
@@ -54,7 +54,7 @@ type AccountIds = {
   credit: AccountId;
   income: AccountId;
   equity: AccountId;
-  expenses: AccountId[];
+  expenses: readonly [AccountId, AccountId];
 };
 
 const DEFAULT_CURRENCY = asCurrency('USD');
@@ -64,7 +64,7 @@ const IDS: AccountIds = {
   credit: asAccountId('LIABILITY:CREDIT_CARD'),
   income: asAccountId('INCOME:PRIMARY'),
   equity: asAccountId('EQUITY:OPENING'),
-  expenses: [asAccountId('EXPENSE:DINING'), asAccountId('EXPENSE:GROCERIES')],
+  expenses: [asAccountId('EXPENSE:DINING'), asAccountId('EXPENSE:GROCERIES')] as const,
 };
 
 const DEFAULT_ACCOUNTS: Account[] = [
@@ -469,7 +469,7 @@ function buildAdjustmentTxn(
           accountId: ids.equity,
           amount: asNonZeroAmount(-cashAmount),
           currency: state.currency,
-          role: cashAmount > 0 ? 'EQUITY_OFFSET' : 'OFFSET',
+          role: 'EQUITY_OFFSET',
         },
       ]),
       effectiveAtMs: nowMs,

@@ -18,4 +18,4 @@ for (const event of run.events) {
   state = next;
 }
 
-console.log('accounting no-mutation: ok');
+console.warn('accounting no-mutation: ok');

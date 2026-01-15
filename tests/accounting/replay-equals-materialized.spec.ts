@@ -19,4 +19,4 @@ for (const seed of seeds) {
   );
 }
 
-console.log('accounting replay: ok');
+console.warn('accounting replay: ok');

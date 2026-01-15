@@ -12,11 +12,15 @@ import {
   asTxnId,
   balancePostings,
   createTransaction,
+  validateTransactionLike,
+  type PostingRole,
   type Transaction,
 } from '../lib/accounting/ledger';
 
-function buildState(overrides: Partial<Parameters<typeof buildAccountingSnapshot>[0]> = {}) {
-  return {
+function buildState(
+  overrides: Partial<Parameters<typeof buildAccountingSnapshot>[0]> = {}
+): EngineState {
+  const base: EngineState = {
     userId: 'user-proof',
     cards: [],
     buckets: [],
@@ -25,8 +29,8 @@ function buildState(overrides: Partial<Parameters<typeof buildAccountingSnapshot
     world: {},
     cash: { liquidCents: 0, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
     preferences: { profileId: 'BALANCED' },
-    ...overrides,
   };
+  return { ...base, ...overrides };
 }
 
 function buildContext(overrides: Partial<Parameters<typeof buildEngineContext>[0]> = {}) {
@@ -98,9 +102,9 @@ async function testUnbalancedSuggestionRejected(): Promise<void> {
         : posting
     ),
   };
-  const proof = proveHypotheticalDecision(snapshot.ledger, [mutated as Transaction]);
+  const proof = validateTransactionLike(snapshot.ledger, mutated);
   assert.ok(
-    proof.proof.some((entry) => entry.invariant === 'I1'),
+    proof.some((entry) => entry.invariant === 'I1'),
     'expected unbalanced transaction to fail proof'
   );
 }
@@ -110,15 +114,16 @@ async function testSignAbuseRejected(): Promise<void> {
   const ctx = buildContext({ amountCents: 1200 });
   const snapshot = buildAccountingSnapshot(state, ctx.nowMs);
   const spend = buildSpendTxn(snapshot, 1200, ctx.nowMs);
+  const offsetRole: PostingRole = 'OFFSET';
   const mutated = {
     ...spend,
     postings: spend.postings.map((posting, index) =>
-      index === 0 ? { ...posting, role: 'OFFSET' } : posting
+      index === 0 ? { ...posting, role: offsetRole } : posting
     ),
   };
-  const proof = proveHypotheticalDecision(snapshot.ledger, [mutated as Transaction]);
+  const proof = validateTransactionLike(snapshot.ledger, mutated);
   assert.ok(
-    proof.proof.some((entry) => entry.invariant === 'I5'),
+    proof.some((entry) => entry.invariant === 'I5'),
     'expected sign/role abuse to fail proof'
   );
 }
@@ -147,4 +152,4 @@ await testUnbalancedSuggestionRejected();
 await testSignAbuseRejected();
 await testFiltersUnsafeDecisions();
 
-console.log('engine accounting proof: ok');
+console.warn('engine accounting proof: ok');
