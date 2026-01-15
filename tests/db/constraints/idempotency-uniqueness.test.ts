@@ -43,6 +43,7 @@ async function run(): Promise<void> {
     if (error === null) {
       throw new Error('Expected unique constraint violation on IdempotencyKey');
     }
+    assertPrismaError(error);
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(error.code, 'P2002', 'expected unique constraint violation');
@@ -80,6 +81,7 @@ async function run(): Promise<void> {
 
     if (failure?.status === 'rejected') {
       const failureError: unknown = failure.reason;
+      assertPrismaError(failureError);
       if (failureError instanceof Prisma.PrismaClientKnownRequestError) {
         assert.equal(failureError.code, 'P2002', 'expected unique constraint violation');
       } else {

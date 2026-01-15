@@ -28,12 +28,13 @@ async function run(): Promise<void> {
     if (nullError === null) {
       throw new Error('Expected null constraint violation on CherryPointLedger.points');
     }
+    assertPrismaError(nullError);
 
     if (nullError instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(nullError.code, 'P2010', 'expected raw query failure');
-      const meta = nullError.meta as { code?: string } | undefined;
-      if (meta?.code !== undefined) {
-        assert.equal(meta.code, '23502', 'expected NOT NULL constraint violation');
+      const code = getPrismaMetaString(nullError, 'code');
+      if (code !== undefined) {
+        assert.equal(code, '23502', 'expected NOT NULL constraint violation');
       } else {
         assert.ok(
           String(nullError).includes('23502') || String(nullError).includes('null value'),
@@ -65,12 +66,17 @@ async function run(): Promise<void> {
     if (negativeError === null) {
       throw new Error('Expected check constraint violation on CherryPointLedger.points');
     }
+    assertPrismaError(negativeError);
 
     if (negativeError instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(negativeError.code, 'P2004', 'expected check constraint violation');
-      const meta = negativeError.meta as { constraint?: string } | undefined;
-      if (meta?.constraint !== undefined) {
-        assert.equal(meta.constraint, 'points_nonnegative', 'expected points_nonnegative constraint');
+      const constraint = getPrismaMetaString(negativeError, 'constraint');
+      if (constraint !== undefined) {
+        assert.equal(
+          constraint,
+          'points_nonnegative',
+          'expected points_nonnegative constraint'
+        );
       }
     } else if (negativeError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(

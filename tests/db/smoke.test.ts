@@ -22,6 +22,7 @@ async function run(): Promise<void> {
     if (error === null) {
       throw new Error('Expected unique constraint violation on User.email');
     }
+    assertPrismaError(error);
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(error.code, 'P2002', 'expected unique constraint violation');

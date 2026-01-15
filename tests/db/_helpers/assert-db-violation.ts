@@ -9,14 +9,8 @@ const SQLSTATE_BY_KIND: Record<DbViolationKind, string> = {
   not_null: '23502',
 };
 
-function extractMessage(error: unknown): string {
-  if (error !== null && typeof error === 'object' && 'message' in error) {
-    const message = (error as { message?: unknown }).message;
-    if (message !== undefined) {
-      return String(message);
-    }
-  }
-  return String(error);
+function extractMessage(error: Error): string {
+  return error.message;
 }
 
 function matchesConstraint(message: string, constraints: readonly string[]): boolean {
@@ -27,7 +21,8 @@ export function assertDbViolation(
   error: unknown,
   kind: DbViolationKind,
   constraints: readonly string[] = []
-): void {
+): asserts error is Error {
+  assert.ok(error instanceof Error, 'expected error');
   const message = extractMessage(error);
   const sqlState = SQLSTATE_BY_KIND[kind];
   const hasSqlState = message.includes(sqlState);
@@ -41,27 +36,27 @@ export function assertDbViolation(
 export function assertUniqueViolation(
   error: unknown,
   constraints: readonly string[] = []
-): void {
+): asserts error is Error {
   assertDbViolation(error, 'unique', constraints);
 }
 
 export function assertForeignKeyViolation(
   error: unknown,
   constraints: readonly string[] = []
-): void {
+): asserts error is Error {
   assertDbViolation(error, 'foreign_key', constraints);
 }
 
 export function assertCheckViolation(
   error: unknown,
   constraints: readonly string[] = []
-): void {
+): asserts error is Error {
   assertDbViolation(error, 'check', constraints);
 }
 
 export function assertNotNullViolation(
   error: unknown,
   constraints: readonly string[] = []
-): void {
+): asserts error is Error {
   assertDbViolation(error, 'not_null', constraints);
 }

@@ -55,7 +55,6 @@ async function cleanup(userId: string | null): Promise<void> {
 
 async function run(): Promise<void> {
   let userId: string | null = null;
-  let transactionId: string | null = null;
 
   try {
     await prisma.user.deleteMany({ where: { email: EMAIL } });
@@ -71,8 +70,6 @@ async function run(): Promise<void> {
         externalId: 'dup-external',
       },
     });
-    transactionId = baseTxn.id;
-
     let uniqueError: unknown = null;
     try {
       await prisma.accountingTransaction.create({
@@ -91,11 +88,12 @@ async function run(): Promise<void> {
     if (uniqueError === null) {
       throw new Error('Expected unique constraint violation on accounting externalId');
     }
+    assertPrismaError(uniqueError);
     if (uniqueError instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(uniqueError.code, 'P2002', 'expected unique constraint error');
-      const meta = uniqueError.meta as { constraint?: string } | undefined;
-      if (meta?.constraint !== undefined) {
-        assert.equal(meta.constraint, UNIQUE_CONSTRAINT);
+      const constraint = getPrismaMetaString(uniqueError, 'constraint');
+      if (constraint !== undefined) {
+        assert.equal(constraint, UNIQUE_CONSTRAINT);
       }
     } else if (uniqueError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(
@@ -124,11 +122,12 @@ async function run(): Promise<void> {
     if (fkUserError === null) {
       throw new Error('Expected foreign key violation on accounting transaction user');
     }
+    assertPrismaError(fkUserError);
     if (fkUserError instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(fkUserError.code, 'P2003', 'expected foreign key violation');
-      const meta = fkUserError.meta as { field_name?: string } | undefined;
-      if (meta?.field_name !== undefined) {
-        assert.ok(meta.field_name.includes(FK_USER));
+      const fieldName = getPrismaMetaString(fkUserError, 'field_name');
+      if (fieldName !== undefined) {
+        assert.ok(fieldName.includes(FK_USER));
       }
     } else if (fkUserError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(String(fkUserError).includes(FK_USER));
@@ -155,11 +154,12 @@ async function run(): Promise<void> {
     if (fkTxnError === null) {
       throw new Error('Expected foreign key violation on accounting posting transaction');
     }
+    assertPrismaError(fkTxnError);
     if (fkTxnError instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(fkTxnError.code, 'P2003', 'expected foreign key violation');
-      const meta = fkTxnError.meta as { field_name?: string } | undefined;
-      if (meta?.field_name !== undefined) {
-        assert.ok(meta.field_name.includes(FK_TXN));
+      const fieldName = getPrismaMetaString(fkTxnError, 'field_name');
+      if (fieldName !== undefined) {
+        assert.ok(fieldName.includes(FK_TXN));
       }
     } else if (fkTxnError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(String(fkTxnError).includes(FK_TXN));
@@ -186,11 +186,12 @@ async function run(): Promise<void> {
     if (amountError === null) {
       throw new Error('Expected amount check constraint violation');
     }
+    assertPrismaError(amountError);
     if (amountError instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(amountError.code, 'P2004', 'expected check constraint violation');
-      const meta = amountError.meta as { constraint?: string } | undefined;
-      if (meta?.constraint !== undefined) {
-        assert.equal(meta.constraint, CHECK_AMOUNT);
+      const constraint = getPrismaMetaString(amountError, 'constraint');
+      if (constraint !== undefined) {
+        assert.equal(constraint, CHECK_AMOUNT);
       }
     } else if (amountError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(String(amountError).includes(CHECK_AMOUNT) || String(amountError).includes('23514'));
@@ -217,10 +218,11 @@ async function run(): Promise<void> {
     if (currencyError === null) {
       throw new Error('Expected currency check constraint violation');
     }
+    assertPrismaError(currencyError);
     if (currencyError instanceof Prisma.PrismaClientKnownRequestError) {
-      const meta = currencyError.meta as { constraint?: string } | undefined;
-      if (meta?.constraint !== undefined) {
-        assert.equal(meta.constraint, CHECK_CURRENCY);
+      const constraint = getPrismaMetaString(currencyError, 'constraint');
+      if (constraint !== undefined) {
+        assert.equal(constraint, CHECK_CURRENCY);
       }
     } else if (currencyError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(
@@ -249,10 +251,11 @@ async function run(): Promise<void> {
     if (balanceError === null) {
       throw new Error('Expected balance check constraint violation');
     }
+    assertPrismaError(balanceError);
     if (balanceError instanceof Prisma.PrismaClientKnownRequestError) {
-      const meta = balanceError.meta as { constraint?: string } | undefined;
-      if (meta?.constraint !== undefined) {
-        assert.equal(meta.constraint, CHECK_BALANCE);
+      const constraint = getPrismaMetaString(balanceError, 'constraint');
+      if (constraint !== undefined) {
+        assert.equal(constraint, CHECK_BALANCE);
       }
     } else if (balanceError instanceof Prisma.PrismaClientUnknownRequestError) {
       assert.ok(

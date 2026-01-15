@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 const EMAIL = 'db-semantics-accounting-immutability@cherry.local';
 const TXN_CONSTRAINTS = ['accounting_transaction__immutable__check'] as const;
 const POSTING_CONSTRAINTS = ['accounting_posting__immutable__check'] as const;
+type PostingRow = Awaited<ReturnType<PrismaClient['accountingPosting']['create']>>;
 
 async function cleanup(userId: string | null): Promise<void> {
   if (userId === null) {
@@ -27,7 +28,6 @@ async function cleanup(userId: string | null): Promise<void> {
 
 async function run(): Promise<void> {
   let userId: string | null = null;
-  let transactionId: string | null = null;
   let postingId: string | null = null;
 
   try {
@@ -44,9 +44,7 @@ async function run(): Promise<void> {
         externalId: 'immutability-txn',
       },
     });
-    transactionId = txn.id;
-
-    const postings = await prisma.$transaction(async (tx) => {
+    const postings = await prisma.$transaction(async (tx): Promise<PostingRow[]> => {
       const debit = await tx.accountingPosting.create({
         data: {
           transactionId: txn.id,

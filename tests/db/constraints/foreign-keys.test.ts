@@ -32,6 +32,7 @@ async function run(): Promise<void> {
     if (error === null) {
       throw new Error('Expected foreign key violation on Card.userId');
     }
+    assertPrismaError(error);
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       assert.equal(error.code, 'P2003', 'expected foreign key constraint violation');
