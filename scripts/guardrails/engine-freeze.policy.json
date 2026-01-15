@@ -1,0 +1,12 @@
+{
+  "status": "ACTIVE",
+  "lastUpdated": "2026-01-13",
+  "baseline": "98f50ef87a1d06eef49e1b049c6c43936bb93f23",
+  "contract": {
+    "ranked": true,
+    "deterministic": true,
+    "accountingSafe": true,
+    "unsafeDecisionsForbidden": true,
+    "outputType": "EngineDecisionWithAccounting[]"
+  }
+}

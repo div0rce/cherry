@@ -1,11 +1,11 @@
 Status: Draft
-Last updated: 2026-01-03
+Last updated: 2026-01-13
 
 # Engine Roadmap
 
 ## Current behavior
 - Freeze status: ACTIVE
-- There is no automated enforcement of an engine feature freeze; this is a policy note only.
+- Freeze enforcement is automated via `check:engine-freeze` against the engine-freeze policy baseline.
 
 ## Engine Freeze Policy (policy)
 Cherry is currently under an engine feature freeze.

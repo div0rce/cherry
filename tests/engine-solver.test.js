@@ -91,6 +91,22 @@ function buildStubContext(overrides = {}) {
   });
 }
 
+function assertAccountingDecisions(decisions) {
+  assert.ok(decisions.length > 0);
+  for (const decision of decisions) {
+    assert.ok(decision.accounting, 'expected accounting proof on decision');
+    assert.ok(Array.isArray(decision.accounting.proposedTxns), 'expected proposedTxns array');
+    assert.ok(Array.isArray(decision.accounting.proof), 'expected proof array');
+  }
+}
+
+function summarizeAccounting(decisions) {
+  return decisions.map((decision) => ({
+    actionId: decision.actionId,
+    accounting: decision.accounting,
+  }));
+}
+
 async function testSolveDecisionSorts() {
   const state = buildStubState();
   const ctx = buildStubContext();
@@ -178,6 +194,44 @@ async function testSafeSolveDecisionSuccess() {
   assert.equal(outcome.ok, true);
   if (outcome.ok) {
     assert.ok(outcome.decisions.length > 0);
+  }
+}
+
+async function testSafeSolveDecisionAccountingContract() {
+  const state = buildStubState();
+  const ctx = buildStubContext();
+  const outcome = await safeSolveDecisionForUser('user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+  });
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) {
+    assertAccountingDecisions(outcome.decisions);
+    const unsafe = outcome.decisions.filter((decision) => decision.accounting.proof.length > 0);
+    assert.equal(unsafe.length, 0);
+  }
+}
+
+async function testSafeSolveDecisionAccountingDeterministic() {
+  const state = buildStubState();
+  const ctx = buildStubContext();
+  const first = await safeSolveDecisionForUser('user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+  });
+  const second = await safeSolveDecisionForUser('user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+  });
+
+  assert.equal(first.ok, true);
+  assert.equal(second.ok, true);
+  if (first.ok && second.ok) {
+    assert.deepEqual(
+      summarizeAccounting(first.decisions),
+      summarizeAccounting(second.decisions)
+    );
   }
 }
 
@@ -468,6 +522,8 @@ async function run() {
   await testDeterministicOrderingForEqualScores();
   await testSolveDecisionValidation();
   await testSafeSolveDecisionSuccess();
+  await testSafeSolveDecisionAccountingContract();
+  await testSafeSolveDecisionAccountingDeterministic();
   await testSafeSolveDecisionFailure();
   testGenerateCandidatesSkipsDisabled();
   testSimulateActionUpdatesBucket();
