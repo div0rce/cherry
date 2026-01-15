@@ -1,5 +1,5 @@
-import { logError } from '../../../../../../lib/logger.js';
-import { asAppError } from '../../../../../../lib/errors.js';
+import { logError } from '../../../../../../lib/logger';
+import { asAppError } from '../../../../../../lib/errors';
 
 export function run(): void {
   try {

@@ -1,4 +1,4 @@
-import { getServerConfig } from '../../../../lib/config/store.js';
+import { getServerConfig } from '../../../../lib/config/store';
 
 export default function MissingDynamicPage(): null {
   void getServerConfig;

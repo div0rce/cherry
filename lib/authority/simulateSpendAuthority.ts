@@ -1,10 +1,10 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-import type { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '../enums.ts';
-import type { Digest } from '../adapters/digest.ts';
-import type { Logger } from '../adapters/logger.ts';
-import { assertPolicyTotal } from '../policy/assert-total.ts';
-import type { AuthorityVerdict } from '../policy/verdicts.ts';
-import { AuthorityReason } from './reasonCodes.ts';
+import type { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '../enums';
+import type { Digest } from '../adapters/digest';
+import type { Logger } from '../adapters/logger';
+import { assertPolicyTotal } from '../policy/assert-total';
+import type { AuthorityVerdict } from '../policy/verdicts';
+import { AuthorityReason } from './reasonCodes';
 import {
   authorityPureBrand,
   authorityVersion,

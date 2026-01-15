@@ -1,4 +1,4 @@
-import { getServerConfig } from '../../../../lib/config/store.js';
+import { getServerConfig } from '../../../../lib/config/store';
 
 export const dynamic = 'force-dynamic';
 

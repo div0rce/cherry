@@ -1,4 +1,4 @@
-import UserPage from '../../../../../../app/(user)/app/page.js';
+import UserPage from '../../../../../../app/(user)/app/page';
 
 export type FixtureUserPage = typeof UserPage;
 void UserPage;

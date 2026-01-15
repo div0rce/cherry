@@ -156,7 +156,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
     sessionOverride ??
     (await (async () => {
       if (getSession !== undefined) return getSession();
-      const mod = await import('../app/api/auth/[...nextauth]/route.ts');
+      const mod = await import('../app/api/auth/[...nextauth]/route');
       return getServerSession((mod as { authOptions: unknown }).authOptions as never);
     })());
 

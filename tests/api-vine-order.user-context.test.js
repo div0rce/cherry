@@ -82,7 +82,7 @@ function mockNextServer() {
   mockModule(resolved, exports);
   mockModule(resolved.replace(/\.js$/, ''), exports);
   try {
-    const alt = require.resolve('next/server.js');
+    const alt = require.resolve('next/server');
     mockModule(alt, exports);
   } catch {
     // ignore

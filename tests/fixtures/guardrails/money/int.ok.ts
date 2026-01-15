@@ -1,4 +1,4 @@
-import { cents } from '../../../../lib/money.js';
+import { cents } from '../../../../lib/money';
 
 const amount = cents(1234);
 void amount;
