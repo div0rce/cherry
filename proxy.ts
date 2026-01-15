@@ -1,11 +1,11 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { ROUTES } from './lib/routes';
+import { ROUTES } from './lib/routes.js';
 
 const DEV_PATH_REGEX = new RegExp(`^${ROUTES.dev.root}(\\/.*)?$`);
 const DEV_API_REGEX = new RegExp(`^/api${ROUTES.dev.root}(\\/.*)?$`);
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const isDevRoute = DEV_PATH_REGEX.test(pathname) || DEV_API_REGEX.test(pathname);
 

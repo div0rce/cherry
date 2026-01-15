@@ -182,7 +182,7 @@ const engineDir = path.join(root, 'lib', 'engine');
 const bucketsDir = path.join(root, 'lib', 'buckets');
 const verificationDir = path.join(root, 'lib', 'verification');
 const componentsDir = path.join(root, 'components');
-const middlewareFile = path.join(root, 'middleware.ts');
+const proxyFile = path.join(root, 'proxy.ts');
 const nextConfigFile = path.join(root, 'next.config.ts');
 
 const libStart = path.join(root, 'lib');
@@ -660,7 +660,7 @@ const aliasFiles = new Set([
   ...componentFiles,
   ...testFiles,
 ]);
-if (fs.existsSync(middlewareFile)) aliasFiles.add(middlewareFile);
+if (fs.existsSync(proxyFile)) aliasFiles.add(proxyFile);
 if (fs.existsSync(nextConfigFile)) aliasFiles.add(nextConfigFile);
 
 for (const file of aliasFiles) {

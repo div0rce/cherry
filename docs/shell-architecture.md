@@ -23,7 +23,7 @@ Cherry runs two thin shells on one headless core.
 - Access is gated by middleware; disabled in production unless `CHERRY_DEV_SHELL_ENABLED=true`.
 
 ### Enforcement
-- Middleware (`middleware.ts`) gates `/dev` and `/api/dev/*`.
+- Proxy (`proxy.ts`) gates `/dev` and `/api/dev/*`.
 - Scripts:
   - `check:dev-ui-parity` — all backend features must have a dev surface.
   - `check:shell-boundaries` — blocks `(user) ↔ (dev)` imports.

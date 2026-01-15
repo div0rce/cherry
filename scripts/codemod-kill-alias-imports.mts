@@ -10,7 +10,7 @@ const TARGET_GLOBS = [
   'app/**/*.{ts,tsx}',
   'lib/**/*.{ts,tsx}',
   'components/**/*.{ts,tsx}',
-  'middleware.ts',
+  'proxy.ts',
   'next.config.ts',
   'tests/**/*.{ts,tsx,js,mjs}',
   'scripts/**/*.{ts,tsx,mts}',
