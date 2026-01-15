@@ -222,6 +222,7 @@ model User {
   recommendationSessions      RecommendationSession[]
   autopilotCommits            AutopilotCommit[]
   cherryPointLedgerEntries    CherryPointLedger[]
+  accountingTransactions      AccountingTransaction[]
   categoryPreferences         CategoryPreference[]
   bankTransactions            BankTransaction[]
   merchantObservations        MerchantObservation[]
