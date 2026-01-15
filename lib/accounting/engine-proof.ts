@@ -103,7 +103,7 @@ export function buildAccountingSnapshot(state: EngineState, nowMs: number): Acco
             accountId: ACCOUNT_IDS.equity,
             amount: asNonZeroAmount(debtBalance),
             currency: snapshot.currency,
-            role: 'OFFSET',
+            role: 'EQUITY_OFFSET',
           },
         ]),
         effectiveAtMs: nowMs,

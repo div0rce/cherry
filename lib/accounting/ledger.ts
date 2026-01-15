@@ -44,6 +44,10 @@ export type Transaction = {
   externalId: string | null;
 };
 
+export type TransactionLike = Omit<Transaction, 'postings'> & {
+  postings: ReadonlyArray<Posting>;
+};
+
 export type LedgerState = {
   currency: Currency;
   accounts: Map<AccountId, Account>;
@@ -106,10 +110,13 @@ const POSTING_RULES: PostingRuleMatrix = {
   ADJUSTMENT: {
     SOURCE: [{ accountType: 'ASSET', sign: -1 }],
     SINK: [{ accountType: 'ASSET', sign: 1 }],
-    OFFSET: [{ accountType: 'EQUITY', sign: 1 }],
+    OFFSET: [],
     LIABILITY_DRAW: [{ accountType: 'LIABILITY', sign: -1 }],
     LIABILITY_REPAY: [{ accountType: 'LIABILITY', sign: 1 }],
-    EQUITY_OFFSET: [{ accountType: 'EQUITY', sign: -1 }],
+    EQUITY_OFFSET: [
+      { accountType: 'EQUITY', sign: -1 },
+      { accountType: 'EQUITY', sign: 1 },
+    ],
   },
   REVERSAL: {
     SOURCE: [{ accountType: 'ASSET', sign: 1 }],
@@ -324,6 +331,48 @@ export function balanceAt(txns: Transaction[], accountId: AccountId, atMs: numbe
     }
   }
   return total;
+}
+
+export function validateTransactionLike(
+  ledger: Pick<LedgerState, 'currency' | 'accounts' | 'externalIndex'>,
+  txn: TransactionLike
+): LedgerViolation[] {
+  const violations: LedgerViolation[] = [];
+  let total = 0;
+  for (const posting of txn.postings) {
+    total += posting.amount;
+    if (posting.currency !== ledger.currency) {
+      violations.push({
+        invariant: 'I7',
+        message: `Currency mismatch in txn ${txn.id}`,
+      });
+    }
+    const account = ledger.accounts.get(posting.accountId);
+    if (account !== undefined) {
+      if (!isAllowedPosting(account.type, posting.amount, txn.type, posting.role)) {
+        violations.push({
+          invariant: 'I5',
+          message: `Sign not allowed for ${posting.accountId} in ${txn.type}`,
+        });
+      }
+    }
+  }
+  if (total !== 0) {
+    violations.push({
+      invariant: 'I1',
+      message: `Unbalanced txn ${txn.id} sum=${total}`,
+    });
+  }
+  if (txn.externalId !== null) {
+    const mapped = ledger.externalIndex.get(txn.externalId);
+    if (mapped !== txn.id) {
+      violations.push({
+        invariant: 'I9',
+        message: `External id ${txn.externalId} mismatched on txn ${txn.id}`,
+      });
+    }
+  }
+  return violations;
 }
 
 export function validateLedgerState(state: LedgerState): LedgerViolation[] {
