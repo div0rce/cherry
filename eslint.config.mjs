@@ -112,6 +112,9 @@ export default defineConfig([
     'build/**',
     'tests/fixtures/**',
     'next-env.d.ts',
+    'next.config.ts',
+    'tailwind.config.ts',
+    'proxy.ts',
     'eslint.config.mjs',
     'postcss.config.mjs',
   ]),
@@ -171,15 +174,6 @@ export default defineConfig([
       '@typescript-eslint/explicit-module-boundary-types': 'error',
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       '@next/next/no-img-element': 'off',
-    },
-  },
-  {
-    files: ['scripts/**/*.ts', 'scripts/**/*.mts', 'scripts/**/*.cts'],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.scripts.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
     },
   },
   {

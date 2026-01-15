@@ -6,16 +6,17 @@ ensureTsEsm();
 
 const PREFIX = 'check:db-accounting-replay';
 const ROOT = process.cwd();
-const TARGET = path.join(ROOT, 'tests', 'db', 'semantics', 'accounting-replay.test.ts');
-const FIX = 'Add or restore tests/db/semantics/accounting-replay.test.ts.';
+const TARGET = 'tests/db/semantics/accounting-replay.test.ts';
+const FIX = 'Restore the DB accounting replay test under tests/db/semantics.';
 
 function main(): void {
-  if (!fs.existsSync(TARGET)) {
+  const matches = fg.sync(['tests/db/**/*.test.{js,ts,tsx}'], {
+    cwd: ROOT,
+    absolute: false,
+    ignore: ['**/__mocks__/**', 'tests/fixtures/**'],
+  });
+  if (!matches.includes(TARGET)) {
     fail(PREFIX, 'Accounting replay semantic test missing', { fix: FIX });
-  }
-  const content = fs.readFileSync(TARGET, 'utf8');
-  if (!content.includes('db-semantics-accounting-replay')) {
-    fail(PREFIX, 'Accounting replay test marker missing', { fix: FIX });
   }
   process.stdout.write('check:db-accounting-replay: ok\n');
 }

@@ -14,6 +14,7 @@ ensureTsEsm();
 
 
 import type {
+  AuthorityDecision,
   AuthoritySnapshot,
   DecisionEventWriter,
   SimulateSpendParams,
@@ -70,18 +71,18 @@ async function main(): Promise<void> {
     surface: 'simulate',
   };
 
-  const first = await simulateSpendAuthorityFromSnapshot(baseParams, {
+  const first = (await simulateSpendAuthorityFromSnapshot(baseParams, {
     snapshot,
     nowMs: fixedNowMs,
     engineVersion,
     digest,
-  });
-  const second = await simulateSpendAuthorityFromSnapshot(baseParams, {
+  })) as AuthorityDecision;
+  const second = (await simulateSpendAuthorityFromSnapshot(baseParams, {
     snapshot,
     nowMs: fixedNowMs,
     engineVersion,
     digest,
-  });
+  })) as AuthorityDecision;
 
   assert.equal(first.inputsVersion, second.inputsVersion);
   assert.deepEqual(first, second);
@@ -90,10 +91,10 @@ async function main(): Promise<void> {
   assert.equal(first.severity, severityFromReasons);
   assert.ok(first.reasons.length >= 1);
 
-  const changed = await simulateSpendAuthorityFromSnapshot(
+  const changed = (await simulateSpendAuthorityFromSnapshot(
     { ...baseParams, amountCents: baseParams.amountCents + 123 },
     { snapshot, nowMs: fixedNowMs, engineVersion, digest }
-  );
+  )) as AuthorityDecision;
   assert.notEqual(first.inputsVersion, changed.inputsVersion);
 
   for (const cf of first.counterfactuals) {
