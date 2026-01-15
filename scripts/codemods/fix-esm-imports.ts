@@ -78,7 +78,7 @@ Promise.all([import('node:fs'), import('node:path')])
   .catch((error: unknown) => {
     return errorModulePromise
       .then((errorModule) => {
-        console.error(errorModule.asError(error));
+        console.error(errorModule.asMessage(error));
         process.exit(1);
       })
       .catch((importError: unknown) => {
