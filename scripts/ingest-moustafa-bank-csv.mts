@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
-import path from 'node:path';
+import * as crypto from 'node:crypto';
+import * as path from 'node:path';
 
 import { parseCsvDevFile } from '../lib/bank/csv-dev-provider.js';
 import { upsertBankTransactions } from '../lib/bank/ingest.js';

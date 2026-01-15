@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import path from 'node:path';
-import fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
 import fg from 'fast-glob';
 import { z } from 'zod';
 import { parseJson } from './guardrails/lib/read-json.mjs';

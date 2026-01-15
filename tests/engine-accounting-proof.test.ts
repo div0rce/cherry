@@ -1,5 +1,6 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { buildEngineContext } from '../lib/engine/context';
+import type { EngineState } from '../lib/engine/types';
 import {
   buildAccountingSnapshot,
   filterAccountingSafeDecisions,

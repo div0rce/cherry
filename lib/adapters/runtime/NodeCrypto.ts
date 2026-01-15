@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import type { Crypto } from '../contracts/Crypto';
 
 export class NodeCrypto implements Crypto {

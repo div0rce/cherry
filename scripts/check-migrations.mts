@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import fs from 'node:fs';
-import path from 'node:path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { fail } from './guardrails/lib/fail.mjs';
 
 const migrationsDir = path.join(process.cwd(), 'prisma', 'migrations');

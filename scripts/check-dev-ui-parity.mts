@@ -1,4 +1,4 @@
-import path from 'node:path';
+import * as path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';

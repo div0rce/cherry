@@ -1,7 +1,7 @@
 /* Simple Prisma client mock for test runs (no external database). */
-import fs from 'node:fs';
+import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
-import path from 'node:path';
+import * as path from 'node:path';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { fail } from '../guardrails/lib/fail.mjs';

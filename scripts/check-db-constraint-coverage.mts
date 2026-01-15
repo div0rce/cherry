@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';

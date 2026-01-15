@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 
 type DbViolationKind = 'unique' | 'foreign_key' | 'check' | 'not_null';
 

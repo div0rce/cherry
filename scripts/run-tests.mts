@@ -1,5 +1,5 @@
-import path from 'node:path';
-import process from 'node:process';
+import * as path from 'node:path';
+import * as process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';

@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { deriveStableId, assertStableId } from '../lib/identity/hash';
 
 const payload = { userId: 'user-1', amountCents: 1234, meta: { category: 'DINING' } };

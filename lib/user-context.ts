@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import { getServerSession } from 'next-auth';
 import { prisma } from './prisma';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';

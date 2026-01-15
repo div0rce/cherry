@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import * as fs from 'node:fs';
 import { z } from 'zod';
 import { asMessage } from './error.mjs';
 

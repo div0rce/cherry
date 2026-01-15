@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { applyLedgerEvent, createLedgerState, replayLedgerEvents } from '../../lib/accounting/ledger';
 import { generateEventStream, snapshotLedger } from './harness';
 

@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AutopilotMonthImpactBar } from '../components/autopilot/AutopilotMonthImpactBar';

@@ -1,11 +1,13 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import {
   applyLedgerEvent,
+  asNonZeroAmount,
   balanceAt,
   computeBalances,
   createLedgerState,
   getTxnByExternalId,
   replayLedgerEvents,
+  validateTransactionLike,
   validateLedgerState,
   type AccountId,
   type LedgerState,

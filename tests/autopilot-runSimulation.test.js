@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
-import Module from 'node:module';
+import * as assert from 'node:assert/strict';
+import * as Module from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);

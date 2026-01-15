@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import { BucketPeriod, RecommendationSource, RewardCategory } from '@prisma/client';
 import { applyInMemoryRollover } from '../buckets/periods';
 import { prisma } from '../prisma';

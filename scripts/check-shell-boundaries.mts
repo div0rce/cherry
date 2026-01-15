@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import path from 'node:path';
+import * as path from 'node:path';
 import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';

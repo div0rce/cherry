@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import type { HomeUiBundle } from '../lib/home/ui-bundle';
 import { getHomeUiBundle } from '../lib/home/ui-bundle';
 

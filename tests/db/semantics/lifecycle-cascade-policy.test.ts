@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

@@ -1,4 +1,4 @@
-import fs from 'node:fs/promises';
+import * as fs from 'node:fs/promises';
 import { parse } from 'csv-parse/sync';
 
 export type CsvDevTransaction = {

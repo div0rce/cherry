@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import prismaClient from '@prisma/client';
 import type {
   DecisionEventWriter,

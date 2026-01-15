@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import type { World } from '../../lib/adapters/world';
 import type {
   BankTxn,

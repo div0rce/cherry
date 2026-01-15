@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
+import * as assert from 'node:assert/strict';
+import * as crypto from 'node:crypto';
 import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/client';
 import {
   simulateSpendAuthorityFromSnapshot,

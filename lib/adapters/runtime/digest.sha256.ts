@@ -1,4 +1,4 @@
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import type { Digest } from '../digest';
 
 export const Sha256Digest: Digest = {

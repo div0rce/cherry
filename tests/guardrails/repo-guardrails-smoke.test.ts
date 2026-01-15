@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 
 function run(): void {

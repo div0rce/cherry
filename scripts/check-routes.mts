@@ -1,5 +1,5 @@
 import { readdirSync } from 'node:fs';
-import path from 'node:path';
+import * as path from 'node:path';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 

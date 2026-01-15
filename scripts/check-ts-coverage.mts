@@ -1,4 +1,4 @@
-import path from 'node:path';
+import * as path from 'node:path';
 import fg from 'fast-glob';
 import ts from 'typescript';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';

@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';

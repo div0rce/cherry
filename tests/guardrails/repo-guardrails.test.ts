@@ -1,6 +1,6 @@
-import assert from 'node:assert/strict';
+import * as assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import path from 'node:path';
+import * as path from 'node:path';
 
 const repoRoot = process.cwd();
 const guardrailArgs = ['run', 'ts:esm', '--', 'scripts/check-repo-guardrails.mts'];

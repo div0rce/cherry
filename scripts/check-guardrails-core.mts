@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { z } from 'zod';
 import { readTsConfig } from './lib/read-tsconfig.mjs';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
