@@ -27,6 +27,7 @@ const ACCOUNTING_INVARIANTS_PATH = `${CHECK_PATH_BASE}accounting-invariants.mts`
 const REPLAY_EQUALS_MATERIALIZED_PATH =
   `${CHECK_PATH_BASE}replay-equals-materialized.mts` as const;
 const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
+const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -77,6 +78,7 @@ export const GUARDRAILS = Object.freeze({
   'check:config': `${CHECK_PATH_BASE}config.mts`,
   'check:config-init': `${CHECK_PATH_BASE}config-init.mts`,
   'check:config-lock': `${CHECK_PATH_BASE}config-lock.mts`,
+  'check:config-snapshot': CONFIG_SNAPSHOT_PATH,
   'check:determinism': `${CHECK_PATH_BASE}determinism.mts`,
   'check:engine-prisma': `${CHECK_PATH_BASE}engine-prisma.mts`,
   'check:engine-date': `${CHECK_PATH_BASE}engine-date.mts`,

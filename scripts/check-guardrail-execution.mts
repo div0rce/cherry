@@ -56,6 +56,9 @@ const SCRIPTS_DIR = path.join(ROOT, 'scripts');
 const PATH_ALLOWLIST = new Set([
   path.join(ROOT, 'scripts', 'check-guardrail-registry.mts'),
 ]);
+const DOC_ALLOWLIST = new Set([
+  path.join(ROOT, 'docs', 'config-snapshot.md'),
+]);
 
 function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -283,6 +286,7 @@ function main(): void {
   const docFiles = listFiles(DOCS_DIR, new Set(['.md']));
 
   for (const file of [...workflowFiles, ...scriptFiles, ...docFiles]) {
+    if (DOC_ALLOWLIST.has(file)) continue;
     scanContentFile(file, violations);
   }
 

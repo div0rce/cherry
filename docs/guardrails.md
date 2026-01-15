@@ -59,6 +59,15 @@ Last updated: 2026-01-17
 - Tests may inject configs with `allowOverwrite: true, lock: false` before calling `lockServerConfig()` to mimic boundary assembly; no fallback-to-env is permitted after lock.
 - Guardrail check: `check:config-lock` asserts locking, immutability, and loader rejection.
 
+### Guardrail 44 — Config Snapshot Integrity
+
+- `tsconfig.base.json` is the sole semantic authority; all other tsconfigs are view-only, CI aggregators, or fixtures.
+- Fixture tsconfigs may diverge semantically and are excluded from enforcement.
+- NodeNext usage is quarantined to script configs only.
+- `docs/config-snapshot.md` must list every config file and match on-disk contents.
+- `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
+- Enforcement: `check:config-snapshot`.
+
 ### Authority `inputsVersion` Stability
 
 `inputsVersion` is deterministic for a fixed `(engineVersion, inputs, snapshot)`. It is not

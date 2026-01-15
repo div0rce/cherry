@@ -577,6 +577,7 @@ for (const file of executionContractFiles) {
   if (!fs.existsSync(file)) continue;
   const relPath = path.normalize(path.relative(root, file));
   if (relPath.startsWith(guardrailFixturesPrefix)) continue;
+  if (relPath === path.normalize(path.join('docs', 'config-snapshot.md'))) continue;
   if (relPath === path.normalize(path.join('scripts', 'check-repo-guardrails.js'))) continue;
   if (relPath === path.normalize(path.join('scripts', 'check-repo-guardrails.mts'))) continue;
   const content = fs.readFileSync(file, 'utf8');
