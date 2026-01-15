@@ -12,7 +12,7 @@ import {
   type AuthorityPure,
   type AuthoritySurface,
   type AuthorityVersion,
-} from './config.ts';
+} from './config';
 
 export type SimulatedAuthorityVerdict = AuthorityVerdict;
 

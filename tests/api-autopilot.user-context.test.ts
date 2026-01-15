@@ -32,7 +32,7 @@ function mockNextServer(): void {
   const withoutJs = resolved.replace(/\.js$/, '');
   mockModule(withoutJs, exports);
   try {
-    const alt = requireModule.resolve('next/server.js');
+    const alt = requireModule.resolve('next/server');
     mockModule(alt, exports);
   } catch (error: unknown) {
     void error;
@@ -42,8 +42,8 @@ function mockNextServer(): void {
 
 function resetModules(): void {
   const targets = [
-    '../app/api/autopilot/preview/route.js',
-    '../app/api/autopilot/commit/route.js',
+    '../app/api/autopilot/preview/route',
+    '../app/api/autopilot/commit/route',
     'next/server',
     '@/lib/log',
     '@/lib/autopilot/service',
@@ -175,7 +175,7 @@ async function runUserContextPreview(): Promise<void> {
   });
 
   const { POST } =
-    requireModule('../app/api/autopilot/preview/route.js') as typeof import('../app/api/autopilot/preview/route');
+    requireModule('../app/api/autopilot/preview/route') as typeof import('../app/api/autopilot/preview/route');
 
   const res = await POST({
     json: async () => ({ merchant: 'Shop', amountCents: 500, category: 'DINING' }),
@@ -211,7 +211,7 @@ async function runUserContextCommit(): Promise<void> {
   });
 
   const { POST } =
-    requireModule('../app/api/autopilot/commit/route.js') as typeof import('../app/api/autopilot/commit/route');
+    requireModule('../app/api/autopilot/commit/route') as typeof import('../app/api/autopilot/commit/route');
 
   const res = await POST({
     json: async () => ({

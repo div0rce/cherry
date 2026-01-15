@@ -43,7 +43,7 @@ function mockNextServer() {
   const withoutJs = resolved.replace(/\.js$/, '');
   mockModule(withoutJs, exports);
   try {
-    const alt = requireModule.resolve('next/server.js');
+    const alt = requireModule.resolve('next/server');
     mockModule(alt, exports);
   } catch {
     // ignore
