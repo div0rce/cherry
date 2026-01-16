@@ -6,6 +6,7 @@
   "engines": {
     "node": ">=22 <23"
   },
+  "engineStrict": true,
   "scripts": {
     "predev": "npm run check:db-ready",
     "dev": "next dev --webpack",
