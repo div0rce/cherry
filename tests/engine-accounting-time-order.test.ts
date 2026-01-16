@@ -117,8 +117,10 @@ for (const txn of secondTxns) {
 }
 
 const cashAccount = snapshot.accounts.cash;
-const expectedAtFirst = sumPostingsForAccount(firstTxns, cashAccount);
-const expectedAtSecond = sumPostingsForAccount([...firstTxns, ...secondTxns], cashAccount);
+const baseBalance = snapshot.ledger.balances.get(cashAccount) ?? 0;
+const expectedAtFirst = baseBalance + sumPostingsForAccount(firstTxns, cashAccount);
+const expectedAtSecond =
+  baseBalance + sumPostingsForAccount([...firstTxns, ...secondTxns], cashAccount);
 
 assert.equal(
   balanceAt(ledger.txns, cashAccount, nowMs1),
