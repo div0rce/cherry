@@ -54,12 +54,12 @@ function resetModules() {
   const targets = [
     '../app/api/autopilot/preview/route',
     'next/server',
-    '@/lib/log',
-    '@/lib/autopilot/service',
-    '@/lib/user-context',
-    '@/lib/metrics/autopilot',
-    '@/lib/autopilot/uiSpec',
-    '@/lib/adapters/runtime/authority.prisma',
+    '../lib/log',
+    '../lib/autopilot/service',
+    '../lib/user-context',
+    '../lib/metrics/autopilot',
+    '../lib/autopilot/uiSpec',
+    '../lib/adapters/runtime/authority.prisma',
   ];
   for (const target of targets) {
     try {
@@ -72,7 +72,7 @@ function resetModules() {
 }
 
 function buildUiStub() {
-  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec');
+  const { getAutopilotUiSpec } = requireModule('../lib/autopilot/uiSpec');
   const spec = getAutopilotUiSpec();
 
   return {
@@ -149,19 +149,19 @@ async function runPreviewValid() {
   resetModules();
   mockNextServer();
   const logEvents = [];
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
+  mockModule(requireModule.resolve('../lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
-  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+  mockModule(requireModule.resolve('../lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     getAutopilotPreview: async () => ({
       decisionId: 'decision-1',
       merchant: 'Test Shop',
@@ -176,7 +176,7 @@ async function runPreviewValid() {
       ui: buildUiStub(),
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED', email: null }),
   });
   const { POST } =
@@ -198,19 +198,19 @@ async function runPreviewInvalid() {
   resetModules();
   mockNextServer();
   const logEvents = [];
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
+  mockModule(requireModule.resolve('../lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
-  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+  mockModule(requireModule.resolve('../lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     getAutopilotPreview: async () => ({
       decisionId: 'decision-1',
       merchant: 'Test Shop',
@@ -225,7 +225,7 @@ async function runPreviewInvalid() {
       ui: buildUiStub(),
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED', email: null }),
   });
   const { POST } =
@@ -245,19 +245,19 @@ async function runPreviewInvalid() {
 async function runPreviewUnauthorized() {
   resetModules();
   mockNextServer();
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
+  mockModule(requireModule.resolve('../lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
-  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+  mockModule(requireModule.resolve('../lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     getAutopilotPreview: async () => ({
       decisionId: 'decision-1',
       merchant: 'Test Shop',
@@ -272,9 +272,9 @@ async function runPreviewUnauthorized() {
       ui: buildUiStub(),
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => {
-      const { AppError } = requireModule('@/lib/errors');
+      const { AppError } = requireModule('../lib/errors');
       throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
     },
   });
@@ -293,24 +293,24 @@ async function runPreviewUnauthorized() {
 async function runPreviewUnexpectedError() {
   resetModules();
   mockNextServer();
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/adapters/runtime/authority.prisma'), {
+  mockModule(requireModule.resolve('../lib/adapters/runtime/authority.prisma'), {
     simulateSpendAuthority: async () => ({ ok: true, decision: authorityStub }),
     recordDecisionEvent: async () => {},
   });
-  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+  mockModule(requireModule.resolve('../lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     getAutopilotPreview: async () => {
       throw new Error('boom');
     },
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-err', mode: 'AUTHENTICATED', email: null }),
   });
 

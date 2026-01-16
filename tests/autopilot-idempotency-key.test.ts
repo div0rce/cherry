@@ -35,15 +35,15 @@ function mockModule(modulePath: string, exports: unknown) {
 
 function resetModules() {
   const targets = [
-    '@/lib/autopilot/service',
-    '@/lib/autopilot/engineDecisionId',
-    '@/lib/engine/public',
-    '@/lib/prisma',
-    '@/lib/scan-helpers',
-    '@/lib/log',
-    '@/lib/metrics/autopilot',
-    '@/lib/sessions/confirm-service',
-    '@/lib/buckets/ensure-fresh',
+    '../lib/autopilot/service',
+    '../lib/autopilot/engineDecisionId',
+    '../lib/engine/public',
+    '../lib/prisma',
+    '../lib/scan-helpers',
+    '../lib/log',
+    '../lib/metrics/autopilot',
+    '../lib/sessions/confirm-service',
+    '../lib/buckets/ensure-fresh',
   ];
   for (const target of targets) {
     try {
@@ -174,7 +174,7 @@ async function runSemanticStabilityAcrossRowIds() {
   resetModules();
   let bucketCall = 0;
 
-  mockModule(requireModule.resolve('@/lib/prisma'), {
+  mockModule(requireModule.resolve('../lib/prisma'), {
     prisma: {
       rewardRule: {
         findMany: async (args: { where: { cardId: { in: string[] } } }) =>
@@ -234,7 +234,7 @@ async function runSemanticStabilityAcrossRowIds() {
     buildAutopilotStateSnapshot,
     buildAutopilotStateSnapshotHash: buildHash,
     computeEngineDecisionIdV1: computeIdV1,
-  } = requireModule('@/lib/autopilot/engineDecisionId') as typeof import('../lib/autopilot/engineDecisionId');
+  } = requireModule('../lib/autopilot/engineDecisionId') as typeof import('../lib/autopilot/engineDecisionId');
 
   const baseParams = {
     userId: 'user-1',
@@ -298,15 +298,15 @@ async function runUpsertIdempotencySuite() {
   type AutopilotCommitCreateArgs = { data: { userId: string; decisionId: string; sessionId: string } };
   type SimulatedTransactionCreateArgs = { data: { id: string } };
 
-  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+  mockModule(requireModule.resolve('../lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logInvariantViolation: () => {},
     logGuardrailEvent: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/engine/public'), {
+  mockModule(requireModule.resolve('../lib/engine/public'), {
     getAutopilotDecisionForUserSwipe: async () => ({
       kind: 'OK',
       cardId: 'card-1',
@@ -320,10 +320,10 @@ async function runUpsertIdempotencySuite() {
       },
     }),
   });
-  mockModule(requireModule.resolve('@/lib/scan-helpers'), {
+  mockModule(requireModule.resolve('../lib/scan-helpers'), {
     resolveScanCategory: async () => RewardCategory.DINING,
   });
-  mockModule(requireModule.resolve('@/lib/sessions/confirm-service'), {
+  mockModule(requireModule.resolve('../lib/sessions/confirm-service'), {
     confirmRecommendationSession: async () => {},
     SessionConfirmError: class SessionConfirmError extends Error {
       status = 400;
@@ -331,10 +331,10 @@ async function runUpsertIdempotencySuite() {
       detail?: unknown;
     },
   });
-  mockModule(requireModule.resolve('@/lib/buckets/ensure-fresh'), {
+  mockModule(requireModule.resolve('../lib/buckets/ensure-fresh'), {
     ensureBucketFresh: async () => null,
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
+  mockModule(requireModule.resolve('../lib/prisma'), {
     prisma: {
       card: {
         findMany: async () => [
@@ -448,7 +448,7 @@ async function runUpsertIdempotencySuite() {
   });
 
   const { commitAutopilotDecisionV2, getAutopilotPreview } = requireModule(
-    '@/lib/autopilot/service'
+    '../lib/autopilot/service'
   ) as {
     commitAutopilotDecisionV2: (
       world: World,

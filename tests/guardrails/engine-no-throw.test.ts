@@ -47,10 +47,10 @@ async function runAuthorityFallback(): Promise<void> {
     decisionEvent: {},
   };
 
-  mockModule(requireModule.resolve('@/lib/prisma'), { prisma: prismaStub });
+  mockModule(requireModule.resolve('../../lib/prisma'), { prisma: prismaStub });
 
   const { simulateSpendAuthority } =
-    requireModule('@/lib/adapters/runtime/authority.prisma') as typeof import('../../lib/adapters/runtime/authority.prisma');
+    requireModule('../../lib/adapters/runtime/authority.prisma') as typeof import('../../lib/adapters/runtime/authority.prisma');
 
   const result = await simulateSpendAuthority(
     {

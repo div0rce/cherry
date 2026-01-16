@@ -34,10 +34,10 @@ const ALLOWED_OPS_LITERALS = new Set<string>([
 
 const IGNORE_EXACT = new Set<string>([
   '@/components/autopilot/AutopilotShell',
-  '@/lib/autopilot/uiSpec',
-  '@/lib/autopilot/types',
-  '@/lib/validation/autopilot/preview',
-  '@/lib/formatCurrency',
+  '../lib/autopilot/uiSpec',
+  '../lib/autopilot/types',
+  '../lib/validation/autopilot/preview',
+  '../lib/formatCurrency',
   '/api/autopilot/preview',
   'POST',
   'include',

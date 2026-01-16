@@ -45,9 +45,9 @@ function resetModules() {
   const targets = [
     '../app/api/autopilot/commit/route',
     'next/server',
-    '@/lib/log',
-    '@/lib/autopilot/service',
-    '@/lib/user-context',
+    '../lib/log',
+    '../lib/autopilot/service',
+    '../lib/user-context',
   ];
   for (const target of targets) {
     try {
@@ -65,11 +65,11 @@ async function runCommitValidAndIdempotent() {
   mockNextServer();
   const logEvents = [];
   let calls = 0;
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     commitAutopilotDecision: async () => {
       calls += 1;
       return {
@@ -80,7 +80,7 @@ async function runCommitValidAndIdempotent() {
       };
     },
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED', email: null }),
   });
 
@@ -124,11 +124,11 @@ async function runCommitInvalid() {
   resetModules();
   mockNextServer();
   const logEvents = [];
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: (event) => logEvents.push(event),
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     commitAutopilotDecision: async () => ({
       decisionId: 'decision-1',
       transactionId: 'txn-1',
@@ -136,7 +136,7 @@ async function runCommitInvalid() {
       status: 'created',
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => ({ userId: 'user-1', mode: 'AUTHENTICATED', email: null }),
   });
 
@@ -165,11 +165,11 @@ async function runCommitUnauthorized() {
   process.env.AUTOPILOT_COMMIT_V2 = 'false';
   resetModules();
   mockNextServer();
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: () => {},
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     commitAutopilotDecision: async () => ({
       decisionId: 'decision-unauth',
       transactionId: 'txn-unauth',
@@ -177,9 +177,9 @@ async function runCommitUnauthorized() {
       status: 'created',
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async () => {
-      const { AppError } = requireModule('@/lib/errors');
+      const { AppError } = requireModule('../lib/errors');
       throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
     },
   });
@@ -211,11 +211,11 @@ async function runCommitV2Flagged() {
   const originalFlag = process.env.AUTOPILOT_COMMIT_V2;
   process.env.AUTOPILOT_COMMIT_V2 = 'true';
   try {
-    mockModule(requireModule.resolve('@/lib/log'), {
+    mockModule(requireModule.resolve('../lib/log'), {
       logGuardrailEvent: (event) => logEvents.push(event),
       logInvariantViolation: () => {},
     });
-    mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+    mockModule(requireModule.resolve('../lib/autopilot/service'), {
       commitAutopilotDecision: async () => {
         throw new Error('v1 path should not be called when flag enabled');
       },
@@ -229,7 +229,7 @@ async function runCommitV2Flagged() {
         };
       },
     });
-    mockModule(requireModule.resolve('@/lib/user-context'), {
+    mockModule(requireModule.resolve('../lib/user-context'), {
       resolveUserContext: async () => ({ userId: 'user-v2', mode: 'AUTHENTICATED', email: null }),
     });
 

@@ -24,8 +24,8 @@ function resetModules() {
     '../lib/engine/context',
     '../lib/engine/run',
     '../lib/engine/solver',
-    '@/lib/engine-state',
-    '@/lib/scan-helpers',
+    '../lib/engine-state',
+    '../lib/scan-helpers',
   ];
   for (const target of targets) {
     try {
@@ -154,13 +154,13 @@ function buildDecision({ cardId, score, committedAfter, remainingAfter }) {
 }
 
 function setupMocks({ state, engineResult, category = 'DINING' }) {
-  mockModule('@/lib/scan-helpers', {
+  mockModule('../lib/scan-helpers', {
     resolveScanCategory: async () => category,
   });
   mockModule('../lib/engine/context', {
     buildEngineContext: (ctx) => ctx,
   });
-  mockModule('@/lib/engine-state', {
+  mockModule('../lib/engine-state', {
     fromPrismaUserToEngineState: async () => state,
   });
   mockModule('../lib/engine/solver', {

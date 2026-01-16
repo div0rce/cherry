@@ -26,7 +26,7 @@ function resetModules() {
 }
 
 function buildUiStub() {
-  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec');
+  const { getAutopilotUiSpec } = requireModule('../lib/autopilot/uiSpec');
   const spec = getAutopilotUiSpec();
   return {
     badge: {

@@ -29,10 +29,10 @@ async function run(): Promise<void> {
     decisionEvent: {},
   };
 
-  mockModule(requireModule.resolve('@/lib/prisma'), { prisma: prismaStub });
+  mockModule(requireModule.resolve('../../lib/prisma'), { prisma: prismaStub });
 
   const { resolveCategory } =
-    requireModule('@/lib/adapters/runtime/legacy-engine.prisma') as typeof import('../../lib/adapters/runtime/legacy-engine.prisma');
+    requireModule('../../lib/adapters/runtime/legacy-engine.prisma') as typeof import('../../lib/adapters/runtime/legacy-engine.prisma');
 
   let thrown: unknown = null;
   try {

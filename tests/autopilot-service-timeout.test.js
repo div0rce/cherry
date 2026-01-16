@@ -16,7 +16,7 @@ function mockModule(modulePath, exports) {
 }
 
 function resetModules() {
-  const targets = ['@/lib/autopilot/service', '@/lib/engine/public', '@/lib/prisma', '@/lib/metrics/autopilot', '@/lib/log'];
+  const targets = ['../lib/autopilot/service', '../lib/engine/public', '../lib/prisma', '../lib/metrics/autopilot', '../lib/log'];
   for (const target of targets) {
     try {
       const resolved = requireModule.resolve(target);
@@ -29,17 +29,17 @@ function resetModules() {
 
 async function runTimeoutTest() {
   resetModules();
-  mockModule(requireModule.resolve('@/lib/metrics/autopilot'), {
+  mockModule(requireModule.resolve('../lib/metrics/autopilot'), {
     incrementCounter: () => {},
     observeDuration: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('@/lib/engine/public'), {
+  mockModule(requireModule.resolve('../lib/engine/public'), {
     getAutopilotDecisionForUserSwipe: async () => new Promise(() => {}),
   });
-  mockModule(requireModule.resolve('@/lib/prisma'), {
+  mockModule(requireModule.resolve('../lib/prisma'), {
     prisma: {
       card: {
         findMany: async () => [
@@ -85,8 +85,8 @@ async function runTimeoutTest() {
   });
 
   const { getAutopilotPreview } =
-    requireModule('@/lib/autopilot/service');
-  const { AutopilotServiceError } = requireModule('@/lib/autopilot/types');
+    requireModule('../lib/autopilot/service');
+  const { AutopilotServiceError } = requireModule('../lib/autopilot/types');
   const now = new Date('2024-01-01T00:00:00.000Z');
   const { world } = makeTestWorld({ nowMs: now.getTime() });
 

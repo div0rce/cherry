@@ -27,7 +27,7 @@ const mockPrereqs: PrereqCounts = {
 };
 
 function installMocks(): void {
-  const userContextPath = requireModule.resolve('@/lib/user-context');
+  const userContextPath = requireModule.resolve('../lib/user-context');
   const apiPath = requireModule.resolve('../app/(user)/_lib/api.ts');
   const navigationPath = requireModule.resolve('next/navigation');
 

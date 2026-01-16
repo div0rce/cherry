@@ -45,10 +45,10 @@ function resetModules(): void {
     '../app/api/autopilot/preview/route',
     '../app/api/autopilot/commit/route',
     'next/server',
-    '@/lib/log',
-    '@/lib/autopilot/service',
-    '@/lib/user-context',
-    '@/lib/autopilot/uiSpec',
+    '../lib/log',
+    '../lib/autopilot/service',
+    '../lib/user-context',
+    '../lib/autopilot/uiSpec',
   ];
   for (const target of targets) {
     try {
@@ -62,7 +62,7 @@ function resetModules(): void {
 }
 
 function buildUiStub() {
-  const { getAutopilotUiSpec } = requireModule('@/lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec');
+  const { getAutopilotUiSpec } = requireModule('../lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec');
   const spec = getAutopilotUiSpec();
 
   return {
@@ -139,11 +139,11 @@ async function runUserContextPreview(): Promise<void> {
   resetModules();
   mockNextServer();
   const capturedOptions: unknown[] = [];
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: (): void => {},
     logInvariantViolation: (): void => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     getAutopilotPreview: async () => ({
       decisionId: 'decision-ctx-1',
       merchant: 'Shop',
@@ -167,7 +167,7 @@ async function runUserContextPreview(): Promise<void> {
       ui: buildUiStub(),
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async (opts: unknown) => {
       capturedOptions.push(opts);
       return { userId: 'user-ctx-1', mode: 'AUTHENTICATED', email: null };
@@ -192,10 +192,10 @@ async function runUserContextCommit(): Promise<void> {
   resetModules();
   mockNextServer();
   const capturedOptions: unknown[] = [];
-  mockModule(requireModule.resolve('@/lib/log'), {
+  mockModule(requireModule.resolve('../lib/log'), {
     logGuardrailEvent: (): void => {},
   });
-  mockModule(requireModule.resolve('@/lib/autopilot/service'), {
+  mockModule(requireModule.resolve('../lib/autopilot/service'), {
     commitAutopilotDecision: async () => ({
       decisionId: 'decision-ctx-2',
       transactionId: 'txn-ctx-2',
@@ -203,7 +203,7 @@ async function runUserContextCommit(): Promise<void> {
       status: 'created',
     }),
   });
-  mockModule(requireModule.resolve('@/lib/user-context'), {
+  mockModule(requireModule.resolve('../lib/user-context'), {
     resolveUserContext: async (opts: unknown) => {
       capturedOptions.push(opts);
       return { userId: 'user-ctx-2', mode: 'AUTHENTICATED', email: null };

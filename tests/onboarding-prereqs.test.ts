@@ -73,7 +73,7 @@ function mockPrisma(): void {
     },
   };
 
-  const resolved = requireModule.resolve('@/lib/prisma');
+  const resolved = requireModule.resolve('../lib/prisma');
   requireModule.cache[resolved] = {
     id: resolved,
     filename: resolved,
