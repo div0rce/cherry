@@ -53,6 +53,12 @@ Implicitly proves: Engine output proposals must satisfy ledger invariants; unsaf
 Notes: Exercises overdraft, unbalanced postings, sign abuse, and filtering logic.
 Maturity: IMPLICIT
 
+Artifact: tests/engine-accounting-time-order.test.ts
+Location: tests/engine-accounting-time-order.test.ts
+Implicitly proves: Engine-output application preserves monotonic time ordering for balances
+Notes: Applies engine-generated hypothetical txns at ordered effective times and checks as-of balances.
+Maturity: EXPLICIT
+
 Artifact: Guardrail check:accounting-invariants
 Location: package.json (script check:accounting-invariants); scripts/guardrails/registry.mts
 Implicitly proves: Property-based accounting invariants must pass in CI

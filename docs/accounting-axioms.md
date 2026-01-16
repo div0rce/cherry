@@ -43,7 +43,7 @@ Replaying events yields the same balances as the materialized ledger.
 | A5 — Deterministic replay | `tests/accounting/property.spec.ts`; `tests/accounting/replay-equals-materialized.spec.ts` | FULL |
 | A6 — Idempotency | `lib/accounting/ledger.ts`; `tests/accounting/property.spec.ts`; `tests/db/semantics/idempotency-no-double-apply.test.ts` | FULL |
 | A7 — Atomicity | `tests/db/semantics/atomicity-no-partial-writes.test.ts` | FULL |
-| A8 — Monotonic ordering / time correctness | `tests/accounting/property.spec.ts`; `tests/db/semantics/time-monotonicity.test.ts` | PARTIAL |
+| A8 — Monotonic ordering / time correctness | `tests/accounting/property.spec.ts`; `tests/db/semantics/time-monotonicity.test.ts`; `tests/engine-accounting-time-order.test.ts` | FULL |
 | A9 — Materialized == replayed | `tests/accounting/replay-equals-materialized.spec.ts`; `tests/accounting/property.spec.ts`; `tests/db/semantics/accounting-replay.test.ts` | FULL |
 
 ## Related docs
