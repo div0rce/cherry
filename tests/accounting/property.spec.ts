@@ -1,3 +1,23 @@
+/**
+ * PROVES:
+ * - A1: Conservation of value
+ * - A2: No fund creation or destruction
+ * - A3: Double-entry completeness
+ * - A4: Ledger immutability (append-only)
+ * - A5: Deterministic replay
+ * - A6: Idempotency under duplicate inputs
+ * - A8: Monotonic ordering / time correctness
+ * - A9: Materialized == replayed
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Event generator emits a valid account universe and currency.
+ *
+ * STATE SPACE:
+ * - Varies: event streams, postings, external ids, effective times, seeds
+ * - Fixed: ledger currency (USD), account definitions
+ */
 import * as assert from 'node:assert/strict';
 import {
   applyLedgerEvent,

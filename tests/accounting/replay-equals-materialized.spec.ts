@@ -1,3 +1,17 @@
+/**
+ * PROVES:
+ * - A5: Deterministic replay
+ * - A9: Materialized == replayed
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Events are applied in the same order during replay.
+ *
+ * STATE SPACE:
+ * - Varies: seeds, event streams
+ * - Fixed: ledger currency and account setup
+ */
 import * as assert from 'node:assert/strict';
 import { applyLedgerEvent, createLedgerState, replayLedgerEvents } from '../../lib/accounting/ledger';
 import { generateEventStream, snapshotLedger } from './harness';

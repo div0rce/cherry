@@ -165,6 +165,7 @@ export function asNonZeroAmount(value: number): NonZeroAmount {
   return value as NonZeroAmount;
 }
 
+// A1/A3: balanced, multi-posting transactions enforce conservation and double-entry.
 export function balancePostings(postings: ReadonlyArray<Posting>): BalancedPostings {
   if (postings.length < 2) {
     throw new Error('Transactions require at least two postings');
@@ -262,6 +263,7 @@ export function reverseTransaction(
   };
 }
 
+// A4/A6: append-only application with external id dedup mapping.
 export function applyLedgerEvent(state: LedgerState, event: LedgerEvent): LedgerState {
   if (event.type === 'RECOMPUTE') {
     return { ...state, balances: computeBalances(state.accounts, state.txns) };
@@ -291,6 +293,7 @@ export function applyLedgerEvent(state: LedgerState, event: LedgerEvent): Ledger
   };
 }
 
+// A5/A9: deterministic replay mirrors materialized state.
 export function replayLedgerEvents(
   accounts: Account[],
   currency: Currency,
@@ -333,6 +336,7 @@ export function balanceAt(txns: Transaction[], accountId: AccountId, atMs: numbe
   return total;
 }
 
+// A1/A3/A6/A9: validate transaction shape against ledger invariants.
 export function validateTransactionLike(
   ledger: Pick<LedgerState, 'currency' | 'accounts' | 'externalIndex'>,
   txn: TransactionLike
@@ -375,6 +379,7 @@ export function validateTransactionLike(
   return violations;
 }
 
+// A1/A3/A4/A6/A9: validate materialized ledger invariants.
 export function validateLedgerState(state: LedgerState): LedgerViolation[] {
   const violations: LedgerViolation[] = [];
   for (const txn of state.txns) {

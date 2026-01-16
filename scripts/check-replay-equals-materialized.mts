@@ -10,6 +10,7 @@ const ROOT = process.cwd();
 const TEST_FILE = path.join('tests', 'accounting', 'replay-equals-materialized.spec.ts');
 const FIX = 'Run npm run check:replay-equals-materialized after installing dependencies.';
 
+// A5/A9: enforce replay equality with materialized state.
 function runTest(): void {
   const result = runTool(
     'npm',

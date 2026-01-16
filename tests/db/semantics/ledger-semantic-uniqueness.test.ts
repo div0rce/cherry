@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A6: Idempotency under duplicate inputs
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - A session must map to exactly one ledger entry.
+ *
+ * STATE SPACE:
+ * - Varies: duplicate ledger insert attempts
+ * - Fixed: ledger uniqueness constraints
+ */
 import { PrismaClient } from '@prisma/client';
 import { assertUniqueViolation } from '../_helpers/assert-db-violation';
 

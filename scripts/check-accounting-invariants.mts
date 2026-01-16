@@ -10,6 +10,7 @@ const ROOT = process.cwd();
 const TEST_FILE = path.join('tests', 'accounting', 'property.spec.ts');
 const FIX = 'Run npm run check:accounting-invariants after installing dependencies.';
 
+// A1/A2/A3/A4/A5/A6/A8/A9: enforce property-based accounting invariants.
 function runTest(): void {
   const result = runTool(
     'npm',

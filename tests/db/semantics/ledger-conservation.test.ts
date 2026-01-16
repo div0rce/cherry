@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A2: No fund creation or destruction
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - CherryPoint ledger is single-entry; conservation is sum-of-rows validation.
+ *
+ * STATE SPACE:
+ * - Varies: ledger row inserts and invalid negative values
+ * - Fixed: CherryPoint ledger constraints
+ */
 import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { assertCheckViolation } from '../_helpers/assert-db-violation';

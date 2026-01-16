@@ -9,6 +9,7 @@ const ROOT = process.cwd();
 const TARGET = 'tests/db/semantics/accounting-replay.test.ts';
 const FIX = 'Restore the DB accounting replay test under tests/db/semantics.';
 
+// A9: enforce presence of DB replay proof artifact.
 function main(): void {
   const matches = fg.sync(['tests/db/**/*.test.{js,ts,tsx}'], {
     cwd: ROOT,

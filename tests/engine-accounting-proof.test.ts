@@ -1,3 +1,17 @@
+/**
+ * PROVES:
+ * - A1: Conservation of value
+ * - A3: Double-entry completeness
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Posting role/sign constraints and overdraft policies are enforced outside the axiom set.
+ *
+ * STATE SPACE:
+ * - Varies: hypothetical transactions, engine context amounts
+ * - Fixed: accounting snapshot accounts, engine contract output shape
+ */
 import * as assert from 'node:assert/strict';
 import { buildEngineContext } from '../lib/engine/context';
 import type { EngineState } from '../lib/engine/types';

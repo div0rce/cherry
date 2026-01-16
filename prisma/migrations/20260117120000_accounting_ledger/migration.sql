@@ -23,6 +23,7 @@ CREATE TABLE "AccountingPosting" (
   CONSTRAINT "AccountingPosting_pkey" PRIMARY KEY ("id")
 );
 
+-- A6: idempotency via external id uniqueness.
 CREATE UNIQUE INDEX "accounting_transaction__user_id_external_id__unique"
   ON "AccountingTransaction"("userId", "externalId");
 
@@ -44,6 +45,7 @@ ALTER TABLE "AccountingPosting"
   ADD CONSTRAINT "accounting_posting__amount__check"
   CHECK ("amount" <> 0);
 
+-- A4: accounting transactions are immutable (append-only).
 CREATE OR REPLACE FUNCTION "accounting_transaction__immutable__check_fn"()
 RETURNS trigger AS $$
 DECLARE
@@ -65,6 +67,7 @@ CREATE TRIGGER "accounting_transaction__immutable__check"
 BEFORE UPDATE OR DELETE ON "AccountingTransaction"
 FOR EACH ROW EXECUTE FUNCTION "accounting_transaction__immutable__check_fn"();
 
+-- A4: accounting postings are immutable (append-only).
 CREATE OR REPLACE FUNCTION "accounting_posting__immutable__check_fn"()
 RETURNS trigger AS $$
 DECLARE
@@ -86,6 +89,7 @@ CREATE TRIGGER "accounting_posting__immutable__check"
 BEFORE UPDATE OR DELETE ON "AccountingPosting"
 FOR EACH ROW EXECUTE FUNCTION "accounting_posting__immutable__check_fn"();
 
+-- A1/A3: postings must share transaction currency.
 CREATE OR REPLACE FUNCTION "accounting_posting__currency__check_fn"()
 RETURNS trigger AS $$
 DECLARE
@@ -109,6 +113,7 @@ AFTER INSERT OR UPDATE OF "currency", "transactionId" ON "AccountingPosting"
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION "accounting_posting__currency__check_fn"();
 
+-- A1/A3: postings per transaction must balance to zero.
 CREATE OR REPLACE FUNCTION "accounting_posting__transaction_id__check_fn"()
 RETURNS trigger AS $$
 DECLARE

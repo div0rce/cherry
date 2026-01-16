@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A2: No fund creation or destruction
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - CherryPoint ledger nonnegative constraint is a domain rule outside the axiom set.
+ *
+ * STATE SPACE:
+ * - Varies: missing/invalid points values
+ * - Fixed: ledger NOT NULL and check constraints
+ */
 import * as assert from 'node:assert/strict';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { assertPrismaError, getPrismaMetaString } from '../_helpers/assert-prisma-error';

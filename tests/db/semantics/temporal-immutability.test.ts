@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A4: Ledger immutability (append-only)
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Terminal-status constraints define immutability boundaries.
+ *
+ * STATE SPACE:
+ * - Varies: mutation attempts after terminal status
+ * - Fixed: ledger/session terminal status rules
+ */
 import { PrismaClient } from '@prisma/client';
 import { assertCheckViolation } from '../_helpers/assert-db-violation';
 

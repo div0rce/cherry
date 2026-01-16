@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A7: Atomicity (no partial application)
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - DB transactions are atomic when enforced via Prisma $transaction.
+ *
+ * STATE SPACE:
+ * - Varies: failed transaction contents
+ * - Fixed: schema constraints for sessions and ledger rows
+ */
 import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { assertForeignKeyViolation } from '../_helpers/assert-db-violation';

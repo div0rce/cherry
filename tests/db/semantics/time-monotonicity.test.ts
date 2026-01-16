@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A8: Monotonic ordering / time correctness
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Timestamp check constraints are authoritative.
+ *
+ * STATE SPACE:
+ * - Varies: invalid timestamp orderings
+ * - Fixed: ledger/session timestamp schemas
+ */
 import { PrismaClient } from '@prisma/client';
 import { assertCheckViolation } from '../_helpers/assert-db-violation';
 

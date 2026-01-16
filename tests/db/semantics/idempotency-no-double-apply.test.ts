@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A6: Idempotency under duplicate inputs
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Idempotency keys are the canonical dedup mechanism for commits.
+ *
+ * STATE SPACE:
+ * - Varies: duplicate commit attempts
+ * - Fixed: idempotency key schema constraints
+ */
 import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import { assertUniqueViolation } from '../_helpers/assert-db-violation';

@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A4: Ledger immutability (append-only)
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - DB immutability triggers are authoritative for accounting tables.
+ *
+ * STATE SPACE:
+ * - Varies: mutation attempts (update/delete)
+ * - Fixed: accounting transaction/posting schemas
+ */
 import { PrismaClient } from '@prisma/client';
 import { assertCheckViolation } from '../_helpers/assert-db-violation';
 

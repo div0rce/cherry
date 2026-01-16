@@ -10,6 +10,7 @@ const ROOT = process.cwd();
 const TEST_FILE = path.join('tests', 'accounting', 'no-mutation.spec.ts');
 const FIX = 'Run npm run check:no-mutation after installing dependencies.';
 
+// A4: enforce append-only ledger history.
 function runTest(): void {
   const result = runTool(
     'npm',

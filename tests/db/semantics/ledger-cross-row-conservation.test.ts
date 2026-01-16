@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A7: Atomicity (no partial application)
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Cross-row status constraints enforce atomic lifecycle transitions.
+ *
+ * STATE SPACE:
+ * - Varies: status updates across ledger and session rows
+ * - Fixed: cross-row check constraints
+ */
 import { PrismaClient } from '@prisma/client';
 import { assertCheckViolation } from '../_helpers/assert-db-violation';
 

@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A6: Idempotency under duplicate inputs
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - IdempotencyKey uniqueness is the dedup guarantee.
+ *
+ * STATE SPACE:
+ * - Varies: duplicate and concurrent inserts
+ * - Fixed: IdempotencyKey uniqueness constraint
+ */
 import * as assert from 'node:assert/strict';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { assertPrismaError } from '../_helpers/assert-prisma-error';

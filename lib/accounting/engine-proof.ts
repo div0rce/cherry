@@ -134,6 +134,7 @@ export function attachAccountingProof(params: {
   return proved;
 }
 
+// A1/A3/A4/A6/A9: reject hypothetical decisions that violate ledger invariants.
 export function proveHypotheticalDecision(
   ledger: LedgerState,
   proposedTxns: Transaction[]

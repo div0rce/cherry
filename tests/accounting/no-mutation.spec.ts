@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A4: Ledger immutability (append-only)
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Ledger events are applied in a single deterministic order.
+ *
+ * STATE SPACE:
+ * - Varies: generated event streams
+ * - Fixed: ledger currency and account setup
+ */
 import * as assert from 'node:assert/strict';
 import { applyLedgerEvent, createLedgerState } from '../../lib/accounting/ledger';
 import { generateEventStream } from './harness';

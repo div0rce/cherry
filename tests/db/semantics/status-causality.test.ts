@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A8: Monotonic ordering / time correctness
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Status causality rules encode required timestamp ordering.
+ *
+ * STATE SPACE:
+ * - Varies: invalid status writes
+ * - Fixed: status/timestamp constraints
+ */
 import { PrismaClient } from '@prisma/client';
 import { assertCheckViolation } from '../_helpers/assert-db-violation';
 

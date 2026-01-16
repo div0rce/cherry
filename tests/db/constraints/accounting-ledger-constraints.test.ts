@@ -1,3 +1,18 @@
+/**
+ * PROVES:
+ * - A1: Conservation of value
+ * - A3: Double-entry completeness
+ * - A6: Idempotency under duplicate inputs
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - DB constraints are authoritative for accounting tables.
+ *
+ * STATE SPACE:
+ * - Varies: invalid inserts for uniqueness, FK, amount, currency, balance
+ * - Fixed: accounting table constraints
+ */
 import * as assert from 'node:assert/strict';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { assertPrismaError, getPrismaMetaString } from '../_helpers/assert-prisma-error';

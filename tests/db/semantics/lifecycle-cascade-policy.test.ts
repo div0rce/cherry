@@ -1,3 +1,16 @@
+/**
+ * PROVES:
+ * - A7: Atomicity (no partial application)
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - Cascading deletes are required to prevent partial lifecycle state.
+ *
+ * STATE SPACE:
+ * - Varies: cascade delete paths
+ * - Fixed: FK cascade policy for ledger/session/commit rows
+ */
 import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 

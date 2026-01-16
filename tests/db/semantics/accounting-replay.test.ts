@@ -1,3 +1,18 @@
+/**
+ * PROVES:
+ * - A5: Deterministic replay
+ * - A9: Materialized == replayed
+ * - A1: Conservation of value
+ *
+ * PRE-EXISTING TEST (RETROFITTED)
+ *
+ * ASSUMPTIONS:
+ * - DB rows represent committed accounting transactions and postings.
+ *
+ * STATE SPACE:
+ * - Varies: DB materialized rows
+ * - Fixed: ledger currency, posting roles
+ */
 import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
 import {
