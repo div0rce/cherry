@@ -83,6 +83,12 @@ Implicitly proves: DB accounting replay test existence (guardrail presence)
 Notes: Ensures tests/db/semantics/accounting-replay.test.ts is present.
 Maturity: PARTIAL
 
+Artifact: Guardrail check:accounting-proof-coverage
+Location: package.json (script check:accounting-proof-coverage); scripts/guardrails/registry.mts
+Implicitly proves: All accounting axioms maintain FULL coverage with artifacts
+Notes: Fails when axioms are removed or coverage drops.
+Maturity: EXPLICIT
+
 Artifact: tests/db/semantics/accounting-immutability.test.ts
 Location: tests/db/semantics/accounting-immutability.test.ts
 Implicitly proves: Ledger immutability at DB layer for accounting transactions/postings

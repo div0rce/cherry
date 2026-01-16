@@ -24,6 +24,7 @@ const DB_SEMANTIC_SUITE_MINIMUM_PATH = `${CHECK_PATH_BASE}db-semantic-suite-mini
 const DB_LEDGER_ENTRYPOINTS_PATH = `${CHECK_PATH_BASE}db-ledger-entrypoints.mts` as const;
 const DB_ACCOUNTING_REPLAY_PATH = `${CHECK_PATH_BASE}db-accounting-replay.mts` as const;
 const ACCOUNTING_INVARIANTS_PATH = `${CHECK_PATH_BASE}accounting-invariants.mts` as const;
+const ACCOUNTING_PROOF_COVERAGE_PATH = `${CHECK_PATH_BASE}accounting-proof-coverage.mts` as const;
 const REPLAY_EQUALS_MATERIALIZED_PATH =
   `${CHECK_PATH_BASE}replay-equals-materialized.mts` as const;
 const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
@@ -104,6 +105,7 @@ export const GUARDRAILS = Object.freeze({
   'check:db-ledger-entrypoints': DB_LEDGER_ENTRYPOINTS_PATH,
   'check:db-accounting-replay': DB_ACCOUNTING_REPLAY_PATH,
   'check:accounting-invariants': ACCOUNTING_INVARIANTS_PATH,
+  'check:accounting-proof-coverage': ACCOUNTING_PROOF_COVERAGE_PATH,
   'check:replay-equals-materialized': REPLAY_EQUALS_MATERIALIZED_PATH,
   'check:no-mutation': NO_MUTATION_PATH,
 } as const);

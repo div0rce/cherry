@@ -159,6 +159,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - DB materialized balances must match in-memory replayed ledger balances.
 - Enforcement: `check:db-accounting-replay`.
 
+### Guardrail 44 — Accounting Proof Coverage
+
+- Every accounting axiom must be covered by at least one artifact and marked FULL.
+- Enforcement: `check:accounting-proof-coverage`.
+
 ## Domain: Loader & Guardrail Event Integrity
 
 ### Guardrail 7 — ESM Loader Totality

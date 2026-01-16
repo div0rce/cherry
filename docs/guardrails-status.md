@@ -9,8 +9,8 @@ Last updated: 2026-01-03
 
 ## Guardrail System Health (Human Summary)
 
-- Total registered guardrails: 51 (from `scripts/guardrails/registry.mts`).
-- Enforced in CI: 51 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
+- Total registered guardrails: 52 (from `scripts/guardrails/registry.mts`).
+- Enforced in CI: 52 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
 - Partial / legacy-allowlisted: 3 (floating-point money math allowlist, idempotent writes coverage, determinism guardrail allows global fake timers).
 - Known gaps:
   - Idempotent writes: session/ledger coverage incomplete.

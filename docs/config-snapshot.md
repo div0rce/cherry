@@ -9986,6 +9986,7 @@
     "check:db-ledger-entrypoints": "npm run ts:esm -- scripts/guardrails/run.mts check:db-ledger-entrypoints",
     "check:db-accounting-replay": "npm run ts:esm -- scripts/guardrails/run.mts check:db-accounting-replay",
     "check:accounting-invariants": "npm run ts:esm -- scripts/guardrails/run.mts check:accounting-invariants",
+    "check:accounting-proof-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:accounting-proof-coverage",
     "check:replay-equals-materialized": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-equals-materialized",
     "check:no-mutation": "npm run ts:esm -- scripts/guardrails/run.mts check:no-mutation",
     "check:implicit-boolean": "npm run ts:esm -- scripts/guardrails/run.mts check:implicit-boolean",
@@ -10015,7 +10016,7 @@
     "check:check-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:check-contract",
     "check:env": "npm run check:db:required && npm run check:migrations:required",
     "check": "npm run check:guardrails && npm run lint && npm run lint:scripts && npm run typecheck && npm run typecheck:scripts",
-    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:replay-equals-materialized && npm run check:no-mutation",
+    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:accounting-proof-coverage && npm run check:replay-equals-materialized && npm run check:no-mutation",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
     "check:route-collisions": "npm run ts:esm -- scripts/guardrails/run.mts check:route-collisions",
@@ -11545,6 +11546,7 @@ const DB_SEMANTIC_SUITE_MINIMUM_PATH = `${CHECK_PATH_BASE}db-semantic-suite-mini
 const DB_LEDGER_ENTRYPOINTS_PATH = `${CHECK_PATH_BASE}db-ledger-entrypoints.mts` as const;
 const DB_ACCOUNTING_REPLAY_PATH = `${CHECK_PATH_BASE}db-accounting-replay.mts` as const;
 const ACCOUNTING_INVARIANTS_PATH = `${CHECK_PATH_BASE}accounting-invariants.mts` as const;
+const ACCOUNTING_PROOF_COVERAGE_PATH = `${CHECK_PATH_BASE}accounting-proof-coverage.mts` as const;
 const REPLAY_EQUALS_MATERIALIZED_PATH =
   `${CHECK_PATH_BASE}replay-equals-materialized.mts` as const;
 const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
@@ -11625,6 +11627,7 @@ export const GUARDRAILS = Object.freeze({
   'check:db-ledger-entrypoints': DB_LEDGER_ENTRYPOINTS_PATH,
   'check:db-accounting-replay': DB_ACCOUNTING_REPLAY_PATH,
   'check:accounting-invariants': ACCOUNTING_INVARIANTS_PATH,
+  'check:accounting-proof-coverage': ACCOUNTING_PROOF_COVERAGE_PATH,
   'check:replay-equals-materialized': REPLAY_EQUALS_MATERIALIZED_PATH,
   'check:no-mutation': NO_MUTATION_PATH,
 } as const);
@@ -16579,8 +16582,8 @@ Last updated: 2026-01-03
 
 ## Guardrail System Health (Human Summary)
 
-- Total registered guardrails: 51 (from `scripts/guardrails/registry.mts`).
-- Enforced in CI: 51 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
+- Total registered guardrails: 52 (from `scripts/guardrails/registry.mts`).
+- Enforced in CI: 52 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
 - Partial / legacy-allowlisted: 3 (floating-point money math allowlist, idempotent writes coverage, determinism guardrail allows global fake timers).
 - Known gaps:
   - Idempotent writes: session/ledger coverage incomplete.
