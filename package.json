@@ -17,6 +17,7 @@
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
+    "check:aggregate": "npm run ts:esm -- scripts/execution/run.mts check:aggregate",
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "lint": "npm run lint:tailwind && npm run lint:eslint",

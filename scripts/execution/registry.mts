@@ -2,6 +2,7 @@ export const EXECUTION_RUNNER = 'scripts/execution/run.mts' as const;
 export const EXECUTION_DB_RUNNER = 'scripts/execution/run-db.mts' as const;
 
 export const EXECUTION = {
+  'check:aggregate': 'scripts/guardrails-aggregate.mts',
   'check:clean': 'scripts/assert-clean-tree.mts',
   'check:db-ready': 'scripts/db-ready.mts',
   'check:dev-login': 'scripts/dev-login.mts',
