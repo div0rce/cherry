@@ -56,3 +56,4 @@ certs/
 # Local temp + Node compile cache
 .tmp/
 problems.md
+.env*.local
