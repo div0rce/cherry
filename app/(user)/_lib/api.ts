@@ -41,6 +41,41 @@ export async function fetchFromApi<T>(
   });
 }
 
+/*
+TODO(cherry): auth-bound user bootstrap; remove user seeding
+COMMENT ONLY — DO NOT IMPLEMENT HERE.
+
+Problem:
+- Frontend currently errors with UNAUTHORIZED because an authenticated session can exist without
+  a corresponding initialized domain identity (user + ledger + baseline state).
+- User seeding is stale/fragile and will keep drifting as schema + invariants evolve.
+
+Non-negotiables:
+1) No pre-seeded users. Ever.
+2) Users are created only as a consequence of successful auth (NextAuth callback / auth boundary).
+3) First-login initialization is a deterministic constructor (versioned + idempotent), not a seed.
+
+Required future work (not in this file):
+A) Delete user-related seed logic:
+   - remove seeded “dev/default” users, hardcoded IDs/emails, seeded ledgers/accounts.
+   - keep only static reference data in seeds.
+
+B) Move identity creation to auth boundary:
+   - on auth success: upsert user keyed by (provider, providerAccountId).
+   - must be idempotent; no blind inserts.
+
+C) Make /api/user/context explicit:
+   - UNAUTHORIZED only for unauthenticated requests.
+   - if authenticated but not initialized: return code USER_NOT_INITIALIZED (not 401).
+
+D) Add one-time initializer (constructor):
+   - on first login: create ledger(s), baseline accounts/buckets, initial accounting snapshot.
+   - deterministic, versioned, replayable, testable.
+
+Rationale:
+- Seeded identities drift; constructors don’t.
+- This preserves invariants and stabilizes dev/prod boot.
+*/
 export async function requireUserContext(): Promise<UserContextResponse> {
   const result = await fetchFromApi<UserContextResponse>('/api/user/context');
   if (!result.ok) {
