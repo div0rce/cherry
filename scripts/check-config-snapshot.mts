@@ -210,6 +210,17 @@ function checkSnapshot(configFiles: Set<string>): void {
   }
 }
 
+function checkNextConfigExportDetailExclude(): void {
+  const nextConfigPath = path.join(ROOT, 'next.config.ts');
+  const nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
+  const pattern = /outputFileTracingExcludes\s*:\s*{[^}]*export-detail\.json/s;
+  if (!pattern.test(nextConfig)) {
+    fail(PREFIX, 'next.config.ts must exclude .next/export-detail.json from output tracing.', {
+      fix: 'Add outputFileTracingExcludes with .next/export-detail.json to next.config.ts.',
+    });
+  }
+}
+
 function checkTsconfigPolicies(tsconfigFiles: string[]): void {
   const baseConfig = readTsconfig('tsconfig.base.json');
   const baseCompilerOptionsValue = baseConfig['compilerOptions'];
@@ -378,6 +389,7 @@ function main(): void {
   const configFiles = new Set<string>([...OTHER_CONFIG_FILES, ...tsconfigFiles, ...workflowFiles]);
 
   checkSnapshot(configFiles);
+  checkNextConfigExportDetailExclude();
   checkTsconfigPolicies(tsconfigFiles);
   checkEditorTsconfig();
   checkEslintTsconfig();
