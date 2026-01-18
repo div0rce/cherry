@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-02-14
+Last updated: 2026-01-16
 
 # Accounting Axioms
 
@@ -45,6 +45,10 @@ Replaying events yields the same balances as the materialized ledger.
 | A7 — Atomicity | `tests/db/semantics/atomicity-no-partial-writes.test.ts` | FULL |
 | A8 — Monotonic ordering / time correctness | `tests/accounting/property.spec.ts`; `tests/db/semantics/time-monotonicity.test.ts`; `tests/engine-accounting-time-order.test.ts` | FULL |
 | A9 — Materialized == replayed | `tests/accounting/replay-equals-materialized.spec.ts`; `tests/accounting/property.spec.ts`; `tests/db/semantics/accounting-replay.test.ts` | FULL |
+
+## Closure
+
+Phase 1–3 complete; system closed under current axioms.
 
 ## Related docs
 

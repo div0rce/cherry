@@ -9951,6 +9951,7 @@
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
+    "check:aggregate": "npm run ts:esm -- scripts/execution/run.mts check:aggregate",
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
@@ -10007,6 +10008,8 @@
     "check:no-orphan-scripts": "npm run ts:esm -- scripts/guardrails/run.mts check:no-orphan-scripts",
     "check:engine-prisma": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-prisma",
     "check:engine-date": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-date",
+    "check:engine-optimality": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-optimality",
+    "check:engine-optimality-version": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-optimality-version",
     "check:catch-unknown": "npm run ts:esm -- scripts/guardrails/run.mts check:catch-unknown",
     "check:guardrails-core": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrails-core",
     "check:repo-guardrails": "npm run ts:esm -- scripts/guardrails/run.mts check:repo-guardrails",
@@ -10017,7 +10020,7 @@
     "check:check-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:check-contract",
     "check:env": "npm run check:db:required && npm run check:migrations:required",
     "check": "npm run check:guardrails && npm run lint && npm run lint:scripts && npm run typecheck && npm run typecheck:scripts",
-    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:accounting-proof-coverage && npm run check:replay-equals-materialized && npm run check:no-mutation",
+    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:engine-optimality && npm run check:engine-optimality-version && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:accounting-proof-coverage && npm run check:replay-equals-materialized && npm run check:no-mutation",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
     "check:route-collisions": "npm run ts:esm -- scripts/guardrails/run.mts check:route-collisions",
@@ -11434,6 +11437,7 @@ certs/
 # Local temp + Node compile cache
 .tmp/
 problems.md
+.env*.local
 ```
 
 ```ts
@@ -11442,6 +11446,7 @@ export const EXECUTION_RUNNER = 'scripts/execution/run.mts' as const;
 export const EXECUTION_DB_RUNNER = 'scripts/execution/run-db.mts' as const;
 
 export const EXECUTION = {
+  'check:aggregate': 'scripts/guardrails-aggregate.mts',
   'check:clean': 'scripts/assert-clean-tree.mts',
   'check:db-ready': 'scripts/db-ready.mts',
   'check:dev-login': 'scripts/dev-login.mts',
@@ -11552,6 +11557,8 @@ const REPLAY_EQUALS_MATERIALIZED_PATH =
   `${CHECK_PATH_BASE}replay-equals-materialized.mts` as const;
 const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
 const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
+const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
+const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -11606,6 +11613,8 @@ export const GUARDRAILS = Object.freeze({
   'check:determinism': `${CHECK_PATH_BASE}determinism.mts`,
   'check:engine-prisma': `${CHECK_PATH_BASE}engine-prisma.mts`,
   'check:engine-date': `${CHECK_PATH_BASE}engine-date.mts`,
+  'check:engine-optimality': ENGINE_OPTIMALITY_PATH,
+  'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:authority-lint': `${CHECK_PATH_BASE}authority-lint.mts`,
   'check:authority-invariants': `${CHECK_PATH_BASE}authority-invariants.mts`,
   'check:prisma-assumptions': `${CHECK_PATH_BASE}prisma-assumptions.mts`,
@@ -18254,5 +18263,3 @@ Last updated: 2026-01-02
 - `docs/guardrails.md`
 - `docs/script-standards.md`
 ```
-
-
