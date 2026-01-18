@@ -32,6 +32,22 @@ const STATUS_SAFE = 'SAFE' as const;
 const REWARD_DINING = 'DINING' as const;
 const BUDGET_MODE_BUDGETED = 'BUDGETED' as const;
 
+function resolveServerConfig(): ServerConfig {
+  try {
+    return getServerConfig() as ServerConfig;
+  } catch (err: unknown) {
+    void err;
+    if (process.env['NEXT_PUBLIC_SITE_VERSION'] == null) {
+      process.env['NEXT_PUBLIC_SITE_VERSION'] = 'dev';
+    }
+    const initResult = initConfigFromEnv(process.env, {
+      lockServerConfig: false,
+      allowServerConfigOverwrite: true,
+    }) as { serverConfig: ServerConfig };
+    return initResult.serverConfig;
+  }
+}
+
 function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySnapshot {
   return {
     dailyState: {
@@ -57,11 +73,7 @@ function buildSnapshot(overrides: Partial<AuthoritySnapshot> = {}): AuthoritySna
 }
 
 async function main(): Promise<void> {
-  if (process.env['NEXT_PUBLIC_SITE_VERSION'] == null) {
-    process.env['NEXT_PUBLIC_SITE_VERSION'] = 'dev';
-  }
-  initConfigFromEnv(process.env);
-  const serverConfig = getServerConfig() as ServerConfig;
+  const serverConfig = resolveServerConfig();
   const engineVersion = serverConfig.engineVersion;
   const snapshot = buildSnapshot();
   const baseParams: SimulateSpendParams = {
