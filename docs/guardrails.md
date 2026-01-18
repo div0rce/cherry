@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-17
+Last updated: 2026-01-18
 
 # Guardrails
 
@@ -10,6 +10,9 @@ Last updated: 2026-01-17
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 - DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
+- Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
+- Engine optimality versions are frozen by `check:engine-optimality-version`.
+- Guardrail runner supports `--aggregate` shadow execution; it accepts guardrail names only (no per-guardrail args) and reports in registry order by default (`--sort=name` for alphabetical).
 
 ## Guardrail Numbering (Legacy)
 - Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.

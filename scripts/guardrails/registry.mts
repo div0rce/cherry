@@ -29,6 +29,8 @@ const REPLAY_EQUALS_MATERIALIZED_PATH =
   `${CHECK_PATH_BASE}replay-equals-materialized.mts` as const;
 const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
 const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
+const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
+const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -83,6 +85,8 @@ export const GUARDRAILS = Object.freeze({
   'check:determinism': `${CHECK_PATH_BASE}determinism.mts`,
   'check:engine-prisma': `${CHECK_PATH_BASE}engine-prisma.mts`,
   'check:engine-date': `${CHECK_PATH_BASE}engine-date.mts`,
+  'check:engine-optimality': ENGINE_OPTIMALITY_PATH,
+  'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:authority-lint': `${CHECK_PATH_BASE}authority-lint.mts`,
   'check:authority-invariants': `${CHECK_PATH_BASE}authority-invariants.mts`,
   'check:prisma-assumptions': `${CHECK_PATH_BASE}prisma-assumptions.mts`,
