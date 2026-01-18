@@ -11123,9 +11123,9 @@ const nextConfig: NextConfig = {
       '.jsx': ['.jsx', '.tsx'],
     },
   },
-  // Avoid tracing a Next export detail file that doesn't exist in non-export builds.
+  // Avoid tracing ephemeral Next files that might not exist in non-export builds.
   outputFileTracingExcludes: {
-    '*': ['.next/export-detail.json'],
+    '*': ['.next/export-detail.json', '.next/lock'],
   },
 };
 

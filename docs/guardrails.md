@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-19
+Last updated: 2026-01-20
 
 # Guardrails
 
@@ -69,7 +69,7 @@ Last updated: 2026-01-19
 - NodeNext usage is quarantined to script configs only.
 - `docs/config-snapshot.md` must list every config file and match on-disk contents.
 - `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
-- `next.config.ts` must exclude `.next/export-detail.json` from output tracing to avoid non-export build failures.
+- `next.config.ts` must exclude `.next/export-detail.json` and `.next/lock` from output tracing to avoid non-export build failures.
 - Enforcement: `check:config-snapshot`.
 
 ### Authority `inputsVersion` Stability

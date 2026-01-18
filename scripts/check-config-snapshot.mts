@@ -210,7 +210,7 @@ function checkSnapshot(configFiles: Set<string>): void {
   }
 }
 
-function checkNextConfigExportDetailExclude(): void {
+function checkNextConfigOutputTraceExcludes(): void {
   const nextConfigPath = path.join(ROOT, 'next.config.ts');
   const nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
   const sourceFile = ts.createSourceFile(
@@ -220,53 +220,49 @@ function checkNextConfigExportDetailExclude(): void {
     true,
     ts.ScriptKind.TS
   );
-  const hasExclude = sourceHasExportDetailExclude(sourceFile);
-  if (!hasExclude) {
-    fail(PREFIX, 'next.config.ts must exclude .next/export-detail.json from output tracing.', {
-      fix: 'Add outputFileTracingExcludes with .next/export-detail.json to next.config.ts.',
-    });
+  const requiredExcludes = new Set(['.next/export-detail.json', '.next/lock']);
+  const missing = findMissingOutputTraceExcludes(sourceFile, requiredExcludes);
+  if (missing.length > 0) {
+    fail(
+      PREFIX,
+      `next.config.ts must exclude ${missing.join(', ')} from output tracing.`,
+      {
+        fix: `Add outputFileTracingExcludes with ${missing.join(', ')} to next.config.ts.`,
+      }
+    );
   }
 }
 
-function sourceHasExportDetailExclude(sourceFile: ts.SourceFile): boolean {
-  const targetLiteral = '.next/export-detail.json';
-  let found = false;
+function findMissingOutputTraceExcludes(
+  sourceFile: ts.SourceFile,
+  required: Set<string>
+): string[] {
+  const found = new Set<string>();
 
-  const containsLiteral = (node: ts.Node): boolean => {
-    let hasLiteral = false;
-    const visit = (child: ts.Node): void => {
-      if (hasLiteral) return;
-      if (ts.isStringLiteral(child) || ts.isNoSubstitutionTemplateLiteral(child)) {
-        if (child.text === targetLiteral) {
-          hasLiteral = true;
-          return;
-        }
-      }
-      ts.forEachChild(child, visit);
-    };
-    visit(node);
-    return hasLiteral;
+  const collectLiterals = (node: ts.Node): void => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      found.add(node.text);
+      return;
+    }
+    ts.forEachChild(node, collectLiterals);
   };
 
   const visit = (node: ts.Node): void => {
-    if (found) return;
     if (ts.isPropertyAssignment(node)) {
       const name = node.name;
       const isMatch =
         (ts.isIdentifier(name) && name.text === 'outputFileTracingExcludes') ||
         (ts.isStringLiteral(name) && name.text === 'outputFileTracingExcludes');
       if (isMatch && ts.isObjectLiteralExpression(node.initializer)) {
-        if (containsLiteral(node.initializer)) {
-          found = true;
-          return;
-        }
+        collectLiterals(node.initializer);
       }
     }
     ts.forEachChild(node, visit);
   };
 
   visit(sourceFile);
-  return found;
+
+  return [...required].filter((entry) => !found.has(entry));
 }
 
 function checkTsconfigPolicies(tsconfigFiles: string[]): void {
@@ -437,7 +433,7 @@ function main(): void {
   const configFiles = new Set<string>([...OTHER_CONFIG_FILES, ...tsconfigFiles, ...workflowFiles]);
 
   checkSnapshot(configFiles);
-  checkNextConfigExportDetailExclude();
+  checkNextConfigOutputTraceExcludes();
   checkTsconfigPolicies(tsconfigFiles);
   checkEditorTsconfig();
   checkEslintTsconfig();
