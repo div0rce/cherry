@@ -220,7 +220,11 @@ function checkNextConfigOutputTraceExcludes(): void {
     true,
     ts.ScriptKind.TS
   );
-  const requiredExcludes = new Set(['.next/export-detail.json', '.next/lock']);
+  const requiredExcludes = new Set([
+    '.next/export-detail.json',
+    '.next/lock',
+    '.next/server/proxy.js',
+  ]);
   const missing = findMissingOutputTraceExcludes(sourceFile, requiredExcludes);
   if (missing.length > 0) {
     fail(
@@ -285,16 +289,12 @@ function checkTsconfigPolicies(tsconfigFiles: string[]): void {
         ? (compilerOptionsValue as Record<string, unknown>)
         : {};
 
-    const hasNodeNext =
-      compilerOptions['module'] === 'NodeNext' ||
-      compilerOptions['moduleResolution'] === 'NodeNext' ||
-      compilerOptions['verbatimModuleSyntax'] === true;
-
-    if (hasNodeNext && !isScriptConfig(file)) {
-      fail(PREFIX, `NodeNext is not allowed outside scripts: ${file}`, { fix: FIX });
-    }
-
     if (file === 'tsconfig.base.json') {
+      ensure(
+        compilerOptions['module'] === 'NodeNext' &&
+          compilerOptions['moduleResolution'] === 'NodeNext',
+        'tsconfig.base.json must use NodeNext module resolution.'
+      );
       continue;
     }
 
@@ -373,50 +373,6 @@ function checkEslintTsconfig(): void {
   }
 }
 
-function checkJsImportSpecifiers(): void {
-  const files = fg.sync([
-    'app/**/*.{ts,tsx,js,jsx,mts,cts}',
-    'components/**/*.{ts,tsx,js,jsx,mts,cts}',
-    'lib/**/*.{ts,tsx,js,jsx,mts,cts}',
-    'tests/**/*.{ts,tsx,js,jsx,mts,cts}',
-  ], {
-    cwd: ROOT,
-    dot: true,
-    ignore: ['**/node_modules/**', '**/.next/**', 'tests/fixtures/**'],
-  });
-
-  const violations: Array<{ file: string; specifier: string }> = [];
-  const requireToken = 'require';
-  const specifierRegex = new RegExp(
-    `(?:from\\s+|import\\s*\\(|${requireToken}(?:\\.resolve)?\\s*\\()\\s*['"]([^'"]+\\.js)['"]`,
-    'g'
-  );
-
-  for (const file of files) {
-    const absolute = path.join(ROOT, file);
-    const content = fs.readFileSync(absolute, 'utf8');
-    let match: RegExpExecArray | null;
-    while ((match = specifierRegex.exec(content)) !== null) {
-      const specifier = match[1] ?? '';
-      if (specifier.length > 0) {
-        violations.push({ file, specifier });
-      }
-    }
-  }
-
-  if (violations.length > 0) {
-    const sample = violations
-      .slice(0, 8)
-      .map((entry) => `${entry.file}: ${entry.specifier}`)
-      .join(', ');
-    fail(
-      PREFIX,
-      `Disallowed .js import specifiers outside scripts: ${sample}`,
-      { fix: 'Remove .js specifiers in app/components/lib/tests (allowed only in scripts).' }
-    );
-  }
-}
-
 function main(): void {
   const tsconfigFiles = fg.sync('**/tsconfig*.json', {
     cwd: ROOT,
@@ -437,7 +393,6 @@ function main(): void {
   checkTsconfigPolicies(tsconfigFiles);
   checkEditorTsconfig();
   checkEslintTsconfig();
-  checkJsImportSpecifiers();
 
   process.stdout.write('check:config-snapshot: ok\n');
 }

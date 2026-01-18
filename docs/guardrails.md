@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-20
+Last updated: 2026-01-18
 
 # Guardrails
 
@@ -69,7 +69,7 @@ Last updated: 2026-01-20
 - NodeNext usage is quarantined to script configs only.
 - `docs/config-snapshot.md` must list every config file and match on-disk contents.
 - `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
-- `next.config.ts` must exclude `.next/export-detail.json` and `.next/lock` from output tracing to avoid non-export build failures.
+- `next.config.ts` must exclude `.next/export-detail.json`, `.next/lock`, and `.next/server/proxy.js` from output tracing to avoid non-export build failures.
 - Enforcement: `check:config-snapshot`.
 
 ### Authority `inputsVersion` Stability
@@ -334,14 +334,20 @@ Any duplication is a hard CI failure.
 - TS extension specifiers and `@/` aliases are forbidden in scripts.
 - Guardrails: `check:no-ts-extension-imports`, `check:no-script-alias-imports`.
 
-### Guardrail 30 — Check Contract
+### Guardrail 30 — Explicit Import Extensions
+
+- All relative import/export specifiers must include runtime extensions.
+- Applies to app, components, lib, scripts, tests, and runtime configs.
+- Guardrail: `check:explicit-import-extensions`.
+
+### Guardrail 31 — Check Contract
 
 - `ci:verify` must run `check`, `test`, and `build` in order.
 - `check` must remain pure (no env-dependent scripts).
 - `test` and `build` must not invoke guardrails; use `test:strict` and `build:strict` when needed.
 - Guardrail: `check:check-contract`.
 
-### Guardrail 31 — Script Runner Contract
+### Guardrail 32 — Script Runner Contract
 
 - Package scripts that invoke files under `scripts/` must go through `npm run ts:esm`.
 - Direct `node`, `tsx`, or `ts-node` usage in script commands is forbidden.

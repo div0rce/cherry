@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { initConfigFromEnv } from './lib/config/init';
+import { initConfigFromEnv } from './lib/config/init.js';
 
 initConfigFromEnv(process.env);
 
@@ -14,7 +14,7 @@ const nextConfig: NextConfig = {
   },
   // Avoid tracing ephemeral Next files that might not exist in non-export builds.
   outputFileTracingExcludes: {
-    '*': ['.next/export-detail.json', '.next/lock'],
+    '*': ['.next/export-detail.json', '.next/lock', '.next/server/proxy.js'],
   },
 };
 

@@ -9978,6 +9978,7 @@
     "check:script-runner-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:script-runner-contract",
     "check:no-script-alias-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:no-script-alias-imports",
     "check:no-ts-extension-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:no-ts-extension-imports",
+    "check:explicit-import-extensions": "npm run ts:esm -- scripts/guardrails/run.mts check:explicit-import-extensions",
     "check:guardrail-no-runtime-io": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-no-runtime-io",
     "check:db-truth-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:db-truth-boundary",
     "check:db-runner-exclusivity": "npm run ts:esm -- scripts/guardrails/run.mts check:db-runner-exclusivity",
@@ -10020,7 +10021,7 @@
     "check:check-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:check-contract",
     "check:env": "npm run check:db:required && npm run check:migrations:required",
     "check": "npm run check:guardrails && npm run lint && npm run lint:scripts && npm run typecheck && npm run typecheck:scripts",
-    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:engine-optimality && npm run check:engine-optimality-version && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:accounting-proof-coverage && npm run check:replay-equals-materialized && npm run check:no-mutation",
+    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:explicit-import-extensions && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:engine-optimality && npm run check:engine-optimality-version && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:accounting-proof-coverage && npm run check:replay-equals-materialized && npm run check:no-mutation",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
     "check:route-collisions": "npm run ts:esm -- scripts/guardrails/run.mts check:route-collisions",
@@ -10359,6 +10360,8 @@
     "tests/**/*.tsx",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts",
+    "types/vendor/**/*.d.ts",
+    "types/vendor/**/*.d.cts",
     "types/jsx-global.d.ts",
     "data/**/*.json",
     "proxy.ts",
@@ -10400,8 +10403,8 @@
 
     // --- Runtime / emit model ---
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
 
     // --- Interop (NON-NEGOTIABLE) ---
     "esModuleInterop": true,
@@ -11110,7 +11113,7 @@ export default defineConfig([
 ```ts
 // next.config.ts
 import type { NextConfig } from "next";
-import { initConfigFromEnv } from './lib/config/init';
+import { initConfigFromEnv } from './lib/config/init.js';
 
 initConfigFromEnv(process.env);
 
@@ -11125,7 +11128,7 @@ const nextConfig: NextConfig = {
   },
   // Avoid tracing ephemeral Next files that might not exist in non-export builds.
   outputFileTracingExcludes: {
-    '*': ['.next/export-detail.json', '.next/lock'],
+    '*': ['.next/export-detail.json', '.next/lock', '.next/server/proxy.js'],
   },
 };
 
@@ -11539,6 +11542,7 @@ const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
 const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as const;
 const NO_SCRIPT_ALIAS_IMPORTS_PATH = `${CHECK_PATH_BASE}no-script-alias-imports.mts` as const;
 const NO_TS_EXTENSION_IMPORTS_PATH = `${CHECK_PATH_BASE}no-ts-extension-imports.mts` as const;
+const EXPLICIT_IMPORT_EXTENSIONS_PATH = `${CHECK_PATH_BASE}explicit-import-extensions.mts` as const;
 const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
 const SCRIPT_RUNNER_CONTRACT_PATH = `${CHECK_PATH_BASE}script-runner-contract.mts` as const;
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
@@ -11591,6 +11595,7 @@ export const GUARDRAILS = Object.freeze({
   'check:script-runner-contract': SCRIPT_RUNNER_CONTRACT_PATH,
   'check:no-script-alias-imports': NO_SCRIPT_ALIAS_IMPORTS_PATH,
   'check:no-ts-extension-imports': NO_TS_EXTENSION_IMPORTS_PATH,
+  'check:explicit-import-extensions': EXPLICIT_IMPORT_EXTENSIONS_PATH,
   'check:guardrail-no-runtime-io': GUARDRAIL_NO_RUNTIME_IO_PATH,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,
