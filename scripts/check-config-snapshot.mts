@@ -213,12 +213,60 @@ function checkSnapshot(configFiles: Set<string>): void {
 function checkNextConfigExportDetailExclude(): void {
   const nextConfigPath = path.join(ROOT, 'next.config.ts');
   const nextConfig = fs.readFileSync(nextConfigPath, 'utf8');
-  const pattern = /outputFileTracingExcludes\s*:\s*{[^}]*export-detail\.json/s;
-  if (!pattern.test(nextConfig)) {
+  const sourceFile = ts.createSourceFile(
+    nextConfigPath,
+    nextConfig,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const hasExclude = sourceHasExportDetailExclude(sourceFile);
+  if (!hasExclude) {
     fail(PREFIX, 'next.config.ts must exclude .next/export-detail.json from output tracing.', {
       fix: 'Add outputFileTracingExcludes with .next/export-detail.json to next.config.ts.',
     });
   }
+}
+
+function sourceHasExportDetailExclude(sourceFile: ts.SourceFile): boolean {
+  const targetLiteral = '.next/export-detail.json';
+  let found = false;
+
+  const containsLiteral = (node: ts.Node): boolean => {
+    let hasLiteral = false;
+    const visit = (child: ts.Node): void => {
+      if (hasLiteral) return;
+      if (ts.isStringLiteral(child) || ts.isNoSubstitutionTemplateLiteral(child)) {
+        if (child.text === targetLiteral) {
+          hasLiteral = true;
+          return;
+        }
+      }
+      ts.forEachChild(child, visit);
+    };
+    visit(node);
+    return hasLiteral;
+  };
+
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (ts.isPropertyAssignment(node)) {
+      const name = node.name;
+      const isMatch =
+        (ts.isIdentifier(name) && name.text === 'outputFileTracingExcludes') ||
+        (ts.isStringLiteral(name) && name.text === 'outputFileTracingExcludes');
+      if (isMatch && ts.isObjectLiteralExpression(node.initializer)) {
+        if (containsLiteral(node.initializer)) {
+          found = true;
+          return;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+  return found;
 }
 
 function checkTsconfigPolicies(tsconfigFiles: string[]): void {
