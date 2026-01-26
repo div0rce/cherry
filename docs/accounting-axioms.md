@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-01-16
+Last updated: 2026-01-18
 
 # Accounting Axioms
 
@@ -36,15 +36,15 @@ Replaying events yields the same balances as the materialized ledger.
 
 | Axiom | Existing Artifacts | Coverage |
 | --- | --- | --- |
-| A1 — Conservation of value | `lib/accounting/ledger.ts`; `tests/accounting/property.spec.ts`; `tests/db/constraints/accounting-ledger-constraints.test.ts`; `prisma/migrations/20260117120000_accounting_ledger/migration.sql` | FULL |
-| A2 — No fund creation or destruction | `lib/accounting/ledger.ts`; `tests/accounting/property.spec.ts`; `tests/db/constraints/accounting-ledger-constraints.test.ts` | FULL |
-| A3 — Double-entry completeness | `lib/accounting/ledger.ts`; `tests/accounting/property.spec.ts` | FULL |
-| A4 — Ledger immutability | `tests/accounting/no-mutation.spec.ts`; `tests/accounting/property.spec.ts`; `tests/db/semantics/accounting-immutability.test.ts` | FULL |
-| A5 — Deterministic replay | `tests/accounting/property.spec.ts`; `tests/accounting/replay-equals-materialized.spec.ts` | FULL |
-| A6 — Idempotency | `lib/accounting/ledger.ts`; `tests/accounting/property.spec.ts`; `tests/db/semantics/idempotency-no-double-apply.test.ts` | FULL |
+| A1 — Conservation of value | `lib/accounting/ledger.ts`; `tests/node/accounting/property.spec.ts`; `tests/db/constraints/accounting-ledger-constraints.test.ts`; `prisma/migrations/20260117120000_accounting_ledger/migration.sql` | FULL |
+| A2 — No fund creation or destruction | `lib/accounting/ledger.ts`; `tests/node/accounting/property.spec.ts`; `tests/db/constraints/accounting-ledger-constraints.test.ts` | FULL |
+| A3 — Double-entry completeness | `lib/accounting/ledger.ts`; `tests/node/accounting/property.spec.ts` | FULL |
+| A4 — Ledger immutability | `tests/node/accounting/no-mutation.spec.ts`; `tests/node/accounting/property.spec.ts`; `tests/db/semantics/accounting-immutability.test.ts` | FULL |
+| A5 — Deterministic replay | `tests/node/accounting/property.spec.ts`; `tests/node/accounting/replay-equals-materialized.spec.ts` | FULL |
+| A6 — Idempotency | `lib/accounting/ledger.ts`; `tests/node/accounting/property.spec.ts`; `tests/db/semantics/idempotency-no-double-apply.test.ts` | FULL |
 | A7 — Atomicity | `tests/db/semantics/atomicity-no-partial-writes.test.ts` | FULL |
-| A8 — Monotonic ordering / time correctness | `tests/accounting/property.spec.ts`; `tests/db/semantics/time-monotonicity.test.ts`; `tests/engine-accounting-time-order.test.ts` | FULL |
-| A9 — Materialized == replayed | `tests/accounting/replay-equals-materialized.spec.ts`; `tests/accounting/property.spec.ts`; `tests/db/semantics/accounting-replay.test.ts` | FULL |
+| A8 — Monotonic ordering / time correctness | `tests/node/accounting/property.spec.ts`; `tests/db/semantics/time-monotonicity.test.ts`; `tests/engine-accounting-time-order.test.ts` | FULL |
+| A9 — Materialized == replayed | `tests/node/accounting/replay-equals-materialized.spec.ts`; `tests/node/accounting/property.spec.ts`; `tests/db/semantics/accounting-replay.test.ts` | FULL |
 
 ## Closure
 

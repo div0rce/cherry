@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-17
+Last updated: 2026-01-18
 
 # Accounting Invariants
 
@@ -103,7 +103,7 @@ Each `externalId` maps to exactly one immutable transaction, and the map is repl
 ## Enforcement and proofs (Current)
 - Structural: `balancePostings`, posting roles + sign matrix, and branded types (`Currency`, `AccountId`, `TxnId`, `NonZeroAmount`).
 - Procedural: deterministic, append-only event application in `lib/accounting/ledger.ts`.
-- Tests: property-based invariants and replay checks in `tests/accounting/*.spec.ts`.
+- Tests: property-based invariants and replay checks in `tests/node/accounting/*.spec.ts`.
 - Guardrails: `check:accounting-invariants`, `check:replay-equals-materialized`, `check:no-mutation`.
 
 ## Future behavior

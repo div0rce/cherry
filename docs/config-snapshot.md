@@ -9947,7 +9947,7 @@
     "build": "next build --webpack",
     "build:strict": "npm run check:guardrails && next build --webpack",
     "start": "next start",
-    "ci:verify": "npm run check && npm run test && npm run build",
+    "ci:verify": "npm run check && npm run build",
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
@@ -9978,7 +9978,8 @@
     "check:script-runner-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:script-runner-contract",
     "check:no-script-alias-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:no-script-alias-imports",
     "check:no-ts-extension-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:no-ts-extension-imports",
-    "check:explicit-import-extensions": "npm run ts:esm -- scripts/guardrails/run.mts check:explicit-import-extensions",
+    "check:esm-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:esm-imports",
+    "check:type-only-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:type-only-imports",
     "check:guardrail-no-runtime-io": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-no-runtime-io",
     "check:db-truth-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:db-truth-boundary",
     "check:db-runner-exclusivity": "npm run ts:esm -- scripts/guardrails/run.mts check:db-runner-exclusivity",
@@ -10000,6 +10001,7 @@
     "check:guardrail-name-path-bijection": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-name-path-bijection",
     "check:guardrail-doc-sync": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-doc-sync",
     "check:guardrail-execution": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-execution",
+    "check:guardrail-execution-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-execution-parity",
     "check:guardrail-helpers-exclusive": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-helpers-exclusive",
     "check:guardrail-subprocess-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-subprocess-totality",
     "check:ci-must-run-check": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-must-run-check",
@@ -10014,18 +10016,23 @@
     "check:catch-unknown": "npm run ts:esm -- scripts/guardrails/run.mts check:catch-unknown",
     "check:guardrails-core": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrails-core",
     "check:repo-guardrails": "npm run ts:esm -- scripts/guardrails/run.mts check:repo-guardrails",
+    "check:environment-import-integrity": "npm run ts:esm -- scripts/guardrails/run.mts check:environment-import-integrity",
     "check:user-pages-runtime": "npm run ts:esm -- scripts/guardrails/run.mts check:user-pages-runtime",
     "check:config-lock": "npm run ts:esm -- scripts/guardrails/run.mts check:config-lock",
     "check:config-snapshot": "npm run ts:esm -- scripts/guardrails/run.mts check:config-snapshot",
     "check:ts-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ts-coverage",
     "check:check-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:check-contract",
     "check:env": "npm run check:db:required && npm run check:migrations:required",
-    "check": "npm run check:guardrails && npm run lint && npm run lint:scripts && npm run typecheck && npm run typecheck:scripts",
-    "check:guardrails": "npm run check:ts-coverage && npm run check:check-contract && npm run check:side-effects && npm run check:side-effects:diff && npm run check:script-semantics && npm run check:script-json-parse && npm run check:npm-arg-forwarding && npm run check:loader-contract && npm run check:esm-loader-totality && npm run check:prisma-mock-loader-totality && npm run check:script-runner-contract && npm run check:no-script-alias-imports && npm run check:no-ts-extension-imports && npm run check:explicit-import-extensions && npm run check:guardrail-no-runtime-io && npm run check:implicit-boolean && npm run check:branded-literal && npm run check:guardrail-self && npm run check:guardrail-time && npm run check:guardrail-registry && npm run check:guardrail-name-path-bijection && npm run check:guardrail-doc-sync && npm run check:guardrail-execution && npm run check:guardrail-helpers-exclusive && npm run check:guardrail-subprocess-totality && npm run check:ci-must-run-check && npm run check:ci-guardrail-coverage && npm run check:execution-registry-completeness && npm run check:no-orphan-check-files && npm run check:no-orphan-scripts && npm run check:server-entropy && npm run check:ordering && npm run check:identity && npm run check:config && npm run check:config-init && npm run check:config-lock && npm run check:config-snapshot && npm run check:determinism && npm run check:engine-prisma && npm run check:engine-date && npm run check:engine-optimality && npm run check:engine-optimality-version && npm run check:authority-lint && npm run check:authority-invariants && npm run check:prisma-assumptions && npm run check:dev-ui-parity && npm run check:shell-boundaries && npm run check:route-collisions && npm run check:user-pages-runtime && npm run check:catch-unknown && npm run check:guardrails-core && npm run check:repo-guardrails && npm run check:routes && npm run check:engine-freeze && npm run check:migrations && npm run check:db-truth-boundary && npm run check:db-runner-exclusivity && npm run check:db-constraint-coverage && npm run check:db-constraint-naming && npm run check:db-semantic-orm-agnostic && npm run check:db-semantic-suite-minimum && npm run check:db-ledger-entrypoints && npm run check:db-accounting-replay && npm run check:accounting-invariants && npm run check:accounting-proof-coverage && npm run check:replay-equals-materialized && npm run check:no-mutation",
+    "check:node": "npm run lint:scripts && npm run typecheck:scripts && npm run check:run-tests:node",
+    "check:next": "npm run lint && npm run typecheck && npm run check:run-tests:next",
+    "check": "npm run check:aggregate && npm run check:node && npm run check:next",
+    "check:guardrails": "npm run ts:esm -- scripts/guardrails/run.mts --all",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
     "check:route-collisions": "npm run ts:esm -- scripts/guardrails/run.mts check:route-collisions",
     "check:run-tests": "npm run ts:esm -- scripts/execution/run.mts check:run-tests",
+    "check:run-tests:node": "npm run ts:esm -- scripts/execution/run.mts check:run-tests:node",
+    "check:run-tests:next": "npm run ts:esm -- scripts/execution/run.mts check:run-tests:next",
     "check:run-db-tests": "npm run ts:esm -- scripts/execution/run-db.mts check:run-db-tests",
     "check:tailwind-conflicts": "npm run ts:esm -- scripts/execution/run.mts check:tailwind-conflicts",
     "ingest:mcc": "npm run ts:esm -- scripts/execution/run.mts ingest:mcc",
@@ -10405,6 +10412,18 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@ui/*": ["components/ui/*"],
+      "next": ["types/vendor/next-root.d.ts"],
+      "next/cache": ["types/vendor/next-cache.d.ts"],
+      "next/font/google": ["types/vendor/next-font-google.d.ts"],
+      "next/headers": ["types/vendor/next-headers.d.ts"],
+      "next/image-types/global": ["types/vendor/next-image-types-global.d.ts"],
+      "next/link": ["types/vendor/next-link.d.ts"],
+      "next/navigation": ["types/vendor/next-navigation.d.ts"],
+      "next/server": ["types/vendor/next-server.d.ts"]
+    },
 
     // --- Interop (NON-NEGOTIABLE) ---
     "esModuleInterop": true,
@@ -11167,7 +11186,7 @@ export default config;
 ```ts
 <!-- .github/copilot-instructions.md -->
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-01-18
 
 # Cherry • AI Agent Playbook
 
@@ -11461,6 +11480,8 @@ export const EXECUTION = {
   'check:db:required': 'scripts/db-check-required.mts',
   'check:run-db-tests': 'scripts/run-db-tests.mts',
   'check:run-tests': 'scripts/run-tests.mts',
+  'check:run-tests:node': 'scripts/run-tests-node.mts',
+  'check:run-tests:next': 'scripts/run-tests-next.mts',
   'check:tailwind-conflicts': 'scripts/tailwind-conflicts.mts',
   'ingest:moustafa-bank': 'scripts/ingest-moustafa-bank-csv.mts',
   'audit:evaluator:moustafa': 'scripts/run-offline-evaluator-moustafa.mts',
@@ -11542,7 +11563,8 @@ const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
 const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as const;
 const NO_SCRIPT_ALIAS_IMPORTS_PATH = `${CHECK_PATH_BASE}no-script-alias-imports.mts` as const;
 const NO_TS_EXTENSION_IMPORTS_PATH = `${CHECK_PATH_BASE}no-ts-extension-imports.mts` as const;
-const EXPLICIT_IMPORT_EXTENSIONS_PATH = `${CHECK_PATH_BASE}explicit-import-extensions.mts` as const;
+const ESM_IMPORTS_PATH = `${CHECK_PATH_BASE}esm-imports.mts` as const;
+const TYPE_ONLY_IMPORTS_PATH = `${CHECK_PATH_BASE}type-only-imports.mts` as const;
 const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
 const SCRIPT_RUNNER_CONTRACT_PATH = `${CHECK_PATH_BASE}script-runner-contract.mts` as const;
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
@@ -11567,6 +11589,10 @@ const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
 const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
 const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
+const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
+  `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
+const GUARDRAIL_EXECUTION_PARITY_PATH =
+  `${CHECK_PATH_BASE}guardrail-execution-parity.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -11595,7 +11621,8 @@ export const GUARDRAILS = Object.freeze({
   'check:script-runner-contract': SCRIPT_RUNNER_CONTRACT_PATH,
   'check:no-script-alias-imports': NO_SCRIPT_ALIAS_IMPORTS_PATH,
   'check:no-ts-extension-imports': NO_TS_EXTENSION_IMPORTS_PATH,
-  'check:explicit-import-extensions': EXPLICIT_IMPORT_EXTENSIONS_PATH,
+  'check:esm-imports': ESM_IMPORTS_PATH,
+  'check:type-only-imports': TYPE_ONLY_IMPORTS_PATH,
   'check:guardrail-no-runtime-io': GUARDRAIL_NO_RUNTIME_IO_PATH,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,
@@ -11605,6 +11632,7 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-name-path-bijection': `${CHECK_PATH_BASE}guardrail-name-path-bijection.mts`,
   'check:guardrail-doc-sync': `${CHECK_PATH_BASE}guardrail-doc-sync.mts`,
   'check:guardrail-execution': `${CHECK_PATH_BASE}guardrail-execution.mts`,
+  'check:guardrail-execution-parity': GUARDRAIL_EXECUTION_PARITY_PATH,
   'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
@@ -11629,6 +11657,7 @@ export const GUARDRAILS = Object.freeze({
   'check:prisma-assumptions': `${CHECK_PATH_BASE}prisma-assumptions.mts`,
   'check:dev-ui-parity': `${CHECK_PATH_BASE}dev-ui-parity.mts`,
   'check:shell-boundaries': `${CHECK_PATH_BASE}shell-boundaries.mts`,
+  'check:environment-import-integrity': ENVIRONMENT_IMPORT_INTEGRITY_PATH,
   'check:route-collisions': `${CHECK_PATH_BASE}route-collisions.mts`,
   'check:user-pages-runtime': `${CHECK_PATH_BASE}user-pages-runtime.mts`,
   'check:catch-unknown': CATCH_UNKNOWN_PATH,
@@ -12779,7 +12808,7 @@ This file is the operating contract for humans and agents working in this repo. 
 
 ## Authority Ladder (highest to lowest)
 1. `package.json` scripts + `.github/workflows/*` (actual behavior)
-2. Guardrail registries and tests (`scripts/guardrails/*`, `tests/guardrails/*`)
+2. Guardrail registries and tests (`scripts/guardrails/*`, `tests/node/guardrails/*`)
 3. `AGENTS.md` (this file)
 4. `docs/*` (specs and explanations)
 5. Everything else (notes, drafts, marketing)
@@ -12864,12 +12893,15 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
   - `npx prisma format`
   - `npx prisma migrate dev --name <desc>`
   - `npx prisma generate`
-  - Run `npm run check`, `npm test`, and `npm run build`.
+  - Run `npm run check` and `npm run build` (use `npm test` for a test-only rerun).
 - For docs: add `Status` + `Last updated`, split Current vs Future, add Related docs.
 
 ## PR Checklist (what each command proves)
-- `npm run check` → guardrails + lint + typecheck are green.
-- `npm test` → unit/guardrail tests green (Prisma mocked by loader).
+- `npm run check:aggregate` → guardrails only.
+- `npm run check:node` → Node lint/typecheck + node tests.
+- `npm run check:next` → UI lint/typecheck + next tests.
+- `npm run check` → aggregate + node + next (full non-DB correctness).
+- `npm test` → node + next tests only (Prisma mocked by loader).
 - `npm run build` → Next.js build passes.
 - `npm run ci:verify` → mirrors CI entrypoint.
 - If schema changed: migrations apply and Prisma client is regenerated.
@@ -12903,7 +12935,7 @@ Cherry is product-ready for a pilot when:
 ```ts
 <!-- docs/accounting/invariants.md -->
 Status: Active
-Last updated: 2026-01-17
+Last updated: 2026-01-18
 
 # Accounting Invariants
 
@@ -13007,7 +13039,7 @@ Each `externalId` maps to exactly one immutable transaction, and the map is repl
 ## Enforcement and proofs (Current)
 - Structural: `balancePostings`, posting roles + sign matrix, and branded types (`Currency`, `AccountId`, `TxnId`, `NonZeroAmount`).
 - Procedural: deterministic, append-only event application in `lib/accounting/ledger.ts`.
-- Tests: property-based invariants and replay checks in `tests/accounting/*.spec.ts`.
+- Tests: property-based invariants and replay checks in `tests/node/accounting/*.spec.ts`.
 - Guardrails: `check:accounting-invariants`, `check:replay-equals-materialized`, `check:no-mutation`.
 
 ## Future behavior
@@ -16144,7 +16176,7 @@ If no → rethink it.
 ```ts
 <!-- docs/ci-and-guardrails.md -->
 Status: Active
-Last updated: 2026-01-05
+Last updated: 2026-01-18
 
 # CI and guardrails
 
@@ -16154,7 +16186,7 @@ Last updated: 2026-01-05
 - Runs on every push to `main` and all PRs via `.github/workflows/ci.yml`.
 - Steps (fail-fast):
   1) `npm ci` (postinstall runs `prisma generate`)
-  2) `npm run ci:verify` (composite truth gate: check + test + build)
+  2) `npm run ci:verify` (composite truth gate: check + build)
 - Optional env lane (`.github/workflows/env-checks.yml`) provisions Postgres and runs:
   - `npx prisma generate`
   - `npx prisma migrate deploy`
@@ -16168,17 +16200,15 @@ Last updated: 2026-01-05
 - CI does not enumerate guardrails.
 - CI runs one authority: `npm run ci:verify`.
 - `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
-- `check` stays pure (guardrails + lint + typecheck); env checks live in `check:env`.
+- `check` is the aggregate of guardrails + node correctness + UI correctness; env checks live in `check:env`.
 - The last non-empty command in the CI job must be `npm run ci:verify`.
 
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 
 ### Ordering invariant
-- Guardrails always execute before lint, typecheck, test, or build.
-- Lint executes before typecheck.
-- Typecheck executes before tests.
-- Tests execute before build.
-- No step may reorder or short-circuit this sequence.
+- Guardrails execute before env-specific correctness and build.
+- Inside `check:node` and `check:next`, lint runs before typecheck and typecheck runs before tests.
+- Build executes after `check` completes.
 
 ### Guardrails enforced
 - ESLint rules must stay strict (`eslint.config.mjs`): Zod strictness, unsafe-any rules, strict-boolean-expressions, and JSON.parse bans.
@@ -16199,7 +16229,7 @@ Last updated: 2026-01-05
 
 ### How to run locally
 
-Run the npm scripts: `check` (pure), `test`, `build`, or the full gate `ci:verify`.
+Run the npm scripts: `check:aggregate` (guardrails only), `check` (aggregate + node + next), `test` (tests only), `build`, or the full gate `ci:verify`.
 
 ### What CI green means (DB posture)
 - Standard CI (`ci:verify`) does not exercise a live database; tests run with Prisma mocked.
@@ -16601,8 +16631,8 @@ Last updated: 2026-01-03
 
 ## Guardrail System Health (Human Summary)
 
-- Total registered guardrails: 52 (from `scripts/guardrails/registry.mts`).
-- Enforced in CI: 52 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
+- Total registered guardrails: 53 (from `scripts/guardrails/registry.mts`).
+- Enforced in CI: 53 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
 - Partial / legacy-allowlisted: 3 (floating-point money math allowlist, idempotent writes coverage, determinism guardrail allows global fake timers).
 - Known gaps:
   - Idempotent writes: session/ledger coverage incomplete.
@@ -16704,7 +16734,7 @@ Reach a fixed point where all checks pass with zero warnings and no allowlists.
 ```ts
 <!-- docs/guardrails.md -->
 Status: Active
-Last updated: 2026-01-17
+Last updated: 2026-01-18
 
 # Guardrails
 
@@ -16715,6 +16745,9 @@ Last updated: 2026-01-17
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 - DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
+- Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
+- Engine optimality versions are frozen by `check:engine-optimality-version`.
+- Guardrail runner supports `--aggregate` shadow execution; it accepts guardrail names only (no per-guardrail args) and reports in registry order by default (`--sort=name` for alphabetical).
 
 ## Guardrail Numbering (Legacy)
 - Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.
@@ -16764,11 +16797,30 @@ Last updated: 2026-01-17
 - Tests may inject configs with `allowOverwrite: true, lock: false` before calling `lockServerConfig()` to mimic boundary assembly; no fallback-to-env is permitted after lock.
 - Guardrail check: `check:config-lock` asserts locking, immutability, and loader rejection.
 
+### Guardrail 44 — Config Snapshot Integrity
+
+- `tsconfig.base.json` is the sole semantic authority; all other tsconfigs are view-only, CI aggregators, or fixtures.
+- Fixture tsconfigs may diverge semantically and are excluded from enforcement.
+- NodeNext usage is quarantined to script configs only.
+- `docs/config-snapshot.md` must list every config file and match on-disk contents.
+- `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
+- `next.config.ts` must exclude `.next/export-detail.json`, `.next/lock`, and `.next/server/proxy.js` from output tracing to avoid non-export build failures.
+- Enforcement: `check:config-snapshot`.
+
 ### Authority `inputsVersion` Stability
 
 `inputsVersion` is deterministic for a fixed `(engineVersion, inputs, snapshot)`. It is not
 guaranteed to remain stable across different `engineVersion` values. Consumers must not compare
 `inputsVersion` values across engine versions.
+
+## Domain: Environment Contracts
+
+### Guardrail 46 — Environment Import Integrity
+
+- Every source file is owned by exactly one environment (`env:node`, `env:next`, `env:guardrail`).
+- `env:node` may not import `env:next`, `next/*`, `react`, or `react-dom`.
+- `tests/node/**` may only import `env:node`; `tests/next/**` may only import `env:next` or `env:node`.
+- Enforcement: `check:environment-import-integrity`.
 
 ## Domain: DB Truth Lane
 
@@ -16855,6 +16907,17 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - DB materialized balances must match in-memory replayed ledger balances.
 - Enforcement: `check:db-accounting-replay`.
 
+### Guardrail 44 — Accounting Proof Coverage
+
+- Every accounting axiom must be covered by at least one artifact and marked FULL.
+- Enforcement: `check:accounting-proof-coverage`.
+
+### Guardrail 45 — Guardrail Execution Parity
+
+- `check` and `check:aggregate` must execute the same guardrails in registry order; only failure handling may differ.
+- Enforcement: `check:guardrail-execution-parity`.
+- Prevents skipped, reordered, or ad hoc guardrail execution lists.
+
 ## Domain: Loader & Guardrail Event Integrity
 
 ### Guardrail 7 — ESM Loader Totality
@@ -16862,19 +16925,19 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - ESM loader hooks must be total: every branch returns a valid `{ format, source }` or delegates to `defaultLoad`.
 - Loader hooks must never return `undefined` sources; prefer deterministic sentinel modules for tests.
 - Sentinel paths are allowed only under `CHERRY_TEST_LOADER_SENTINEL=1` and must return valid modules.
-- Guardrail checks: `check:loader-contract` and `tests/guardrails/esm-loader-contract.test.ts`.
+- Guardrail checks: `check:loader-contract` and `tests/node/guardrails/esm-loader-contract.test.ts`.
 
 ### Guardrail 8 — Guardrail Event Totality
 
 - Guardrail events must include `timestamp` and `timestampSource` (`boundary` | `client` | `engine`).
 - API routes must emit `timestampSource: boundary`; client components must emit `timestampSource: client`.
-- Guardrail checks: `check:guardrail-time` and `tests/guardrails/guardrail-event-totality.test.ts`.
+- Guardrail checks: `check:guardrail-time` and `tests/node/guardrails/guardrail-event-totality.test.ts`.
 
 ### Guardrail 9 — Prisma Adapter Readiness
 
 - Prisma-backed adapters must assert model availability before reads/writes.
 - Missing models throw `AppError('INTERNAL', 'Missing Prisma model: <name>', 500)` deterministically.
-- Guardrail tests: `tests/guardrails/prisma-adapter-totality.test.ts`.
+- Guardrail tests: `tests/node/guardrails/prisma-adapter-totality.test.ts`.
 
 ### Guardrail 10 — Side-Effect Expiration
 
@@ -16888,13 +16951,13 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 
 - Engine-facing APIs (`safeSolveDecisionForWorld`, `simulateSpendAuthority`) must never throw.
 - Invalid inputs return structured outcomes, not exceptions.
-- Guardrail tests: `tests/guardrails/engine-no-throw.test.ts`.
+- Guardrail tests: `tests/node/guardrails/engine-no-throw.test.ts`.
 
 ### Guardrail 12 — Boolean Totality
 
 - No implicit truthiness checks on non-boolean values.
 - Conditionals must compare explicitly (`===`, `!==`, `<`, `>`) or use typed helpers.
-- Guardrail checks: `check:implicit-boolean` and `tests/guardrails/no-implicit-boolean.test.ts`.
+- Guardrail checks: `check:implicit-boolean` and `tests/node/guardrails/no-implicit-boolean.test.ts`.
 
 ### Guardrail 13 — Branded Policy Types
 
@@ -16914,7 +16977,7 @@ Rules:
 Rationale:
 Silent misuse of policy metadata causes long-term system rot.
 
-Guardrail checks: `check:branded-literal` and `tests/guardrails/branded-type-enforcement.test.ts`.
+Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-type-enforcement.test.ts`.
 
 ## Meta-Guardrails (Guardrail System Integrity)
 
@@ -16924,7 +16987,7 @@ These guardrails exist to ensure the guardrail system itself cannot drift, fork,
 
 - Guardrail scripts (registry `check:*` entries) must obey all active guardrails.
 - No implicit booleans, `any`, branded literals, wall-clock time, or unsafe casts in guardrail scripts.
-- Guardrail checks: `check:guardrail-self` and `tests/guardrails/guardrail-self-consistency.test.ts`.
+- Guardrail checks: `check:guardrail-self` and `tests/node/guardrails/guardrail-self-consistency.test.ts`.
 
 ### Guardrail 17 — Execution Exclusivity
 
@@ -17021,14 +17084,26 @@ Any duplication is a hard CI failure.
 - TS extension specifiers and `@/` aliases are forbidden in scripts.
 - Guardrails: `check:no-ts-extension-imports`, `check:no-script-alias-imports`.
 
-### Guardrail 30 — Check Contract
+### Guardrail 30 — ESM Import Extensions
+
+- All relative import/export specifiers must include runtime extensions.
+- Applies to app, components, lib, scripts, tests, and runtime configs.
+- Guardrail: `check:esm-imports`.
+
+### Guardrail 31 — Type-Only Import Enforcement
+
+- Symbols referenced only in type positions must use `import type` or `import { type ... }`.
+- Prevents runtime graph pollution and ensures explicit ESM boundaries.
+- Guardrail: `check:type-only-imports`.
+
+### Guardrail 32 — Check Contract
 
 - `ci:verify` must run `check`, `test`, and `build` in order.
 - `check` must remain pure (no env-dependent scripts).
 - `test` and `build` must not invoke guardrails; use `test:strict` and `build:strict` when needed.
 - Guardrail: `check:check-contract`.
 
-### Guardrail 31 — Script Runner Contract
+### Guardrail 33 — Script Runner Contract
 
 - Package scripts that invoke files under `scripts/` must go through `npm run ts:esm`.
 - Direct `node`, `tsx`, or `ts-node` usage in script commands is forbidden.

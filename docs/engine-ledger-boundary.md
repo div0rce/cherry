@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-01-16
+Last updated: 2026-01-18
 
 # Engine ↔ Ledger Boundary
 
@@ -30,33 +30,33 @@ Last updated: 2026-01-16
 - A1 — Conservation of value
   - Ledger validation (`lib/accounting/ledger.ts`).
   - DB constraints (`prisma/migrations/20260117120000_accounting_ledger/migration.sql`).
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
 - A2 — No fund creation or destruction
   - Ledger validation (`lib/accounting/ledger.ts`).
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
   - DB constraints (`tests/db/constraints/accounting-ledger-constraints.test.ts`).
 - A3 — Double-entry completeness
   - Ledger validation (`lib/accounting/ledger.ts`).
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
 - A4 — Ledger immutability
   - Guardrail enforcement (`check:no-mutation`).
   - DB semantics tests (`tests/db/semantics/accounting-immutability.test.ts`).
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
 - A5 — Deterministic replay
-  - Replay test (`tests/accounting/replay-equals-materialized.spec.ts`).
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Replay test (`tests/node/accounting/replay-equals-materialized.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
 - A6 — Idempotency
   - Ledger validation (`lib/accounting/ledger.ts`).
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
   - DB semantics tests (`tests/db/semantics/idempotency-no-double-apply.test.ts`).
 - A7 — Atomicity
   - DB semantics tests (`tests/db/semantics/atomicity-no-partial-writes.test.ts`).
 - A8 — Monotonic ordering / time correctness
-  - Property tests (`tests/accounting/property.spec.ts`).
+  - Property tests (`tests/node/accounting/property.spec.ts`).
   - DB semantics tests (`tests/db/semantics/time-monotonicity.test.ts`).
   - Engine boundary test (`tests/engine-accounting-time-order.test.ts`).
 - A9 — Materialized == replayed
-  - Replay test (`tests/accounting/replay-equals-materialized.spec.ts`).
+  - Replay test (`tests/node/accounting/replay-equals-materialized.spec.ts`).
   - DB semantics tests (`tests/db/semantics/accounting-replay.test.ts`).
 
 ### 5. Preservation argument (informal, explicit)

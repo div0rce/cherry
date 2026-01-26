@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-02-14
+Last updated: 2026-01-18
 
 # Accounting Proof Inventory
 
@@ -23,26 +23,26 @@ Implicitly proves: Engine recommendations are filtered by ledger invariant valid
 Notes: Builds hypothetical transactions, applies to ledger snapshot, and rejects invariant violations.
 Maturity: IMPLICIT
 
-Artifact: tests/accounting/property.spec.ts
-Location: tests/accounting/property.spec.ts
+Artifact: tests/node/accounting/property.spec.ts
+Location: tests/node/accounting/property.spec.ts
 Implicitly proves: Conservation of value; double-entry completeness; deterministic replay; idempotency; materialized == replayed; monotonic time balance queries; external id uniqueness; no mutation (append-only)
 Notes: Property-based event stream over randomized seeds with replay and balance checks.
 Maturity: IMPLICIT
 
-Artifact: tests/accounting/no-mutation.spec.ts
-Location: tests/accounting/no-mutation.spec.ts
+Artifact: tests/node/accounting/no-mutation.spec.ts
+Location: tests/node/accounting/no-mutation.spec.ts
 Implicitly proves: Ledger immutability (append-only transaction history)
 Notes: Ensures transaction history is monotonic and prior entries are unchanged.
 Maturity: IMPLICIT
 
-Artifact: tests/accounting/replay-equals-materialized.spec.ts
-Location: tests/accounting/replay-equals-materialized.spec.ts
+Artifact: tests/node/accounting/replay-equals-materialized.spec.ts
+Location: tests/node/accounting/replay-equals-materialized.spec.ts
 Implicitly proves: Deterministic replay; materialized == replayed state
 Notes: Compares ledger state after applying events vs replay function.
 Maturity: IMPLICIT
 
-Artifact: tests/accounting/harness.ts
-Location: tests/accounting/harness.ts
+Artifact: tests/node/accounting/harness.ts
+Location: tests/node/accounting/harness.ts
 Implicitly proves: Deterministic event stream generator for accounting proofs
 Notes: Provides seeded event generation and snapshot helpers for property tests.
 Maturity: PARTIAL
@@ -62,19 +62,19 @@ Maturity: EXPLICIT
 Artifact: Guardrail check:accounting-invariants
 Location: package.json (script check:accounting-invariants); scripts/guardrails/registry.mts
 Implicitly proves: Property-based accounting invariants must pass in CI
-Notes: Runs tests/accounting/property.spec.ts as a guardrail.
+Notes: Runs tests/node/accounting/property.spec.ts as a guardrail.
 Maturity: IMPLICIT
 
 Artifact: Guardrail check:replay-equals-materialized
 Location: package.json (script check:replay-equals-materialized); scripts/guardrails/registry.mts
 Implicitly proves: Replay equals materialized guardrail enforcement
-Notes: Runs tests/accounting/replay-equals-materialized.spec.ts as a guardrail.
+Notes: Runs tests/node/accounting/replay-equals-materialized.spec.ts as a guardrail.
 Maturity: IMPLICIT
 
 Artifact: Guardrail check:no-mutation
 Location: package.json (script check:no-mutation); scripts/guardrails/registry.mts
 Implicitly proves: Ledger immutability guardrail enforcement
-Notes: Runs tests/accounting/no-mutation.spec.ts as a guardrail.
+Notes: Runs tests/node/accounting/no-mutation.spec.ts as a guardrail.
 Maturity: IMPLICIT
 
 Artifact: Guardrail check:db-accounting-replay
