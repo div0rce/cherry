@@ -13,7 +13,7 @@ const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== '' ? path.resolve(ROOT_ENV) 
 const PACKAGE_JSON = path.join(ROOT, 'package.json');
 const FIX = 'Run scripts via npm run ts:esm -- <script> (tsx wrapper).';
 const SCRIPT_PATH_PATTERN = /(^|[^A-Za-z0-9_])scripts[\\/]/;
-const DIRECT_RUNNER_PATTERN = /\b(tsx|ts-node|node)\b/;
+const DIRECT_RUNNER_PATTERN = /(^|\s)(tsx|ts-node|node)(\s|$)/;
 const WRAPPER_PATTERN = /\bnpm\s+run\s+ts:esm\b/;
 const ALLOWED_RUNNERS = new Set(['ts:esm']);
 
