@@ -92,7 +92,7 @@
     "check:env": "npm run check:db:required && npm run check:migrations:required",
     "check:node": "npm run lint:scripts && npm run typecheck:scripts && npm run check:run-tests:node",
     "check:next": "npm run lint && npm run typecheck && npm run check:run-tests:next",
-    "check": "npm run check:aggregate && npm run check:node && npm run check:next",
+    "check": "npm run check:guardrails && npm run check:node && npm run check:next",
     "check:guardrails": "npm run ts:esm -- scripts/guardrails/run.mts --all",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
