@@ -32,5 +32,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Guardrails
+        run: npm run check:guardrails
+
+      - name: Node runtime tests
+        run: npm run check:tests:node
+
+      - name: Next runtime tests
+        run: npm run check:tests:next
+
       - name: Verify CI truth
         run: npm run ci:verify
