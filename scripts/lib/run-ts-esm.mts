@@ -25,8 +25,27 @@ export function runTsEsm(
   env: NodeJS.ProcessEnv
 ): ToolResult {
   const entryPath = path.isAbsolute(entry) ? entry : path.join(ROOT, entry);
-  return runTool(process.execPath, [TSX_CLI, '--tsconfig', TSCONFIG, entryPath, ...args], {
-    cwd: ROOT,
-    env,
-  });
+  const nodeArgs: string[] = [];
+  const scriptArgs: string[] = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === '--import' || arg === '-r' || arg === '--require') {
+      const value = args[i + 1];
+      if (value === undefined) {
+        fail(PREFIX, `Missing value for ${arg}`, { details: [entryPath] });
+      }
+      nodeArgs.push(arg, value);
+      i += 1;
+      continue;
+    }
+    scriptArgs.push(arg);
+  }
+  return runTool(
+    process.execPath,
+    [TSX_CLI, '--tsconfig', TSCONFIG, ...nodeArgs, entryPath, ...scriptArgs],
+    {
+      cwd: ROOT,
+      env,
+    }
+  );
 }
