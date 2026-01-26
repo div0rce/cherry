@@ -7,8 +7,11 @@ const CATCH_UNKNOWN_PATH = `${CHECK_PATH_BASE}catch-unknown.mts` as const;
 const ESM_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}esm-loader-totality.mts` as const;
 const NO_SCRIPT_ALIAS_IMPORTS_PATH = `${CHECK_PATH_BASE}no-script-alias-imports.mts` as const;
 const NO_TS_EXTENSION_IMPORTS_PATH = `${CHECK_PATH_BASE}no-ts-extension-imports.mts` as const;
+const ESM_IMPORTS_PATH = `${CHECK_PATH_BASE}esm-imports.mts` as const;
+const TYPE_ONLY_IMPORTS_PATH = `${CHECK_PATH_BASE}type-only-imports.mts` as const;
 const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
 const SCRIPT_RUNNER_CONTRACT_PATH = `${CHECK_PATH_BASE}script-runner-contract.mts` as const;
+const SCRIPT_RUNTIME_BOUNDARY_PATH = `${CHECK_PATH_BASE}script-runtime-boundary.mts` as const;
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
@@ -31,6 +34,10 @@ const NO_MUTATION_PATH = `${CHECK_PATH_BASE}no-mutation.mts` as const;
 const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
 const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
+const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
+  `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
+const GUARDRAIL_EXECUTION_PARITY_PATH =
+  `${CHECK_PATH_BASE}guardrail-execution-parity.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -57,8 +64,11 @@ export const GUARDRAILS = Object.freeze({
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
   'check:script-runner-contract': SCRIPT_RUNNER_CONTRACT_PATH,
+  'check:script-runtime-boundary': SCRIPT_RUNTIME_BOUNDARY_PATH,
   'check:no-script-alias-imports': NO_SCRIPT_ALIAS_IMPORTS_PATH,
   'check:no-ts-extension-imports': NO_TS_EXTENSION_IMPORTS_PATH,
+  'check:esm-imports': ESM_IMPORTS_PATH,
+  'check:type-only-imports': TYPE_ONLY_IMPORTS_PATH,
   'check:guardrail-no-runtime-io': GUARDRAIL_NO_RUNTIME_IO_PATH,
   'check:implicit-boolean': `${CHECK_PATH_BASE}implicit-boolean.mts`,
   'check:branded-literal': `${CHECK_PATH_BASE}branded-literal.mts`,
@@ -68,6 +78,7 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-name-path-bijection': `${CHECK_PATH_BASE}guardrail-name-path-bijection.mts`,
   'check:guardrail-doc-sync': `${CHECK_PATH_BASE}guardrail-doc-sync.mts`,
   'check:guardrail-execution': `${CHECK_PATH_BASE}guardrail-execution.mts`,
+  'check:guardrail-execution-parity': GUARDRAIL_EXECUTION_PARITY_PATH,
   'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
@@ -92,6 +103,7 @@ export const GUARDRAILS = Object.freeze({
   'check:prisma-assumptions': `${CHECK_PATH_BASE}prisma-assumptions.mts`,
   'check:dev-ui-parity': `${CHECK_PATH_BASE}dev-ui-parity.mts`,
   'check:shell-boundaries': `${CHECK_PATH_BASE}shell-boundaries.mts`,
+  'check:environment-import-integrity': ENVIRONMENT_IMPORT_INTEGRITY_PATH,
   'check:route-collisions': `${CHECK_PATH_BASE}route-collisions.mts`,
   'check:user-pages-runtime': `${CHECK_PATH_BASE}user-pages-runtime.mts`,
   'check:catch-unknown': CATCH_UNKNOWN_PATH,

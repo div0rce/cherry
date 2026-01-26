@@ -87,6 +87,9 @@ function expectedOwner(relativePath: string): Owner {
   if (relativePath === path.normalize('types/jsx-global.d.ts')) {
     return 'app';
   }
+  if (relativePath.startsWith('types/vendor/')) {
+    return 'app';
+  }
   if (relativePath.startsWith('types/')) {
     return 'core';
   }

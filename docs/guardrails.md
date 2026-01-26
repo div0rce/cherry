@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-01-26
 
 # Guardrails
 
@@ -8,6 +8,7 @@ Last updated: 2026-01-18
 - CI runs `npm run ci:verify` as the sole truth gate; `check` remains pure (guardrails + lint + typecheck), and env checks live in `check:env`.
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
+- Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
 - DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
@@ -77,6 +78,23 @@ Last updated: 2026-01-18
 `inputsVersion` is deterministic for a fixed `(engineVersion, inputs, snapshot)`. It is not
 guaranteed to remain stable across different `engineVersion` values. Consumers must not compare
 `inputsVersion` values across engine versions.
+
+## Domain: Environment Contracts
+
+### Guardrail 46 — Environment Import Integrity
+
+- Every source file is owned by exactly one environment (`env:node`, `env:next`, `env:guardrail`).
+- `env:node` may not import `env:next`, `next/*`, `react`, or `react-dom`.
+- `tests/node/**` may only import `env:node`; `tests/next/**` may only import `env:next` or `env:node`.
+- Enforcement: `check:environment-import-integrity`.
+
+## Domain: Script Runtime Boundary
+
+### Guardrail 47 — Script Runtime Boundary
+
+- Scripts must not import Next runtime modules (`app/`, `components/`, or `lib/client/**`).
+- Proof harnesses should use `lib/engine/**` APIs instead of runtime modules.
+- Enforcement: `check:script-runtime-boundary`.
 
 ## Domain: DB Truth Lane
 
@@ -168,6 +186,12 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Every accounting axiom must be covered by at least one artifact and marked FULL.
 - Enforcement: `check:accounting-proof-coverage`.
 
+### Guardrail 45 — Guardrail Execution Parity
+
+- `check` and `check:aggregate` must execute the same guardrails in registry order; only failure handling may differ.
+- Enforcement: `check:guardrail-execution-parity`.
+- Prevents skipped, reordered, or ad hoc guardrail execution lists.
+
 ## Domain: Loader & Guardrail Event Integrity
 
 ### Guardrail 7 — ESM Loader Totality
@@ -175,19 +199,19 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - ESM loader hooks must be total: every branch returns a valid `{ format, source }` or delegates to `defaultLoad`.
 - Loader hooks must never return `undefined` sources; prefer deterministic sentinel modules for tests.
 - Sentinel paths are allowed only under `CHERRY_TEST_LOADER_SENTINEL=1` and must return valid modules.
-- Guardrail checks: `check:loader-contract` and `tests/guardrails/esm-loader-contract.test.ts`.
+- Guardrail checks: `check:loader-contract` and `tests/node/guardrails/esm-loader-contract.test.ts`.
 
 ### Guardrail 8 — Guardrail Event Totality
 
 - Guardrail events must include `timestamp` and `timestampSource` (`boundary` | `client` | `engine`).
 - API routes must emit `timestampSource: boundary`; client components must emit `timestampSource: client`.
-- Guardrail checks: `check:guardrail-time` and `tests/guardrails/guardrail-event-totality.test.ts`.
+- Guardrail checks: `check:guardrail-time` and `tests/node/guardrails/guardrail-event-totality.test.ts`.
 
 ### Guardrail 9 — Prisma Adapter Readiness
 
 - Prisma-backed adapters must assert model availability before reads/writes.
 - Missing models throw `AppError('INTERNAL', 'Missing Prisma model: <name>', 500)` deterministically.
-- Guardrail tests: `tests/guardrails/prisma-adapter-totality.test.ts`.
+- Guardrail tests: `tests/node/guardrails/prisma-adapter-totality.test.ts`.
 
 ### Guardrail 10 — Side-Effect Expiration
 
@@ -201,13 +225,13 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 
 - Engine-facing APIs (`safeSolveDecisionForWorld`, `simulateSpendAuthority`) must never throw.
 - Invalid inputs return structured outcomes, not exceptions.
-- Guardrail tests: `tests/guardrails/engine-no-throw.test.ts`.
+- Guardrail tests: `tests/node/guardrails/engine-no-throw.test.ts`.
 
 ### Guardrail 12 — Boolean Totality
 
 - No implicit truthiness checks on non-boolean values.
 - Conditionals must compare explicitly (`===`, `!==`, `<`, `>`) or use typed helpers.
-- Guardrail checks: `check:implicit-boolean` and `tests/guardrails/no-implicit-boolean.test.ts`.
+- Guardrail checks: `check:implicit-boolean` and `tests/node/guardrails/no-implicit-boolean.test.ts`.
 
 ### Guardrail 13 — Branded Policy Types
 
@@ -227,7 +251,7 @@ Rules:
 Rationale:
 Silent misuse of policy metadata causes long-term system rot.
 
-Guardrail checks: `check:branded-literal` and `tests/guardrails/branded-type-enforcement.test.ts`.
+Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-type-enforcement.test.ts`.
 
 ## Meta-Guardrails (Guardrail System Integrity)
 
@@ -237,7 +261,7 @@ These guardrails exist to ensure the guardrail system itself cannot drift, fork,
 
 - Guardrail scripts (registry `check:*` entries) must obey all active guardrails.
 - No implicit booleans, `any`, branded literals, wall-clock time, or unsafe casts in guardrail scripts.
-- Guardrail checks: `check:guardrail-self` and `tests/guardrails/guardrail-self-consistency.test.ts`.
+- Guardrail checks: `check:guardrail-self` and `tests/node/guardrails/guardrail-self-consistency.test.ts`.
 
 ### Guardrail 17 — Execution Exclusivity
 
@@ -334,20 +358,26 @@ Any duplication is a hard CI failure.
 - TS extension specifiers and `@/` aliases are forbidden in scripts.
 - Guardrails: `check:no-ts-extension-imports`, `check:no-script-alias-imports`.
 
-### Guardrail 30 — Explicit Import Extensions
+### Guardrail 30 — ESM Import Extensions
 
 - All relative import/export specifiers must include runtime extensions.
 - Applies to app, components, lib, scripts, tests, and runtime configs.
-- Guardrail: `check:explicit-import-extensions`.
+- Guardrail: `check:esm-imports`.
 
-### Guardrail 31 — Check Contract
+### Guardrail 31 — Type-Only Import Enforcement
+
+- Symbols referenced only in type positions must use `import type` or `import { type ... }`.
+- Prevents runtime graph pollution and ensures explicit ESM boundaries.
+- Guardrail: `check:type-only-imports`.
+
+### Guardrail 32 — Check Contract
 
 - `ci:verify` must run `check`, `test`, and `build` in order.
 - `check` must remain pure (no env-dependent scripts).
 - `test` and `build` must not invoke guardrails; use `test:strict` and `build:strict` when needed.
 - Guardrail: `check:check-contract`.
 
-### Guardrail 32 — Script Runner Contract
+### Guardrail 33 — Script Runner Contract
 
 - Package scripts that invoke files under `scripts/` must go through `npm run ts:esm`.
 - Direct `node`, `tsx`, or `ts-node` usage in script commands is forbidden.

@@ -1,35 +1,29 @@
 import * as path from 'node:path';
+import { buildDeterministicEnv } from './lib/deterministic-env.mjs';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
-import { runTool } from './guardrails/lib/run-tool.mjs';
+import { runTsEsm } from './lib/run-ts-esm.mjs';
 
 ensureTsEsm();
 
 const PREFIX = 'check:replay-equals-materialized';
 const ROOT = process.cwd();
-const TEST_FILE = path.join('tests', 'accounting', 'replay-equals-materialized.spec.ts');
+const TEST_FILE = path.join('tests', 'node', 'accounting', 'replay-equals-materialized.spec.ts');
 const FIX = 'Run npm run check:replay-equals-materialized after installing dependencies.';
 
 // A5/A9: enforce replay equality with materialized state.
 function runTest(): void {
-  const result = runTool(
-    'npm',
+  const result = runTsEsm(
+    TEST_FILE,
     [
-      'run',
-      'ts:esm',
-      '--',
       '--import',
       './scripts/lib/loaders/config.loader.mjs',
       '--import',
       './scripts/lib/loaders/prisma-mock.register.mjs',
       '-r',
       'tsconfig-paths/register',
-      TEST_FILE,
     ],
-    {
-      cwd: ROOT,
-      env: { ...process.env },
-    }
+    buildDeterministicEnv()
   );
 
   if (result.exitCode !== 0) {

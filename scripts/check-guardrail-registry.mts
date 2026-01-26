@@ -152,25 +152,12 @@ function commandReferencesGuardrail(command: string, name: string): boolean {
   return pattern.test(normalizedCommand);
 }
 
-function parseGuardrailCalls(command: string): string[] {
-  const calls: string[] = [];
-  const regex = /npm\s+run\s+([^\s&]+)/g;
-  for (const match of command.matchAll(regex)) {
-    const name = match[1];
-    if (typeof name === 'string' && name.length > 0) {
-      calls.push(name);
-    }
-  }
-  return calls;
-}
-
 async function main(): Promise<void> {
   const rootDir = resolveRoot();
   const registry = await loadRegistry(rootDir);
   const { scripts, raw } = readPackageScripts(rootDir);
   const guardrails = registry.guardrails;
   const guardrailNames = Object.keys(guardrails);
-  const guardrailSet = new Set(guardrailNames);
   const violations: Violation[] = [];
   const pkgPath = path.relative(ROOT, path.join(rootDir, 'package.json'));
 
@@ -242,35 +229,29 @@ async function main(): Promise<void> {
       message: `${registry.entrypoint} missing from package.json scripts`,
     });
   } else {
-    const calls = parseGuardrailCalls(guardrailCommand);
-    const missing = guardrailNames.filter((name) => !calls.includes(name));
-    const extra = calls.filter((name) => guardrailSet.has(name) === false);
-    if (missing.length > 0) {
+    if (guardrailCommand.includes(RUNNER_PATH) === false) {
       violations.push({
         file: pkgPath,
         line: 1,
         col: 1,
-        message: `${registry.entrypoint} missing guardrails: ${missing.join(', ')}`,
+        message: `${registry.entrypoint} must invoke ${RUNNER_PATH}`,
       });
     }
-    if (extra.length > 0) {
+    if (guardrailCommand.includes('--all') === false) {
       violations.push({
         file: pkgPath,
         line: 1,
         col: 1,
-        message: `${registry.entrypoint} has extra entries: ${extra.join(', ')}`,
+        message: `${registry.entrypoint} must pass --all`,
       });
     }
-    if (calls.length === guardrailNames.length) {
-      const orderedMismatch = calls.some((name, idx) => name !== guardrailNames[idx]);
-      if (orderedMismatch) {
-        violations.push({
-          file: pkgPath,
-          line: 1,
-          col: 1,
-          message: `${registry.entrypoint} guardrail order must match registry`,
-        });
-      }
+    if (guardrailCommand.includes('--aggregate') === true) {
+      violations.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${registry.entrypoint} must not pass --aggregate`,
+      });
     }
   }
 

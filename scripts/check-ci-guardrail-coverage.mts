@@ -150,37 +150,29 @@ function assertCheckCoverage(errors: Violation[]): void {
     return;
   }
 
-  const guardrailNames = Object.keys(GUARDRAILS);
-  const guardrailSet = new Set(guardrailNames);
-  const calls = parseGuardrailCalls(guardrailCommand);
-  const missing = guardrailNames.filter((name) => !calls.includes(name));
-  if (missing.length > 0) {
+  if (guardrailCommand.includes('scripts/guardrails/run.mts') === false) {
     errors.push({
       file: pkgPath,
       line: 1,
       col: 1,
-      message: `missing guardrails from ${GUARDRAIL_ENTRYPOINT}: ${missing.join(', ')}`,
+      message: `${GUARDRAIL_ENTRYPOINT} must invoke scripts/guardrails/run.mts`,
     });
   }
-  const extra = calls.filter((name) => guardrailSet.has(name) === false);
-  if (extra.length > 0) {
+  if (guardrailCommand.includes('--all') === false) {
     errors.push({
       file: pkgPath,
       line: 1,
       col: 1,
-      message: `extra entries in ${GUARDRAIL_ENTRYPOINT}: ${extra.join(', ')}`,
+      message: `${GUARDRAIL_ENTRYPOINT} must pass --all`,
     });
   }
-  if (calls.length === guardrailNames.length) {
-    const orderMismatch = calls.some((name, idx) => name !== guardrailNames[idx]);
-    if (orderMismatch) {
-      errors.push({
-        file: pkgPath,
-        line: 1,
-        col: 1,
-        message: `${GUARDRAIL_ENTRYPOINT} guardrail order must match registry`,
-      });
-    }
+  if (guardrailCommand.includes('--aggregate') === true) {
+    errors.push({
+      file: pkgPath,
+      line: 1,
+      col: 1,
+      message: `${GUARDRAIL_ENTRYPOINT} must not use --aggregate`,
+    });
   }
 }
 

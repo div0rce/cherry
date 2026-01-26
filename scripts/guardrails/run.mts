@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { performance } from 'node:perf_hooks';
+import { buildDeterministicEnv } from '../lib/deterministic-env.mjs';
 import { ensureTsEsm } from '../lib/ensure-ts-esm.mjs';
 import { asMessage } from './lib/error.mjs';
 import { fail } from './lib/fail.mjs';
@@ -13,12 +14,26 @@ import {
 } from './registry.mjs';
 
 ensureTsEsm();
+{
+  const deterministic = buildDeterministicEnv();
+  for (const key of Object.keys(process.env)) {
+    if (!(key in deterministic)) {
+      delete process.env[key];
+    }
+  }
+  for (const [key, value] of Object.entries(deterministic)) {
+    if (value !== undefined) {
+      process.env[key] = value;
+    }
+  }
+}
 
 const PREFIX = 'GUARDRAIL_RUNNER';
 const ROOT = process.cwd();
 const SUMMARY_PREFIX = 'GUARDRAIL_SUMMARY';
 const REQUIRED_TOOLS = ['rg', 'git', 'node'] as const;
 const AGGREGATE_FLAG = '--aggregate';
+const ALL_FLAG = '--all';
 const AGGREGATE_ALIASES = new Set(['check', 'all', 'check:guardrails']);
 const AGGREGATE_SORT_FLAG = '--sort';
 const AGGREGATE_SORT_PREFIX = `${AGGREGATE_SORT_FLAG}=`;
@@ -103,6 +118,19 @@ function stripAggregateFlag(args: string[]): { aggregate: boolean; rest: string[
     rest.push(arg);
   }
   return { aggregate, rest };
+}
+
+function stripAllFlag(args: string[]): { all: boolean; rest: string[] } {
+  let all = false;
+  const rest: string[] = [];
+  for (const arg of args) {
+    if (arg === ALL_FLAG) {
+      all = true;
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { all, rest };
 }
 
 function resolveAggregateNames(raw: string[]): GuardrailName[] {
@@ -371,11 +399,21 @@ async function runGuardrail(
 }
 
 async function main(): Promise<void> {
-  const { aggregate, rest } = stripAggregateFlag(process.argv.slice(2));
+  const aggregateStrip = stripAggregateFlag(process.argv.slice(2));
+  const allStrip = stripAllFlag(aggregateStrip.rest);
+  const aggregate = aggregateStrip.aggregate;
+  const all = allStrip.all;
+  const rest = allStrip.rest;
+
+  if (aggregate === true && all === true) {
+    fail(PREFIX, 'Use either --aggregate or --all, not both', {
+      fix: 'Remove one of the flags.',
+    });
+  }
 
   logToolVersions();
 
-  if (!aggregate) {
+  if (aggregate === false && all === false) {
     const name = rest[0];
     if (name === undefined || name.length === 0) {
       fail(PREFIX, 'Guardrail name required', {
@@ -388,6 +426,17 @@ async function main(): Promise<void> {
       });
     }
     await runGuardrail(name, rest.slice(1), false);
+    return;
+  }
+
+  if (all === true) {
+    for (const name of GUARDRAIL_NAMES) {
+      const result = await runGuardrail(name, [], false);
+      if (result.ok === false) {
+        return;
+      }
+    }
+    process.stdout.write('guardrail-fail-fast: ok\n');
     return;
   }
 

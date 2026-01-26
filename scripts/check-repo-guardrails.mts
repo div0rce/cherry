@@ -734,12 +734,21 @@ const MODULE_DECL = /declare module ['"]([^'"]+)['"]/g;
 // TODO: Consider a warning-only rule for package-level module shims (no slash),
 // with explicit exceptions (e.g., next-auth, nodemailer) if/when contributor count grows.
 const compatPrefix = path.normalize(path.join('types', 'compat')) + path.sep;
+const vendorPrefix = path.normalize(path.join('types', 'vendor')) + path.sep;
 const jsxGlobalPath = path.normalize(path.join('types', 'jsx-global.d.ts'));
+const REQUIRED_VENDOR_TOKENS = [
+  'VENDOR SHIM',
+  'Reason:',
+  'Scope:',
+  'Version:',
+  'Audit:',
+];
 
 for (const file of typesFiles) {
   const relPath = path.normalize(path.relative(root, file));
   if (relPath === jsxGlobalPath) continue;
   if (relPath.startsWith(compatPrefix)) continue;
+  if (relPath.startsWith(vendorPrefix)) continue;
   recordViolation(`types-compat-only: ${relPath}`);
 }
 
@@ -754,6 +763,17 @@ for (const file of typesFiles) {
     const entries = moduleDeclarations.get(moduleName) ?? [];
     entries.push(relPath);
     moduleDeclarations.set(moduleName, entries);
+  }
+}
+
+for (const file of typesFiles) {
+  const relPath = path.normalize(path.relative(root, file));
+  if (!relPath.startsWith(vendorPrefix)) continue;
+  const content = fs.readFileSync(file, 'utf8');
+  for (const token of REQUIRED_VENDOR_TOKENS) {
+    if (!content.includes(token)) {
+      recordViolation(`types-vendor-docs-missing: ${relPath}: ${token}`);
+    }
   }
 }
 for (const [moduleName, files] of moduleDeclarations) {

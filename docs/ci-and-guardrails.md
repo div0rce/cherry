@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-05
+Last updated: 2026-01-18
 
 # CI and guardrails
 
@@ -9,7 +9,7 @@ Last updated: 2026-01-05
 - Runs on every push to `main` and all PRs via `.github/workflows/ci.yml`.
 - Steps (fail-fast):
   1) `npm ci` (postinstall runs `prisma generate`)
-  2) `npm run ci:verify` (composite truth gate: check + test + build)
+  2) `npm run ci:verify` (composite truth gate: check + build)
 - Optional env lane (`.github/workflows/env-checks.yml`) provisions Postgres and runs:
   - `npx prisma generate`
   - `npx prisma migrate deploy`
@@ -23,17 +23,15 @@ Last updated: 2026-01-05
 - CI does not enumerate guardrails.
 - CI runs one authority: `npm run ci:verify`.
 - `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
-- `check` stays pure (guardrails + lint + typecheck); env checks live in `check:env`.
+- `check` is the aggregate of guardrails + node correctness + UI correctness; env checks live in `check:env`.
 - The last non-empty command in the CI job must be `npm run ci:verify`.
 
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 
 ### Ordering invariant
-- Guardrails always execute before lint, typecheck, test, or build.
-- Lint executes before typecheck.
-- Typecheck executes before tests.
-- Tests execute before build.
-- No step may reorder or short-circuit this sequence.
+- Guardrails execute before env-specific correctness and build.
+- Inside `check:node` and `check:next`, lint runs before typecheck and typecheck runs before tests.
+- Build executes after `check` completes.
 
 ### Guardrails enforced
 - ESLint rules must stay strict (`eslint.config.mjs`): Zod strictness, unsafe-any rules, strict-boolean-expressions, and JSON.parse bans.
@@ -54,7 +52,7 @@ Last updated: 2026-01-05
 
 ### How to run locally
 
-Run the npm scripts: `check` (pure), `test`, `build`, or the full gate `ci:verify`.
+Run the npm scripts: `check:aggregate` (guardrails only), `check` (aggregate + node + next), `test` (tests only), `build`, or the full gate `ci:verify`.
 
 ### What CI green means (DB posture)
 - Standard CI (`ci:verify`) does not exercise a live database; tests run with Prisma mocked.

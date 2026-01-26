@@ -7,7 +7,7 @@ import { runTool, type ToolResult } from '../guardrails/lib/run-tool.mjs';
 const requireFn = createRequire(import.meta.url);
 
 const ROOT = process.cwd();
-const TSX_CLI = requireFn.resolve('tsx/cli');
+const TSX_CLI = requireFn.resolve('tsx/dist/cli.mjs');
 const TSCONFIG = path.join(ROOT, 'tsconfig.scripts.json');
 const PREFIX = 'run-ts-esm';
 

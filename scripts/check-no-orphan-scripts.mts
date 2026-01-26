@@ -9,7 +9,7 @@ import {
   PackageJsonSchema,
   readJsonFile,
 } from './guardrails/lib/read-json.mjs';
-import { GUARDRAILS as DEFAULT_GUARDRAILS } from './guardrails/registry.mjs';
+import { GUARDRAILS as DEFAULT_GUARDRAILS, GUARDRAIL_ENTRYPOINT } from './guardrails/registry.mjs';
 import { z } from 'zod';
 
 ensureTsEsm();
@@ -139,6 +139,7 @@ async function main(): Promise<void> {
   for (const [name, command] of Object.entries(scripts)) {
     if (SCRIPT_TOKEN.test(command) === false) continue;
     if (guardrailNames.has(name)) continue;
+    if (name === GUARDRAIL_ENTRYPOINT) continue;
     const { line, col } = lineColForToken(raw, `"${name}"`);
     if (hasAllowedPrefix(name) === false) {
       violations.push({
