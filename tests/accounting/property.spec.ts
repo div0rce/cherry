@@ -31,8 +31,8 @@ import {
   validateLedgerState,
   type AccountId,
   type LedgerState,
-} from '../../lib/accounting/ledger';
-import { SeededRng, generateEventStream, snapshotLedger } from './harness';
+} from '../../lib/accounting/ledger.js';
+import { SeededRng, generateEventStream, snapshotLedger } from './harness.js';
 
 const DEFAULT_FIXED_SEED = 20260113;
 const DEFAULT_ROTATING_SEEDS = [20260114, 20260115, 20260116, 20260117];

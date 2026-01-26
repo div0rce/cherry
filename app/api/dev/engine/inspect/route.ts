@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { resolveUserContext } from '../../../../../lib/user-context';
-import { buildEngineContext } from '../../../../../lib/engine';
-import { safeSolveDecisionForWorld } from '../../../../../lib/engine/run';
-import { fromPrismaUserToEngineState } from '../../../../../lib/engine-state';
-import { buildPrismaWorld } from '../../../../../lib/adapters/runtime/world.prisma';
-import { parseJsonBody } from '../../../../../lib/validation';
-import { asAppError } from '../../../../../lib/errors';
+import { resolveUserContext } from '../../../../../lib/user-context.js';
+import { buildEngineContext } from '../../../../../lib/engine.js';
+import { safeSolveDecisionForWorld } from '../../../../../lib/engine/run.js';
+import { fromPrismaUserToEngineState } from '../../../../../lib/engine-state.js';
+import { buildPrismaWorld } from '../../../../../lib/adapters/runtime/world.prisma.js';
+import { parseJsonBody } from '../../../../../lib/validation.js';
+import { asAppError } from '../../../../../lib/errors.js';
 
 const InspectRequestSchema = z
   .object({

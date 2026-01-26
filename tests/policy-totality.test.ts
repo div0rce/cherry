@@ -3,9 +3,9 @@ import {
   simulateSpendAuthorityFromSnapshot,
   type AuthoritySnapshot,
   type SimulateSpendParams,
-} from '../lib/authority/simulateSpendAuthority';
+} from '../lib/authority/simulateSpendAuthority.js';
 import type { Digest } from '../lib/adapters/digest';
-import { AUTHORITY_VERDICTS } from '../lib/policy/verdicts';
+import { AUTHORITY_VERDICTS } from '../lib/policy/verdicts.js';
 
 const digest: Digest = {
   sha256: () => 'a'.repeat(64),

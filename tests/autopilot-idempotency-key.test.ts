@@ -6,14 +6,14 @@ import type { AutopilotStateSnapshot } from '../lib/autopilot/engineDecisionId';
 import {
   buildAutopilotStateSnapshotHash,
   computeEngineDecisionIdV1,
-} from '../lib/autopilot/engineDecisionId';
+} from '../lib/autopilot/engineDecisionId.js';
 import type {
   AutopilotCommitInput,
   AutopilotPreviewInput,
   AutopilotPreviewOutput,
 } from '../lib/autopilot/types';
 import type { World } from '../lib/adapters/world';
-import { makeTestWorld } from './helpers/world';
+import { makeTestWorld } from './helpers/world.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);

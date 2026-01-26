@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '../../../../../lib/with-user';
+import { withUser } from '../../../../../lib/with-user.js';
 import { z } from 'zod';
-import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session';
-import { parseJsonBody } from '../../../../../lib/validation';
+import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session.js';
+import { parseJsonBody } from '../../../../../lib/validation.js';
 
 const TriggerVerificationSchema = z
   .object({

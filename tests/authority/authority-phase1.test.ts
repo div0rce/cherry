@@ -4,9 +4,9 @@ import { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '@prisma/cl
 import {
   simulateSpendAuthorityFromSnapshot,
   type AuthoritySnapshot,
-} from '../../lib/authority/simulateSpendAuthority';
-import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from '../../lib/authority/reasonCodes';
-import { getServerConfig } from '../../lib/config/store';
+} from '../../lib/authority/simulateSpendAuthority.js';
+import { AuthorityReason, AUTHORITY_REASON_SEVERITY } from '../../lib/authority/reasonCodes.js';
+import { getServerConfig } from '../../lib/config/store.js';
 
 const fixedNowMs = new Date('2024-01-02T00:00:00Z').getTime();
 const digest = {

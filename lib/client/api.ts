@@ -2,9 +2,9 @@
 
 import { signIn } from 'next-auth/react';
 import { z } from 'zod';
-import { getPublicConfig } from '../config/store';
-import { fetchJSON } from '../api/fetch-json';
-import { asAppError } from '../errors';
+import { getPublicConfig } from '../config/store.js';
+import { fetchJSON } from '../api/fetch-json.js';
+import { asAppError } from '../errors.js';
 import type { ApiResult } from '../api/result';
 
 export type { ApiResult };

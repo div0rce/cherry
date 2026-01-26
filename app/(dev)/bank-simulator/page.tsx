@@ -2,9 +2,9 @@ import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
-import { authOptions } from '../../api/auth/[...nextauth]/route';
-import BankSimulatorClient, { type PendingSession } from './client';
-import { prisma } from '../../../lib/prisma';
+import { authOptions } from '../../api/auth/[...nextauth]/route.js';
+import BankSimulatorClient, { type PendingSession } from './client.js';
+import { prisma } from '../../../lib/prisma.js';
 
 export default async function BankSimulatorPage(): Promise<JSX.Element> {
   const session = await getServerSession(authOptions);

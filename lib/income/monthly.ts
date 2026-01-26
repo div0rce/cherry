@@ -1,6 +1,6 @@
 import type { HistoricalIncomeRegime } from '@prisma/client';
-import { prisma, isProduction } from '../prisma';
-import { classifyIncomeAndP2PForUser, getNetEarnedIncomeCents } from './classifier';
+import { prisma, isProduction } from '../prisma.js';
+import { classifyIncomeAndP2PForUser, getNetEarnedIncomeCents } from './classifier.js';
 import type { ClassifiedBankTransaction, IncomeRegimeDraft, MonthlyIncomeSnapshot } from './types';
 
 function monthStart(date: Date): Date {

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { resolveUserContext } from './user-context';
-import { assertUserId } from './invariants';
+import { resolveUserContext } from './user-context.js';
+import { assertUserId } from './invariants.js';
 
 export async function withUser(
   request: NextRequest,

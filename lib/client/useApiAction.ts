@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import type { ApiResult } from '../api/result';
-import { asAppError } from '../errors';
+import { asAppError } from '../errors.js';
 
 type ApiActionState<T> = {
   data: T | null;

@@ -4,10 +4,10 @@ import type { JSX } from 'react';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { hasText } from '../../../lib/text';
-import { isPositiveNumber } from '../../../lib/numbers';
-import { logGuardrailEvent } from '../../../lib/log';
-import { callApi } from '../../../lib/client/api';
+import { hasText } from '../../../lib/text.js';
+import { isPositiveNumber } from '../../../lib/numbers.js';
+import { logGuardrailEvent } from '../../../lib/log.js';
+import { callApi } from '../../../lib/client/api.js';
 
 function promptSignIn(setStatus: (message: string) => void) {
   setStatus('Sign in to continue.');

@@ -1,7 +1,7 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-import { prisma } from '../../prisma';
+import { prisma } from '../../prisma.js';
 import type { DecisionEvent } from '@prisma/client';
-import { simulateSpendAuthority } from './authority.prisma';
+import { simulateSpendAuthority } from './authority.prisma.js';
 import type {
   SimulateSpendParams,
   SimulatedAuthorityDecision,

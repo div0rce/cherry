@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
-import { fetchFromApi, requireUserContext } from '../../_lib/api';
+import { fetchFromApi, requireUserContext } from '../../_lib/api.js';
 import type { AutopilotOnboardingState, AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types';
-import { loadDemoDataset } from './actions';
-import { DemoDatasetButton } from './_components/DemoDatasetButton';
+import { loadDemoDataset } from './actions.js';
+import { DemoDatasetButton } from './_components/DemoDatasetButton.js';
 export const dynamic = 'force-dynamic';
 
 type MissingKey = 'cards' | 'rules' | 'buckets' | null;

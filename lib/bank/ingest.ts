@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client';
-import { prisma, isProduction } from '../prisma';
-import { logInfo, logWarn } from '../logger';
-import { asAppError } from '../errors';
-import { resolveUserIdForExternalIds } from './user-link';
+import { prisma, isProduction } from '../prisma.js';
+import { logInfo, logWarn } from '../logger.js';
+import { asAppError } from '../errors.js';
+import { resolveUserIdForExternalIds } from './user-link.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

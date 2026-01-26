@@ -1,9 +1,9 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '../../_lib/api';
-import { getAutopilotUiSpec } from '../../../../lib/autopilot/uiSpec';
+import { fetchFromApi, requireUserContext } from '../../_lib/api.js';
+import { getAutopilotUiSpec } from '../../../../lib/autopilot/uiSpec.js';
 import type { AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types';
-import { AutopilotEntry } from '../_components/AutopilotEntry';
+import { AutopilotEntry } from '../_components/AutopilotEntry.js';
 
 export const dynamic = 'force-dynamic';
 

@@ -5,9 +5,9 @@ import {
   type SafeDecisionOutcome,
   type SolveDecisionOptions,
   type SolveDecisionResult,
-} from './solver';
+} from './solver.js';
 import type { EngineContext, EngineState } from './types';
-import { DEFAULT_ENGINE_RUNTIME } from './runtime';
+import { DEFAULT_ENGINE_RUNTIME } from './runtime.js';
 
 export type EngineRunInput = {
   state: EngineState;

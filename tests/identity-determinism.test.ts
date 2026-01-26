@@ -1,5 +1,5 @@
 import * as assert from 'node:assert/strict';
-import { deriveStableId, assertStableId } from '../lib/identity/hash';
+import { deriveStableId, assertStableId } from '../lib/identity/hash.js';
 
 const payload = { userId: 'user-1', amountCents: 1234, meta: { category: 'DINING' } };
 

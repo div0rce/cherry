@@ -1,33 +1,33 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { RewardCategory, TransactionStatus } from '@prisma/client';
-import { prisma } from '../../../lib/prisma';
-import { logError, logWarn } from '../../../lib/logger';
-import { SimulateRequestSchema } from '../../../lib/schemas/simulate';
-import { validateEngineDecision } from '../../../lib/engine-invariants';
+import { prisma } from '../../../lib/prisma.js';
+import { logError, logWarn } from '../../../lib/logger.js';
+import { SimulateRequestSchema } from '../../../lib/schemas/simulate.js';
+import { validateEngineDecision } from '../../../lib/engine-invariants.js';
 import {
   resolveUserContext,
   assertUserId,
   logInvariant,
   isPrismaP2003,
-} from '../../../lib/user-context';
-import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors';
+} from '../../../lib/user-context.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
-} from '../../../lib/engine';
-import { safeSolveDecisionForWorld } from '../../../lib/engine/run';
-import { fromPrismaUserToEngineState } from '../../../lib/engine-state';
-import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine';
-import { ensureBucketFresh } from '../../../lib/buckets/ensure-fresh';
-import { hasText } from '../../../lib/text';
-import { isPositiveNumber } from '../../../lib/numbers';
-import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log';
-import { buildSwipeIdempotencyKey } from '../../../lib/ids';
-import { parseJsonBody } from '../../../lib/validation';
-import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma';
-import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma';
+} from '../../../lib/engine.js';
+import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
+import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
+import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
+import { ensureBucketFresh } from '../../../lib/buckets/ensure-fresh.js';
+import { hasText } from '../../../lib/text.js';
+import { isPositiveNumber } from '../../../lib/numbers.js';
+import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';
+import { buildSwipeIdempotencyKey } from '../../../lib/ids.js';
+import { parseJsonBody } from '../../../lib/validation.js';
+import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma.js';
+import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
 import type {
   SimulatedAuthorityDecision,
   SimulateSpendParams,

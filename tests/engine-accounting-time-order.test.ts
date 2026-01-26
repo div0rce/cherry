@@ -13,14 +13,14 @@
  * - Fixed: account set, currency
  */
 import * as assert from 'node:assert/strict';
-import { buildEngineContext } from '../lib/engine/context';
+import { buildEngineContext } from '../lib/engine/context.js';
 import type { EngineActionType, EngineDecision, EngineState } from '../lib/engine/types';
 import {
   attachAccountingProof,
   buildAccountingSnapshot,
   type EngineDecisionWithAccounting,
-} from '../lib/accounting/engine-proof';
-import { applyLedgerEvent, balanceAt, type AccountId, type Transaction } from '../lib/accounting/ledger';
+} from '../lib/accounting/engine-proof.js';
+import { applyLedgerEvent, balanceAt, type AccountId, type Transaction } from '../lib/accounting/ledger.js';
 
 function buildState(
   overrides: Partial<Parameters<typeof buildAccountingSnapshot>[0]> = {}

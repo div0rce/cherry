@@ -9947,7 +9947,7 @@
     "build": "next build --webpack",
     "build:strict": "npm run check:guardrails && next build --webpack",
     "start": "next start",
-    "ci:verify": "npm run check && npm run build",
+    "ci:verify": "npm run check && npm run test && npm run build",
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
@@ -9958,7 +9958,7 @@
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:scripts": "eslint scripts --max-warnings=0",
     "lint:tailwind": "npm run check:tailwind-conflicts",
-    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
+    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json",
     "typecheck": "tsc -b tsconfig.typecheck.json --pretty false",
     "typecheck:scripts": "tsc -b tsconfig.scripts.typecheck.json --pretty false",
     "check:server-entropy": "npm run ts:esm -- scripts/guardrails/run.mts check:server-entropy",
@@ -9976,6 +9976,7 @@
     "check:esm-loader-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:esm-loader-totality",
     "check:prisma-mock-loader-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:prisma-mock-loader-totality",
     "check:script-runner-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:script-runner-contract",
+    "check:script-runtime-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:script-runtime-boundary",
     "check:no-script-alias-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:no-script-alias-imports",
     "check:no-ts-extension-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:no-ts-extension-imports",
     "check:esm-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:esm-imports",
@@ -10025,7 +10026,7 @@
     "check:env": "npm run check:db:required && npm run check:migrations:required",
     "check:node": "npm run lint:scripts && npm run typecheck:scripts && npm run check:run-tests:node",
     "check:next": "npm run lint && npm run typecheck && npm run check:run-tests:next",
-    "check": "npm run check:aggregate && npm run check:node && npm run check:next",
+    "check": "npm run check:guardrails && npm run check:node && npm run check:next",
     "check:guardrails": "npm run ts:esm -- scripts/guardrails/run.mts --all",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
@@ -10033,6 +10034,9 @@
     "check:run-tests": "npm run ts:esm -- scripts/execution/run.mts check:run-tests",
     "check:run-tests:node": "npm run ts:esm -- scripts/execution/run.mts check:run-tests:node",
     "check:run-tests:next": "npm run ts:esm -- scripts/execution/run.mts check:run-tests:next",
+    "check:tests:node": "npm run ts:esm -- scripts/run-tests-node.mts",
+    "check:tests:next": "npm run ts:esm -- scripts/run-tests-next.mts",
+    "check:tests": "npm run check:tests:node && npm run check:tests:next",
     "check:run-db-tests": "npm run ts:esm -- scripts/execution/run-db.mts check:run-db-tests",
     "check:tailwind-conflicts": "npm run ts:esm -- scripts/execution/run.mts check:tailwind-conflicts",
     "ingest:mcc": "npm run ts:esm -- scripts/execution/run.mts ingest:mcc",
@@ -10097,7 +10101,7 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.19.2",
+    "tsx": "4.19.2",
     "typescript": "^5"
   }
 }
@@ -10367,8 +10371,6 @@
     "tests/**/*.tsx",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts",
-    "types/vendor/**/*.d.ts",
-    "types/vendor/**/*.d.cts",
     "types/jsx-global.d.ts",
     "data/**/*.json",
     "proxy.ts",
@@ -10412,18 +10414,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "baseUrl": ".",
-    "paths": {
-      "@ui/*": ["components/ui/*"],
-      "next": ["types/vendor/next-root.d.ts"],
-      "next/cache": ["types/vendor/next-cache.d.ts"],
-      "next/font/google": ["types/vendor/next-font-google.d.ts"],
-      "next/headers": ["types/vendor/next-headers.d.ts"],
-      "next/image-types/global": ["types/vendor/next-image-types-global.d.ts"],
-      "next/link": ["types/vendor/next-link.d.ts"],
-      "next/navigation": ["types/vendor/next-navigation.d.ts"],
-      "next/server": ["types/vendor/next-server.d.ts"]
-    },
+    "verbatimModuleSyntax": true,
 
     // --- Interop (NON-NEGOTIABLE) ---
     "esModuleInterop": true,
@@ -11332,6 +11323,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Guardrails
+        run: npm run check:guardrails
+
+      - name: Node runtime tests
+        run: npm run check:tests:node
+
+      - name: Next runtime tests
+        run: npm run check:tests:next
+
       - name: Verify CI truth
         run: npm run ci:verify
 ```
@@ -11567,6 +11567,7 @@ const ESM_IMPORTS_PATH = `${CHECK_PATH_BASE}esm-imports.mts` as const;
 const TYPE_ONLY_IMPORTS_PATH = `${CHECK_PATH_BASE}type-only-imports.mts` as const;
 const PRISMA_MOCK_LOADER_TOTALITY_PATH = `${CHECK_PATH_BASE}prisma-mock-loader-totality.mts` as const;
 const SCRIPT_RUNNER_CONTRACT_PATH = `${CHECK_PATH_BASE}script-runner-contract.mts` as const;
+const SCRIPT_RUNTIME_BOUNDARY_PATH = `${CHECK_PATH_BASE}script-runtime-boundary.mts` as const;
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
@@ -11619,6 +11620,7 @@ export const GUARDRAILS = Object.freeze({
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
   'check:script-runner-contract': SCRIPT_RUNNER_CONTRACT_PATH,
+  'check:script-runtime-boundary': SCRIPT_RUNTIME_BOUNDARY_PATH,
   'check:no-script-alias-imports': NO_SCRIPT_ALIAS_IMPORTS_PATH,
   'check:no-ts-extension-imports': NO_TS_EXTENSION_IMPORTS_PATH,
   'check:esm-imports': ESM_IMPORTS_PATH,

@@ -1,4 +1,4 @@
-import { prisma } from '../prisma';
+import { prisma } from '../prisma.js';
 
 function hasModel(client: Record<string, unknown> | null | undefined, key: string): boolean {
   if (client == null || typeof client !== 'object') return false;

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { withUser } from '../../../lib/with-user';
-import { fetchActivityFeed, type ActivityItemType } from '../../../lib/activity/feed';
+import { withUser } from '../../../lib/with-user.js';
+import { fetchActivityFeed, type ActivityItemType } from '../../../lib/activity/feed.js';
 
 function hasNonEmptyString(value: string | null): value is string {
   return value !== null && value !== '';

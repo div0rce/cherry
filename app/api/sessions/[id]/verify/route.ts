@@ -1,15 +1,15 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { logError } from '../../../../../lib/logger';
-import { VerifySessionSchema } from '../../../../../lib/schemas/sessions';
-import { parseJsonBody } from '../../../../../lib/validation';
+import { logError } from '../../../../../lib/logger.js';
+import { VerifySessionSchema } from '../../../../../lib/schemas/sessions.js';
+import { parseJsonBody } from '../../../../../lib/validation.js';
 import {
   assertUserId,
   logInvariant,
   resolveUserContext,
-} from '../../../../../lib/user-context';
-import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session';
-import { asAppError, isUnauthorized } from '../../../../../lib/errors';
+} from '../../../../../lib/user-context.js';
+import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session.js';
+import { asAppError, isUnauthorized } from '../../../../../lib/errors.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

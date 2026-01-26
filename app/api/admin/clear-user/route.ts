@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { logError, logInfo } from '../../../../lib/logger';
+import { prisma } from '../../../../lib/prisma.js';
+import { logError, logInfo } from '../../../../lib/logger.js';
 import {
   assertUserId,
   isPrismaP2003,
   logInvariant,
   resolveUserContext,
-} from '../../../../lib/user-context';
-import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors';
+} from '../../../../lib/user-context.js';
+import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
 
 export async function POST(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';

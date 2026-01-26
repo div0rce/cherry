@@ -2,7 +2,7 @@
 
 import type { JSX, ReactNode } from 'react';
 import { useMemo, useState } from 'react';
-import { EmptyState } from '../../../components/ui/empty-state';
+import { EmptyState } from '../../../components/ui/empty-state.js';
 import type { ActivitySource, UnifiedActivityRow } from '../../../lib/unified-activity';
 
 type TypeFilter = 'REAL' | 'SIMULATED';

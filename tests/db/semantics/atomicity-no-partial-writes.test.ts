@@ -13,7 +13,7 @@
  */
 import * as assert from 'node:assert/strict';
 import { PrismaClient } from '@prisma/client';
-import { assertForeignKeyViolation } from '../_helpers/assert-db-violation';
+import { assertForeignKeyViolation } from '../_helpers/assert-db-violation.js';
 
 const prisma = new PrismaClient();
 

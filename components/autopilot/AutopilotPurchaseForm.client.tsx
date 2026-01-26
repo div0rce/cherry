@@ -1,7 +1,7 @@
 "use client";
 
 import React, { type JSX } from 'react';
-import { getAutopilotUiSpec } from '../../lib/autopilot/uiSpec';
+import { getAutopilotUiSpec } from '../../lib/autopilot/uiSpec.js';
 import type { Category, Timing } from './AutopilotShell';
 
 void React;

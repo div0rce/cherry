@@ -1,8 +1,8 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { Card } from './card';
-import { cn } from '../../lib/ui/cn';
+import { Card } from './card.js';
+import { cn } from '../../lib/ui/cn.js';
 
 type PanelProps = {
   title?: string;

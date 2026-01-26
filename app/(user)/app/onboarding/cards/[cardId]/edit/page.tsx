@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { fetchFromApi, requireUserContext } from '../../../../../_lib/api';
-import { CardForm } from '../../../_components/CardForm';
-import { DeleteActionButton } from '../../../_components/DeleteActionButton';
-import { updateCard, deleteCard } from './actions';
+import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
+import { CardForm } from '../../../_components/CardForm.js';
+import { DeleteActionButton } from '../../../_components/DeleteActionButton.js';
+import { updateCard, deleteCard } from './actions.js';
 export const dynamic = 'force-dynamic';
 
 

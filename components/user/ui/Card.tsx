@@ -1,5 +1,5 @@
 import type { HTMLAttributes, JSX } from 'react';
-import { cn } from './utils';
+import { cn } from './utils.js';
 
 export default function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>): JSX.Element {
   return (

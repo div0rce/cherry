@@ -3,8 +3,8 @@
 import * as React from 'react';
 import type { JSX } from 'react';
 import type { ActionState } from '../_lib/form-state';
-import { initialActionState } from '../_lib/form-state';
-import { FormMessage, SubmitButton } from './form-helpers';
+import { initialActionState } from '../_lib/form-state.js';
+import { FormMessage, SubmitButton } from './form-helpers.js';
 
 type DemoDatasetButtonProps = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState | void>;

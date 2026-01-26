@@ -14,7 +14,7 @@ import {
   type LedgerViolation,
   type Transaction,
   validateLedgerState,
-} from './ledger';
+} from './ledger.js';
 
 export type HypotheticalDecision = {
   proposedTxns: Transaction[];

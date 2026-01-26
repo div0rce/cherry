@@ -12,22 +12,22 @@ import {
   RewardCategory,
 } from '@prisma/client';
 import type { AutopilotDecision } from '../engine/public-types';
-import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public';
-import { logInvariantViolation } from '../log';
-import { prisma } from '../prisma';
-import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma';
+import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public.js';
+import { logInvariantViolation } from '../log.js';
+import { prisma } from '../prisma.js';
+import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
 import type { World } from '../adapters/world';
-import { resolveScanCategory } from '../scan-helpers';
-import { ensureBucketFresh } from '../buckets/ensure-fresh';
-import { asAppError } from '../errors';
+import { resolveScanCategory } from '../scan-helpers.js';
+import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
+import { asAppError } from '../errors.js';
 import {
   computeBucketBalance,
   computeBucketBalanceFromNumbers,
   deriveLegacyCurrentAmount,
   toBucketRuntime,
   type BucketRuntime,
-} from '../buckets-runtime';
-import { hasText } from '../text';
+} from '../buckets-runtime.js';
+import { hasText } from '../text.js';
 import type {
   AutopilotCommitInput,
   AutopilotCommitResult,
@@ -35,20 +35,20 @@ import type {
   AutopilotRecommendedCard,
   AutopilotRewardCategory,
 } from './types';
-import { AutopilotServiceError } from './types';
-import { getAutopilotUiSpec } from './uiSpec';
+import { AutopilotServiceError } from './types.js';
+import { getAutopilotUiSpec } from './uiSpec.js';
 import type {
   AutopilotPreviewOutput,
   AutopilotPreviewUiBundle,
 } from '../validation/autopilot/preview';
-import { AutopilotPreviewOutputSchema } from '../validation/autopilot/preview';
-import { incrementCounter, observeDuration } from '../metrics/autopilot';
-import { confirmRecommendationSession, SessionConfirmError } from '../sessions/confirm-service';
+import { AutopilotPreviewOutputSchema } from '../validation/autopilot/preview.js';
+import { incrementCounter, observeDuration } from '../metrics/autopilot.js';
+import { confirmRecommendationSession, SessionConfirmError } from '../sessions/confirm-service.js';
 import {
   buildAutopilotStateSnapshot,
   buildAutopilotStateSnapshotHash,
   computeEngineDecisionIdV1,
-} from './engineDecisionId';
+} from './engineDecisionId.js';
 
 export type AutopilotPreviewEngineContext = {
   merchant: string;

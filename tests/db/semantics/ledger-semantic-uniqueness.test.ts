@@ -12,7 +12,7 @@
  * - Fixed: ledger uniqueness constraints
  */
 import { PrismaClient } from '@prisma/client';
-import { assertUniqueViolation } from '../_helpers/assert-db-violation';
+import { assertUniqueViolation } from '../_helpers/assert-db-violation.js';
 
 const prisma = new PrismaClient();
 

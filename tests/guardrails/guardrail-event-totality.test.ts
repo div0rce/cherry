@@ -1,4 +1,4 @@
-import { logGuardrailEvent } from '../../lib/log';
+import { logGuardrailEvent } from '../../lib/log.js';
 
 const timestamp = new Date(0).toISOString();
 

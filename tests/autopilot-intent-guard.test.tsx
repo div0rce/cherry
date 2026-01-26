@@ -1,10 +1,10 @@
 import * as assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AutopilotDecisionPanel } from '../components/autopilot/AutopilotDecisionPanel';
-import { AutopilotPurchaseForm } from '../components/autopilot/AutopilotPurchaseForm.client';
+import { AutopilotDecisionPanel } from '../components/autopilot/AutopilotDecisionPanel.js';
+import { AutopilotPurchaseForm } from '../components/autopilot/AutopilotPurchaseForm.client.js';
 import type { Category, Timing } from '../components/autopilot/AutopilotShell';
-import { getAutopilotUiSpec } from '../lib/autopilot/uiSpec';
+import { getAutopilotUiSpec } from '../lib/autopilot/uiSpec.js';
 
 void React;
 

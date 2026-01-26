@@ -1,7 +1,7 @@
 import type { BankTransaction } from '@prisma/client';
-import { fromExternalContextToEngineContext } from '../engine/context';
-import { fromPrismaUserToEngineState } from '../engine-state';
-import { safeSolveDecisionForUser } from '../engine/solver';
+import { fromExternalContextToEngineContext } from '../engine/context.js';
+import { fromPrismaUserToEngineState } from '../engine-state.js';
+import { safeSolveDecisionForUser } from '../engine/solver.js';
 import type { EngineDecision } from '../engine/types';
 
 export function defaultRunIdForUser(userId: string, now: Date): string {

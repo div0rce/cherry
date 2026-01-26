@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, JSX, ReactNode } from 'react';
-import { cn } from './utils';
+import { cn } from './utils.js';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 

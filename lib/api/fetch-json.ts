@@ -1,4 +1,4 @@
-import { AppError, asAppError, type AppErrorCode } from '../errors';
+import { AppError, asAppError, type AppErrorCode } from '../errors.js';
 import type { ApiResult } from './result';
 
 // Transport boundary helpers: fetchJSON throws AppError, fetchApiResult returns ApiResult for UI use.

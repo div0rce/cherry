@@ -1,9 +1,9 @@
-import { prisma } from '../../prisma';
-import { getServerConfig } from '../../config/store';
+import { prisma } from '../../prisma.js';
+import { getServerConfig } from '../../config/store.js';
 import type { Logger } from '../logger';
-import { ConsoleLogger } from './logger.console';
-import { Sha256Digest } from './digest.sha256';
-import { assertPrismaReady } from '../assert-prisma-ready';
+import { ConsoleLogger } from './logger.console.js';
+import { Sha256Digest } from './digest.sha256.js';
+import { assertPrismaReady } from '../assert-prisma-ready.js';
 import {
   simulateSpendAuthorityFromSnapshot,
   recordDecisionEventWithWriter,
@@ -12,13 +12,13 @@ import {
   type SafeAuthorityDecision,
   type SimulateSpendParams,
   type SimulatedAuthorityDecision,
-} from '../../authority/simulateSpendAuthority';
-import { AuthorityReason } from '../../authority/reasonCodes';
-import { authorityPureBrand, authorityVersion, getReasonSeverity } from '../../authority/config';
+} from '../../authority/simulateSpendAuthority.js';
+import { AuthorityReason } from '../../authority/reasonCodes.js';
+import { authorityPureBrand, authorityVersion, getReasonSeverity } from '../../authority/config.js';
 import { CherryPointLedgerStatus, VerificationStatus } from '@prisma/client';
-import { applyInMemoryRollover } from '../../buckets/periods';
-import { toBucketRuntime } from '../../buckets-runtime';
-import { asAppError } from '../../errors';
+import { applyInMemoryRollover } from '../../buckets/periods.js';
+import { toBucketRuntime } from '../../buckets-runtime.js';
+import { asAppError } from '../../errors.js';
 
 async function buildAuthoritySnapshot(
   params: SimulateSpendParams,

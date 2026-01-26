@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { AuthorityReason } from '../../authority/reasonCodes';
-import { AUTOPILOT_REWARD_CATEGORIES } from '../../autopilot/types';
+import { AuthorityReason } from '../../authority/reasonCodes.js';
+import { AUTOPILOT_REWARD_CATEGORIES } from '../../autopilot/types.js';
 
 // Single-source schemas for /api/autopilot/preview input/output; used by route, service, adapter, and tests.
 

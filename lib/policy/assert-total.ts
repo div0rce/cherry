@@ -1,4 +1,4 @@
-import { isAuthorityVerdict } from './verdicts';
+import { isAuthorityVerdict } from './verdicts.js';
 
 export function assertPolicyTotal<T extends { kind: unknown }>(
   result: T | null

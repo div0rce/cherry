@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { EmptyState } from './ui/empty-state';
+import { EmptyState } from './ui/empty-state.js';
 
 type EmptyStateCardProps = {
   title: string;

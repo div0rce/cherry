@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import { AutopilotShell } from '../../../../components/autopilot/AutopilotShell';
+import { AutopilotShell } from '../../../../components/autopilot/AutopilotShell.js';
 import type { AutopilotUiSpec } from '../../../../lib/autopilot/uiSpec';
 
 type AutopilotEntryProps = {

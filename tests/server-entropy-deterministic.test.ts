@@ -1,4 +1,4 @@
-import { renderDeterministicGreeting } from '../lib/server-determinism-fixture';
+import { renderDeterministicGreeting } from '../lib/server-determinism-fixture.js';
 
 const fixedNow = new Date('2024-01-01T00:00:00Z');
 

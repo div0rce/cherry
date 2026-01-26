@@ -1,7 +1,7 @@
 import * as assert from 'node:assert/strict';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AutopilotMonthImpactBar } from '../components/autopilot/AutopilotMonthImpactBar';
+import { AutopilotMonthImpactBar } from '../components/autopilot/AutopilotMonthImpactBar.js';
 
 void React;
 

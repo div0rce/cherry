@@ -2,9 +2,9 @@ import * as assert from 'node:assert/strict';
 import * as Module from 'node:module';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { safeSolveDecisionForWorld } from '../../lib/engine/run';
+import { safeSolveDecisionForWorld } from '../../lib/engine/run.js';
 import type { EngineContext } from '../../lib/engine/types';
-import { makeTestWorld } from '../helpers/world';
+import { makeTestWorld } from '../helpers/world.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);

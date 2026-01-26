@@ -1,10 +1,10 @@
 import type { JSX } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import { prisma } from '../../../../lib/prisma';
+import { prisma } from '../../../../lib/prisma.js';
 import Link from 'next/link';
-import { EmptyState } from '../../../../components/ui/empty-state';
-import { getCurrentUserId } from '../../../../lib/auth';
-import { hasText } from '../../../../lib/text';
+import { EmptyState } from '../../../../components/ui/empty-state.js';
+import { getCurrentUserId } from '../../../../lib/auth.js';
+import { hasText } from '../../../../lib/text.js';
 
 function formatCents(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;

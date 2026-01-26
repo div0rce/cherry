@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client';
-import { prisma } from '../prisma';
-import { assertUserId } from '../invariants';
-import { isPrismaP2003, logInvariant } from '../user-context';
-import { asAppError } from '../errors';
-import { hasText } from '../text';
+import { prisma } from '../prisma.js';
+import { assertUserId } from '../invariants.js';
+import { isPrismaP2003, logInvariant } from '../user-context.js';
+import { asAppError } from '../errors.js';
+import { hasText } from '../text.js';
 
 export interface AggregatorTransaction {
   id: string;

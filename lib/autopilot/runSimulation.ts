@@ -3,9 +3,9 @@ import type { AutopilotRewardCategory } from './types';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,
-} from '../validation/autopilot/preview';
-import { fetchJSON } from '../api/fetch-json';
-import { asAppError } from '../errors';
+} from '../validation/autopilot/preview.js';
+import { fetchJSON } from '../api/fetch-json.js';
+import { asAppError } from '../errors.js';
 
 export type SimulationCardChoice = {
   id: string;

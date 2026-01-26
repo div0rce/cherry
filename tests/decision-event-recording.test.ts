@@ -5,8 +5,8 @@ import type {
   SimulatedAuthorityDecision,
   SimulateSpendParams,
 } from '../lib/authority/simulateSpendAuthority';
-import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority';
-import { AuthorityReason } from '../lib/authority/reasonCodes';
+import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority.js';
+import { AuthorityReason } from '../lib/authority/reasonCodes.js';
 
 const { RewardCategory } = prismaClient as typeof import('@prisma/client');
 

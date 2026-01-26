@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAutopilotPreview } from '../../../../lib/autopilot/service';
-import { AutopilotServiceError } from '../../../../lib/autopilot/types';
-import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log';
+import { getAutopilotPreview } from '../../../../lib/autopilot/service.js';
+import { AutopilotServiceError } from '../../../../lib/autopilot/types.js';
+import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log.js';
 import type { AutopilotPreviewEngineContext } from '../../../../lib/autopilot/service';
 import {
   AutopilotPreviewInputSchema,
   AutopilotPreviewOutputSchema,
-} from '../../../../lib/validation/autopilot/preview';
-import { resolveUserContext } from '../../../../lib/user-context';
-import { incrementCounter, observeDuration } from '../../../../lib/metrics/autopilot';
-import { parseJsonBody } from '../../../../lib/validation';
-import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma';
-import { asAppError, isUnauthorized } from '../../../../lib/errors';
+} from '../../../../lib/validation/autopilot/preview.js';
+import { resolveUserContext } from '../../../../lib/user-context.js';
+import { incrementCounter, observeDuration } from '../../../../lib/metrics/autopilot.js';
+import { parseJsonBody } from '../../../../lib/validation.js';
+import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
+import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
 
 // Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 

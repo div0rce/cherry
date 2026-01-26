@@ -18,7 +18,7 @@
 
 import { PrismaClient, RewardCategory, TransactionStatus } from '@prisma/client';
 import type { Bucket, Card, RewardRule, SimulatedTransaction } from '@prisma/client';
-import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime';
+import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

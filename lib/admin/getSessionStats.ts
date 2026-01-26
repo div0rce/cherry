@@ -1,5 +1,5 @@
 import { RecommendationStatus } from '@prisma/client';
-import { prisma } from '../prisma';
+import { prisma } from '../prisma.js';
 
 type SessionStats = {
   total: number;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { CentsSchema } from './common';
-import { mccSchema } from './mcc';
+import { CentsSchema } from './common.js';
+import { mccSchema } from './mcc.js';
 const vineOrderSourceValues = ['VINE_SIM', 'VINE_DEVICE', 'APP_SCAN'] as const;
 
 export const OrderContextSchema = z

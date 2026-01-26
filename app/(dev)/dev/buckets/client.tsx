@@ -4,7 +4,7 @@ import type { JSX } from 'react';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
-import { callApi } from '../../../../lib/client/api';
+import { callApi } from '../../../../lib/client/api.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

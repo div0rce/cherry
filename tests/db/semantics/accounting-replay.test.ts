@@ -29,7 +29,7 @@ import {
   type Posting,
   type PostingRole,
   type TxnType,
-} from '../../../lib/accounting/ledger';
+} from '../../../lib/accounting/ledger.js';
 
 const prisma = new PrismaClient();
 

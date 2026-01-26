@@ -6,15 +6,15 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
 import type { LegacyEngineDecision } from '../../../lib/engine';
 import type { z } from 'zod';
-import { vineTerminalEventSchema } from '../../../lib/schemas/vine-terminal';
+import { vineTerminalEventSchema } from '../../../lib/schemas/vine-terminal.js';
 import type { VineTerminalEventInput } from '../../../lib/schemas/vine-terminal';
-import { hasText } from '../../../lib/text';
-import { isPositiveNumber } from '../../../lib/numbers';
-import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log';
-import { callApi } from '../../../lib/client/api';
-import { Card } from '../../../components/ui/card';
-import { Button, ButtonLink } from '../../../components/ui/Button';
-import { Alert } from '../../../components/ui/alert';
+import { hasText } from '../../../lib/text.js';
+import { isPositiveNumber } from '../../../lib/numbers.js';
+import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';
+import { callApi } from '../../../lib/client/api.js';
+import { Card } from '../../../components/ui/card.js';
+import { Button, ButtonLink } from '../../../components/ui/Button.js';
+import { Alert } from '../../../components/ui/alert.js';
 
 type VineOrderResponse = {
   sessionId: string;

@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { fetchFromApi, requireUserContext } from '../../_lib/api';
-import { resolveExplicitNow } from '../../_lib/clock';
+import { fetchFromApi, requireUserContext } from '../../_lib/api.js';
+import { resolveExplicitNow } from '../../_lib/clock.js';
 import type { ActionState } from './_lib/form-state';
 
 export async function loadDemoDataset(

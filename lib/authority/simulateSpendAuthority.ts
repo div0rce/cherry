@@ -2,9 +2,9 @@
 import type { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '../enums';
 import type { Digest } from '../adapters/digest';
 import type { Logger } from '../adapters/logger';
-import { assertPolicyTotal } from '../policy/assert-total';
+import { assertPolicyTotal } from '../policy/assert-total.js';
 import type { AuthorityVerdict } from '../policy/verdicts';
-import { AuthorityReason } from './reasonCodes';
+import { AuthorityReason } from './reasonCodes.js';
 import {
   authorityPureBrand,
   authorityVersion,
@@ -12,7 +12,7 @@ import {
   type AuthorityPure,
   type AuthoritySurface,
   type AuthorityVersion,
-} from './config';
+} from './config.js';
 
 export type SimulatedAuthorityVerdict = AuthorityVerdict;
 

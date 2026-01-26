@@ -12,8 +12,8 @@
  * - Fixed: ledger currency and account setup
  */
 import * as assert from 'node:assert/strict';
-import { applyLedgerEvent, createLedgerState } from '../../lib/accounting/ledger';
-import { generateEventStream } from './harness';
+import { applyLedgerEvent, createLedgerState } from '../../lib/accounting/ledger.js';
+import { generateEventStream } from './harness.js';
 
 const seed = 20260131;
 const eventCount = Number.parseInt(process.env['CHERRY_ACCOUNTING_MUTATION_EVENT_COUNT'] ?? '60', 10);

@@ -1,4 +1,4 @@
-import { getServerConfig } from '../../config/store';
+import { getServerConfig } from '../../config/store.js';
 import type { ConfigReader } from '../config';
 
 export const ServerConfigReader: ConfigReader = {

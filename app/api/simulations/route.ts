@@ -4,13 +4,13 @@
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../lib/prisma';
+import { prisma } from '../../../lib/prisma.js';
 import { TransactionStatus, RewardCategory, Prisma } from '@prisma/client';
-import { logError } from '../../../lib/logger';
-import { asAppError, isUnauthorized } from '../../../lib/errors';
-import { resolveUserContext, assertUserId } from '../../../lib/user-context';
-import { hasText } from '../../../lib/text';
-import { logGuardrailEvent } from '../../../lib/log';
+import { logError } from '../../../lib/logger.js';
+import { asAppError, isUnauthorized } from '../../../lib/errors.js';
+import { resolveUserContext, assertUserId } from '../../../lib/user-context.js';
+import { hasText } from '../../../lib/text.js';
+import { logGuardrailEvent } from '../../../lib/log.js';
 
 /**
  * GET /api/simulations

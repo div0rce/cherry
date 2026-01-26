@@ -1,8 +1,8 @@
 'use client';
 
 import type { JSX } from 'react';
-import { Alert } from './ui/alert';
-import { Button } from './ui/Button';
+import { Alert } from './ui/alert.js';
+import { Button } from './ui/Button.js';
 
 type Props = {
   message: string | null;

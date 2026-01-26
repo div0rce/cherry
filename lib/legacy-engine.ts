@@ -1,1 +1,1 @@
-export * from './adapters/runtime/legacy-engine.prisma';
+export * from './adapters/runtime/legacy-engine.prisma.js';

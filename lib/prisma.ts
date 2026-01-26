@@ -1,6 +1,6 @@
 // lib/prisma.ts
 import { PrismaClient } from '@prisma/client';
-import { getServerConfig } from './config/store';
+import { getServerConfig } from './config/store.js';
 import type { ServerConfig } from './config/server';
 
 const globalForPrisma = globalThis as unknown as {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { resolveUserContext } from '../../../../lib/user-context';
-import { getAutopilotPrereqs } from '../../../../lib/adapters/runtime/autopilot-prereqs';
-import { getFirstMissingPrereq } from '../../../../lib/autopilot/prereq-types';
+import { resolveUserContext } from '../../../../lib/user-context.js';
+import { getAutopilotPrereqs } from '../../../../lib/adapters/runtime/autopilot-prereqs.js';
+import { getFirstMissingPrereq } from '../../../../lib/autopilot/prereq-types.js';
 
 export async function GET(): Promise<NextResponse> {
   const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });

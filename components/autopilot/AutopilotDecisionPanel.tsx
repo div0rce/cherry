@@ -1,9 +1,9 @@
 import React, { type JSX } from 'react';
-import { Button, ButtonLink } from '../ui/Button';
-import { AutopilotMonthImpactBar } from './AutopilotMonthImpactBar';
+import { Button, ButtonLink } from '../ui/Button.js';
+import { AutopilotMonthImpactBar } from './AutopilotMonthImpactBar.js';
 import type { AutopilotPurchaseSummary } from './AutopilotShell';
 import type { AutopilotSimulationResult } from '../../lib/autopilot/runSimulation';
-import { formatCurrency } from '../../lib/formatCurrency';
+import { formatCurrency } from '../../lib/formatCurrency.js';
 import type { AutopilotUiSpec } from '../../lib/autopilot/uiSpec';
 
 void React;

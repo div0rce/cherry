@@ -113,11 +113,20 @@ function scanSourceFile(sourceFile: ts.SourceFile): Violation[] {
 
   function visit(node: ts.Node): void {
     if (ts.isImportDeclaration(node)) {
+      const isTypeOnly = node.importClause?.isTypeOnly === true;
+      if (isTypeOnly) {
+        ts.forEachChild(node, visit);
+        return;
+      }
       const specifier = node.moduleSpecifier;
       if (ts.isStringLiteral(specifier) || ts.isNoSubstitutionTemplateLiteral(specifier)) {
         checkLiteral(violations, sourceFile, node, specifier, 'import');
       }
     } else if (ts.isExportDeclaration(node)) {
+      if (node.isTypeOnly === true) {
+        ts.forEachChild(node, visit);
+        return;
+      }
       const specifier = node.moduleSpecifier;
       if (
         specifier !== undefined &&

@@ -1,8 +1,8 @@
 import { RewardCategory } from '@prisma/client';
-import { prisma } from '../../prisma';
-import { assertUserId } from '../../invariants';
+import { prisma } from '../../prisma.js';
+import { assertUserId } from '../../invariants.js';
 import type { AutopilotPrereqs, AutopilotOnboardingState } from '../../autopilot/prereq-types';
-import { assertPrismaReady } from '../assert-prisma-ready';
+import { assertPrismaReady } from '../assert-prisma-ready.js';
 
 function deriveState(counts: {
   cardsCount: number;

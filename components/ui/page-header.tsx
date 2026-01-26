@@ -1,7 +1,7 @@
 'use client';
 
 import type { JSX, ReactNode } from 'react';
-import { cn } from '../../lib/ui/cn';
+import { cn } from '../../lib/ui/cn.js';
 
 type PageHeaderProps = {
   title: string;

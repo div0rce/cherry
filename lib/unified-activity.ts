@@ -1,5 +1,5 @@
-import { prisma } from './prisma';
-import { BANK_TX_DEFAULT_ORDER } from './bank/fields';
+import { prisma } from './prisma.js';
+import { BANK_TX_DEFAULT_ORDER } from './bank/fields.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

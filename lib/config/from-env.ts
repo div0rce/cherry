@@ -1,12 +1,12 @@
-import { assertPublicConfig, type PublicConfig } from './public';
-import { assertRuntimeConfig, type RuntimeConfig } from './runtime';
+import { assertPublicConfig, type PublicConfig } from './public.js';
+import { assertRuntimeConfig, type RuntimeConfig } from './runtime.js';
 import {
   assertServerConfig,
   type BankIngestConfig,
   type ServerConfig,
   type VineSignatureMode,
   type WalletCertificateConfig,
-} from './server';
+} from './server.js';
 
 function coerceOptionalString(value: string | undefined): string | null {
   if (typeof value !== 'string') return null;

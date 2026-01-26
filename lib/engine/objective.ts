@@ -11,7 +11,7 @@ import type {
   ObjectiveComponentScores,
   ObjectiveWeights,
 } from './types';
-import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime';
+import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

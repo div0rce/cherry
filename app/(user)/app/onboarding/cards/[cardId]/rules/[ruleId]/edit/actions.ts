@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
-import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api';
+import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api.js';
 import type { ActionState } from '../../../../../_lib/form-state';
 
 const ALLOWED_CATEGORIES = [

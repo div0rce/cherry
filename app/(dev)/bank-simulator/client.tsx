@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
-import { callApi } from '../../../lib/client/api';
+import { callApi } from '../../../lib/client/api.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

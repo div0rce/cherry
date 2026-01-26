@@ -1,5 +1,5 @@
-import { buildPublicConfig, buildRuntimeConfig, buildServerConfig } from './from-env';
-import { setPublicConfig, setRuntimeConfig, setServerConfig, lockServerConfig } from './store';
+import { buildPublicConfig, buildRuntimeConfig, buildServerConfig } from './from-env.js';
+import { setPublicConfig, setRuntimeConfig, setServerConfig, lockServerConfig } from './store.js';
 import type { PublicConfig } from './public';
 import type { RuntimeConfig } from './runtime';
 import type { ServerConfig } from './server';

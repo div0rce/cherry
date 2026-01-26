@@ -1,20 +1,20 @@
 import type { JSX } from 'react';
 import { notFound } from 'next/navigation';
-import { getCurrentUserIdOrRedirect } from '../../../../lib/auth';
-import { prisma } from '../../../../lib/prisma';
-import { PageHeader } from '../../../../components/ui/page-header';
-import { Panel } from '../../../../components/ui/panel';
-import { MetricCard } from '../../../../components/ui/metric-card';
-import { EmptyState } from '../../../../components/ui/empty-state';
-import { assertOfflineEvaluatorModelsReady } from '../../../../lib/evaluator/prisma-safe';
+import { getCurrentUserIdOrRedirect } from '../../../../lib/auth.js';
+import { prisma } from '../../../../lib/prisma.js';
+import { PageHeader } from '../../../../components/ui/page-header.js';
+import { Panel } from '../../../../components/ui/panel.js';
+import { MetricCard } from '../../../../components/ui/metric-card.js';
+import { EmptyState } from '../../../../components/ui/empty-state.js';
+import { assertOfflineEvaluatorModelsReady } from '../../../../lib/evaluator/prisma-safe.js';
 import {
   computeOfflineStats,
   getOfflineEvaluatorDebugInfo,
   type EvaluationWithTx,
-} from '../../../../lib/evaluator/stats';
-import { defaultRunIdForUser } from '../../../../lib/evaluator/offline-history';
-import { ROUTES } from '../../../../lib/routes';
-import { getServerConfig } from '../../../../lib/config/store';
+} from '../../../../lib/evaluator/stats.js';
+import { defaultRunIdForUser } from '../../../../lib/evaluator/offline-history.js';
+import { ROUTES } from '../../../../lib/routes.js';
+import { getServerConfig } from '../../../../lib/config/store.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

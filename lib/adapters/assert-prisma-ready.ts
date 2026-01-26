@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { AppError } from '../errors';
+import { AppError } from '../errors.js';
 
 const REQUIRED_MODELS = [
   'bucket',

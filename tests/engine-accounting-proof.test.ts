@@ -13,14 +13,14 @@
  * - Fixed: accounting snapshot accounts, engine contract output shape
  */
 import * as assert from 'node:assert/strict';
-import { buildEngineContext } from '../lib/engine/context';
+import { buildEngineContext } from '../lib/engine/context.js';
 import type { EngineState } from '../lib/engine/types';
 import {
   buildAccountingSnapshot,
   filterAccountingSafeDecisions,
   proveHypotheticalDecision,
   type EngineDecisionWithAccounting,
-} from '../lib/accounting/engine-proof';
+} from '../lib/accounting/engine-proof.js';
 import {
   asNonZeroAmount,
   asTxnId,
@@ -29,7 +29,7 @@ import {
   validateTransactionLike,
   type PostingRole,
   type Transaction,
-} from '../lib/accounting/ledger';
+} from '../lib/accounting/ledger.js';
 
 function buildState(
   overrides: Partial<Parameters<typeof buildAccountingSnapshot>[0]> = {}

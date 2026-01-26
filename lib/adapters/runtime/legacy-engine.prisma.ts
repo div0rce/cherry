@@ -1,10 +1,10 @@
 // Legacy engine entrypoint retained for compatibility with existing flows.
 // New code should prefer the typed solver in lib/engine/solver.
-import { prisma } from '../../prisma';
+import { prisma } from '../../prisma.js';
 import { RewardCategory } from '@prisma/client';
 import type { Bucket } from '@prisma/client';
-import { applyInMemoryRollover } from '../../buckets/periods';
-import { assertPrismaReady } from '../assert-prisma-ready';
+import { applyInMemoryRollover } from '../../buckets/periods.js';
+import { assertPrismaReady } from '../assert-prisma-ready.js';
 import type {
   CategoryCoverageMode,
   EngineDecision,

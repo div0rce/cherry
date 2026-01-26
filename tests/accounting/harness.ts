@@ -15,7 +15,7 @@ import {
   type LedgerState,
   type PostingRole,
   type Transaction,
-} from '../../lib/accounting/ledger';
+} from '../../lib/accounting/ledger.js';
 
 export class SeededRng {
   private state: number;

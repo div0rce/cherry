@@ -1,6 +1,6 @@
 import * as assert from 'node:assert/strict';
 import type { HomeUiBundle } from '../lib/home/ui-bundle';
-import { getHomeUiBundle } from '../lib/home/ui-bundle';
+import { getHomeUiBundle } from '../lib/home/ui-bundle.js';
 
 function collectStrings(value: unknown, acc: string[]): void {
   if (typeof value === 'string') {

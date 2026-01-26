@@ -15,7 +15,7 @@
  */
 import * as assert from 'node:assert/strict';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { assertPrismaError, getPrismaMetaString } from '../_helpers/assert-prisma-error';
+import { assertPrismaError, getPrismaMetaString } from '../_helpers/assert-prisma-error.js';
 
 const prisma = new PrismaClient();
 

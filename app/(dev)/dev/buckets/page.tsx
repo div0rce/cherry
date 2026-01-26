@@ -1,16 +1,16 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { ButtonLink } from '../../../../components/ui/Button';
-import { Card } from '../../../../components/ui/card';
-import { Alert } from '../../../../components/ui/alert';
-import { PageHeader } from '../../../../components/ui/page-header';
-import { MetricCard } from '../../../../components/ui/metric-card';
-import { Panel } from '../../../../components/ui/panel';
-import { EmptyState } from '../../../../components/ui/empty-state';
-import { getCurrentUserId } from '../../../../lib/auth';
-import { ROUTES } from '../../../../lib/routes';
-import { DeleteBucketButton, AddBucketForm } from './client';
-import { fetchApiResult } from '../../../../lib/api/fetch-json';
+import { ButtonLink } from '../../../../components/ui/Button.js';
+import { Card } from '../../../../components/ui/card.js';
+import { Alert } from '../../../../components/ui/alert.js';
+import { PageHeader } from '../../../../components/ui/page-header.js';
+import { MetricCard } from '../../../../components/ui/metric-card.js';
+import { Panel } from '../../../../components/ui/panel.js';
+import { EmptyState } from '../../../../components/ui/empty-state.js';
+import { getCurrentUserId } from '../../../../lib/auth.js';
+import { ROUTES } from '../../../../lib/routes.js';
+import { DeleteBucketButton, AddBucketForm } from './client.js';
+import { fetchApiResult } from '../../../../lib/api/fetch-json.js';
 import type { ApiResult } from '../../../../lib/api/result';
 
 const hasText = (value?: string | null): value is string =>

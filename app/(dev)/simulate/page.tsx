@@ -1,16 +1,16 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { RunSimulationForm, DeleteSimulationButton } from './client';
-import { getCurrentUserId } from '../../../lib/auth';
-import { ROUTES } from '../../../lib/routes';
+import { RunSimulationForm, DeleteSimulationButton } from './client.js';
+import { getCurrentUserId } from '../../../lib/auth.js';
+import { ROUTES } from '../../../lib/routes.js';
 import type { SimulationHistoryItem } from '../../../components/simulations/simulation-history-list';
-import { SimulationHistoryList } from '../../../components/simulations/simulation-history-list';
-import { hasText } from '../../../lib/text';
-import { PageHeader } from '../../../components/ui/page-header';
-import { Panel } from '../../../components/ui/panel';
-import { Card } from '../../../components/ui/card';
-import { Button, ButtonLink } from '../../../components/ui/Button';
-import { fetchApiResult } from '../../../lib/api/fetch-json';
+import { SimulationHistoryList } from '../../../components/simulations/simulation-history-list.js';
+import { hasText } from '../../../lib/text.js';
+import { PageHeader } from '../../../components/ui/page-header.js';
+import { Panel } from '../../../components/ui/panel.js';
+import { Card } from '../../../components/ui/card.js';
+import { Button, ButtonLink } from '../../../components/ui/Button.js';
+import { fetchApiResult } from '../../../lib/api/fetch-json.js';
 import type { ApiResult } from '../../../lib/api/result';
 
 type Simulation = {

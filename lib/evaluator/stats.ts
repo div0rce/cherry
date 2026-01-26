@@ -1,5 +1,5 @@
 import type { BankTransaction, HistoricalEngineEvaluation } from '@prisma/client';
-import { prisma } from '../prisma';
+import { prisma } from '../prisma.js';
 
 export type EvaluationWithTx = HistoricalEngineEvaluation & { bankTransaction: BankTransaction };
 

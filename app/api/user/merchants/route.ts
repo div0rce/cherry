@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '../../../../lib/prisma';
-import { resolveUserContext } from '../../../../lib/user-context';
+import { prisma } from '../../../../lib/prisma.js';
+import { resolveUserContext } from '../../../../lib/user-context.js';
 
 export async function GET(request: Request): Promise<Response> {
   try {
