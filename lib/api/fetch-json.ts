@@ -85,7 +85,7 @@ export async function fetchJSON<T>(
 
   const payload = await safeReadJson(response);
 
-  if (!response.ok) {
+  if (response.ok !== true) {
     const fallbackMessage =
       typeof response.statusText === 'string' && response.statusText.trim().length > 0
         ? response.statusText

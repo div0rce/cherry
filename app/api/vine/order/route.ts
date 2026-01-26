@@ -26,7 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     assertUserId(userId, 'api/vine/order POST');
     const parsedPayload = await parseJsonBody(request, VinePayloadSchema);
-    if (!parsedPayload.ok) return parsedPayload.response;
+    if (parsedPayload.ok !== true) return parsedPayload.response;
 
     const body = parsedPayload.data;
 
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderId: orderContext.orderId ?? null,
     };
     const sigResult = await verifyVineSignature(sigCtx, signatureHeader);
-    if (!sigResult.ok) {
+    if (sigResult.ok !== true) {
       return NextResponse.json(
         { error: 'vine_signature_invalid', reason: sigResult.reason ?? 'invalid_signature' },
         { status: 401 }

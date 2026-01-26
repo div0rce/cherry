@@ -68,7 +68,7 @@ function collectImports(sourceFile: ts.SourceFile): ImportRef[] {
   const visit = (node: ts.Node): void => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
       addImport(imports, sourceFile, node.moduleSpecifier.text, node);
-    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) {
       if (ts.isStringLiteralLike(node.moduleSpecifier)) {
         addImport(imports, sourceFile, node.moduleSpecifier.text, node);
       }
@@ -80,13 +80,13 @@ function collectImports(sourceFile: ts.SourceFile): ImportRef[] {
     } else if (ts.isCallExpression(node)) {
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         const arg = node.arguments[0];
-        if (arg && ts.isStringLiteralLike(arg)) {
+        if (arg !== undefined && ts.isStringLiteralLike(arg)) {
           addImport(imports, sourceFile, arg.text, node);
         }
       } else if (ts.isIdentifier(node.expression)) {
         if (REQUIRE_IDENTIFIERS.has(node.expression.text)) {
           const arg = node.arguments[0];
-          if (arg && ts.isStringLiteralLike(arg)) {
+          if (arg !== undefined && ts.isStringLiteralLike(arg)) {
             addImport(imports, sourceFile, arg.text, node);
           }
         }

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '../../../lib/prisma.js';
 import { getAutopilotDecisionForUserSwipe } from '../../../lib/engine.js';
@@ -25,7 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     userId = context.userId;
 
     const parsed = await parseJsonBody(request, AutopilotRequestSchema);
-    if (!parsed.ok) {
+    if (parsed.ok !== true) {
       logGuardrailEvent({
         surface: 'autopilot',
         userId,

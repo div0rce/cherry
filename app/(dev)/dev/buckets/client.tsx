@@ -27,7 +27,7 @@ export function DeleteBucketButton({ bucketId }: { bucketId: string }): JSX.Elem
       method: 'DELETE',
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;
@@ -110,7 +110,7 @@ export function AddBucketForm(): JSX.Element {
       }),
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;

@@ -53,7 +53,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
   }
 
   for (const card of state.cards) {
-    if (!card.isActive) continue;
+    if (card.isActive !== true) continue;
     actions.push({
       type: 'USE_CARD',
       cardId: card.id,
@@ -66,7 +66,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
     if (paydownAmount !== null && !Number.isNaN(paydownAmount) && paydownAmount > 0) {
       const debtIds = pickTopDebtAccounts(state, 2);
       for (const card of state.cards) {
-        if (!card.isActive || !card.isCredit) continue;
+        if (card.isActive !== true || card.isCredit !== true) continue;
         for (const debtId of debtIds) {
           actions.push({
             type: 'USE_CARD_WITH_PAYDOWN',
@@ -105,7 +105,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
       )
     : false;
 
-  if (!isEssentialCategory) {
+  if (isEssentialCategory === false) {
     actions.push({ type: 'DELAY_PURCHASE', delayDays: 3 });
     actions.push({ type: 'DELAY_PURCHASE', delayDays: 7 });
   }

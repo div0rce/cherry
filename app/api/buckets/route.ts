@@ -1,4 +1,5 @@
-import { NextResponse, NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { BucketPeriod, RewardCategory } from '@prisma/client';
 import { prisma } from '../../../lib/prisma.js';
 import { logError } from '../../../lib/logger.js';
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     assertUserId(userId, 'api/buckets POST');
     const parsed = await parseJsonBody(request, BucketCreateSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const {
       name,
       period,
@@ -224,7 +225,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     assertUserId(userId, 'api/buckets DELETE');
 
     const parsed = await parseJsonBody(request, BucketDeleteSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const { bucketId } = parsed.data;
 
     const bucket = await prisma.bucket.findFirst({

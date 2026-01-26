@@ -1,10 +1,10 @@
 import {
-  CategoryCoverageModeDb,
   RecommendationStatus,
   RecommendationSource,
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
+import type { CategoryCoverageModeDb } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
 import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority';
@@ -64,7 +64,7 @@ export async function runRecommendationFromOrderContext(
     legacyDecisionProvider: runLegacyEngine,
   });
 
-  if (!engineResult.ok || engineResult.decisions.length === 0) {
+  if (engineResult.ok !== true || engineResult.decisions.length === 0) {
     throw new Error(engineResult.ok ? 'No viable decisions' : engineResult.message);
   }
 

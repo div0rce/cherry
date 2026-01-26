@@ -29,7 +29,7 @@ export default async function EditCardPage({
       annualFee: number | null;
     }>
   >('/api/cards');
-  if (!response.ok) {
+  if (response.ok !== true) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }

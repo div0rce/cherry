@@ -22,7 +22,7 @@ const hasText = (value?: string | null): value is string =>
 async function getHealth(appBaseUrl: string) {
   const url = hasText(appBaseUrl) ? `${appBaseUrl.replace(/\/$/, '')}/api/health` : '/api/health';
   const res = await fetchApiResult<{ ok: boolean }>(url, { cache: 'no-store' });
-  if (!res.ok) return { ok: false };
+  if (res.ok !== true) return { ok: false };
   return res.data;
 }
 

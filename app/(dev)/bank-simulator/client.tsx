@@ -34,7 +34,7 @@ export default function BankSimulatorClient({ initialSessions }: BankSimulatorCl
     setLoading(true);
     setError(null);
     const res = await callApi<{ sessions?: PendingSession[] }>('/api/dev/pending-sessions');
-    if (!res.ok) {
+    if (res.ok !== true) {
       setError(res.message);
       setLoading(false);
       return;
@@ -50,7 +50,7 @@ export default function BankSimulatorClient({ initialSessions }: BankSimulatorCl
       method: 'POST',
       body: JSON.stringify({ verified }),
     });
-    if (!res.ok) {
+    if (res.ok !== true) {
       setError(hasText(res.message) ? res.message : 'Failed to verify session');
       setActioningId(null);
       return;

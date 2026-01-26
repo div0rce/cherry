@@ -214,7 +214,7 @@ export default async function SimulatePage({
     ...(hasText(categoryParam) ? { category: categoryParam } : {}),
   };
   const result = await fetchSimulations(query);
-  if (!result.ok) {
+  if (result.ok !== true) {
     if (result.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent('/simulate')}`);
     }

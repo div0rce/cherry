@@ -1,5 +1,6 @@
 import type { AuthorityPure, AuthorityVersion } from '../authority/config';
-import { AUTHORITY_REASON_SEVERITY, AuthorityReason } from '../authority/reasonCodes.js';
+import { AUTHORITY_REASON_SEVERITY } from '../authority/reasonCodes.js';
+import type { AuthorityReason } from '../authority/reasonCodes.js';
 import type {
   AuthorityDecision,
   SimulatedAuthorityDecision,

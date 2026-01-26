@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { resolveUserContext } from '../../../../../lib/user-context.js';
 import { buildEngineContext } from '../../../../../lib/engine.js';
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
     const parsed = await parseJsonBody(request, InspectRequestSchema);
-    if (!parsed.ok) {
+    if (parsed.ok !== true) {
       return parsed.response;
     }
 
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       includeLegacyDecision: false,
       stateOverride: state,
     });
-    if (!engineResult.ok) {
+    if (engineResult.ok !== true) {
       return NextResponse.json(
         {
           decisions: [],

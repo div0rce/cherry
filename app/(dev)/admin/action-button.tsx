@@ -30,7 +30,7 @@ export function AdminActionButton({
       cache: 'no-store',
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       setStatus('error');
       setMessage(res.message);
       return;

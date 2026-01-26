@@ -88,7 +88,7 @@ export default async function CardsPage(): Promise<JSX.Element | null> {
   let error: string | null = null;
 
   const cardsResult = await fetchCards();
-  if (!cardsResult.ok) {
+  if (cardsResult.ok !== true) {
     if (cardsResult.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.cards)}`);
       return null;

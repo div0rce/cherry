@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { BucketPeriod, RewardCategory } from '@prisma/client';
+import type { BucketPeriod, RewardCategory } from '@prisma/client';
 import { prisma } from '../../../../lib/prisma.js';
 import { logError } from '../../../../lib/logger.js';
 import { BucketUpdateSchema } from '../../../../lib/schemas/buckets.js';
@@ -70,7 +70,7 @@ export async function PATCH(
   try {
     assertUserId(userId, 'api/buckets/[bucketId] PATCH');
     const parsed = await parseJsonBody(request, BucketUpdateSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
 
     const bucket = await prisma.bucket.findFirst({
       where: { id: bucketId, userId },

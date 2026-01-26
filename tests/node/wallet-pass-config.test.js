@@ -58,7 +58,7 @@ function buildConfig(walletOverrides) {
     wwdrCertPath: './certs/apple-wwdr.pem',
   });
   const status = getWalletPassConfigStatus(config.wallet);
-  if (!status.ok) throw new Error(`expected ok, got ${status.reason}`);
+  if (status.ok !== true) throw new Error(`expected ok, got ${status.reason}`);
 }
 
 console.warn('wallet-pass-config: ok');

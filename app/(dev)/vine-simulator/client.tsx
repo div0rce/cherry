@@ -204,7 +204,7 @@ export function VineSimulatorClient(): JSX.Element {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok && res.error === 'UNAUTHORIZED') {
+    if (res.ok !== true && res.error === 'UNAUTHORIZED') {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
@@ -218,7 +218,7 @@ export function VineSimulatorClient(): JSX.Element {
       return;
     }
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       const friendly = hasText(res.message) ? res.message : 'Failed to create recommendation.';
       logGuardrailEvent({
         userId: null,
@@ -282,7 +282,7 @@ export function VineSimulatorClient(): JSX.Element {
       }),
     });
 
-    if (!res.ok && res.error === 'UNAUTHORIZED') {
+    if (res.ok !== true && res.error === 'UNAUTHORIZED') {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',
@@ -296,7 +296,7 @@ export function VineSimulatorClient(): JSX.Element {
       return;
     }
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       logGuardrailEvent({
         userId: null,
         surface: 'vine',

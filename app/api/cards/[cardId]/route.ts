@@ -21,7 +21,7 @@ export async function PATCH(
   }
 
   const parsed = await parseJsonBody(request, CardUpdateSchema);
-  if (!parsed.ok) return parsed.response;
+  if (parsed.ok !== true) return parsed.response;
 
   const card = await prisma.card.findFirst({
     where: { id: cardId, userId },

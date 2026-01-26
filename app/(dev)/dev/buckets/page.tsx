@@ -52,7 +52,7 @@ export default async function BucketsPage(): Promise<JSX.Element | null> {
   let error: string | null = null;
 
   const bucketsResult = await fetchBuckets();
-  if (!bucketsResult.ok) {
+  if (bucketsResult.ok !== true) {
     if (bucketsResult.error === 'UNAUTHORIZED') {
       redirect(`/signin?callbackUrl=${encodeURIComponent(ROUTES.dev.buckets)}`);
     }

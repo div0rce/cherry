@@ -32,6 +32,7 @@ const REQUIRED_HELPERS = new Set([
   'read-json.mts',
   'import-typed.mts',
   'run-tool.mts',
+  'environment-contract.mts',
 ]);
 const POLICY_FIELD_NAMES = new Set(['tier', 'timestampSource', 'expiresBy', 'source']);
 const COMPARISON_OPERATORS = new Set<ts.SyntaxKind>([
@@ -422,7 +423,7 @@ function assertGuardrailHelpers(): void {
   ];
   fail(PREFIX, 'Guardrail helper set mismatch', {
     details,
-    fix: 'Keep only fail.mts, error.mts, read-json.mts, and import-typed.mts in scripts/guardrails/lib.',
+    fix: 'Keep only fail.mts, error.mts, read-json.mts, import-typed.mts, run-tool.mts, and environment-contract.mts in scripts/guardrails/lib.',
   });
 }
 

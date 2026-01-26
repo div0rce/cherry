@@ -80,16 +80,16 @@ export async function createRewardRule(
     }),
   });
 
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=cards');
     return;
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to create reward rule.' };
   }
 
   const bucketsResponse = await fetchFromApi<Array<{ id?: string }>>('/api/buckets');
-  if (bucketsResponse.ok) {
+  if (bucketsResponse.ok === true) {
     const buckets = bucketsResponse.data;
     if (buckets.length === 0) {
       redirect('/app/onboarding/buckets/new');

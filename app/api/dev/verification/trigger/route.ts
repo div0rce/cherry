@@ -17,7 +17,7 @@ const TriggerVerificationSchema = z
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId, req) => {
     const parsed = await parseJsonBody(req, TriggerVerificationSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
 
     const verificationInput = {
       sessionId: parsed.data.sessionId,
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const result = await verifySessionFromSignal(verificationInput);
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       return NextResponse.json({ ok: false, reason: result.reason, message: result.message }, { status: 400 });
     }
 

@@ -59,7 +59,7 @@ export default function InspectorClient(): JSX.Element {
       }),
     });
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setError(result.message);
       setStatus('error');
       return;

@@ -13,7 +13,7 @@ export default async function AutopilotPage(): Promise<JSX.Element> {
     prereqs: AutopilotPrereqs;
     missing: 'cards' | 'rules' | 'buckets' | null;
   }>('/api/autopilot/prereqs');
-  if (!prereqResponse.ok) {
+  if (prereqResponse.ok !== true) {
     throw new Error(prereqResponse.message);
   }
   const prereqPayload = prereqResponse.data;

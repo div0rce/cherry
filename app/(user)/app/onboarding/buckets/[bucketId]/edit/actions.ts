@@ -2,7 +2,8 @@
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { BucketPeriod, RewardCategory } from '@prisma/client';
+import { RewardCategory } from '@prisma/client';
+import type { BucketPeriod } from '@prisma/client';
 import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
 import { resolveExplicitNow } from '../../../../../_lib/clock.js';
 import type { ActionState } from '../../../_lib/form-state';
@@ -75,11 +76,11 @@ export async function updateBucket(
     }),
   });
 
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=buckets');
     return;
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to update bucket.' };
   }
 
@@ -103,11 +104,11 @@ export async function deleteBucket(
   const response = await fetchFromApi<unknown>(`/api/buckets/${parsed.data.bucketId}`, {
     method: 'DELETE',
   });
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=buckets');
     return;
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to delete bucket.' };
   }
   redirect('/app/onboarding');

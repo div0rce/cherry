@@ -24,7 +24,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const parsed = await parseJsonBody(req, RunAllSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const body: z.infer<typeof RunAllSchema> = parsed.data;
 
     const targetDate =

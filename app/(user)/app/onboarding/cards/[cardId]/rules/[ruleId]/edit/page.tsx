@@ -27,7 +27,7 @@ export default async function EditRewardRulePage({
       cashbackPercent: number | null;
     }>
   >(`/api/cards/${cardId}/rewards`);
-  if (!ruleResponse.ok) {
+  if (ruleResponse.ok !== true) {
     redirect('/app/onboarding?missing=rules');
     return null;
   }
@@ -39,7 +39,7 @@ export default async function EditRewardRulePage({
   }
 
   const cardResponse = await fetchFromApi<Array<{ id: string; nickname: string }>>('/api/cards');
-  if (!cardResponse.ok) {
+  if (cardResponse.ok !== true) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }

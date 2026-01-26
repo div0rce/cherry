@@ -106,7 +106,7 @@ function classifyReasonCode(decision: EngineDecision, bucketDelta: AutopilotDeci
   if (decision.action.type === 'USE_CARD_WITH_PAYDOWN') {
     return 'PAYDOWN_RECOMMENDED';
   }
-  if (hasBudgetTension) {
+  if (hasBudgetTension === true) {
     return 'PROTECT_BUDGET';
   }
   return 'MAX_REWARDS';
@@ -228,7 +228,7 @@ export async function getAutopilotDecisionForUserSwipe(
     includeLegacyDecision: false,
   });
 
-  if (!engineResult.ok) {
+  if (engineResult.ok !== true) {
     return fallbackDecision('FALLBACK_SAFE');
   }
 

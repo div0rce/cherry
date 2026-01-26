@@ -1,4 +1,4 @@
-export type EnvironmentName = 'node' | 'next' | 'guardrail';
+export type EnvironmentName = 'node' | 'next' | 'guardrail' | 'test';
 export type EnvironmentId = `env:${EnvironmentName}`;
 
 export type EnvironmentOwnership = {
@@ -20,7 +20,6 @@ const SOURCE_EXT = '*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}';
 
 const NEXT_SINGLETONS = [
   'lib/auth.ts',
-  'lib/user-context.ts',
   'lib/validation.ts',
   'lib/with-user.ts',
 ];
@@ -42,6 +41,7 @@ export const ENVIRONMENT_CONTRACTS = Object.freeze({
         `tests/engine/**/${SOURCE_EXT}`,
         `tests/node/**/${SOURCE_EXT}`,
         `tests/db/**/${SOURCE_EXT}`,
+        'data/**/*.json',
         `types/**/${SOURCE_EXT}`,
         `prisma/scripts/**/${SOURCE_EXT}`,
         'eslint.config.mjs',
@@ -67,6 +67,7 @@ export const ENVIRONMENT_CONTRACTS = Object.freeze({
     ownership: {
       include: [
         `app/**/${SOURCE_EXT}`,
+        'app/**/*.css',
         `components/ui/**/${SOURCE_EXT}`,
         `components/**/${SOURCE_EXT}`,
         `tests/next/**/${SOURCE_EXT}`,
@@ -77,6 +78,23 @@ export const ENVIRONMENT_CONTRACTS = Object.freeze({
       ],
     },
     allowedImportsFrom: ['next', 'node'],
+  },
+  test: {
+    name: 'test',
+    id: 'env:test',
+    label: 'Test',
+    guarantees: ['Test-only runtime', 'May span node + next'],
+    forbidden: [],
+    ownership: {
+      include: [`tests/**/${SOURCE_EXT}`],
+      exclude: [
+        `tests/node/**/${SOURCE_EXT}`,
+        `tests/next/**/${SOURCE_EXT}`,
+        `tests/engine/**/${SOURCE_EXT}`,
+        `tests/db/**/${SOURCE_EXT}`,
+      ],
+    },
+    allowedImportsFrom: ['test', 'node', 'next', 'guardrail'],
   },
   guardrail: {
     name: 'guardrail',
@@ -97,11 +115,13 @@ export const ENVIRONMENT_CONTRACTS = Object.freeze({
 
 export const ENVIRONMENT_SCAN_GLOBS = [
   `app/**/${SOURCE_EXT}`,
+  'app/**/*.css',
   `components/**/${SOURCE_EXT}`,
   `lib/**/${SOURCE_EXT}`,
   `scripts/**/${SOURCE_EXT}`,
   `tests/**/${SOURCE_EXT}`,
   `types/**/${SOURCE_EXT}`,
+  'data/**/*.json',
   `prisma/scripts/**/${SOURCE_EXT}`,
   'eslint.config.mjs',
   'postcss.config.mjs',

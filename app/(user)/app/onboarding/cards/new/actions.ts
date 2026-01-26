@@ -75,7 +75,7 @@ export async function createCard(
       annualFee: cents,
     }),
   });
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to create card.' };
   }
   const created = response.data;

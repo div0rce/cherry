@@ -1,10 +1,10 @@
 import {
-  MerchantChannel,
   MerchantLifeCategory,
   MerchantRiskProfile,
   MerchantVertical,
   RewardCategory,
 } from '@prisma/client';
+import type { MerchantChannel } from '@prisma/client';
 
 type TagContext = {
   mccCode: number;

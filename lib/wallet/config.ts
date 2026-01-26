@@ -14,7 +14,7 @@ export function getWalletPassConfigStatus(
 ): WalletPassConfigStatus {
   const config = walletConfig ?? getServerConfig().wallet;
 
-  if (!config.enabled) {
+  if (config.enabled !== true) {
     return { ok: false, reason: 'wallet_pass_disabled' };
   }
 

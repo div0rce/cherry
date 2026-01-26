@@ -1,5 +1,6 @@
 // app/api/cards/route.ts
-import { NextResponse, NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma.js';
 import { Prisma, RewardCategory } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const parsed = await parseJsonBody(request, CardCreateSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const { nickname, issuer, network, isCredit, annualFee, rewardRules } = parsed.data;
 
     const nicknameStr = nickname.trim();
@@ -125,7 +126,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const networkStr = network.trim();
 
     const parsedRules = parseRewardRules(rewardRules);
-    if (!parsedRules.ok) {
+    if (parsedRules.ok !== true) {
       return new NextResponse(parsedRules.message, { status: 400 });
     }
 
@@ -182,7 +183,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
   assertUserId(userId, 'api/cards DELETE');
   try {
     const parsed = await parseJsonBody(request, CardDeleteSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const { cardId } = parsed.data;
 
     if (!hasText(cardId)) {

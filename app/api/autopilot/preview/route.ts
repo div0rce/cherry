@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getAutopilotPreview } from '../../../../lib/autopilot/service.js';
 import { AutopilotServiceError } from '../../../../lib/autopilot/types.js';
 import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log.js';
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     userId = userContext.userId;
 
     const parsedInput = await parseJsonBody(request, AutopilotPreviewInputSchema);
-    if (!parsedInput.ok) {
+    if (parsedInput.ok !== true) {
       previewStatusLabel = 'invalid';
       logGuardrailEvent({
         surface: 'autopilot',

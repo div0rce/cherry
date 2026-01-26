@@ -42,7 +42,7 @@ export async function POST(
     }
 
     const parsed = await parseJsonBody(request, ConfirmSessionSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const body = parsed.data;
     const requestNow = new Date();
 

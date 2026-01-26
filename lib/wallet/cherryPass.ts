@@ -46,7 +46,7 @@ export async function generateCherryPass(
 ): Promise<Buffer> {
   const config = walletConfig ?? getServerConfig().wallet;
 
-  if (!config.enabled) {
+  if (config.enabled !== true) {
     throw new Error(
       '[Cherry Wallet] Apple Wallet is not configured. Missing certs/ENV. This feature is disabled until Apple Developer setup is complete.'
     );

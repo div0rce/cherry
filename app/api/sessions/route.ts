@@ -1,14 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
-  CategoryCoverageModeDb,
   RecommendationStatus,
   RecommendationSource,
-  RewardCategory,
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import type { RecommendationSession } from '@prisma/client';
+import type { CategoryCoverageModeDb, RecommendationSession, RewardCategory } from '@prisma/client';
 import { prisma } from '../../../lib/prisma.js';
 import {
   buildEngineContext,
@@ -53,7 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     assertUserId(userId, 'api/sessions POST');
     const parsed = await parseJsonBody(request, CreateSessionSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const body = parsed.data;
 
     const categoryHint =
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       legacyDecisionProvider: runLegacyEngine,
     });
 
-    if (!engineResult.ok) {
+    if (engineResult.ok !== true) {
       return NextResponse.json(
         {
           sessionId: null,

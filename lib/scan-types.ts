@@ -1,4 +1,4 @@
-import { RewardCategory } from '@prisma/client';
+import type { RewardCategory } from '@prisma/client';
 import type { LegacyEngineDecision } from './engine';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums';
 import type { SimulatedAuthorityDecision } from './authority/simulateSpendAuthority';

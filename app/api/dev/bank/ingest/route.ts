@@ -31,7 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (_userId, _req) => {
     const parsed = await parseJsonBody(request, BankIngestRequestSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
 
     try {
       const stats = await ingestBankTransactions(parsed.data.transactions);

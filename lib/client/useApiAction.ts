@@ -27,7 +27,7 @@ export function useApiAction<TResponse>(): {
       setState({ data: null, error: null, isLoading: true });
       try {
         const result = await fn();
-        if (!result.ok) {
+        if (result.ok !== true) {
           setState({ data: null, error: result.message, isLoading: false });
           return result;
         }

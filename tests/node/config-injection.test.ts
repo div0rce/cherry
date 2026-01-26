@@ -52,7 +52,7 @@ const enabledWalletStatus = getWalletPassConfigStatus({
   wwdrCertPath: './certs/apple-wwdr.pem',
 });
 
-if (!enabledWalletStatus.ok) {
+if (enabledWalletStatus.ok !== true) {
   throw new Error('expected wallet status ok when config includes all fields');
 }
 

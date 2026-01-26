@@ -10,8 +10,12 @@ export const EXECUTION = {
   'check:db:required': 'scripts/db-check-required.mts',
   'check:run-db-tests': 'scripts/run-db-tests.mts',
   'check:run-tests': 'scripts/run-tests.mts',
-  'check:run-tests:node': 'scripts/run-tests-node.mts',
+  'check:run-tests:node':
+    'scripts/run-tests-node.mts',
   'check:run-tests:next': 'scripts/run-tests-next.mts',
+  'check:tests:node':
+    'scripts/run-tests-node.mts',
+  'check:tests:next': 'scripts/run-tests-next.mts',
   'check:tailwind-conflicts': 'scripts/tailwind-conflicts.mts',
   'ingest:moustafa-bank': 'scripts/ingest-moustafa-bank-csv.mts',
   'audit:evaluator:moustafa': 'scripts/run-offline-evaluator-moustafa.mts',

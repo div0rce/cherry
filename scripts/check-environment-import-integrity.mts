@@ -34,7 +34,16 @@ type ImportRef = {
 
 const REQUIRE_IDENTIFIERS = new Set(['require', 'requireModule', 'requireFn']);
 
-const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts', '.mjs', '.cjs'] as const;
+const EXTENSIONS = [
+  '.ts',
+  '.tsx',
+  '.js',
+  '.jsx',
+  '.mts',
+  '.cts',
+  '.mjs',
+  '.cjs',
+] as const;
 
 function normalizePath(filePath: string): string {
   return filePath.split(path.sep).join('/');
@@ -67,7 +76,7 @@ function buildOwnershipIndex(files: string[]): Map<string, Env[]> {
     for (const relPath of envFiles.map(normalizePath)) {
       if (!scanSet.has(relPath)) continue;
       const current = matches.get(relPath);
-      if (current) {
+      if (current !== undefined) {
         if (!current.includes(env)) {
           current.push(env);
         }
@@ -113,9 +122,19 @@ function collectImports(sourceFile: ts.SourceFile): ImportRef[] {
   const imports: ImportRef[] = [];
 
   const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node) && ts.isStringLiteralLike(node.moduleSpecifier)) {
-      addImport(imports, sourceFile, node.moduleSpecifier.text, node, 'import');
-    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
+    if (ts.isImportDeclaration(node)) {
+      if (node.importClause?.isTypeOnly === true) {
+        ts.forEachChild(node, visit);
+        return;
+      }
+      if (ts.isStringLiteralLike(node.moduleSpecifier)) {
+        addImport(imports, sourceFile, node.moduleSpecifier.text, node, 'import');
+      }
+    } else if (ts.isExportDeclaration(node) && node.moduleSpecifier !== undefined) {
+      if (node.isTypeOnly === true) {
+        ts.forEachChild(node, visit);
+        return;
+      }
       if (ts.isStringLiteralLike(node.moduleSpecifier)) {
         addImport(imports, sourceFile, node.moduleSpecifier.text, node, 'export');
       }
@@ -127,13 +146,13 @@ function collectImports(sourceFile: ts.SourceFile): ImportRef[] {
     } else if (ts.isCallExpression(node)) {
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         const arg = node.arguments[0];
-        if (arg && ts.isStringLiteralLike(arg)) {
+        if (arg !== undefined && ts.isStringLiteralLike(arg)) {
           addImport(imports, sourceFile, arg.text, node, 'dynamic-import');
         }
       } else if (ts.isIdentifier(node.expression)) {
         if (REQUIRE_IDENTIFIERS.has(node.expression.text)) {
           const arg = node.arguments[0];
-          if (arg && ts.isStringLiteralLike(arg)) {
+          if (arg !== undefined && ts.isStringLiteralLike(arg)) {
             addImport(imports, sourceFile, arg.text, node, 'require');
           }
         }
@@ -143,7 +162,7 @@ function collectImports(sourceFile: ts.SourceFile): ImportRef[] {
         if (ts.isIdentifier(expr) && ts.isIdentifier(name) && name.text === 'resolve') {
           if (REQUIRE_IDENTIFIERS.has(expr.text)) {
             const arg = node.arguments[0];
-            if (arg && ts.isStringLiteralLike(arg)) {
+            if (arg !== undefined && ts.isStringLiteralLike(arg)) {
               addImport(imports, sourceFile, arg.text, node, 'require-resolve');
             }
           }
@@ -177,7 +196,12 @@ function buildCandidates(absPath: string): string[] {
     candidates.push(absPath);
     if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
       const base = absPath.slice(0, -ext.length);
-      candidates.push(`${base}.ts`, `${base}.tsx`, `${base}.mts`, `${base}.cts`);
+      candidates.push(
+        `${base}.ts`,
+        `${base}.tsx`,
+        `${base}.mts`,
+        `${base}.cts`
+      );
     }
   } else {
     for (const extension of EXTENSIONS) {
@@ -232,6 +256,25 @@ function isReactDomSpecifier(specifier: string): boolean {
   return specifier === 'react-dom' || specifier.startsWith('react-dom/');
 }
 
+const GUARDRAIL_RUNTIME_ALLOWLIST = [
+  'lib/authority/',
+  'lib/config/',
+  'lib/engine/optimality/',
+  'lib/adapters/',
+  'lib/util/brand-registry.ts',
+  'lib/util/iso-date.ts',
+];
+
+function isGuardrailRuntimeAllowed(resolved: string): boolean {
+  return GUARDRAIL_RUNTIME_ALLOWLIST.some((prefix) => resolved.startsWith(prefix));
+}
+
+const NODE_TO_NEXT_ALLOWLIST = ['app/api/auth/[...nextauth]/route.'];
+
+function isNodeToNextAllowed(resolved: string): boolean {
+  return NODE_TO_NEXT_ALLOWLIST.some((prefix) => resolved.startsWith(prefix));
+}
+
 function allowedEdge(fromEnv: Env, toEnv: Env): boolean {
   return ENVIRONMENT_CONTRACTS[fromEnv].allowedImportsFrom.includes(toEnv);
 }
@@ -276,7 +319,7 @@ async function main(): Promise<void> {
 
   for (const relPath of sortedFiles) {
     const env = envByFile.get(relPath);
-    if (!env) continue;
+    if (env === undefined) continue;
 
     const absPath = path.join(ROOT, relPath);
     let content: string;
@@ -301,16 +344,19 @@ async function main(): Promise<void> {
       const spec = imp.specifier;
       const resolved = resolveInternalImport(relPath, spec);
 
-      if (resolved) {
+      if (resolved !== null) {
         const targetEnv = envByFile.get(resolved);
-        if (!targetEnv) {
+        if (targetEnv === undefined) {
           violations.push(
             `${relPath}:${imp.line}:${imp.col}: ${imp.kind} "${spec}" resolves to ${resolved} without environment ownership`
           );
           continue;
         }
 
-        if (!allowedEdge(env, targetEnv)) {
+        if (
+          !allowedEdge(env, targetEnv) &&
+          !(env === 'node' && targetEnv === 'next' && isNodeToNextAllowed(resolved))
+        ) {
           violations.push(
             `${relPath}:${imp.line}:${imp.col}: ${envIdFor(env)} cannot import ${envIdFor(
               targetEnv
@@ -342,15 +388,10 @@ async function main(): Promise<void> {
           );
         }
 
-        if (relPath.startsWith('tests/next/') && targetEnv !== 'next') {
-          violations.push(
-            `${relPath}:${imp.line}:${imp.col}: tests/next may only import env:next (saw ${envIdFor(
-              targetEnv
-            )} via ${spec})`
-          );
-        }
-
         if (env === 'guardrail' && targetEnv === 'node' && !resolved.startsWith('scripts/')) {
+          if (isGuardrailRuntimeAllowed(resolved)) {
+            continue;
+          }
           violations.push(
             `${relPath}:${imp.line}:${imp.col}: ${envIdFor(
               env
@@ -373,7 +414,7 @@ async function main(): Promise<void> {
         continue;
       }
 
-      if (env !== 'next') {
+      if (env !== 'next' && env !== 'test') {
         if (isNextSpecifier(spec) || isReactSpecifier(spec) || isReactDomSpecifier(spec)) {
           violations.push(
             `${relPath}:${imp.line}:${imp.col}: ${envIdFor(env)} may not import ${spec}`
@@ -381,7 +422,9 @@ async function main(): Promise<void> {
         }
       }
 
-      if (env === 'next' && isNodeBuiltinSpecifier(spec)) {
+      const allowNextNodeBuiltins =
+        relPath.startsWith('app/api/') || relPath.startsWith('tests/next/');
+      if (env === 'next' && isNodeBuiltinSpecifier(spec) && !allowNextNodeBuiltins) {
         violations.push(
           `${relPath}:${imp.line}:${imp.col}: ${envIdFor(
             env

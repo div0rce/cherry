@@ -193,7 +193,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
       })
     );
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setError(result.message);
       logGuardrailEvent({
         userId: null,
@@ -252,7 +252,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
       }),
     });
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setError(result.message);
       setIsStartingSession(false);
       return;
@@ -334,7 +334,7 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
       }
     );
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setError(result.message);
       setIsConfirming(false);
       return;

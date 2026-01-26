@@ -83,10 +83,10 @@ export async function updateCard(
       annualFee: cents,
     }),
   });
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     return { status: 'error', message: 'Card not found for this user.' };
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to update card.' };
   }
 
@@ -112,10 +112,10 @@ export async function deleteCard(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ cardId: parsed.data.cardId }),
   });
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     return { status: 'error', message: 'Card not found for this user.' };
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to delete card.' };
   }
 

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const parsed = await parseJsonBody(req, RunDailySchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
 
     const targetUserId = parsed.data.userId ?? userIdFromContext;
     const targetDateRaw = parsed.data.date;

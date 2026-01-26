@@ -257,7 +257,7 @@ async function testSafeSolveDecisionFailure() {
   });
 
   assert.equal(outcome.ok, false);
-  if (!outcome.ok) {
+  if (outcome.ok !== true) {
     assert.equal(outcome.reason, 'VALIDATION_ERROR');
   }
 

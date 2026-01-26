@@ -2,7 +2,8 @@
 // Manage reward rules for a specific card. This lets us express "4x on DINING"
 // style behavior the simulation engine can consume.
 
-import { NextResponse, NextRequest } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '../../../../../lib/prisma.js';
 import { RewardCategory } from '@prisma/client';
 import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '../../../../../lib/user-context.js';
@@ -114,7 +115,7 @@ export async function POST(
   }
 
   const parsed = await parseJsonBody(request, RewardRuleCreateSchema);
-  if (!parsed.ok) {
+  if (parsed.ok !== true) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -216,7 +217,7 @@ export async function DELETE(
   }
 
   const parsed = await parseJsonBody(request, RewardRuleDeleteSchema);
-  if (!parsed.ok) {
+  if (parsed.ok !== true) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',
@@ -325,7 +326,7 @@ export async function PATCH(
   }
 
   const parsed = await parseJsonBody(request, RewardRuleUpdateSchema);
-  if (!parsed.ok) {
+  if (parsed.ok !== true) {
     logGuardrailEvent({
       userId,
       surface: 'rewards',

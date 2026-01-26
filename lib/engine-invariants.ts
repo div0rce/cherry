@@ -14,7 +14,7 @@ export function validateEngineDecision(decision: LegacyEngineDecision): void {
     throw new Error('Engine invariant violated: amountCents must be non-negative');
   }
 
-  if (budget.hasBucket) {
+  if (budget.hasBucket === true) {
     if (budget.coverageMode !== 'BUDGETED') {
       throw new Error('Engine invariant violated: bucket present but coverageMode not BUDGETED');
     }

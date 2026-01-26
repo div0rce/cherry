@@ -203,7 +203,7 @@ function scoreComponents(
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
     if (bucket === undefined) continue;
-    if (bucket.isEssential && bucket.limitCents != null) {
+    if (bucket.isEssential === true && bucket.limitCents != null) {
       runway += proj.projectedRemainingCents;
     }
   }

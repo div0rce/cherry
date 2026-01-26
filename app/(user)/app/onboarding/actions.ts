@@ -19,7 +19,7 @@ export async function loadDemoDataset(
   const prereqResponse = await fetchFromApi<{ prereqs?: { state?: string } }>(
     '/api/autopilot/prereqs'
   );
-  if (!prereqResponse.ok) {
+  if (prereqResponse.ok !== true) {
     return { status: 'error', message: 'Unable to verify onboarding prerequisites.' };
   }
   const prereqPayload = prereqResponse.data;
@@ -32,7 +32,7 @@ export async function loadDemoDataset(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ nowMs: now.getTime() }),
   });
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to load demo dataset.' };
   }
   revalidatePath('/app/onboarding');

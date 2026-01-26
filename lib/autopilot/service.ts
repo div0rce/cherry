@@ -9,8 +9,8 @@ import {
   SessionAnomalyCode,
   TransactionStatus,
   VerificationStatus,
-  RewardCategory,
 } from '@prisma/client';
+import type { RewardCategory } from '@prisma/client';
 import type { AutopilotDecision } from '../engine/public-types';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public.js';
 import { logInvariantViolation } from '../log.js';

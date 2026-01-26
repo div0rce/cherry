@@ -45,7 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     assertUserId(userId, 'api/simulate POST');
 
     const parsedBody = await parseJsonBody(request, SimulateRequestSchema);
-    if (!parsedBody.ok) {
+    if (parsedBody.ok !== true) {
       logGuardrailEvent({
         userId,
         surface: 'simulate',
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
     const authorityResult = await simulateSpendAuthority(authorityParams, { nowMs: requestNowMs });
     authorityDecision = authorityResult.decision;
-    if (!authorityResult.ok) {
+    if (authorityResult.ok !== true) {
       logGuardrailEvent({
         userId,
         surface: 'simulate',
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       stateOverride: state,
       legacyDecisionProvider: runLegacyEngine,
     });
-    if (!engineResult.ok) {
+    if (engineResult.ok !== true) {
       logWarn('Engine failed in /api/simulate', { userId, mode, reason: engineResult.reason });
       logGuardrailEvent({
         userId,

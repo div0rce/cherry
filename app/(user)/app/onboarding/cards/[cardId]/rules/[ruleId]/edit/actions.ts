@@ -89,11 +89,11 @@ export async function updateRewardRule(
       cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : undefined,
     }),
   });
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=rules');
     return;
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to update reward rule.' };
   }
 
@@ -120,11 +120,11 @@ export async function deleteRewardRule(
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ rewardRuleId: parsed.data.ruleId }),
   });
-  if (!response.ok && response.error === 'NOT_FOUND') {
+  if (response.ok !== true && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=rules');
     return;
   }
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to delete reward rule.' };
   }
 

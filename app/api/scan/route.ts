@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
     const parsed = await parseJsonBody(request, ScanRequestSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const body = parsed.data;
 
     if (!hasText(body.merchantName)) {
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         legacyDecisionProvider: runLegacyEngine,
       });
 
-      if (!engineResult.ok) {
+      if (engineResult.ok !== true) {
         return NextResponse.json(
           {
             error: {

@@ -59,7 +59,7 @@ function applyUseCard(
   }
 
   const card = state.cards.find((c) => c.id === action.cardId);
-  if (card !== undefined && card.isCredit && card.creditLimitCents != null) {
+  if (card !== undefined && card.isCredit === true && card.creditLimitCents != null) {
     const debt = debts.find((d) => d.type === 'CREDIT_CARD' && d.name === card.label);
     if (debt !== undefined) {
       debt.balanceCents += amount;

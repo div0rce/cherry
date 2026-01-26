@@ -15,7 +15,12 @@ const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
 const WORKFLOWS_DIR = path.join(ROOT, '.github', 'workflows');
 const CI_WORKFLOW = path.join(WORKFLOWS_DIR, 'ci.yml');
 
-const FIX = 'Run only `npm run ci:verify` as the final CI command in ci.yml.';
+const FIX =
+  'Run guardrails and runtime separation tests before a final `npm run ci:verify` in ci.yml.';
+
+const REQUIRED_GUARDRAILS = ['check:guardrails'];
+const SEPARATE_RUNTIME_TESTS = ['check:tests:node', 'check:tests:next'];
+const COMBINED_RUNTIME_TESTS = ['check:tests'];
 
 type RunStep = {
   commands: string[];
@@ -37,6 +42,42 @@ function collectNpmRunCalls(commands: string[]): string[] {
     }
   }
   return calls;
+}
+
+function indexOfCall(calls: string[], target: string): number {
+  return calls.findIndex((name) => name === target);
+}
+
+function ensureOrdering(
+  calls: string[],
+  ordered: string[],
+  label: string
+): void {
+  let lastIndex = -1;
+  let lastName: string | null = null;
+  for (const name of ordered) {
+    const index = indexOfCall(calls, name);
+    if (index === -1) {
+      fail(PREFIX, `CI must run ${label}`, {
+        details: [
+          path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
+            `:1:1: missing npm run ${name}`,
+        ],
+        fix: FIX,
+      });
+    }
+    if (index <= lastIndex) {
+      fail(PREFIX, `CI must run ${label} in order`, {
+        details: [
+          path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
+            `:1:1: ${name} must run after ${lastName ?? 'the prior step'}`,
+        ],
+        fix: FIX,
+      });
+    }
+    lastIndex = index;
+    lastName = name;
+  }
 }
 
 function parseRunSteps(lines: string[]): RunStep[] {
@@ -128,15 +169,39 @@ function main(): void {
   const steps = parseRunSteps(content.split(/\r?\n/));
   const commands = collectCommands(steps);
   const calls = collectNpmRunCalls(commands);
-  const forbidden = calls.filter((name) => name !== 'ci:verify');
+  const allowed = new Set([
+    'ci:verify',
+    ...REQUIRED_GUARDRAILS,
+    ...SEPARATE_RUNTIME_TESTS,
+    ...COMBINED_RUNTIME_TESTS,
+  ]);
+  const forbidden = calls.filter((name) => !allowed.has(name));
   if (forbidden.length > 0) {
-    fail(PREFIX, 'CI must run only ci:verify via npm run', {
+    fail(PREFIX, 'CI must run only guardrails, runtime tests, and ci:verify via npm run', {
       details: [
         path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
           `:1:1: forbidden npm scripts: ${forbidden.join(', ')}`,
       ],
       fix: FIX,
     });
+  }
+
+  const hasCombined = COMBINED_RUNTIME_TESTS.some((name) => calls.includes(name));
+  const hasSeparate = SEPARATE_RUNTIME_TESTS.some((name) => calls.includes(name));
+  if (hasCombined && hasSeparate) {
+    fail(PREFIX, 'CI must choose either combined or separate runtime tests', {
+      details: [
+        path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
+          ':1:1: do not mix check:tests with check:tests:node/check:tests:next',
+      ],
+      fix: FIX,
+    });
+  }
+
+  if (hasCombined) {
+    ensureOrdering(calls, [...REQUIRED_GUARDRAILS, ...COMBINED_RUNTIME_TESTS], 'guardrails and runtime tests');
+  } else {
+    ensureOrdering(calls, [...REQUIRED_GUARDRAILS, ...SEPARATE_RUNTIME_TESTS], 'guardrails and runtime tests');
   }
 
   process.stdout.write('ci-must-run-check: ok\n');

@@ -114,12 +114,12 @@ function collectImportBindings(
   for (const statement of sourceFile.statements) {
     if (!ts.isImportDeclaration(statement)) continue;
     const clause = statement.importClause;
-    if (!clause) continue;
-    if (clause.name) {
+    if (clause === undefined) continue;
+    if (clause.name !== undefined) {
       recordImportBinding(bindings, checker, clause.name, clause.isTypeOnly, clause);
     }
     const namedBindings = clause.namedBindings;
-    if (!namedBindings) continue;
+    if (namedBindings === undefined) continue;
     if (ts.isNamespaceImport(namedBindings)) {
       recordImportBinding(bindings, checker, namedBindings.name, clause.isTypeOnly, namedBindings);
       continue;
@@ -145,9 +145,9 @@ function scanSourceFile(sourceFile: ts.SourceFile, checker: ts.TypeChecker): Vio
         return;
       }
       const symbol = checker.getSymbolAtLocation(node);
-      if (symbol) {
+      if (symbol !== undefined) {
         const binding = bindings.get(symbol);
-        if (binding) {
+        if (binding !== undefined) {
           if (isTypeUsage(node)) {
             binding.usedInType = true;
           } else {

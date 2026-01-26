@@ -110,7 +110,7 @@ export async function evaluateTransactionOffline(
     stateOverride: state,
     includeLegacyDecision: false,
   });
-  if (!outcome.ok || outcome.decisions.length === 0) {
+  if (outcome.ok !== true || outcome.decisions.length === 0) {
     return {
       decisionType: 'NO_DECISION',
       cardId: null,

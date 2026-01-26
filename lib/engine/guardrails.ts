@@ -97,7 +97,7 @@ export function evaluateConstraintsForDecision(
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
     if (bucket === undefined) continue;
     if (
-      bucket.isEssential &&
+      bucket.isEssential === true &&
       bucket.limitCents != null &&
       proj.projectedCommittedCents > bucket.limitCents
     ) {

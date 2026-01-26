@@ -78,7 +78,7 @@ Rationale:
 */
 export async function requireUserContext(): Promise<UserContextResponse> {
   const result = await fetchFromApi<UserContextResponse>('/api/user/context');
-  if (!result.ok) {
+  if (result.ok !== true) {
     throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
   }
   return result.data;

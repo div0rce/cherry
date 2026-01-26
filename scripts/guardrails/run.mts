@@ -444,7 +444,7 @@ async function main(): Promise<void> {
   const failures: GuardrailFailure[] = [];
   for (const name of names) {
     const result = await runGuardrail(name, [], true);
-    if (!result.ok && result.failure !== undefined) {
+    if (result.ok !== true && result.failure !== undefined) {
       failures.push(result.failure);
     }
   }

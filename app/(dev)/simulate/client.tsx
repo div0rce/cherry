@@ -125,7 +125,7 @@ export function RunSimulationForm(): JSX.Element {
       }),
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         setSubmitting(false);
@@ -241,7 +241,7 @@ export function DeleteSimulationButton({
       method: 'DELETE',
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;

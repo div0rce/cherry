@@ -1,7 +1,8 @@
 // Advisory-only DailyState kernel runner.
 // Do not add auth, spend, alerts, UI coupling, or mutations beyond the DailyState row.
 import { createHash } from 'crypto';
-import { DailyStateSource, DailyStateStatus, Prisma, type DailyState } from '@prisma/client';
+import { DailyStateStatus, Prisma } from '@prisma/client';
+import type { DailyState, DailyStateSource } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
 import { toBucketRuntime } from '../buckets-runtime.js';

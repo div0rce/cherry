@@ -10,7 +10,7 @@ import { getWalletPassConfigStatus } from '../../../../lib/wallet/config.js';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
     const configStatus = getWalletPassConfigStatus();
-    if (!configStatus.ok) {
+    if (configStatus.ok !== true) {
       return NextResponse.json(
         {
           error: 'wallet_pass_not_configured',

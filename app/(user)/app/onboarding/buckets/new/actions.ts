@@ -2,7 +2,8 @@
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { BucketPeriod, RewardCategory } from '@prisma/client';
+import { RewardCategory } from '@prisma/client';
+import type { BucketPeriod } from '@prisma/client';
 import { resolveExplicitNow } from '../../../../_lib/clock.js';
 import { fetchFromApi, requireUserContext } from '../../../../_lib/api.js';
 import type { ActionState } from '../../_lib/form-state';
@@ -67,7 +68,7 @@ export async function createBucket(
     }),
   });
 
-  if (!response.ok) {
+  if (response.ok !== true) {
     return { status: 'error', message: 'Failed to create bucket.' };
   }
 

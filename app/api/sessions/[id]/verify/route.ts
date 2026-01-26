@@ -46,7 +46,7 @@ export async function POST(
     }
 
     const parsed = await parseJsonBody(request, VerifySessionSchema);
-    if (!parsed.ok) return parsed.response;
+    if (parsed.ok !== true) return parsed.response;
     const body = parsed.data;
 
     const result = await verifySessionFromSignal({
@@ -57,7 +57,7 @@ export async function POST(
       occurredAt: new Date(),
     });
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       if (result.reason === 'NOT_FOUND') {
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }

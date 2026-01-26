@@ -1,4 +1,4 @@
-import { BucketPeriod } from '@prisma/client';
+import type { BucketPeriod } from '@prisma/client';
 
 type ResolveNowOptions = { allowImplicit?: boolean };
 

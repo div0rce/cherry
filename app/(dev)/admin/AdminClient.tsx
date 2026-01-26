@@ -106,7 +106,7 @@ export default function AdminClient(): JSX.Element {
     setLoading(true);
     setFeedback(null);
     const res = await callApi<unknown>(url, { method: 'POST' });
-    if (!res.ok) {
+    if (res.ok !== true) {
       setFeedback({
         type: 'error',
         text: hasText(res.message) ? res.message : 'Request failed',
@@ -146,7 +146,7 @@ export default function AdminClient(): JSX.Element {
         }
       );
 
-      if (!res.ok) {
+      if (res.ok !== true) {
         setBankFeedback({
           type: 'error',
           text: hasText(res.message) ? res.message : 'Ingest failed',
@@ -189,7 +189,7 @@ export default function AdminClient(): JSX.Element {
     const res = await callApi<{ transactions?: unknown[]; error?: string }>(
       '/api/dev/bank/ingest?limit=5'
     );
-    if (!res.ok) {
+    if (res.ok !== true) {
       setBankFeedback({
         type: 'error',
         text: hasText(res.message) ? res.message : 'Failed to fetch',

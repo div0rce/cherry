@@ -19,7 +19,7 @@ export default async function NewRewardRulePage({
   const { cardId } = resolvedParams;
   await requireUserContext();
   const response = await fetchFromApi<Array<{ id: string; nickname: string }>>('/api/cards');
-  if (!response.ok) {
+  if (response.ok !== true) {
     redirect('/app/onboarding?missing=cards');
     return null;
   }

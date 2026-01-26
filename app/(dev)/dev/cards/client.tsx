@@ -90,7 +90,7 @@ export function AddCardForm(): JSX.Element {
       }),
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;
@@ -119,7 +119,7 @@ export function AddCardForm(): JSX.Element {
         }),
       });
 
-      if (!ruleRes.ok) {
+      if (ruleRes.ok !== true) {
         if (ruleRes.error === 'UNAUTHORIZED') {
           promptSignIn(setStatus);
           return;
@@ -373,7 +373,7 @@ export function AddRewardRuleForm({ cardId }: { cardId: string }): JSX.Element {
       }),
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;
@@ -464,7 +464,7 @@ export function DeleteCardButton({ cardId }: { cardId: string }): JSX.Element {
       body: JSON.stringify({ cardId }),
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;
@@ -509,7 +509,7 @@ export function DeleteRewardRuleButton({
       body: JSON.stringify({ rewardRuleId }),
     });
 
-    if (!res.ok) {
+    if (res.ok !== true) {
       if (res.error === 'UNAUTHORIZED') {
         promptSignIn(setStatus);
         return;

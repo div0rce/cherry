@@ -25,6 +25,7 @@ const WORKFLOWS_DIR = path.join(ROOT, '.github', 'workflows');
 const CI_WORKFLOW = path.join(WORKFLOWS_DIR, 'ci.yml');
 const CHECK_SCRIPT = 'check';
 const CI_ENTRYPOINT = 'ci:verify';
+const GUARDRAIL_ENTRYPOINT_NAME = GUARDRAIL_ENTRYPOINT;
 
 function readPackageScripts(): PackageScripts {
   const packagePath = path.join(ROOT, 'package.json');
@@ -188,8 +189,11 @@ function assertCiRunsCheck(errors: Violation[]): void {
   const guardrailSet = new Set(guardrailNames);
   const ciGuardrails = calls.filter((name) => guardrailSet.has(name));
   const runsCheck = calls.includes(CHECK_SCRIPT);
-  const runsEntry = calls.includes(GUARDRAIL_ENTRYPOINT);
+  const runsEntry = calls.includes(GUARDRAIL_ENTRYPOINT_NAME);
   const runsCiVerify = calls.includes(CI_ENTRYPOINT);
+  const runsCombined = calls.includes('check:tests');
+  const runsNode = calls.includes('check:tests:node');
+  const runsNext = calls.includes('check:tests:next');
 
   if (!runsCiVerify) {
     errors.push({
@@ -199,12 +203,36 @@ function assertCiRunsCheck(errors: Violation[]): void {
       message: `CI must run ${CI_ENTRYPOINT} to ensure guardrail coverage`,
     });
   }
-  if (runsCheck || runsEntry || ciGuardrails.length > 0) {
+  if (!runsEntry) {
     errors.push({
       file: ciPath,
       line: 1,
       col: 1,
-      message: `CI must not run guardrails directly; use ${CI_ENTRYPOINT} only`,
+      message: `CI must run ${GUARDRAIL_ENTRYPOINT_NAME} before runtime tests`,
+    });
+  }
+  if (!runsCombined && !(runsNode && runsNext)) {
+    errors.push({
+      file: ciPath,
+      line: 1,
+      col: 1,
+      message: 'CI must run check:tests (or both check:tests:node and check:tests:next)',
+    });
+  }
+  if (runsCheck) {
+    errors.push({
+      file: ciPath,
+      line: 1,
+      col: 1,
+      message: `CI must not run ${CHECK_SCRIPT} directly; rely on ${CI_ENTRYPOINT}`,
+    });
+  }
+  if (ciGuardrails.length > 0) {
+    errors.push({
+      file: ciPath,
+      line: 1,
+      col: 1,
+      message: `CI must not run individual guardrails; use ${GUARDRAIL_ENTRYPOINT_NAME}`,
     });
   }
 }

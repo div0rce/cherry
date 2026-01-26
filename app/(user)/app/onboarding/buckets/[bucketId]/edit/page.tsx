@@ -28,7 +28,7 @@ export default async function EditBucketPage({
       period: string;
     }>
   >('/api/buckets');
-  if (!response.ok) {
+  if (response.ok !== true) {
     redirect('/app/onboarding?missing=buckets');
     return null;
   }
