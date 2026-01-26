@@ -1,5 +1,5 @@
-import type { EngineAction, EngineDecision } from '../types';
-import type { Candidate } from './candidates';
+import type { EngineAction, EngineDecision } from '../types.js';
+import type { Candidate } from './candidates.js';
 
 function normalizeString(value: string | null | undefined): string | null {
   return value === undefined ? null : value;

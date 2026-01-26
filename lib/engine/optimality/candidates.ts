@@ -1,5 +1,5 @@
-import type { EngineContext, EngineState } from '../types';
-import { candidateKey, normalizeCandidate } from './normalize';
+import type { EngineContext, EngineState } from '../types.js';
+import { candidateKey, normalizeCandidate } from './normalize.js';
 
 export const candidateSpaceVersion = 'candidates_v1' as const;
 

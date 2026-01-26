@@ -1,8 +1,8 @@
-import { getObjectiveWeightsForState, scoreAction } from '../objective';
-import { simulateAction } from '../simulate';
-import type { EngineContext, EngineState } from '../types';
-import type { Candidate } from './candidates';
-import { candidateKey, normalizeCandidate, normalizeCandidateToAction } from './normalize';
+import { getObjectiveWeightsForState, scoreAction } from '../objective.js';
+import { simulateAction } from '../simulate.js';
+import type { EngineContext, EngineState } from '../types.js';
+import type { Candidate } from './candidates.js';
+import { candidateKey, normalizeCandidate, normalizeCandidateToAction } from './normalize.js';
 
 export const objectiveVersion = 'objective_v1' as const;
 

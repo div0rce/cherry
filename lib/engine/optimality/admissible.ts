@@ -3,11 +3,11 @@ import {
   evaluateConstraintsForDecision,
   formatConstraintTag,
   getHardConstraints,
-} from '../guardrails';
-import { simulateAction } from '../simulate';
-import type { EngineContext, EngineDecision, EngineState } from '../types';
-import type { Candidate } from './candidates';
-import { candidateKey, normalizeCandidate, normalizeCandidateToAction } from './normalize';
+} from '../guardrails.js';
+import { simulateAction } from '../simulate.js';
+import type { EngineContext, EngineDecision, EngineState } from '../types.js';
+import type { Candidate } from './candidates.js';
+import { candidateKey, normalizeCandidate, normalizeCandidateToAction } from './normalize.js';
 
 export function isAdmissible(
   candidate: Candidate,

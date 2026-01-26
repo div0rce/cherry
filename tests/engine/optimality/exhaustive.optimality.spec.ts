@@ -1,25 +1,25 @@
 import * as assert from 'node:assert/strict';
-import { buildEngineContext, solveDecision } from '../../../lib/engine';
-import type { EngineDecision, EngineState } from '../../../lib/engine/types';
+import { buildEngineContext, solveDecision } from '../../../lib/engine.js';
+import type { EngineDecision, EngineState } from '../../../lib/engine/types.js';
 import {
   candidateSpaceVersion,
   enumerateCandidatesBounded,
   type Bounds,
   type Candidate,
-} from '../../../lib/engine/optimality/candidates';
-import { isAdmissible } from '../../../lib/engine/optimality/admissible';
+} from '../../../lib/engine/optimality/candidates.js';
+import { isAdmissible } from '../../../lib/engine/optimality/admissible.js';
 import {
   compareObjective,
   objectiveVersion,
   scoreVector,
   type ObjectiveVector,
-} from '../../../lib/engine/optimality/objective';
-import { traceVersion } from '../../../lib/engine/optimality/types';
+} from '../../../lib/engine/optimality/objective.js';
+import { traceVersion } from '../../../lib/engine/optimality/types.js';
 import {
   candidateKey,
   normalizeCandidate,
   normalizeEngineDecisionToCandidate,
-} from '../../../lib/engine/optimality/normalize';
+} from '../../../lib/engine/optimality/normalize.js';
 
 const BASE_NOW_MS = 1704067200000;
 const NEXT_PAYCHECK_MS = 1704326400000;
