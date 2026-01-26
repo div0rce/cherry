@@ -13,7 +13,7 @@
     "build": "next build --webpack",
     "build:strict": "npm run check:guardrails && next build --webpack",
     "start": "next start",
-    "ci:verify": "npm run check && npm run build",
+    "ci:verify": "npm run check && npm run test && npm run build",
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
