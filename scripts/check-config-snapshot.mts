@@ -54,6 +54,7 @@ const OTHER_CONFIG_FILES = [
   'scripts/guardrails/migration-safety.baseline.json',
   'scripts/guardrails/registry.mts',
   'scripts/guardrails/server-entropy.allowlist.json',
+  'scripts/vendor-shims.allowlist.json',
   'scripts/side-effects.allowlist.json',
 ];
 
