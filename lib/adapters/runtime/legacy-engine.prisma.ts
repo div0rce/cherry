@@ -9,14 +9,14 @@ import type {
   CategoryCoverageMode,
   EngineDecision,
   EngineInput,
-} from '../../legacy-engine-types';
+} from '../../legacy-engine-types.js';
 
 export type {
   CategoryCoverageMode,
   EngineDecision,
   EngineInput,
   EvaluateTransactionResult,
-} from '../../legacy-engine-types';
+} from '../../legacy-engine-types.js';
 
 export async function resolveCategory(input: {
   mccCode?: number | null;

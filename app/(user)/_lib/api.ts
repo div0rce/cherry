@@ -2,7 +2,7 @@
 
 import { cookies, headers } from 'next/headers';
 import { fetchApiResult } from '../../../lib/api/fetch-json.js';
-import type { ApiResult } from '../../../lib/api/result';
+import type { ApiResult } from '../../../lib/api/result.js';
 import { AppError } from '../../../lib/errors.js';
 
 type UserContextResponse = {

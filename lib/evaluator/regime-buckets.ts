@@ -4,7 +4,7 @@ import {
   deriveBucketDeltaCents,
   inferBucketKeyForTransaction,
 } from '../buckets/regimes.js';
-import type { ClassifiedBankTransaction } from '../income/types';
+import type { ClassifiedBankTransaction } from '../income/types.js';
 
 function monthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));

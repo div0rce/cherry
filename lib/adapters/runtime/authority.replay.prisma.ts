@@ -6,7 +6,7 @@ import type {
   SimulateSpendParams,
   SimulatedAuthorityDecision,
   CounterfactualAuthorityRequest,
-} from '../../authority/simulateSpendAuthority';
+} from '../../authority/simulateSpendAuthority.js';
 
 type ReplayLookup =
   | { decisionEventId: string; userId?: string; inputsVersion?: string }

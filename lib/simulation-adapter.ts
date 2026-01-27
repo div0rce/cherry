@@ -1,4 +1,4 @@
-import type { EngineInput, LegacyEngineDecision } from './engine';
+import type { EngineInput, LegacyEngineDecision } from './engine.js';
 
 export type RunSimulationInput = EngineInput;
 

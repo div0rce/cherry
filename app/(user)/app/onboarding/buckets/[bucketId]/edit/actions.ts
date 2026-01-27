@@ -6,7 +6,7 @@ import { RewardCategory } from '@prisma/client';
 import type { BucketPeriod } from '@prisma/client';
 import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
 import { resolveExplicitNow } from '../../../../../_lib/clock.js';
-import type { ActionState } from '../../../_lib/form-state';
+import type { ActionState } from '../../../_lib/form-state.js';
 
 const UpdateBucketSchema = z
   .object({

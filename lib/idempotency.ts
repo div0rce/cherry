@@ -1,4 +1,4 @@
-import type { World } from './adapters/world';
+import type { World } from './adapters/world.js';
 import { asAppError } from './errors.js';
 
 export async function withIdempotency<T>(

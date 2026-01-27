@@ -1,7 +1,7 @@
 import type { HistoricalIncomeRegime } from '@prisma/client';
 import { prisma, isProduction } from '../prisma.js';
 import { classifyIncomeAndP2PForUser, getNetEarnedIncomeCents } from './classifier.js';
-import type { ClassifiedBankTransaction, IncomeRegimeDraft, MonthlyIncomeSnapshot } from './types';
+import type { ClassifiedBankTransaction, IncomeRegimeDraft, MonthlyIncomeSnapshot } from './types.js';
 
 function monthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));

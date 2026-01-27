@@ -1,7 +1,7 @@
 import type { JSX } from 'react';
 import Link from 'next/link';
 import { fetchFromApi, requireUserContext } from '../../_lib/api.js';
-import type { AutopilotOnboardingState, AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types';
+import type { AutopilotOnboardingState, AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types.js';
 import { loadDemoDataset } from './actions.js';
 import { DemoDatasetButton } from './_components/DemoDatasetButton.js';
 export const dynamic = 'force-dynamic';

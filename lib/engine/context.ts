@@ -1,4 +1,4 @@
-import type { EngineContext, EngineSurface } from './types';
+import type { EngineContext, EngineSurface } from './types.js';
 
 // Bump when core decision behavior or payload shapes materially change.
 export const ENGINE_VERSION = 'v0.2.0';

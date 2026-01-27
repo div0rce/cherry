@@ -31,7 +31,7 @@ import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js'
 import type {
   SimulatedAuthorityDecision,
   SimulateSpendParams,
-} from '../../../lib/authority/simulateSpendAuthority';
+} from '../../../lib/authority/simulateSpendAuthority.js';
 
 const validCategories = Object.values(RewardCategory) as string[];
 

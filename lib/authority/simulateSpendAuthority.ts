@@ -1,9 +1,9 @@
 // authority_v1 — frozen. Any semantic change requires authority_v2.
-import type { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '../enums';
-import type { Digest } from '../adapters/digest';
-import type { Logger } from '../adapters/logger';
+import type { CategoryBudgetMode, DailyStateStatus, RewardCategory } from '../enums.js';
+import type { Digest } from '../adapters/digest.js';
+import type { Logger } from '../adapters/logger.js';
 import { assertPolicyTotal } from '../policy/assert-total.js';
-import type { AuthorityVerdict } from '../policy/verdicts';
+import type { AuthorityVerdict } from '../policy/verdicts.js';
 import { AuthorityReason } from './reasonCodes.js';
 import {
   authorityPureBrand,

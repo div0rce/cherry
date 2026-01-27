@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { logError } from '../../../../lib/logger.js';
 import { runRecommendationFromOrderContext } from '../../../../lib/vine/run-recommendation.js';
 import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
-import type { OrderContext } from '../../../../lib/vine/order-context';
+import type { OrderContext } from '../../../../lib/vine/order-context.js';
 import { mapTerminalEventToOrderContext } from '../../../../lib/vine/order-context.js';
 import { OrderContextSchema } from '../../../../lib/schemas/vine.js';
 import { VineOrderSource } from '../../../../lib/enums.js';

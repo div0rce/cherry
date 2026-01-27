@@ -4,7 +4,7 @@ import type {
   DecisionEventWriter,
   SimulatedAuthorityDecision,
   SimulateSpendParams,
-} from '../lib/authority/simulateSpendAuthority';
+} from '../lib/authority/simulateSpendAuthority.js';
 import { recordDecisionEventWithWriter } from '../lib/authority/simulateSpendAuthority.js';
 import { AuthorityReason } from '../lib/authority/reasonCodes.js';
 

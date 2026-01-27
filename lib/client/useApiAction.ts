@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import type { ApiResult } from '../api/result';
+import type { ApiResult } from '../api/result.js';
 import { asAppError } from '../errors.js';
 
 type ApiActionState<T> = {

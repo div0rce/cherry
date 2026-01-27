@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { prisma } from './prisma.js';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { getServerConfig } from './config/store.js';
-import type { ServerConfig } from './config/server';
+import type { ServerConfig } from './config/server.js';
 import { logInvariant } from './logging.js';
 import { assertUserId } from './invariants.js';
 import { AppError } from './errors.js';

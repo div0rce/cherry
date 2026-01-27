@@ -13,7 +13,7 @@ import type {
   RewardRule,
   UserConstraints,
   WorldParams,
-} from '../../engine/types';
+} from '../../engine/types.js';
 import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '../../engine/objective.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '../../engine/runtime.js';
 import { asAppError } from '../../errors.js';

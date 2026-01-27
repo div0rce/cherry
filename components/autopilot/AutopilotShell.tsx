@@ -10,7 +10,7 @@ import type {
   AutopilotUiSpec,
   AutopilotCategoryOptionValue,
   AutopilotTimingOption,
-} from '../../lib/autopilot/uiSpec';
+} from '../../lib/autopilot/uiSpec.js';
 import { asAppError } from '../../lib/errors.js';
 import { AutopilotPurchaseForm } from './AutopilotPurchaseForm.client.js';
 import { AutopilotDecisionPanel } from './AutopilotDecisionPanel.js';

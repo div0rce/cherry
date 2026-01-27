@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { PKPass } from 'passkit-generator';
-import type { WalletCertificateConfig } from '../config/server';
+import type { WalletCertificateConfig } from '../config/server.js';
 import { getServerConfig } from '../config/store.js';
 
 function hasNonEmptyString(value?: string | null): value is string {

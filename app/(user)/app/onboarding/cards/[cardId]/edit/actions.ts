@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { fetchFromApi, requireUserContext } from '../../../../../_lib/api.js';
-import type { ActionState } from '../../../_lib/form-state';
+import type { ActionState } from '../../../_lib/form-state.js';
 
 const ALLOWED_NETWORKS = ['VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'OTHER'] as const;
 

@@ -1,5 +1,5 @@
 import { LAB_USER_EMAIL, LAB_USER_NAME } from '../user-context.js';
-import type { BankIngestConfig } from '../config/server';
+import type { BankIngestConfig } from '../config/server.js';
 import { getServerConfig } from '../config/store.js';
 import type { PrismaClient } from '@prisma/client';
 

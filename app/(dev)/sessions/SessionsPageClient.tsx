@@ -5,7 +5,7 @@ import { PageHeader } from '../../../components/ui/page-header.js';
 import { MetricCard } from '../../../components/ui/metric-card.js';
 import { Panel } from '../../../components/ui/panel.js';
 import { EmptyState } from '../../../components/ui/empty-state.js';
-import type { SessionSummary } from '../../../lib/sessions/summaries';
+import type { SessionSummary } from '../../../lib/sessions/summaries.js';
 import { ButtonLink } from '../../../components/ui/Button.js';
 
 const hasText = (value?: string | null): value is string =>

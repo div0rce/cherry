@@ -14,7 +14,7 @@
  */
 import * as assert from 'node:assert/strict';
 import { buildEngineContext } from '../lib/engine/context.js';
-import type { EngineState } from '../lib/engine/types';
+import type { EngineState } from '../lib/engine/types.js';
 import {
   buildAccountingSnapshot,
   filterAccountingSafeDecisions,

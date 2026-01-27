@@ -1,5 +1,5 @@
 import { prisma } from '../../prisma.js';
-import type { World } from '../world';
+import type { World } from '../world.js';
 import { SystemClock } from './clock.system.js';
 import { ServerConfigReader } from './config.env.js';
 import { Sha256Digest } from './digest.sha256.js';

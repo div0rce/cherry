@@ -1,4 +1,4 @@
-import type { AlertReason } from './alertPolicy';
+import type { AlertReason } from './alertPolicy.js';
 import { logInfo } from '../logger.js';
 
 type SendEmailParams = {

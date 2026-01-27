@@ -4,7 +4,7 @@ import {
   type AuthoritySnapshot,
   type SimulateSpendParams,
 } from '../lib/authority/simulateSpendAuthority.js';
-import type { Digest } from '../lib/adapters/digest';
+import type { Digest } from '../lib/adapters/digest.js';
 import { AUTHORITY_VERDICTS } from '../lib/policy/verdicts.js';
 
 const digest: Digest = {

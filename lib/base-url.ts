@@ -1,4 +1,4 @@
-import type { PublicConfig } from './config/public';
+import type { PublicConfig } from './config/public.js';
 import { getPublicConfig } from './config/store.js';
 
 const FALLBACK_URL = 'http://localhost:3000';

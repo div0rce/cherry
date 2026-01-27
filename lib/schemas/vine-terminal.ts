@@ -9,7 +9,7 @@ import type {
   VineDeclineReason,
   VineTransactionType,
   VineSource,
-} from '../vine/terminal-types';
+} from '../vine/terminal-types.js';
 
 const envValues: [VineTerminalEnvironment, ...VineTerminalEnvironment[]] = [
   'IN_STORE',

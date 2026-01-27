@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '../../../lib/prisma.js';
 import { getCurrentUserId } from '../../../lib/auth.js';
 import Link from 'next/link';
-import type { SimulationHistoryItem } from '../../../components/simulations/simulation-history-list';
+import type { SimulationHistoryItem } from '../../../components/simulations/simulation-history-list.js';
 import { SimulationHistoryList } from '../../../components/simulations/simulation-history-list.js';
 import { hasText } from '../../../lib/text.js';
 

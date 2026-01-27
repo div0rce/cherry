@@ -2,7 +2,7 @@
 
 import React, { type JSX } from 'react';
 import { getAutopilotUiSpec } from '../../lib/autopilot/uiSpec.js';
-import type { Category, Timing } from './AutopilotShell';
+import type { Category, Timing } from './AutopilotShell.js';
 
 void React;
 

@@ -7,7 +7,7 @@ import type {
   EngineContext,
   EngineState,
   NormalizedCardId,
-} from './types';
+} from './types.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';

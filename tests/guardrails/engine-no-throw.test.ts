@@ -3,7 +3,7 @@ import * as Module from 'node:module';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { safeSolveDecisionForWorld } from '../../lib/engine/run.js';
-import type { EngineContext } from '../../lib/engine/types';
+import type { EngineContext } from '../../lib/engine/types.js';
 import { makeTestWorld } from '../helpers/world.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,7 +50,7 @@ async function runAuthorityFallback(): Promise<void> {
   mockModule(requireModule.resolve('../../lib/prisma'), { prisma: prismaStub });
 
   const { simulateSpendAuthority } =
-    requireModule('../../lib/adapters/runtime/authority.prisma') as typeof import('../../lib/adapters/runtime/authority.prisma');
+    requireModule('../../lib/adapters/runtime/authority.prisma') as typeof import('../../lib/adapters/runtime/authority.prisma.js');
 
   const result = await simulateSpendAuthority(
     {

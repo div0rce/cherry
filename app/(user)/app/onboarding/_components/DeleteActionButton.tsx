@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type { JSX } from 'react';
-import type { ActionState } from '../_lib/form-state';
+import type { ActionState } from '../_lib/form-state.js';
 import { initialActionState } from '../_lib/form-state.js';
 import { FormMessage } from './form-helpers.js';
 

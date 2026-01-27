@@ -1,4 +1,4 @@
-import type { WalletCertificateConfig } from '../config/server';
+import type { WalletCertificateConfig } from '../config/server.js';
 import { getServerConfig } from '../config/store.js';
 
 export type WalletPassConfigStatus =

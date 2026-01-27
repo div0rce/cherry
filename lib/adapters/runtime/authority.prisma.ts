@@ -1,6 +1,6 @@
 import { prisma } from '../../prisma.js';
 import { getServerConfig } from '../../config/store.js';
-import type { Logger } from '../logger';
+import type { Logger } from '../logger.js';
 import { ConsoleLogger } from './logger.console.js';
 import { Sha256Digest } from './digest.sha256.js';
 import { assertPrismaReady } from '../assert-prisma-ready.js';

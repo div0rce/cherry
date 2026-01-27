@@ -32,7 +32,7 @@ async function run(): Promise<void> {
   mockModule(requireModule.resolve('../../lib/prisma'), { prisma: prismaStub });
 
   const { resolveCategory } =
-    requireModule('../../lib/adapters/runtime/legacy-engine.prisma') as typeof import('../../lib/adapters/runtime/legacy-engine.prisma');
+    requireModule('../../lib/adapters/runtime/legacy-engine.prisma') as typeof import('../../lib/adapters/runtime/legacy-engine.prisma.js');
 
   let thrown: unknown = null;
   try {

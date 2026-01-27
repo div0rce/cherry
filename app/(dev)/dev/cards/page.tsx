@@ -17,7 +17,7 @@ import {
 import { getCurrentUserId } from '../../../../lib/auth.js';
 import { ROUTES } from '../../../../lib/routes.js';
 import { fetchApiResult } from '../../../../lib/api/fetch-json.js';
-import type { ApiResult } from '../../../../lib/api/result';
+import type { ApiResult } from '../../../../lib/api/result.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';

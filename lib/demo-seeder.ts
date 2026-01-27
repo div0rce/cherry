@@ -12,7 +12,7 @@ import {
   SessionAnomalyCode,
   VerificationStatus,
 } from '@prisma/client';
-import type { OverallVerdict } from './enums';
+import type { OverallVerdict } from './enums.js';
 import { runEngine } from './engine.js';
 import { assertUserId } from './invariants.js';
 import { isPrismaP2003, logInvariant } from './user-context.js';

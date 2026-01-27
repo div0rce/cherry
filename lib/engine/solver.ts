@@ -23,9 +23,9 @@ import type {
   EngineDecisionTrace,
   EngineState,
   ObjectiveWeights,
-} from './types';
+} from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
-import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types';
+import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types.js';
 import { asAppError } from '../errors.js';
 import {
   attachAccountingProof,

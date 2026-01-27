@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { getPublicConfig } from '../config/store.js';
 import { fetchJSON } from '../api/fetch-json.js';
 import { asAppError } from '../errors.js';
-import type { ApiResult } from '../api/result';
+import type { ApiResult } from '../api/result.js';
 
 export type { ApiResult };
 

@@ -1,13 +1,13 @@
 'use client';
 
 import type { JSX } from 'react';
-import type { OverallVerdict } from '../../../lib/enums';
+import type { OverallVerdict } from '../../../lib/enums.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { signIn } from 'next-auth/react';
-import type { LegacyEngineDecision } from '../../../lib/engine';
+import type { LegacyEngineDecision } from '../../../lib/engine.js';
 import type { z } from 'zod';
 import { vineTerminalEventSchema } from '../../../lib/schemas/vine-terminal.js';
-import type { VineTerminalEventInput } from '../../../lib/schemas/vine-terminal';
+import type { VineTerminalEventInput } from '../../../lib/schemas/vine-terminal.js';
 import { hasText } from '../../../lib/text.js';
 import { isPositiveNumber } from '../../../lib/numbers.js';
 import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';

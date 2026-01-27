@@ -7,7 +7,7 @@ import {
 import type { CategoryCoverageModeDb } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
-import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority';
+import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
@@ -16,8 +16,8 @@ import {
 import { safeSolveDecisionForWorld } from '../engine/run.js';
 import { fromPrismaUserToEngineState } from '../engine-state.js';
 import { runEngine as runLegacyEngine } from '../legacy-engine.js';
-import type { World } from '../adapters/world';
-import type { OrderContext } from './order-context';
+import type { World } from '../adapters/world.js';
+import type { OrderContext } from './order-context.js';
 import { validateEngineDecision } from '../engine-invariants.js';
 import { assertUserId } from '../invariants.js';
 import { isPrismaP2003, logInvariant } from '../user-context.js';

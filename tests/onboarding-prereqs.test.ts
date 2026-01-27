@@ -86,10 +86,10 @@ mockPrisma();
 
 const { getAutopilotPrereqs } = requireModule(
   '../lib/adapters/runtime/autopilot-prereqs'
-) as typeof import('../lib/adapters/runtime/autopilot-prereqs');
+) as typeof import('../lib/adapters/runtime/autopilot-prereqs.js');
 const { getFirstMissingPrereq } = requireModule(
   '../lib/autopilot/prereq-types'
-) as typeof import('../lib/autopilot/prereq-types');
+) as typeof import('../lib/autopilot/prereq-types.js');
 
 async function testEmptyState(): Promise<void> {
   scenario.cardsCount = 0;

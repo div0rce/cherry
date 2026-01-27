@@ -1,4 +1,4 @@
-import type { EngineAction, EngineContext, EngineDecision, EngineState } from '../engine/types';
+import type { EngineAction, EngineContext, EngineDecision, EngineState } from '../engine/types.js';
 import {
   applyLedgerEvent,
   asAccountId,

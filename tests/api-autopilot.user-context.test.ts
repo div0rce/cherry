@@ -62,7 +62,7 @@ function resetModules(): void {
 }
 
 function buildUiStub() {
-  const { getAutopilotUiSpec } = requireModule('../lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec');
+  const { getAutopilotUiSpec } = requireModule('../lib/autopilot/uiSpec') as typeof import('../lib/autopilot/uiSpec.js');
   const spec = getAutopilotUiSpec();
 
   return {
@@ -175,7 +175,7 @@ async function runUserContextPreview(): Promise<void> {
   });
 
   const { POST } =
-    requireModule('../app/api/autopilot/preview/route') as typeof import('../app/api/autopilot/preview/route');
+    requireModule('../app/api/autopilot/preview/route') as typeof import('../app/api/autopilot/preview/route.js');
 
   const res = await POST({
     json: async () => ({ merchant: 'Shop', amountCents: 500, category: 'DINING' }),
@@ -211,7 +211,7 @@ async function runUserContextCommit(): Promise<void> {
   });
 
   const { POST } =
-    requireModule('../app/api/autopilot/commit/route') as typeof import('../app/api/autopilot/commit/route');
+    requireModule('../app/api/autopilot/commit/route') as typeof import('../app/api/autopilot/commit/route.js');
 
   const res = await POST({
     json: async () => ({

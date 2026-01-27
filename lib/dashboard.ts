@@ -1,5 +1,5 @@
 import { prisma } from './prisma.js';
-import type { UnifiedActivityRow } from './unified-activity';
+import type { UnifiedActivityRow } from './unified-activity.js';
 import { getUnifiedActivityForUser } from './unified-activity.js';
 import { computeBucketBalanceFromNumbers } from './buckets-runtime.js';
 

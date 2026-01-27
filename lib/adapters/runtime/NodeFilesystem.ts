@@ -1,5 +1,5 @@
 import { accessSync, readFileSync, writeFileSync } from 'node:fs';
-import type { FileEncoding, Filesystem } from '../contracts/Filesystem';
+import type { FileEncoding, Filesystem } from '../contracts/Filesystem.js';
 
 export class NodeFilesystem implements Filesystem {
   async readFile(path: string, encoding: FileEncoding = 'utf8'): Promise<string> {

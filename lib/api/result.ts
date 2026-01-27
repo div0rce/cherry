@@ -1,4 +1,4 @@
-import type { AppErrorCode } from '../errors';
+import type { AppErrorCode } from '../errors.js';
 
 export type ApiResult<T> =
   | { ok: true; data: T }

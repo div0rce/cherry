@@ -11,12 +11,12 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import type { RewardCategory } from '@prisma/client';
-import type { AutopilotDecision } from '../engine/public-types';
+import type { AutopilotDecision } from '../engine/public-types.js';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public.js';
 import { logInvariantViolation } from '../log.js';
 import { prisma } from '../prisma.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
-import type { World } from '../adapters/world';
+import type { World } from '../adapters/world.js';
 import { resolveScanCategory } from '../scan-helpers.js';
 import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
 import { asAppError } from '../errors.js';
@@ -34,13 +34,13 @@ import type {
   AutopilotDecisionStatus,
   AutopilotRecommendedCard,
   AutopilotRewardCategory,
-} from './types';
+} from './types.js';
 import { AutopilotServiceError } from './types.js';
 import { getAutopilotUiSpec } from './uiSpec.js';
 import type {
   AutopilotPreviewOutput,
   AutopilotPreviewUiBundle,
-} from '../validation/autopilot/preview';
+} from '../validation/autopilot/preview.js';
 import { AutopilotPreviewOutputSchema } from '../validation/autopilot/preview.js';
 import { incrementCounter, observeDuration } from '../metrics/autopilot.js';
 import { confirmRecommendationSession, SessionConfirmError } from '../sessions/confirm-service.js';

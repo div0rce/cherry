@@ -1,5 +1,5 @@
-import type { AutopilotPurchaseSummary } from '../../components/autopilot/AutopilotShell';
-import type { AutopilotRewardCategory } from './types';
+import type { AutopilotPurchaseSummary } from '../../components/autopilot/AutopilotShell.js';
+import type { AutopilotRewardCategory } from './types.js';
 import {
   AutopilotPreviewOutputSchema,
   type AutopilotPreviewOutput,

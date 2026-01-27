@@ -10,7 +10,7 @@ import type {
   EngineUserPreferences,
   ObjectiveComponentScores,
   ObjectiveWeights,
-} from './types';
+} from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 
 function hasNonEmptyString(value?: string | null): value is string {

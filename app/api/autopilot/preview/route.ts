@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAutopilotPreview } from '../../../../lib/autopilot/service.js';
 import { AutopilotServiceError } from '../../../../lib/autopilot/types.js';
 import { logGuardrailEvent, logInvariantViolation } from '../../../../lib/log.js';
-import type { AutopilotPreviewEngineContext } from '../../../../lib/autopilot/service';
+import type { AutopilotPreviewEngineContext } from '../../../../lib/autopilot/service.js';
 import {
   AutopilotPreviewInputSchema,
   AutopilotPreviewOutputSchema,

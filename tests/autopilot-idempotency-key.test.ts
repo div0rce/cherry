@@ -2,7 +2,7 @@ import * as assert from 'node:assert/strict';
 import * as Module from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { BucketPeriod, RecommendationSource, RewardCategory } from '@prisma/client';
-import type { AutopilotStateSnapshot } from '../lib/autopilot/engineDecisionId';
+import type { AutopilotStateSnapshot } from '../lib/autopilot/engineDecisionId.js';
 import {
   buildAutopilotStateSnapshotHash,
   computeEngineDecisionIdV1,
@@ -11,8 +11,8 @@ import type {
   AutopilotCommitInput,
   AutopilotPreviewInput,
   AutopilotPreviewOutput,
-} from '../lib/autopilot/types';
-import type { World } from '../lib/adapters/world';
+} from '../lib/autopilot/types.js';
+import type { World } from '../lib/adapters/world.js';
 import { makeTestWorld } from './helpers/world.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -234,7 +234,7 @@ async function runSemanticStabilityAcrossRowIds() {
     buildAutopilotStateSnapshot,
     buildAutopilotStateSnapshotHash: buildHash,
     computeEngineDecisionIdV1: computeIdV1,
-  } = requireModule('../lib/autopilot/engineDecisionId') as typeof import('../lib/autopilot/engineDecisionId');
+  } = requireModule('../lib/autopilot/engineDecisionId') as typeof import('../lib/autopilot/engineDecisionId.js');
 
   const baseParams = {
     userId: 'user-1',
