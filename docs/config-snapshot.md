@@ -10416,6 +10416,11 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "verbatimModuleSyntax": true,
+    "baseUrl": ".",
+    "paths": {
+      "next/dist/compiled/@vercel/og/types": ["types/vendor/vercel-og-types.d.ts"],
+      "next/dist/compiled/@vercel/og/satori": ["types/vendor/vercel-og-satori.d.ts"]
+    },
 
     // --- Interop (NON-NEGOTIABLE) ---
     "esModuleInterop": true,
