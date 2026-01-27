@@ -278,7 +278,8 @@ function isNodeToNextAllowed(resolved: string): boolean {
 }
 
 function allowedEdge(fromEnv: Env, toEnv: Env): boolean {
-  return ENVIRONMENT_CONTRACTS[fromEnv].allowedImportsFrom.includes(toEnv);
+  const allowed = ENVIRONMENT_CONTRACTS[fromEnv].allowedImportsFrom as readonly Env[];
+  return allowed.includes(toEnv);
 }
 
 async function main(): Promise<void> {
