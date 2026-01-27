@@ -26,6 +26,6 @@ declare module 'next/server' {
   export class ImageResponse extends Response {
     constructor(body: BodyInit | null, options?: ImageResponseOptions);
   }
-  export { after } from 'next/dist/server/after.js';
+  export { after } from 'next/dist/server/after/index.js';
   export { connection } from 'next/dist/server/request/connection.js';
 }
