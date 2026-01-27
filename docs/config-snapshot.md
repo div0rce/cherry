@@ -10371,6 +10371,7 @@
     "tests/**/*.tsx",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts",
+    "types/vendor/**/*.d.ts",
     "types/jsx-global.d.ts",
     "data/**/*.json",
     "proxy.ts",
