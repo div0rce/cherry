@@ -10,6 +10,7 @@ Last updated: 2026-01-27
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 - Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
+- Function size budgets are enforced from Vercel output (`check:function-size-budget`).
 - DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
@@ -109,6 +110,15 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `package.json` and `package-lock.json` must be in sync; `npm ci --ignore-scripts` must succeed in a clean temp dir.
 - This guardrail catches dependency drift that would fail CI even if local installs appear to work.
 - Enforcement: `check:lockfile-sync`.
+
+## Domain: Deployment Budgets
+
+### Guardrail 49 — Function Size Budget
+
+- Serverless function bundles must stay under a fixed uncompressed size budget.
+- Guardrail reads `.vercel/output/functions/**/.vc-config.json` and sums each function directory size.
+- If `.vercel/output` is missing, the guardrail reports a skip; run after `vercel build` to enforce.
+- Enforcement: `check:function-size-budget`.
 
 ## Domain: DB Truth Lane
 

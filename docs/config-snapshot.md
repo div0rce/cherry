@@ -10025,6 +10025,7 @@
     "check:script-json-parse": "npm run ts:esm -- scripts/guardrails/run.mts check:script-json-parse",
     "check:npm-arg-forwarding": "npm run ts:esm -- scripts/guardrails/run.mts check:npm-arg-forwarding",
     "check:lockfile-sync": "npm run ts:esm -- scripts/guardrails/run.mts check:lockfile-sync",
+    "check:function-size-budget": "npm run ts:esm -- scripts/guardrails/run.mts check:function-size-budget",
     "check:loader-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:loader-contract",
     "check:esm-loader-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:esm-loader-totality",
     "check:prisma-mock-loader-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:prisma-mock-loader-totality",
@@ -11865,6 +11866,7 @@ const SCRIPT_RUNTIME_BOUNDARY_PATH = `${CHECK_PATH_BASE}script-runtime-boundary.
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const LOCKFILE_SYNC_PATH = `${CHECK_PATH_BASE}lockfile-sync.mts` as const;
+const FUNCTION_SIZE_BUDGET_PATH = `${CHECK_PATH_BASE}function-size-budget.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
@@ -11912,6 +11914,7 @@ export const GUARDRAILS = Object.freeze({
   'check:script-json-parse': `${CHECK_PATH_BASE}script-json-parse.mts`,
   'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:lockfile-sync': LOCKFILE_SYNC_PATH,
+  'check:function-size-budget': FUNCTION_SIZE_BUDGET_PATH,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
@@ -18645,4 +18648,6 @@ Last updated: 2026-01-02
 - `docs/guardrails.md`
 - `docs/script-standards.md`
 ```
+
+
 
