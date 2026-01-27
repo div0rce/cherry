@@ -32,8 +32,9 @@ const IGNORE = [
 const CORE_CONFIG = path.join(ROOT, 'tsconfig.core.typecheck.json');
 const APP_CONFIG = path.join(ROOT, 'tsconfig.app.typecheck.json');
 const SCRIPTS_CONFIG = path.join(ROOT, 'tsconfig.scripts.typecheck.json');
+const ENGINE_OPTIMALITY_CONFIG = path.join(ROOT, 'tsconfig.engine-optimality.json');
 
-type Owner = 'app' | 'scripts' | 'core' | 'unassigned';
+type Owner = 'app' | 'scripts' | 'core' | 'engine-optimality' | 'unassigned';
 
 type Violation = {
   file: string;
@@ -66,6 +67,13 @@ function listProjectFiles(tsconfigPath: string, sourceSet: Set<string>): Set<str
 }
 
 function expectedOwner(relativePath: string): Owner {
+  if (
+    relativePath.startsWith('lib/engine/optimality/') ||
+    relativePath.startsWith('tests/engine/optimality/') ||
+    relativePath.startsWith('tests/node/engine/optimality/')
+  ) {
+    return 'engine-optimality';
+  }
   if (relativePath.startsWith('scripts/') || relativePath.startsWith('prisma/scripts/')) {
     return 'scripts';
   }
@@ -116,6 +124,7 @@ const sourceSet = new Set(normalizedSources);
 const coreFiles = listProjectFiles(CORE_CONFIG, sourceSet);
 const appFiles = listProjectFiles(APP_CONFIG, sourceSet);
 const scriptFiles = listProjectFiles(SCRIPTS_CONFIG, sourceSet);
+const optimalityFiles = listProjectFiles(ENGINE_OPTIMALITY_CONFIG, sourceSet);
 
 const violations: Violation[] = [];
 
@@ -125,7 +134,8 @@ for (const filePath of normalizedSources) {
   const inCore = coreFiles.has(normalized);
   const inApp = appFiles.has(normalized);
   const inScripts = scriptFiles.has(normalized);
-  const owners = [inCore, inApp, inScripts].filter(Boolean).length;
+  const inOptimality = optimalityFiles.has(normalized);
+  const owners = [inCore, inApp, inScripts, inOptimality].filter(Boolean).length;
   const owner = expectedOwner(relPath);
 
   if (owners === 0) {
@@ -178,6 +188,15 @@ for (const filePath of normalizedSources) {
       file: relPath,
       issue: 'mis-owned: expected scripts tsconfig, but not included',
       fix: 'Update tsconfig.scripts.typecheck.json include/exclude to cover this file.',
+    });
+    continue;
+  }
+
+  if (owner === 'engine-optimality' && !inOptimality) {
+    violations.push({
+      file: relPath,
+      issue: 'mis-owned: expected engine-optimality tsconfig, but not included',
+      fix: 'Update tsconfig.engine-optimality.json include/exclude to cover this file.',
     });
   }
 }
