@@ -10620,6 +10620,23 @@
 ```
 
 ```ts
+// tests/fixtures/guardrails/ts-coverage/ok/tsconfig.engine-optimality.json
+{
+  "extends": "../../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true
+  },
+  "include": [
+    "lib/engine/optimality/**/*.ts",
+    "tests/engine/optimality/**/*.ts",
+    "tests/node/engine/optimality/**/*.ts"
+  ]
+}
+```
+
+```ts
 // tests/fixtures/guardrails/ts-coverage/ok/tsconfig.typecheck.json
 {
   "files": [],
