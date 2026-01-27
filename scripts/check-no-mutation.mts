@@ -7,7 +7,6 @@ import { runTsEsm } from './lib/run-ts-esm.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:no-mutation';
-const ROOT = process.cwd();
 const TEST_FILE = path.join('tests', 'node', 'accounting', 'no-mutation.spec.ts');
 const FIX = 'Run npm run check:no-mutation after installing dependencies.';
 
