@@ -308,7 +308,11 @@ async function main(): Promise<void> {
       ownershipViolations.push(`${relPath}:1:1: environment ownership ${label}`);
       continue;
     }
-    envByFile.set(relPath, matches[0]);
+    const match = matches[0];
+    if (match === undefined) {
+      continue;
+    }
+    envByFile.set(relPath, match);
   }
 
   if (ownershipViolations.length > 0) {
