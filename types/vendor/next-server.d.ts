@@ -6,7 +6,7 @@
  * Audit: 2026-01-27
  */
 
-var AsyncLocalStorage: typeof import('async_hooks').AsyncLocalStorage;
+declare var AsyncLocalStorage: typeof import('async_hooks').AsyncLocalStorage;
 
 declare module 'next/server' {
 
