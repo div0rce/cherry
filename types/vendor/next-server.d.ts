@@ -6,12 +6,13 @@
  * Audit: 2026-01-27
  */
 
-declare module 'next/server' {
-  import type { AsyncLocalStorage as NodeAsyncLocalStorage } from 'async_hooks';
+import type { AsyncLocalStorage as NodeAsyncLocalStorage } from 'async_hooks';
 
-  declare global {
-    var AsyncLocalStorage: typeof NodeAsyncLocalStorage;
-  }
+declare global {
+  var AsyncLocalStorage: typeof NodeAsyncLocalStorage;
+}
+
+declare module 'next/server' {
 
   export { NextFetchEvent } from 'next/dist/server/web/spec-extension/fetch-event.js';
   export { NextRequest } from 'next/dist/server/web/spec-extension/request.js';
