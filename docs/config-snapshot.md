@@ -11122,8 +11122,11 @@ export default defineConfig([
 
 ```ts
 // next.config.ts
-import type { NextConfig } from "next";
-import { initConfigFromEnv } from './lib/config/init.js';
+import { createRequire } from 'node:module';
+import type { NextConfig } from 'next';
+
+const require = createRequire(import.meta.url);
+const { initConfigFromEnv } = require('./lib/config/init.ts') as typeof import('./lib/config/init');
 
 initConfigFromEnv(process.env);
 
