@@ -6,11 +6,7 @@
  * Audit: 2026-01-27
  */
 
-import type { AsyncLocalStorage as NodeAsyncLocalStorage } from 'async_hooks';
-
-declare global {
-  var AsyncLocalStorage: typeof NodeAsyncLocalStorage;
-}
+var AsyncLocalStorage: typeof import('async_hooks').AsyncLocalStorage;
 
 declare module 'next/server' {
 
