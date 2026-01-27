@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".tmp/typecheck/engine-optimality",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "./tsconfig.app.typecheck.json" }
+  ],
+  "include": [
+    "lib/engine/optimality/**/*.ts",
+    "tests/engine/optimality/**/*.ts",
+    "tests/node/engine/optimality/**/*.ts"
+  ]
+}

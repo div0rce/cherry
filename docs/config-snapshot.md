@@ -10349,6 +10349,7 @@
     "scripts/**",
     "prisma/scripts/**",
     "tests/fixtures/**",
+    "tests/engine/optimality/**",
     "tests/node/**",
     "tests/guardrails/**",
     "lib/engine/optimality/**"
@@ -10410,6 +10411,29 @@
   },
   "include": [
     "types/core.ts"
+  ]
+}
+```
+
+```ts
+// tsconfig.engine-optimality.json
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".tmp/typecheck/engine-optimality",
+    "rootDir": ".",
+    "types": ["node"]
+  },
+  "references": [
+    { "path": "./tsconfig.app.typecheck.json" }
+  ],
+  "include": [
+    "lib/engine/optimality/**/*.ts",
+    "tests/engine/optimality/**/*.ts",
+    "tests/node/engine/optimality/**/*.ts"
   ]
 }
 ```
@@ -10505,7 +10529,8 @@
   },
   "references": [
     { "path": "./tsconfig.core.typecheck.json" },
-    { "path": "./tsconfig.app.typecheck.json" }
+    { "path": "./tsconfig.app.typecheck.json" },
+    { "path": "./tsconfig.engine-optimality.json" }
   ],
   "include": [
     "scripts/**/*.ts",
@@ -10513,8 +10538,10 @@
     "scripts/**/*.cts",
     "prisma/scripts/**/*.ts",
     "tests/node/**/*",
-    "tests/guardrails/**/*",
-    "lib/engine/optimality/**/*"
+    "tests/guardrails/**/*"
+  ],
+  "exclude": [
+    "tests/node/engine/optimality/**"
   ]
 }
 ```
