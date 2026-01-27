@@ -181,7 +181,21 @@ const nextConfig: NextConfig = {
   },
   // Avoid tracing ephemeral Next files that might not exist in non-export builds.
   outputFileTracingExcludes: {
-    '*': ['.next/export-detail.json', '.next/lock', '.next/server/proxy.js'],
+    '*': [
+      '.next/cache/**',
+      '.next/export-detail.json',
+      '.next/lock',
+      '.next/server/proxy.js',
+      '.git/**',
+      'docs/**',
+      'scripts/**',
+      'tests/**',
+      'types/**',
+      'node_modules/eslint/**',
+      'node_modules/typescript/**',
+      'node_modules/@typescript-eslint/**',
+      'node_modules/jiti/**',
+    ],
   },
 };
 
