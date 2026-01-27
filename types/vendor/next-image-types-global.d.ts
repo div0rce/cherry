@@ -1,3 +1,11 @@
+/**
+ * VENDOR SHIM
+ * Reason: NodeNext/ESM requires explicit extensions; vendor .d.ts import paths violate NodeNext.
+ * Scope: types/vendor/next-image-types-global.d.ts
+ * Version: next@16.0.8
+ * Audit: 2026-01-27
+ */
+
 // this file is conditionally added/removed to next-env.d.ts
 // if the static image import handling is enabled
 
