@@ -13,6 +13,7 @@ import {
   resolveUserContext,
 } from '../../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
   const start = new Date(now);
@@ -47,6 +48,7 @@ export async function PATCH(
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });
@@ -131,6 +133,7 @@ export async function DELETE(
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });

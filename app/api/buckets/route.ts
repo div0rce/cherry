@@ -13,6 +13,7 @@ import {
   resolveUserContext,
 } from '../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
+import { auth } from '../../../lib/auth.js';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim() !== '';
@@ -50,6 +51,7 @@ function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: D
 export async function GET(_request: NextRequest): Promise<NextResponse> {
   try {
     const { userId } = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });
@@ -79,6 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });
@@ -207,6 +210,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });

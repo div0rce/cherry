@@ -1,12 +1,11 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../api/auth/[...nextauth]/route.js';
+import { auth } from '../../../lib/auth.js';
 import { PageHeader } from '../../../components/ui/page-header.js';
 import { Panel } from '../../../components/ui/panel.js';
 import { VineSimulatorClient } from './client.js';
 export default async function VineSimulatorPage(): Promise<JSX.Element> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (session === null) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/vine-simulator')}`);
   }

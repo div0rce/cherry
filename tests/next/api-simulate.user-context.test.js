@@ -48,11 +48,15 @@ function mockModule(modulePath, exports) {
 }
 
 function mockNextAuth(sessionValue) {
-  const wrapper = async () => wrapper.__nextValue ?? sessionValue;
-  wrapper.mockResolvedValueOnce = (val) => {
-    wrapper.__nextValue = val;
+  const auth = async () => auth.__nextValue ?? sessionValue;
+  auth.mockResolvedValueOnce = (val) => {
+    auth.__nextValue = val;
   };
-  mockModule('next-auth', { getServerSession: wrapper, default: () => ({}) });
+  const handlers = {
+    GET: async () => new Response(null, { status: 200 }),
+    POST: async () => new Response(null, { status: 200 }),
+  };
+  mockModule('next-auth', { default: () => ({ handlers, auth }) });
 }
 
 function mockNextServer() {
@@ -207,7 +211,7 @@ async function runSimulateDev() {
   process.env.NODE_ENV = 'development';
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { POST } = require('../../app/api/simulate/route');
@@ -227,7 +231,7 @@ async function runSimulateInvalidAmount() {
   process.env.NODE_ENV = 'development';
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { POST } = require('../../app/api/simulate/route');
@@ -245,7 +249,7 @@ async function runSimulateMissingMerchant() {
   process.env.NODE_ENV = 'development';
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { POST } = require('../../app/api/simulate/route');
@@ -272,7 +276,7 @@ async function runSimulateProdUnauthorized() {
   setServerEnvironment('production');
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { POST } = require('../../app/api/simulate/route');
@@ -293,7 +297,7 @@ async function runSimulationsGetDev() {
   setServerEnvironment('development');
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { GET } = require('../../app/api/simulations/route');
@@ -306,7 +310,7 @@ async function runSimulationsInvalidStatus() {
   setServerEnvironment('development');
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { GET } = require('../../app/api/simulations/route');
@@ -319,7 +323,7 @@ async function runSimulationsGetProdUnauthorized() {
   setServerEnvironment('production');
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
   resetRouteCache();
   const { GET } = require('../../app/api/simulations/route');

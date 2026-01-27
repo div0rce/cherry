@@ -6,6 +6,7 @@ import { parseJsonBody } from '../../../../../lib/validation.js';
 import { assertUserId, isPrismaP2003, logInvariant, resolveUserContext } from '../../../../../lib/user-context.js';
 import { confirmRecommendationSession, SessionConfirmError } from '../../../../../lib/sessions/confirm-service.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../../../lib/errors.js';
+import { auth } from '../../../../../lib/auth.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -19,6 +20,7 @@ export async function POST(
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });

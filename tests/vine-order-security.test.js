@@ -14,9 +14,17 @@ function mockModule(modulePath, exports) {
   };
 }
 
-mockModule('next-auth', { getServerSession: async () => null, default: () => ({}) });
+mockModule('next-auth', {
+  default: () => ({
+    handlers: {
+      GET: async () => new Response(null, { status: 200 }),
+      POST: async () => new Response(null, { status: 200 }),
+    },
+    auth: async () => null,
+  }),
+});
 mockModule('next-auth/react', { signIn: async () => ({}) });
-mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {} });
+mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
 mockModule('../lib/engine-invariants', { validateEngineDecision: () => {} });
 
 const { prisma } = require('../lib/prisma');

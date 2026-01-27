@@ -10,6 +10,7 @@ import { assertUserId } from '../../../lib/invariants.js';
 import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
+import { auth } from '../../../lib/auth.js';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -101,7 +102,11 @@ function parseRewardRules(rawRules: unknown): {
 }
 
 export async function GET(_request: NextRequest): Promise<NextResponse> {
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards GET');
 
   const cards = await prisma.card.findMany({
@@ -113,7 +118,11 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId, mode } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards POST');
 
   try {
@@ -179,7 +188,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId, mode } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards DELETE');
   try {
     const parsed = await parseJsonBody(request, CardDeleteSchema);

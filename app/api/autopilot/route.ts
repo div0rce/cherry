@@ -8,6 +8,7 @@ import { logGuardrailEvent } from '../../../lib/log.js';
 import { parseJsonBody } from '../../../lib/validation.js';
 import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
 import { asAppError, isUnauthorized } from '../../../lib/errors.js';
+import { auth } from '../../../lib/auth.js';
 
 const AutopilotRequestSchema = z
   .object({
@@ -22,7 +23,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestTimestamp = requestNow.toISOString();
   let userId: string | null = null;
   try {
-    const context = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+    const context = await resolveUserContext({
+      getSession: auth,
+      requireAuth: true,
+      allowLabDemo: true,
+    });
     userId = context.userId;
 
     const parsed = await parseJsonBody(request, AutopilotRequestSchema);

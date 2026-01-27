@@ -1,9 +1,10 @@
-import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { authOptions } from '../app/api/auth/[...nextauth]/route.js';
+import { auth } from '../app/api/auth/[...nextauth]/route.js';
+
+export { auth };
 
 export async function getUserIdFromSession(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   const user = session?.user as { id?: string } | undefined;
   return user?.id ?? null;
 }

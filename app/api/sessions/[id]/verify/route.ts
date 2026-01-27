@@ -10,6 +10,7 @@ import {
 } from '../../../../../lib/user-context.js';
 import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session.js';
 import { asAppError, isUnauthorized } from '../../../../../lib/errors.js';
+import { auth } from '../../../../../lib/auth.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -23,6 +24,7 @@ export async function POST(
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });

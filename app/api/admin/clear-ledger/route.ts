@@ -8,6 +8,7 @@ import {
   resolveUserContext,
 } from '../../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 export async function POST(_req: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -24,6 +25,7 @@ export async function POST(_req: NextRequest): Promise<NextResponse> {
 
   try {
     const ctx = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });

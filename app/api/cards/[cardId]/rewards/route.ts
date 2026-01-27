@@ -17,6 +17,7 @@ import { hasText } from '../../../../../lib/text.js';
 import { isPositiveNumber } from '../../../../../lib/numbers.js';
 import { logGuardrailEvent } from '../../../../../lib/log.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
+import { auth } from '../../../../../lib/auth.js';
 
 /**
  * Fetch the card for the current user to prevent cross-user access and give a
@@ -44,7 +45,11 @@ export async function GET(
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
   const requestTimestamp = new Date().toISOString();
-  const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards/[cardId]/rewards GET');
   const { cardId } = await params;
 
@@ -98,7 +103,11 @@ export async function POST(
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
   const requestTimestamp = new Date().toISOString();
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId, mode } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards/[cardId]/rewards POST');
   const { cardId } = await params;
 
@@ -200,7 +209,11 @@ export async function DELETE(
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
   const requestTimestamp = new Date().toISOString();
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId, mode } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards/[cardId]/rewards DELETE');
   const { cardId } = await params;
 
@@ -309,7 +322,11 @@ export async function PATCH(
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
   const requestTimestamp = new Date().toISOString();
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId, mode } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards/[cardId]/rewards PATCH');
   const { cardId } = await params;
 

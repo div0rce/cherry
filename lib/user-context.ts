@@ -1,5 +1,4 @@
 import * as crypto from 'node:crypto';
-import { getServerSession } from 'next-auth';
 import { prisma } from './prisma.js';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { getServerConfig } from './config/store.js';
@@ -152,13 +151,7 @@ export async function resolveUserContext(opts: ResolveUserContextOptions): Promi
   const { requireAuth, allowLabDemo, sessionOverride, labUserFactory, getSession } = opts;
   const serverConfig = opts.serverConfig ?? getServerConfig();
 
-  const session =
-    sessionOverride ??
-    (await (async () => {
-      if (getSession !== undefined) return getSession();
-      const mod = await import('../app/api/auth/[...nextauth]/route.js');
-      return getServerSession((mod as { authOptions: unknown }).authOptions as never);
-    })());
+  const session = sessionOverride ?? (getSession !== undefined ? await getSession() : null);
 
   const sessionUserRaw =
     session !== null &&

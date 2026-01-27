@@ -1,0 +1,12 @@
+diff --git a/node_modules/next-auth/lib/client.d.ts b/node_modules/next-auth/lib/client.d.ts
+index de60f6c..34dc80d 100644
+--- a/node_modules/next-auth/lib/client.d.ts
++++ b/node_modules/next-auth/lib/client.d.ts
+@@ -50,6 +50,7 @@ export interface SignInOptions<Redirect extends boolean = true> extends Record<s
+      */
+     redirect?: Redirect;
+ }
++export type SignInAuthorizationParams = string[][] | Record<string, string> | string | URLSearchParams;
+ export interface SignInResponse {
+     error: string | undefined;
+     code: string | undefined;

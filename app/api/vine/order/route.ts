@@ -14,6 +14,7 @@ import { resolveUserContext, assertUserId, logInvariant, isPrismaP2003 } from '.
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { z } from 'zod';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>
@@ -23,7 +24,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestReceivedAt = new Date();
   const requestTimestampMs = requestReceivedAt.getTime();
   try {
-    const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId, mode } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: false,
+      allowLabDemo: true,
+    });
     assertUserId(userId, 'api/vine/order POST');
     const parsedPayload = await parseJsonBody(request, VinePayloadSchema);
     if (parsedPayload.ok !== true) return parsedPayload.response;

@@ -58,7 +58,7 @@ export function SignInCard({
 
     setSubmitting(true);
     const result = await signIn('credentials', {
-      redirect: true,
+      redirect: false,
       email,
       password,
       callbackUrl,
@@ -76,6 +76,10 @@ export function SignInCard({
       setStatus(errorMessages[result.error] ?? 'Invalid email or password. Please try again.');
       setSubmitting(false);
       return;
+    }
+
+    if (hasText(result?.url)) {
+      window.location.href = result.url;
     }
   }
 

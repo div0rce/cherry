@@ -1,0 +1,183 @@
+diff --git a/node_modules/@auth/core/providers/nodemailer.d.ts b/node_modules/@auth/core/providers/nodemailer.d.ts
+index 5294d09..31998c8 100644
+--- a/node_modules/@auth/core/providers/nodemailer.d.ts
++++ b/node_modules/@auth/core/providers/nodemailer.d.ts
+@@ -14,7 +14,7 @@ export interface NodemailerConfig extends EmailConfig {
+         identifier: string;
+         url: string;
+         expires: Date;
+-        provider: NodemailerConfig;
++        provider: EmailConfig;
+         token: string;
+         theme: Theme;
+         request: Request;
+diff --git a/node_modules/@auth/core/providers/oauth.d.ts b/node_modules/@auth/core/providers/oauth.d.ts
+index f439feb..f82aa7b 100644
+--- a/node_modules/@auth/core/providers/oauth.d.ts
++++ b/node_modules/@auth/core/providers/oauth.d.ts
+@@ -1,4 +1,4 @@
+-import type { Client } from "oauth4webapi";
++import type { Client, PrivateKey } from "oauth4webapi";
+ import type { CommonProviderOptions } from "../providers/index.js";
+ import type { Awaitable, Profile, TokenSet, User } from "../types.js";
+ import type { AuthConfig } from "../index.js";
+@@ -12,6 +12,37 @@ export type { OAuthProviderId } from "./provider-types.js";
+ export type OAuthChecks = OpenIDCallbackChecks | OAuthCallbackChecks;
+ type PartialIssuer = Partial<Pick<IssuerMetadata, "jwks_endpoint" | "issuer">>;
+ type UrlParams = Record<string, unknown>;
++type EndpointRequest<C, R, P> = (context: C & {
++    /** Provider is passed for convenience, and also contains the `callbackUrl`. */
++    provider: OAuthConfigInternal<P> & {
++        signinUrl: string;
++        callbackUrl: string;
++    };
++}) => Awaitable<R> | void;
++/** Gives granular control of the request to the given endpoint */
++interface AdvancedEndpointHandler<P extends UrlParams, C, R> {
++    /** Endpoint URL. Can contain parameters. Optionally, you can use `params` */
++    url?: string;
++    /** These will be prepended to the `url` */
++    params?: P;
++    /**
++     * Control the corresponding OAuth endpoint request completely.
++     * Useful if your provider relies on some custom behaviour
++     * or it diverges from the OAuth spec.
++     *
++     * - ⚠ **This is an advanced option.**
++     * You should **try to avoid using advanced options** unless you are very comfortable using them.
++     */
++    request?: EndpointRequest<C, R, P>;
++    /** @internal */
++    conform?: (response: Response) => Awaitable<Response | undefined>;
++    clientPrivateKey?: CryptoKey | PrivateKey;
++}
++/**
++ * Either an URL (containing all the parameters) or an object with more granular control.
++ * @internal
++ */
++export type EndpointHandler<P extends UrlParams, C = any, R = any> = AdvancedEndpointHandler<P, C, R>;
+ export type AuthorizationEndpointHandler = EndpointHandler<AuthorizationParameters>;
+ export type TokenEndpointHandler = EndpointHandler<UrlParams, {
+     /**
+@@ -179,6 +210,42 @@ export interface OIDCConfig<Profile> extends Omit<OAuth2Config<Profile>, "type"
+ }
+ export type OAuthConfig<Profile> = OIDCConfig<Profile> | OAuth2Config<Profile>;
+ export type OAuthEndpointType = "authorization" | "token" | "userinfo";
++/**
++ * We parsed `authorization`, `token` and `userinfo`
++ * to always contain a valid `URL`, with the params
++ * @internal
++ */
++export type OAuthConfigInternal<Profile> = Omit<OAuthConfig<Profile>, OAuthEndpointType | "redirectProxyUrl"> & {
++    authorization?: {
++        url: URL;
++    };
++    token?: {
++        url: URL;
++        request?: TokenEndpointHandler["request"];
++        clientPrivateKey?: CryptoKey | PrivateKey;
++        /**
++         * @internal
++         * @deprecated
++         */
++        conform?: TokenEndpointHandler["conform"];
++    };
++    userinfo?: {
++        url: URL;
++        request?: UserinfoEndpointHandler["request"];
++    };
++    /**
++     * Reconstructed from {@link OAuth2Config.redirectProxyUrl},
++     * adding the callback action and provider id onto the URL.
++     *
++     * If defined, it is favoured over {@link OAuthConfigInternal.callbackUrl} in the authorization request.
++     *
++     * When {@link InternalOptions.isOnRedirectProxy} is set, the actual value is saved in the decoded `state.origin` parameter.
++     *
++     * @example `"https://auth.example.com/api/auth/callback/:provider"`
++     *
++     */
++    redirectProxyUrl?: OAuth2Config<Profile>["redirectProxyUrl"];
++} & Pick<Required<OAuthConfig<Profile>>, "clientId" | "checks" | "profile" | "account">;
+ export type OIDCConfigInternal<Profile> = OAuthConfigInternal<Profile> & {
+     checks: OIDCConfig<Profile>["checks"];
+     idToken: OIDCConfig<Profile>["idToken"];
+diff --git a/node_modules/@auth/core/types.d.ts b/node_modules/@auth/core/types.d.ts
+index acef0b8..1031117 100644
+--- a/node_modules/@auth/core/types.d.ts
++++ b/node_modules/@auth/core/types.d.ts
+@@ -52,10 +52,17 @@
+  */
+ import type { SerializeOptions } from "./lib/vendored/cookie.js";
+ import type { TokenEndpointResponse } from "oauth4webapi";
++import type { Adapter } from "./adapters.js";
++import type { AuthConfig } from "./index.js";
++import type { JWTOptions } from "./jwt.js";
+ import type { Cookie } from "./lib/utils/cookie.js";
+ import type { LoggerInstance } from "./lib/utils/logger.js";
+ import type { WarningCode } from "./warnings.js";
+ import type { ProviderType } from "./providers/index.js";
++import type { CredentialsConfig } from "./providers/credentials.js";
++import type { EmailConfig } from "./providers/email.js";
++import type { OAuthConfigInternal, OIDCConfigInternal } from "./providers/oauth.js";
++import type { WebAuthnConfig, WebAuthnProviderType } from "./providers/webauthn.js";
+ export type { WebAuthnOptionsResponseBody } from "./lib/utils/webauthn-utils.js";
+ export type { AuthConfig } from "./index.js";
+ export type { LoggerInstance, WarningCode };
+@@ -221,6 +228,56 @@ export interface DefaultUser {
+  */
+ export interface User extends DefaultUser {
+ }
++/** @internal */
++export type InternalProvider<T = ProviderType> = (T extends "oauth" ? OAuthConfigInternal<any> : T extends "oidc" ? OIDCConfigInternal<any> : T extends "email" ? EmailConfig : T extends "credentials" ? CredentialsConfig : T extends WebAuthnProviderType ? WebAuthnConfig : never) & {
++    signinUrl: string;
++    /** @example `"https://example.com/api/auth/callback/id"` */
++    callbackUrl: string;
++};
++/** @internal */
++export interface RequestInternal {
++    url: URL;
++    method: "GET" | "POST";
++    cookies?: Partial<Record<string, string>>;
++    headers?: Record<string, any>;
++    query?: Record<string, any>;
++    body?: Record<string, any>;
++    action: AuthAction;
++    providerId?: string;
++    error?: string;
++}
++/** @internal */
++export interface InternalOptions<TProviderType = ProviderType> {
++    providers: InternalProvider[];
++    url: URL;
++    action: AuthAction;
++    provider: InternalProvider<TProviderType>;
++    csrfToken?: string;
++    /**
++     * `true` if the [Double-submit CSRF check](https://owasp.org/www-chapter-london/assets/slides/David_Johansson-Double_Defeat_of_Double-Submit_Cookie.pdf) was successful
++     * or [`skipCSRFCheck`](https://authjs.dev/reference/core#skipcsrfcheck) was enabled.
++     */
++    csrfTokenVerified?: boolean;
++    secret: string | string[];
++    theme: Theme;
++    debug: boolean;
++    logger: LoggerInstance;
++    session: NonNullable<Required<AuthConfig["session"]>>;
++    pages: Partial<PagesOptions>;
++    jwt: JWTOptions;
++    events: NonNullable<AuthConfig["events"]>;
++    adapter: Required<Adapter> | undefined;
++    callbacks: NonNullable<Required<AuthConfig["callbacks"]>>;
++    cookies: Record<keyof CookiesOptions, CookieOption>;
++    callbackUrl: string;
++    /**
++     * If true, the OAuth callback is being proxied by the server to the original URL.
++     * See also {@link OAuthConfigInternal.redirectProxyUrl}.
++     */
++    isOnRedirectProxy: boolean;
++    experimental: NonNullable<AuthConfig["experimental"]>;
++    basePath: string;
++}
+ export interface PublicProvider {
+     id: string;
+     name: string;

@@ -81,7 +81,7 @@ function setupRewardMocks() {
     isPrismaP2003: () => false,
     logInvariant: () => {},
   });
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
 }
 
 function resetRouteCache() {

@@ -8,6 +8,7 @@ import {
   logInvariant,
   resolveUserContext,
 } from '../../../../lib/user-context.js';
+import { auth } from '../../../../lib/auth.js';
 
 export async function GET(_request: NextRequest): Promise<NextResponse> {
   const isProd = process.env.NODE_ENV === 'production';
@@ -21,6 +22,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
 
   try {
     const { userId } = await resolveUserContext({
+      getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });

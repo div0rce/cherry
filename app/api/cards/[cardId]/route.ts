@@ -7,12 +7,17 @@ import { assertUserId } from '../../../../lib/invariants.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../../lib/user-context.js';
 import { logInvariant } from '../../../../lib/logging.js';
 import { asAppError, asLogMeta } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
-  const { userId, mode } = await resolveUserContext({ requireAuth: true, allowLabDemo: false });
+  const { userId, mode } = await resolveUserContext({
+    getSession: auth,
+    requireAuth: true,
+    allowLabDemo: false,
+  });
   assertUserId(userId, 'api/cards/[cardId] PATCH');
   const { cardId } = await params;
 

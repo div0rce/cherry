@@ -1,13 +1,12 @@
 import type { JSX } from 'react';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth';
+import { auth } from '../../../lib/auth.js';
 import { CherryPointLedgerStatus, RecommendationStatus } from '@prisma/client';
-import { authOptions } from '../../api/auth/[...nextauth]/route.js';
 import BankSimulatorClient, { type PendingSession } from './client.js';
 import { prisma } from '../../../lib/prisma.js';
 
 export default async function BankSimulatorPage(): Promise<JSX.Element> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (session === null) {
     redirect(`/signin?callbackUrl=${encodeURIComponent('/bank-simulator')}`);
   }

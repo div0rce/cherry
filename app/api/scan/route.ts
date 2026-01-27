@@ -20,13 +20,18 @@ import { parseJsonBody } from '../../../lib/validation.js';
 import { validateEngineDecision } from '../../../lib/engine-invariants.js';
 import { resolveUserContext } from '../../../lib/user-context.js';
 import type { RewardCategory } from '@prisma/client';
+import { auth } from '../../../lib/auth.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: false,
+      allowLabDemo: true,
+    });
     const parsed = await parseJsonBody(request, ScanRequestSchema);
     if (parsed.ok !== true) return parsed.response;
     const body = parsed.data;

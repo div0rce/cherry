@@ -48,21 +48,24 @@ function mockModule(modulePath, exports) {
 }
 
 function mockNextAuth(sessionValue) {
-  const getServerSession = async () => sessionValue;
-  getServerSession.mockResolvedValueOnce = (val) => {
-    getServerSession.__nextValue = val;
-  };
-  const wrapper = async () => {
-    if (getServerSession.__nextValue !== undefined) {
-      const val = getServerSession.__nextValue;
-      delete getServerSession.__nextValue;
+  const auth = async () => {
+    if (auth.__nextValue !== undefined) {
+      const val = auth.__nextValue;
+      delete auth.__nextValue;
       return val;
     }
     return sessionValue;
   };
-  const exports = { getServerSession: wrapper, default: () => ({}) };
+  auth.mockResolvedValueOnce = (val) => {
+    auth.__nextValue = val;
+  };
+  const handlers = {
+    GET: async () => new Response(null, { status: 200 }),
+    POST: async () => new Response(null, { status: 200 }),
+  };
+  const exports = { default: () => ({ handlers, auth }) };
   mockModule('next-auth', exports);
-  return { getServerSession: wrapper };
+  return { auth };
 }
 
 function mockNextServer() {
@@ -183,7 +186,7 @@ async function runDevNoAuth() {
   mockPrisma();
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
 
   mockModule('../../lib/vine/security', {
     verifyVineSignature: async () => ({ ok: true }),
@@ -225,7 +228,7 @@ async function runProdNoAuth() {
   mockPrisma();
   mockNextAuth(null);
   mockNextServer();
-  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {} });
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
 
   delete require.cache[require.resolve('../../app/api/vine/order/route')];
   const { POST } = require('../../app/api/vine/order/route');

@@ -7,6 +7,7 @@ import { parseJsonBody } from '../../../../lib/validation.js';
 import { resolveUserContext } from '../../../../lib/user-context.js';
 import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
 import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
@@ -15,7 +16,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestTimestamp = requestNow.toISOString();
   let userId: string | null = null;
   try {
-    const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+    const userContext = await resolveUserContext({
+      getSession: auth,
+      requireAuth: true,
+      allowLabDemo: true,
+    });
     userId = userContext.userId;
 
     const parsed = await parseJsonBody(request, AutopilotCommitInputSchema);

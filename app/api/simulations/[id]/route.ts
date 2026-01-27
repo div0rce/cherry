@@ -5,6 +5,7 @@ import { resolveUserContext, assertUserId, isPrismaP2003, logInvariant } from '.
 import { hasText } from '../../../../lib/text.js';
 import { logGuardrailEvent } from '../../../../lib/log.js';
 import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 /**
  * DELETE /api/simulations/[id]
@@ -16,7 +17,11 @@ export async function DELETE(
   ): Promise<NextResponse> {
   const requestTimestamp = new Date().toISOString();
   try {
-    const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId, mode } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: false,
+      allowLabDemo: true,
+    });
     assertUserId(userId, 'api/simulations DELETE');
     const { id } = await params;
 

@@ -1,6 +1,5 @@
 import type { JSX, ReactNode } from 'react';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../api/auth/[...nextauth]/route.js';
+import { auth } from '../../lib/auth.js';
 import { SidebarNav } from '../../components/sidebar-nav.js';
 import { DevConsoleHeader } from '../../components/dev-console-header.js';
 
@@ -9,7 +8,7 @@ export default async function DevLayout({
 }: {
   children: ReactNode;
 }): Promise<JSX.Element> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   const userEmail = session?.user?.email ?? 'Not signed in';
 
   return (

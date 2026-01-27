@@ -32,6 +32,7 @@ import type {
   SimulatedAuthorityDecision,
   SimulateSpendParams,
 } from '../../../lib/authority/simulateSpendAuthority.js';
+import { auth } from '../../../lib/auth.js';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
@@ -41,7 +42,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestTimestamp = requestNow.toISOString();
   let authorityDecision: SimulatedAuthorityDecision | null = null;
   try {
-    const { userId, mode } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId, mode } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: false,
+      allowLabDemo: true,
+    });
     assertUserId(userId, 'api/simulate POST');
 
     const parsedBody = await parseJsonBody(request, SimulateRequestSchema);

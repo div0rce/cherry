@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma.js';
 import { resolveUserContext } from '../../../../lib/user-context.js';
+import { auth } from '../../../../lib/auth.js';
 
 export async function GET(request: Request): Promise<Response> {
   try {
-    const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+    const { userId } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: true,
+      allowLabDemo: true,
+    });
     const { searchParams } = new URL(request.url);
     const query = (searchParams.get('query') ?? '').trim();
 

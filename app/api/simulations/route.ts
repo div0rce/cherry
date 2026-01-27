@@ -11,6 +11,7 @@ import { asAppError, isUnauthorized } from '../../../lib/errors.js';
 import { resolveUserContext, assertUserId } from '../../../lib/user-context.js';
 import { hasText } from '../../../lib/text.js';
 import { logGuardrailEvent } from '../../../lib/log.js';
+import { auth } from '../../../lib/auth.js';
 
 /**
  * GET /api/simulations
@@ -26,7 +27,11 @@ import { logGuardrailEvent } from '../../../lib/log.js';
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const requestTimestamp = new Date().toISOString();
   try {
-    const { userId } = await resolveUserContext({ requireAuth: false, allowLabDemo: true });
+    const { userId } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: false,
+      allowLabDemo: true,
+    });
     assertUserId(userId, 'api/simulations GET');
     const { searchParams } = new URL(request.url);
     const statusRaw = searchParams.get('status');

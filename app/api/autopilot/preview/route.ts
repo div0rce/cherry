@@ -13,6 +13,7 @@ import { incrementCounter, observeDuration } from '../../../../lib/metrics/autop
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { buildPrismaWorld } from '../../../../lib/adapters/runtime/world.prisma.js';
 import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
+import { auth } from '../../../../lib/auth.js';
 
 // Contract: /api/autopilot/preview is stateless, engine-backed, and validated by AutopilotPreview*Schema (see docs/autopilot-master-spec.md).
 
@@ -34,7 +35,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   };
 
   try {
-    const userContext = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+    const userContext = await resolveUserContext({
+      getSession: auth,
+      requireAuth: true,
+      allowLabDemo: true,
+    });
     userId = userContext.userId;
 
     const parsedInput = await parseJsonBody(request, AutopilotPreviewInputSchema);

@@ -8,6 +8,7 @@ import { fromPrismaUserToEngineState } from '../../../../../lib/engine-state.js'
 import { buildPrismaWorld } from '../../../../../lib/adapters/runtime/world.prisma.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
 import { asAppError } from '../../../../../lib/errors.js';
+import { auth } from '../../../../../lib/auth.js';
 
 const InspectRequestSchema = z
   .object({
@@ -20,7 +21,11 @@ const InspectRequestSchema = z
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { userId } = await resolveUserContext({ requireAuth: true, allowLabDemo: true });
+    const { userId } = await resolveUserContext({
+      getSession: auth,
+      requireAuth: true,
+      allowLabDemo: true,
+    });
     const parsed = await parseJsonBody(request, InspectRequestSchema);
     if (parsed.ok !== true) {
       return parsed.response;

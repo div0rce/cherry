@@ -1,12 +1,9 @@
 import NextAuth from 'next-auth';
-import type { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import EmailProvider from 'next-auth/providers/email';
 import GoogleProvider from 'next-auth/providers/google';
-import CredentialsProvider from 'next-auth/providers/credentials';
-import { PrismaAdapter } from '@next-auth/prisma-adapter';
+import { PrismaAdapter } from '@auth/prisma-adapter';
 import { prisma } from '../../../../lib/prisma.js';
-
-type AuthProvider = NextAuthOptions['providers'][number];
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -27,22 +24,36 @@ function unwrapProvider(value: unknown): (...args: unknown[]) => unknown {
   return current as (...args: unknown[]) => unknown;
 }
 
-type ProviderFactory = (...args: unknown[]) => AuthProvider;
+type ProviderFactory = (...args: unknown[]) => unknown;
 const resolveEmailProvider = unwrapProvider(EmailProvider) as ProviderFactory;
 const resolveGoogleProvider = unwrapProvider(GoogleProvider) as ProviderFactory;
 const resolveCredentialsProvider = unwrapProvider(CredentialsProvider) as ProviderFactory;
-const resolveNextAuth = unwrapProvider(NextAuth) as (options: NextAuthOptions) => unknown;
+const resolveNextAuth = unwrapProvider(NextAuth) as (options: unknown) => {
+  handlers: { GET: (req: Request) => Promise<Response>; POST: (req: Request) => Promise<Response> };
+  auth: () => Promise<{ user?: { id?: string; email?: string | null } } | null>;
+};
 
-const providers: AuthProvider[] = [
-  resolveEmailProvider({
-    server: process.env['EMAIL_SERVER'] ?? '',
-    from: process.env['EMAIL_FROM'] ?? 'no-reply@localhost',
-  }),
-  resolveGoogleProvider({
-    clientId: process.env['GOOGLE_CLIENT_ID'] ?? '',
-    clientSecret: process.env['GOOGLE_CLIENT_SECRET'] ?? '',
-  }),
-];
+const providers: unknown[] = [];
+const emailServer = process.env['EMAIL_SERVER'] ?? null;
+if (hasNonEmptyString(emailServer)) {
+  providers.push(
+    resolveEmailProvider({
+      server: emailServer,
+      from: process.env['EMAIL_FROM'] ?? 'no-reply@localhost',
+    })
+  );
+}
+
+const googleClientId = process.env['GOOGLE_CLIENT_ID'] ?? null;
+const googleClientSecret = process.env['GOOGLE_CLIENT_SECRET'] ?? null;
+if (hasNonEmptyString(googleClientId) && hasNonEmptyString(googleClientSecret)) {
+  providers.push(
+    resolveGoogleProvider({
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    })
+  );
+}
 
 if (process.env.NODE_ENV !== 'production') {
   providers.push(
@@ -76,11 +87,11 @@ if (process.env.NODE_ENV !== 'production') {
 
         return { id: newUser.id, email: newUser.email };
       },
-    }) as AuthProvider
+    })
   );
 }
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers,
   pages: {
@@ -90,19 +101,19 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async session({ session, token }) {
+    async session({ session, token }: { session: { user?: { id?: string } }; token: { sub?: string } }) {
       if (
         session.user !== undefined &&
         session.user !== null &&
         hasNonEmptyString(token.sub)
       ) {
         // expose user id to the client + server helpers
-        (session.user as { id?: string }).id = token.sub;
+        session.user.id = token.sub;
       }
       return session;
     },
   },
 };
 
-const handler = resolveNextAuth(authOptions) as (req: Request) => Promise<Response>;
-export { handler as GET, handler as POST };
+export const { handlers, auth } = resolveNextAuth(authOptions);
+export const { GET, POST } = handlers;
