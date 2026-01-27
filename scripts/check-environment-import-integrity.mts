@@ -66,7 +66,9 @@ function buildOwnershipIndex(files: string[]): Map<string, Env[]> {
 
   for (const env of ENV_NAMES) {
     const contract = ENVIRONMENT_CONTRACTS[env];
-    const ignore = [...ENVIRONMENT_IGNORE_GLOBS, ...(contract.ownership.exclude ?? [])];
+    const exclude =
+      'exclude' in contract.ownership ? contract.ownership.exclude ?? [] : [];
+    const ignore = [...ENVIRONMENT_IGNORE_GLOBS, ...exclude];
     const envFiles = fg.sync(contract.ownership.include, {
       cwd: ROOT,
       ignore,
