@@ -29,6 +29,9 @@ export function runTsEsm(
   const scriptArgs: string[] = [];
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
+    if (arg === undefined) {
+      continue;
+    }
     if (arg === '--import' || arg === '-r' || arg === '--require') {
       const value = args[i + 1];
       if (value === undefined) {
