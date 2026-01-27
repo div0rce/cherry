@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-26
+Last updated: 2026-01-27
 
 # Guardrails
 
@@ -87,6 +87,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `env:node` may not import `env:next`, `next/*`, `react`, or `react-dom`.
 - `tests/node/**` may only import `env:node`; `tests/next/**` may only import `env:next` or `env:node`.
 - Enforcement: `check:environment-import-integrity`.
+
+### Data Directory Policy (Documented)
+
+- `data/**` must contain deterministic literals only (no runtime side effects).
+- `data/**` must not import from `app/**` or `lib/**`.
 
 ## Domain: Script Runtime Boundary
 
