@@ -1,0 +1,14 @@
+{
+  "types/vendor/allowlisted-shim.d.ts": {
+    "reason": "Fixture shim to validate allowlist metadata enforcement",
+    "upstream": "fixture@0.0.0",
+    "audit": "2026-01-27",
+    "removeWhen": "Delete fixture once guardrail is verified"
+  },
+  "tsconfig.base.json#paths:fixture/shim": {
+    "reason": "Fixture tsconfig mapping for allowlisted vendor shim",
+    "upstream": "fixture@0.0.0",
+    "audit": "2026-01-27",
+    "removeWhen": "Delete fixture once guardrail is verified"
+  }
+}

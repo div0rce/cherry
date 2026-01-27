@@ -40,6 +40,7 @@
     "check:npm-arg-forwarding": "npm run ts:esm -- scripts/guardrails/run.mts check:npm-arg-forwarding",
     "check:lockfile-sync": "npm run ts:esm -- scripts/guardrails/run.mts check:lockfile-sync",
     "check:function-size-budget": "npm run ts:esm -- scripts/guardrails/run.mts check:function-size-budget",
+    "check:no-vendor-shims": "npm run ts:esm -- scripts/guardrails/run.mts check:no-vendor-shims",
     "check:loader-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:loader-contract",
     "check:esm-loader-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:esm-loader-totality",
     "check:prisma-mock-loader-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:prisma-mock-loader-totality",

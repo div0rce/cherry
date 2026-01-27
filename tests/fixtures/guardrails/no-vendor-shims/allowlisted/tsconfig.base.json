@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "fixture/shim": ["types/vendor/allowlisted-shim.d.ts"]
+    }
+  }
+}

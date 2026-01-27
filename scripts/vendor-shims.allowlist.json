@@ -1,0 +1,14 @@
+{
+  "patches/@auth+core+0.41.1.patch": {
+    "reason": "Upstream @auth/core nodemailer.d.ts strictFunctionTypes mismatch; patch provider param type",
+    "upstream": "@auth/core@0.41.1",
+    "audit": "2026-01-27",
+    "removeWhen": "Remove once upstream fixes nodemailer.d.ts and Cherry upgrades"
+  },
+  "patches/next-auth+5.0.0-beta.30.patch": {
+    "reason": "Upstream next-auth react.d.ts imports missing SignInAuthorizationParams; define it in client.d.ts",
+    "upstream": "next-auth@5.0.0-beta.30",
+    "audit": "2026-01-27",
+    "removeWhen": "Remove once next-auth exports SignInAuthorizationParams in lib/client.d.ts"
+  }
+}

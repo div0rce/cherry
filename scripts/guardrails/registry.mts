@@ -16,6 +16,7 @@ const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const LOCKFILE_SYNC_PATH = `${CHECK_PATH_BASE}lockfile-sync.mts` as const;
 const FUNCTION_SIZE_BUDGET_PATH = `${CHECK_PATH_BASE}function-size-budget.mts` as const;
+const NO_VENDOR_SHIMS_PATH = `${CHECK_PATH_BASE}no-vendor-shims.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
 const GUARDRAIL_HELPERS_EXCLUSIVE_PATH = `${CHECK_PATH_BASE}guardrail-helpers-exclusive.mts` as const;
 const GUARDRAIL_SUBPROCESS_TOTALITY_PATH =
@@ -64,6 +65,7 @@ export const GUARDRAILS = Object.freeze({
   'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:lockfile-sync': LOCKFILE_SYNC_PATH,
   'check:function-size-budget': FUNCTION_SIZE_BUDGET_PATH,
+  'check:no-vendor-shims': NO_VENDOR_SHIMS_PATH,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
   'check:esm-loader-totality': ESM_LOADER_TOTALITY_PATH,
   'check:prisma-mock-loader-totality': PRISMA_MOCK_LOADER_TOTALITY_PATH,
