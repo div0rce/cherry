@@ -7,7 +7,6 @@ import { runTsEsm } from './lib/run-ts-esm.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:replay-equals-materialized';
-const ROOT = process.cwd();
 const TEST_FILE = path.join('tests', 'node', 'accounting', 'replay-equals-materialized.spec.ts');
 const FIX = 'Run npm run check:replay-equals-materialized after installing dependencies.';
 
