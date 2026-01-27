@@ -10371,8 +10371,8 @@
     "tests/**/*.tsx",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts",
-    "types/vendor/**/*.d.ts",
     "types/jsx-global.d.ts",
+    "data/**/*.ts",
     "data/**/*.json",
     "proxy.ts",
     "next-env.d.ts",
@@ -10384,7 +10384,10 @@
     ".next",
     "scripts/**",
     "prisma/scripts/**",
-    "tests/fixtures/**"
+    "tests/fixtures/**",
+    "tests/node/**",
+    "tests/guardrails/**",
+    "lib/engine/optimality/**"
   ]
 }
 ```
@@ -10413,14 +10416,9 @@
 
     // --- Runtime / emit model ---
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
-    "paths": {
-      "next/dist/compiled/@vercel/og/types": ["types/vendor/vercel-og-types.d.ts"],
-      "next/dist/compiled/@vercel/og/satori": ["types/vendor/vercel-og-satori.d.ts"]
-    },
 
     // --- Interop (NON-NEGOTIABLE) ---
     "esModuleInterop": true,
@@ -10517,8 +10515,11 @@
     "noEmit": true
   },
   "include": [
-    "scripts",
-    "prisma/scripts"
+    "scripts/**/*",
+    "prisma/scripts/**/*",
+    "tests/node/**/*",
+    "tests/guardrails/**/*",
+    "lib/engine/optimality/**/*"
   ]
 }
 ```
@@ -10546,7 +10547,10 @@
     "scripts/**/*.ts",
     "scripts/**/*.mts",
     "scripts/**/*.cts",
-    "prisma/scripts/**/*.ts"
+    "prisma/scripts/**/*.ts",
+    "tests/node/**/*",
+    "tests/guardrails/**/*",
+    "lib/engine/optimality/**/*"
   ]
 }
 ```

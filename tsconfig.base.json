@@ -20,14 +20,9 @@
 
     // --- Runtime / emit model ---
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
-    "paths": {
-      "next/dist/compiled/@vercel/og/types": ["types/vendor/vercel-og-types.d.ts"],
-      "next/dist/compiled/@vercel/og/satori": ["types/vendor/vercel-og-satori.d.ts"]
-    },
 
     // --- Interop (NON-NEGOTIABLE) ---
     "esModuleInterop": true,

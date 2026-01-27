@@ -291,9 +291,9 @@ function checkTsconfigPolicies(tsconfigFiles: string[]): void {
 
     if (file === 'tsconfig.base.json') {
       ensure(
-        compilerOptions['module'] === 'NodeNext' &&
-          compilerOptions['moduleResolution'] === 'NodeNext',
-        'tsconfig.base.json must use NodeNext module resolution.'
+        compilerOptions['module'] === 'ESNext' &&
+          compilerOptions['moduleResolution'] === 'Bundler',
+        'tsconfig.base.json must use ESNext module resolution.'
       );
       continue;
     }

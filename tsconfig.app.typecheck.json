@@ -22,8 +22,8 @@
     "tests/**/*.tsx",
     "types/compat/**/*.d.ts",
     "types/compat/**/*.d.cts",
-    "types/vendor/**/*.d.ts",
     "types/jsx-global.d.ts",
+    "data/**/*.ts",
     "data/**/*.json",
     "proxy.ts",
     "next-env.d.ts",
@@ -35,6 +35,9 @@
     ".next",
     "scripts/**",
     "prisma/scripts/**",
-    "tests/fixtures/**"
+    "tests/fixtures/**",
+    "tests/node/**",
+    "tests/guardrails/**",
+    "lib/engine/optimality/**"
   ]
 }

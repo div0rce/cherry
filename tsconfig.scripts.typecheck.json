@@ -19,6 +19,9 @@
     "scripts/**/*.ts",
     "scripts/**/*.mts",
     "scripts/**/*.cts",
-    "prisma/scripts/**/*.ts"
+    "prisma/scripts/**/*.ts",
+    "tests/node/**/*",
+    "tests/guardrails/**/*",
+    "lib/engine/optimality/**/*"
   ]
 }

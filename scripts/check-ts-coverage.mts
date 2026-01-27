@@ -70,9 +70,17 @@ function expectedOwner(relativePath: string): Owner {
     return 'scripts';
   }
   if (
+    relativePath.startsWith('tests/node/') ||
+    relativePath.startsWith('tests/guardrails/') ||
+    relativePath.startsWith('lib/engine/optimality/')
+  ) {
+    return 'scripts';
+  }
+  if (
     relativePath.startsWith('app/') ||
     relativePath.startsWith('components/') ||
     relativePath.startsWith('lib/') ||
+    relativePath.startsWith('data/') ||
     relativePath.startsWith('tests/') ||
     relativePath === 'proxy.ts' ||
     relativePath === 'next-env.d.ts' ||
@@ -85,9 +93,6 @@ function expectedOwner(relativePath: string): Owner {
     return 'app';
   }
   if (relativePath === path.normalize('types/jsx-global.d.ts')) {
-    return 'app';
-  }
-  if (relativePath.startsWith('types/vendor/')) {
     return 'app';
   }
   if (relativePath.startsWith('types/')) {
