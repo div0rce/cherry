@@ -7,7 +7,6 @@ import { runTsEsm } from './lib/run-ts-esm.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:accounting-invariants';
-const ROOT = process.cwd();
 const TEST_FILE = path.join('tests', 'node', 'accounting', 'property.spec.ts');
 const FIX = 'Run npm run check:accounting-invariants after installing dependencies.';
 
