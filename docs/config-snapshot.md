@@ -21,6 +21,7 @@
         "@radix-ui/react-slot": "^1.2.4",
         "class-variance-authority": "^0.7.1",
         "csv-parse": "^6.1.0",
+        "lightningcss": "1.24.1",
         "next": "^16.0.8",
         "next-auth": "5.0.0-beta.30",
         "nodemailer": "^7.0.10",
@@ -60,9 +61,6 @@
       },
       "engines": {
         "node": ">=22 <23"
-      },
-      "optionalDependencies": {
-        "lightningcss": "^1.25.0"
       }
     },
     "node_modules/@alloc/quick-lru": {
@@ -2699,6 +2697,225 @@
         "magic-string": "^0.30.21",
         "source-map-js": "^1.2.1",
         "tailwindcss": "4.1.18"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.30.2.tgz",
+      "integrity": "sha512-utfs7Pr5uJyyvDETitgsaqSyjCb2qNRAtuqUeWIAKztsOYdcACf2KtARYXg2pSvhkt+9NfoaNY7fxjl6nuMjIQ==",
+      "dev": true,
+      "license": "MPL-2.0",
+      "dependencies": {
+        "detect-libc": "^2.0.3"
+      },
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      },
+      "optionalDependencies": {
+        "lightningcss-android-arm64": "1.30.2",
+        "lightningcss-darwin-arm64": "1.30.2",
+        "lightningcss-darwin-x64": "1.30.2",
+        "lightningcss-freebsd-x64": "1.30.2",
+        "lightningcss-linux-arm-gnueabihf": "1.30.2",
+        "lightningcss-linux-arm64-gnu": "1.30.2",
+        "lightningcss-linux-arm64-musl": "1.30.2",
+        "lightningcss-linux-x64-gnu": "1.30.2",
+        "lightningcss-linux-x64-musl": "1.30.2",
+        "lightningcss-win32-arm64-msvc": "1.30.2",
+        "lightningcss-win32-x64-msvc": "1.30.2"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-darwin-arm64": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.30.2.tgz",
+      "integrity": "sha512-ylTcDJBN3Hp21TdhRT5zBOIi73P6/W0qwvlFEk22fkdXchtNTOU4Qc37SkzV+EKYxLouZ6M4LG9NfZ1qkhhBWA==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-darwin-x64": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-x64/-/lightningcss-darwin-x64-1.30.2.tgz",
+      "integrity": "sha512-oBZgKchomuDYxr7ilwLcyms6BCyLn0z8J0+ZZmfpjwg9fRVZIR5/GMXd7r9RH94iDhld3UmSjBM6nXWM2TfZTQ==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-freebsd-x64": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-freebsd-x64/-/lightningcss-freebsd-x64-1.30.2.tgz",
+      "integrity": "sha512-c2bH6xTrf4BDpK8MoGG4Bd6zAMZDAXS569UxCAGcA7IKbHNMlhGQ89eRmvpIUGfKWNVdbhSbkQaWhEoMGmGslA==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-linux-arm-gnueabihf": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm-gnueabihf/-/lightningcss-linux-arm-gnueabihf-1.30.2.tgz",
+      "integrity": "sha512-eVdpxh4wYcm0PofJIZVuYuLiqBIakQ9uFZmipf6LF/HRj5Bgm0eb3qL/mr1smyXIS1twwOxNWndd8z0E374hiA==",
+      "cpu": [
+        "arm"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-linux-arm64-gnu": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-gnu/-/lightningcss-linux-arm64-gnu-1.30.2.tgz",
+      "integrity": "sha512-UK65WJAbwIJbiBFXpxrbTNArtfuznvxAJw4Q2ZGlU8kPeDIWEX1dg3rn2veBVUylA2Ezg89ktszWbaQnxD/e3A==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-linux-arm64-musl": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-musl/-/lightningcss-linux-arm64-musl-1.30.2.tgz",
+      "integrity": "sha512-5Vh9dGeblpTxWHpOx8iauV02popZDsCYMPIgiuw97OJ5uaDsL86cnqSFs5LZkG3ghHoX5isLgWzMs+eD1YzrnA==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-linux-x64-gnu": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.30.2.tgz",
+      "integrity": "sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-linux-x64-musl": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.30.2.tgz",
+      "integrity": "sha512-XJaLUUFXb6/QG2lGIW6aIk6jKdtjtcffUT0NKvIqhSBY3hh9Ch+1LCeH80dR9q9LBjG3ewbDjnumefsLsP6aiA==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/@tailwindcss/node/node_modules/lightningcss-win32-x64-msvc": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.30.2.tgz",
+      "integrity": "sha512-5g1yc73p+iAkid5phb4oVFMB45417DkRevRbt/El/gKXJk4jid+vPFF/AXbxn05Aky8PapwzZrdJShv5C0avjw==",
+      "cpu": [
+        "x64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
       }
     },
     "node_modules/@tailwindcss/oxide": {
@@ -6264,13 +6481,12 @@
       }
     },
     "node_modules/lightningcss": {
-      "version": "1.30.2",
-      "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.30.2.tgz",
-      "integrity": "sha512-utfs7Pr5uJyyvDETitgsaqSyjCb2qNRAtuqUeWIAKztsOYdcACf2KtARYXg2pSvhkt+9NfoaNY7fxjl6nuMjIQ==",
-      "devOptional": true,
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.24.1.tgz",
+      "integrity": "sha512-kUpHOLiH5GB0ERSv4pxqlL0RYKnOXtgGtVe7shDGfhS0AZ4D1ouKFYAcLcZhql8aMspDNzaUCumGHZ78tb2fTg==",
       "license": "MPL-2.0",
       "dependencies": {
-        "detect-libc": "^2.0.3"
+        "detect-libc": "^1.0.3"
       },
       "engines": {
         "node": ">= 12.0.0"
@@ -6280,23 +6496,42 @@
         "url": "https://opencollective.com/parcel"
       },
       "optionalDependencies": {
-        "lightningcss-android-arm64": "1.30.2",
-        "lightningcss-darwin-arm64": "1.30.2",
-        "lightningcss-darwin-x64": "1.30.2",
-        "lightningcss-freebsd-x64": "1.30.2",
-        "lightningcss-linux-arm-gnueabihf": "1.30.2",
-        "lightningcss-linux-arm64-gnu": "1.30.2",
-        "lightningcss-linux-arm64-musl": "1.30.2",
-        "lightningcss-linux-x64-gnu": "1.30.2",
-        "lightningcss-linux-x64-musl": "1.30.2",
-        "lightningcss-win32-arm64-msvc": "1.30.2",
-        "lightningcss-win32-x64-msvc": "1.30.2"
+        "lightningcss-darwin-arm64": "1.24.1",
+        "lightningcss-darwin-x64": "1.24.1",
+        "lightningcss-freebsd-x64": "1.24.1",
+        "lightningcss-linux-arm-gnueabihf": "1.24.1",
+        "lightningcss-linux-arm64-gnu": "1.24.1",
+        "lightningcss-linux-arm64-musl": "1.24.1",
+        "lightningcss-linux-x64-gnu": "1.24.1",
+        "lightningcss-linux-x64-musl": "1.24.1",
+        "lightningcss-win32-x64-msvc": "1.24.1"
+      }
+    },
+    "node_modules/lightningcss-android-arm64": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-android-arm64/-/lightningcss-android-arm64-1.30.2.tgz",
+      "integrity": "sha512-BH9sEdOCahSgmkVhBLeU7Hc9DWeZ1Eb6wNS6Da8igvUwAe0sqROHddIlvU06q3WyXVEOYDZ6ykBZQnjTbmo4+A==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
       }
     },
     "node_modules/lightningcss-darwin-arm64": {
-      "version": "1.30.2",
-      "resolved": "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.30.2.tgz",
-      "integrity": "sha512-ylTcDJBN3Hp21TdhRT5zBOIi73P6/W0qwvlFEk22fkdXchtNTOU4Qc37SkzV+EKYxLouZ6M4LG9NfZ1qkhhBWA==",
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.24.1.tgz",
+      "integrity": "sha512-1jQ12jBy+AE/73uGQWGSafK5GoWgmSiIQOGhSEXiFJSZxzV+OXIx+a9h2EYHxdJfX864M+2TAxWPWb0Vv+8y4w==",
       "cpu": [
         "arm64"
       ],
@@ -6311,6 +6546,199 @@
       "funding": {
         "type": "opencollective",
         "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-darwin-x64": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-darwin-x64/-/lightningcss-darwin-x64-1.24.1.tgz",
+      "integrity": "sha512-R4R1d7VVdq2mG4igMU+Di8GPf0b64ZLnYVkubYnGG0Qxq1KaXQtAzcLI43EkpnoWvB/kUg8JKCWH4S13NfiLcQ==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-freebsd-x64": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-freebsd-x64/-/lightningcss-freebsd-x64-1.24.1.tgz",
+      "integrity": "sha512-z6NberUUw5ALES6Ixn2shmjRRrM1cmEn1ZQPiM5IrZ6xHHL5a1lPin9pRv+w6eWfcrEo+qGG6R9XfJrpuY3e4g==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-arm-gnueabihf": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm-gnueabihf/-/lightningcss-linux-arm-gnueabihf-1.24.1.tgz",
+      "integrity": "sha512-NLQLnBQW/0sSg74qLNI8F8QKQXkNg4/ukSTa+XhtkO7v3BnK19TS1MfCbDHt+TTdSgNEBv0tubRuapcKho2EWw==",
+      "cpu": [
+        "arm"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-arm64-gnu": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-gnu/-/lightningcss-linux-arm64-gnu-1.24.1.tgz",
+      "integrity": "sha512-AQxWU8c9E9JAjAi4Qw9CvX2tDIPjgzCTrZCSXKELfs4mCwzxRkHh2RCxX8sFK19RyJoJAjA/Kw8+LMNRHS5qEg==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-arm64-musl": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-arm64-musl/-/lightningcss-linux-arm64-musl-1.24.1.tgz",
+      "integrity": "sha512-JCgH/SrNrhqsguUA0uJUM1PvN5+dVuzPIlXcoWDHSv2OU/BWlj2dUYr3XNzEw748SmNZPfl2NjQrAdzaPOn1lA==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-x64-gnu": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.24.1.tgz",
+      "integrity": "sha512-TYdEsC63bHV0h47aNRGN3RiK7aIeco3/keN4NkoSQ5T8xk09KHuBdySltWAvKLgT8JvR+ayzq8ZHnL1wKWY0rw==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-linux-x64-musl": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.24.1.tgz",
+      "integrity": "sha512-HLfzVik3RToot6pQ2Rgc3JhfZkGi01hFetHt40HrUMoeKitLoqUUT5owM6yTZPTytTUW9ukLBJ1pc3XNMSvlLw==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-win32-arm64-msvc": {
+      "version": "1.30.2",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-arm64-msvc/-/lightningcss-win32-arm64-msvc-1.30.2.tgz",
+      "integrity": "sha512-FZn+vaj7zLv//D/192WFFVA0RgHawIcHqLX9xuWiQt7P0PtdFEVaxgF9rjM/IRYHQXNnk61/H/gb2Ei+kUQ4xQ==",
+      "cpu": [
+        "arm64"
+      ],
+      "dev": true,
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss-win32-x64-msvc": {
+      "version": "1.24.1",
+      "resolved": "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.24.1.tgz",
+      "integrity": "sha512-joEupPjYJ7PjZtDsS5lzALtlAudAbgIBMGJPNeFe5HfdmJXFd13ECmEM+5rXNxYVMRHua2w8132R6ab5Z6K9Ow==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MPL-2.0",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">= 12.0.0"
+      },
+      "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/parcel"
+      }
+    },
+    "node_modules/lightningcss/node_modules/detect-libc": {
+      "version": "1.0.3",
+      "resolved": "https://registry.npmjs.org/detect-libc/-/detect-libc-1.0.3.tgz",
+      "integrity": "sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==",
+      "license": "Apache-2.0",
+      "bin": {
+        "detect-libc": "bin/detect-libc.js"
+      },
+      "engines": {
+        "node": ">=0.10"
       }
     },
     "node_modules/locate-path": {
@@ -8748,10 +9176,8 @@
     "pdf-parse": "^2.4.5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "zod": "^4.1.13"
-  },
-  "optionalDependencies": {
-    "lightningcss": "^1.25.0"
+    "zod": "^4.1.13",
+    "lightningcss": "1.24.1"
   },
   "overrides": {
     "@auth/core": "0.41.1"
@@ -10645,6 +11071,72 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "upstream": "next-auth@5.0.0-beta.30",
     "audit": "2026-01-27",
     "removeWhen": "Remove once next-auth exports SignInAuthorizationParams in lib/client.d.ts"
+  },
+  "types/compat/hexagon__base64.d.ts": {
+    "reason": "Missing types for @hexagon/base64 required by @simplewebauthn/server",
+    "upstream": "@hexagon/base64 (transitive via @simplewebauthn/server)",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once @hexagon/base64 ships types or @types/hexagon__base64 exists"
+  },
+  "types/compat/cookie.d.ts": {
+    "reason": "cookie module lacks bundled typings required by auth stack",
+    "upstream": "cookie (types missing)",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once cookie ships types or @types/cookie satisfies imports"
+  },
+  "types/compat/next-auth.d.ts": {
+    "reason": "Cherry augments next-auth Session/User with user.id",
+    "upstream": "next-auth@5.0.0-beta.30",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once next-auth exposes user.id or Cherry stops augmenting session types"
+  },
+  "types/compat/nextauth.d.ts": {
+    "reason": "@auth/core Adapter type is not exposed in current upstream typings",
+    "upstream": "@auth/core@0.41.1",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once @auth/core exports Adapter type"
+  },
+  "types/compat/nodemailer.d.ts": {
+    "reason": "nodemailer package typings are required by auth email provider types",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings or auth providers stop importing them"
+  },
+  "types/compat/nodemailer-json.d.cts": {
+    "reason": "nodemailer JSON transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-sendmail.d.cts": {
+    "reason": "nodemailer sendmail transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-ses.d.cts": {
+    "reason": "nodemailer SES transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-smtp-pool.d.cts": {
+    "reason": "nodemailer SMTP pool transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-smtp.d.cts": {
+    "reason": "nodemailer SMTP transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-stream.d.cts": {
+    "reason": "nodemailer stream transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
   }
 }
 ```
