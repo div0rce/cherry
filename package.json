@@ -148,10 +148,8 @@
     "pdf-parse": "^2.4.5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "zod": "^4.1.13"
-  },
-  "optionalDependencies": {
-    "lightningcss": "^1.25.0"
+    "zod": "^4.1.13",
+    "lightningcss": "1.24.1"
   },
   "overrides": {
     "@auth/core": "0.41.1"
