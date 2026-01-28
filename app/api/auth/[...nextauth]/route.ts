@@ -91,6 +91,10 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
+type SessionUser = { id?: string };
+type SessionShape = { user?: SessionUser };
+type SessionCallbackArgs = { session: SessionShape; token: { sub?: string } };
+
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
   providers,
@@ -101,7 +105,7 @@ export const authOptions = {
     strategy: 'jwt',
   },
   callbacks: {
-    async session({ session, token }: { session: { user?: { id?: string } }; token: { sub?: string } }) {
+    async session({ session, token }: SessionCallbackArgs): Promise<SessionShape> {
       if (
         session.user !== undefined &&
         session.user !== null &&
