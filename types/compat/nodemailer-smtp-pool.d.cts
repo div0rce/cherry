@@ -1,9 +1,7 @@
-/**
- * COMPATIBILITY SHIM
- * Reason: nodemailer SMTP pool transport lacks stable typings.
- * Scope: nodemailer/lib/smtp-pool/index.js
- * Audit: review on nodemailer upgrade.
- */
+// reason: nodemailer SMTP pool transport lacks stable typings
+// upstream: nodemailer@^7
+// audit: 2026-01-28
+// removeWhen: Remove once nodemailer ships transport typings
 declare module 'nodemailer/lib/smtp-pool/index.js' {
   class SMTPPool {}
   namespace SMTPPool {

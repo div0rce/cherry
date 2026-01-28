@@ -10,5 +10,71 @@
     "upstream": "next-auth@5.0.0-beta.30",
     "audit": "2026-01-27",
     "removeWhen": "Remove once next-auth exports SignInAuthorizationParams in lib/client.d.ts"
+  },
+  "types/compat/hexagon__base64.d.ts": {
+    "reason": "Missing types for @hexagon/base64 required by @simplewebauthn/server",
+    "upstream": "@hexagon/base64 (transitive via @simplewebauthn/server)",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once @hexagon/base64 ships types or @types/hexagon__base64 exists"
+  },
+  "types/compat/cookie.d.ts": {
+    "reason": "cookie module lacks bundled typings required by auth stack",
+    "upstream": "cookie (types missing)",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once cookie ships types or @types/cookie satisfies imports"
+  },
+  "types/compat/next-auth.d.ts": {
+    "reason": "Cherry augments next-auth Session/User with user.id",
+    "upstream": "next-auth@5.0.0-beta.30",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once next-auth exposes user.id or Cherry stops augmenting session types"
+  },
+  "types/compat/nextauth.d.ts": {
+    "reason": "@auth/core Adapter type is not exposed in current upstream typings",
+    "upstream": "@auth/core@0.41.1",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once @auth/core exports Adapter type"
+  },
+  "types/compat/nodemailer.d.ts": {
+    "reason": "nodemailer package typings are required by auth email provider types",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings or auth providers stop importing them"
+  },
+  "types/compat/nodemailer-json.d.cts": {
+    "reason": "nodemailer JSON transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-sendmail.d.cts": {
+    "reason": "nodemailer sendmail transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-ses.d.cts": {
+    "reason": "nodemailer SES transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-smtp-pool.d.cts": {
+    "reason": "nodemailer SMTP pool transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-smtp.d.cts": {
+    "reason": "nodemailer SMTP transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
+  },
+  "types/compat/nodemailer-stream.d.cts": {
+    "reason": "nodemailer stream transport lacks stable typings",
+    "upstream": "nodemailer@^7",
+    "audit": "2026-01-28",
+    "removeWhen": "Remove once nodemailer ships transport typings"
   }
 }

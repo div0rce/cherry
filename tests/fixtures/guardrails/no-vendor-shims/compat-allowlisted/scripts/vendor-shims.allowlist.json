@@ -1,0 +1,8 @@
+{
+  "types/compat/hexagon__base64.d.ts": {
+    "reason": "Fixture compat shim for @hexagon/base64",
+    "upstream": "@hexagon/base64@0.0.0",
+    "audit": "2026-01-28",
+    "removeWhen": "Delete fixture once guardrail is verified"
+  }
+}

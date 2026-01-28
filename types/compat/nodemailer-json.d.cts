@@ -1,9 +1,7 @@
-/**
- * COMPATIBILITY SHIM
- * Reason: nodemailer JSON transport lacks stable typings.
- * Scope: nodemailer/lib/json-transport/index.js
- * Audit: review on nodemailer upgrade.
- */
+// reason: nodemailer JSON transport lacks stable typings
+// upstream: nodemailer@^7
+// audit: 2026-01-28
+// removeWhen: Remove once nodemailer ships transport typings
 declare module 'nodemailer/lib/json-transport/index.js' {
   class JSONTransport {}
   namespace JSONTransport {

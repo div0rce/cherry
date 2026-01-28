@@ -1,9 +1,7 @@
-/**
- * COMPATIBILITY SHIM
- * Reason: nodemailer SES transport lacks stable typings.
- * Scope: nodemailer/lib/ses-transport/index.js
- * Audit: review on nodemailer upgrade.
- */
+// reason: nodemailer SES transport lacks stable typings
+// upstream: nodemailer@^7
+// audit: 2026-01-28
+// removeWhen: Remove once nodemailer ships transport typings
 declare module 'nodemailer/lib/ses-transport/index.js' {
   class SESTransport {}
   namespace SESTransport {

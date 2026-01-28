@@ -18,6 +18,7 @@ const fixtures: Fixture[] = [
   { name: 'bad', shouldPass: false },
   { name: 'allowlisted', shouldPass: true },
   { name: 'patch-allowlisted', shouldPass: true },
+  { name: 'compat-allowlisted', shouldPass: true },
   { name: 'compat-bad', shouldPass: false },
 ];
 

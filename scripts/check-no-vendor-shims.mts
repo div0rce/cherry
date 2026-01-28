@@ -41,6 +41,7 @@ const AllowlistEntrySchema = z
 const AllowlistSchema = z.record(z.string(), AllowlistEntrySchema);
 
 const VENDOR_DIR = 'types/vendor/';
+const COMPAT_DIR = 'types/compat/';
 const PATCH_DIR = 'patches/';
 const COMPAT_AUTH_CORE_GLOB = 'types/compat/auth-core-*.*';
 const TS_CONFIG_PATTERN = '#paths:';
@@ -82,10 +83,12 @@ function parseAllowlist(
   entries: Record<string, AllowlistEntry>
 ): {
   vendor: Map<string, AllowlistEntry>;
+  compat: Map<string, AllowlistEntry>;
   tsconfig: Map<string, AllowlistEntry>;
   patches: Map<string, AllowlistEntry>;
 } {
   const vendor = new Map<string, AllowlistEntry>();
+  const compat = new Map<string, AllowlistEntry>();
   const tsconfig = new Map<string, AllowlistEntry>();
   const patches = new Map<string, AllowlistEntry>();
 
@@ -108,16 +111,20 @@ function parseAllowlist(
       vendor.set(keyRaw, entry);
       continue;
     }
+    if (keyRaw.startsWith(COMPAT_DIR)) {
+      compat.set(keyRaw, entry);
+      continue;
+    }
     if (keyRaw.startsWith(PATCH_DIR)) {
       patches.set(keyRaw, entry);
       continue;
     }
-    fail(PREFIX, `Allowlist key must target ${VENDOR_DIR}, ${PATCH_DIR}, or tsconfig paths: ${keyRaw}`, {
+    fail(PREFIX, `Allowlist key must target ${VENDOR_DIR}, ${COMPAT_DIR}, ${PATCH_DIR}, or tsconfig paths: ${keyRaw}`, {
       fix: FIX,
     });
   }
 
-  return { vendor, tsconfig, patches };
+  return { vendor, compat, tsconfig, patches };
 }
 
 function parseHeader(content: string): Record<string, string> {
@@ -157,14 +164,14 @@ function hasDisallowedImports(content: string): boolean {
   return false;
 }
 
-function validateVendorFile(
+function validateShimFile(
   relPath: string,
   entry: AllowlistEntry,
   violations: Violation[]
 ): void {
   if (!(relPath.endsWith('.d.ts') || relPath.endsWith('.d.cts'))) {
     violations.push({
-      message: `${relPath}: allowlisted vendor shim must be .d.ts or .d.cts`,
+      message: `${relPath}: allowlisted shim must be .d.ts or .d.cts`,
     });
     return;
   }
@@ -191,7 +198,7 @@ function validateVendorFile(
   }
     if (hasDisallowedImports(content)) {
       violations.push({
-      message: `${relPath}: vendor shim must use type-only imports (import type only, no require or dynamic import)`,
+      message: `${relPath}: shim must use type-only imports (import type only, no require or dynamic import)`,
       });
     }
 }
@@ -207,6 +214,15 @@ function collectVendorFiles(): string[] {
 
 function collectCompatAuthCoreFiles(): string[] {
   return fg.sync(COMPAT_AUTH_CORE_GLOB, {
+    cwd: ROOT,
+    onlyFiles: true,
+    dot: true,
+    ignore: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/build/**', '**/coverage/**'],
+  });
+}
+
+function collectCompatFiles(): string[] {
+  return fg.sync(`${COMPAT_DIR}**/*.{d.ts,d.cts}`, {
     cwd: ROOT,
     onlyFiles: true,
     dot: true,
@@ -254,7 +270,7 @@ function normalizeMappingTarget(value: string): string {
 function main(): void {
   try {
     const allowlist = readAllowlist();
-    const { vendor: vendorAllowlist, tsconfig: tsconfigAllowlist, patches: patchAllowlist } =
+    const { vendor: vendorAllowlist, compat: compatAllowlist, tsconfig: tsconfigAllowlist, patches: patchAllowlist } =
       parseAllowlist(allowlist);
     const violations: Violation[] = [];
 
@@ -267,6 +283,10 @@ function main(): void {
 
     const vendorFiles = collectVendorFiles().map(normalizePath);
     const vendorFileSet = new Set(vendorFiles);
+    const compatFiles = collectCompatFiles()
+      .map(normalizePath)
+      .filter((relPath) => !compatAuthCoreFiles.includes(relPath));
+    const compatFileSet = new Set(compatFiles);
 
     for (const relPath of vendorFiles) {
       const entry = vendorAllowlist.get(relPath);
@@ -276,13 +296,32 @@ function main(): void {
         });
         continue;
       }
-      validateVendorFile(relPath, entry, violations);
+      validateShimFile(relPath, entry, violations);
+    }
+
+    for (const relPath of compatFiles) {
+      const entry = compatAllowlist.get(relPath);
+      if (entry === undefined) {
+        violations.push({
+          message: `${relPath}: compat shim is forbidden (no allowlist entry)`,
+        });
+        continue;
+      }
+      validateShimFile(relPath, entry, violations);
     }
 
     for (const relPath of vendorAllowlist.keys()) {
       if (!vendorFileSet.has(relPath)) {
         violations.push({
           message: `${relPath}: allowlisted vendor shim missing from repo`,
+        });
+      }
+    }
+
+    for (const relPath of compatAllowlist.keys()) {
+      if (!compatFileSet.has(relPath)) {
+        violations.push({
+          message: `${relPath}: allowlisted compat shim missing from repo`,
         });
       }
     }
