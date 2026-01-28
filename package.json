@@ -152,7 +152,8 @@
     "lightningcss": "1.24.1"
   },
   "overrides": {
-    "@auth/core": "0.41.1"
+    "@auth/core": "0.41.1",
+    "lightningcss": "1.24.1"
   },
   "devDependencies": {
     "@simplewebauthn/server": "^9.0.3",
