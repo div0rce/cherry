@@ -98,7 +98,7 @@ function parseAllowlist(
     }
     if (keyRaw.includes(TS_CONFIG_PATTERN)) {
       const [tsconfigPath, pathKey] = keyRaw.split(TS_CONFIG_PATTERN);
-      if (!tsconfigPath || !pathKey) {
+      if (tsconfigPath == null || tsconfigPath.length === 0 || pathKey == null || pathKey.length === 0) {
         fail(PREFIX, `Invalid tsconfig allowlist key: ${keyRaw}`, { fix: FIX });
       }
       tsconfig.set(keyRaw, entry);

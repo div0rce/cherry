@@ -47,8 +47,10 @@ function main(): void {
     });
 
     if (!result.ok) {
+      const relativeRoot = path.relative(process.cwd(), ROOT);
+      const rootDisplay = relativeRoot.length > 0 ? relativeRoot : '.';
       const details: string[] = [
-        `root=${path.normalize(path.relative(process.cwd(), ROOT) || '.')}`,
+        `root=${path.normalize(rootDisplay)}`,
         `exitCode=${result.exitCode}`,
       ];
       if (result.stdout.trim().length > 0) {
