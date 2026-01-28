@@ -60,6 +60,9 @@
       },
       "engines": {
         "node": ">=22 <23"
+      },
+      "optionalDependencies": {
+        "lightningcss": "^1.25.0"
       }
     },
     "node_modules/@alloc/quick-lru": {
@@ -6264,7 +6267,7 @@
       "version": "1.30.2",
       "resolved": "https://registry.npmjs.org/lightningcss/-/lightningcss-1.30.2.tgz",
       "integrity": "sha512-utfs7Pr5uJyyvDETitgsaqSyjCb2qNRAtuqUeWIAKztsOYdcACf2KtARYXg2pSvhkt+9NfoaNY7fxjl6nuMjIQ==",
-      "dev": true,
+      "devOptional": true,
       "license": "MPL-2.0",
       "dependencies": {
         "detect-libc": "^2.0.3"
@@ -6297,7 +6300,6 @@
       "cpu": [
         "arm64"
       ],
-      "dev": true,
       "license": "MPL-2.0",
       "optional": true,
       "os": [
@@ -8747,6 +8749,9 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "zod": "^4.1.13"
+  },
+  "optionalDependencies": {
+    "lightningcss": "^1.25.0"
   },
   "overrides": {
     "@auth/core": "0.41.1"
