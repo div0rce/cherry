@@ -87,8 +87,13 @@ function scanImportsAndTypes(filePath: string, canonicalPath: string): string[] 
       }
     }
 
-    if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
-      for (const element of node.exportClause.elements) {
+    if (ts.isExportDeclaration(node) && node.exportClause !== undefined) {
+      const exportClause = node.exportClause;
+      if (!ts.isNamedExports(exportClause)) {
+        ts.forEachChild(node, visit);
+        return;
+      }
+      for (const element of exportClause.elements) {
         const name = element.name.text;
         const alias = element.propertyName?.text;
         if ((name === 'EngineInput' || alias === 'EngineInput') && filePath !== canonicalPath) {
@@ -98,8 +103,9 @@ function scanImportsAndTypes(filePath: string, canonicalPath: string): string[] 
       }
     }
 
-    if (ts.isImportDeclaration(node) && node.importClause) {
-      const specifier = node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)
+    if (ts.isImportDeclaration(node) && node.importClause !== undefined) {
+      const specifier =
+        node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)
         ? node.moduleSpecifier.text
         : null;
       if (specifier !== null) {
@@ -120,7 +126,7 @@ function scanImportsAndTypes(filePath: string, canonicalPath: string): string[] 
           checkSpecifier('EngineInput');
         }
 
-        if (namedBindings && ts.isNamedImports(namedBindings)) {
+        if (namedBindings !== undefined && ts.isNamedImports(namedBindings)) {
           for (const element of namedBindings.elements) {
             const name = element.name.text;
             const alias = element.propertyName?.text;

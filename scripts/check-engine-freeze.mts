@@ -7,12 +7,12 @@ import { z } from 'zod';
 import { fail } from './guardrails/lib/fail.mjs';
 import { readJsonFile } from './guardrails/lib/read-json.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
-import { engineInputVersion } from '../lib/engine/input/EngineInput.js';
 
 const ROOT = process.cwd();
 const PREFIX = 'check:engine-freeze';
 const POLICY_PATH = path.join(ROOT, 'scripts', 'guardrails', 'engine-freeze.policy.json');
 const FIX = `Update ${path.relative(ROOT, POLICY_PATH)} or avoid modifying engine-sensitive files.`;
+const ENGINE_INPUT_PATH = path.join(ROOT, 'lib', 'engine', 'input', 'EngineInput.ts');
 
 const PolicySchema = z
   .object({
@@ -86,12 +86,27 @@ function hashEngineInputFixtures(fixtures: string[]): string {
   return hash.digest('hex');
 }
 
+function loadEngineInputSource(): { content: string; version: string } {
+  if (!fs.existsSync(ENGINE_INPUT_PATH)) {
+    fail(PREFIX, `Missing EngineInput definition at ${ENGINE_INPUT_PATH}`, { fix: FIX });
+  }
+  const content = fs.readFileSync(ENGINE_INPUT_PATH, 'utf8');
+  const versionMatch = content.match(/engineInputVersion\s*=\s*['"](?<version>[^'"]+)['"]/);
+  const version = versionMatch?.groups?.version;
+  if (version === undefined || version.length === 0) {
+    fail(PREFIX, 'Unable to resolve engineInputVersion from EngineInput.ts', { fix: FIX });
+  }
+  return { content, version };
+}
+
 function assertEngineInputBoundary(): void {
-  if (engineInputPolicy.version !== engineInputVersion) {
+  const { content: inputContent, version } = loadEngineInputSource();
+
+  if (engineInputPolicy.version !== version) {
     fail(PREFIX, 'engineInputVersion mismatch', {
       details: [
         `policy=${engineInputPolicy.version}`,
-        `code=${engineInputVersion}`,
+        `code=${version}`,
       ],
       fix: FIX,
     });
@@ -105,11 +120,6 @@ function assertEngineInputBoundary(): void {
     });
   }
 
-  const inputPath = path.join(ROOT, 'lib', 'engine', 'input', 'EngineInput.ts');
-  if (!fs.existsSync(inputPath)) {
-    fail(PREFIX, `Missing EngineInput definition at ${inputPath}`, { fix: FIX });
-  }
-  const inputContent = fs.readFileSync(inputPath, 'utf8');
   if (!inputContent.includes('__version')) {
     fail(PREFIX, 'EngineInput must include __version field', { fix: FIX });
   }
