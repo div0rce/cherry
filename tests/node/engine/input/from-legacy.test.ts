@@ -35,7 +35,7 @@ const FixtureSchema = z.object({
   engineInputVersion: z.string(),
   legacy: z.custom<LegacyEngineAdapterInput>(),
   expected: z.custom<EngineInput>(),
-});
+}).strict();
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '../../../..');
