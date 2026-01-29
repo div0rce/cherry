@@ -91,8 +91,8 @@ function loadEngineInputSource(): { content: string; version: string } {
     fail(PREFIX, `Missing EngineInput definition at ${ENGINE_INPUT_PATH}`, { fix: FIX });
   }
   const content = fs.readFileSync(ENGINE_INPUT_PATH, 'utf8');
-  const versionMatch = content.match(/engineInputVersion\s*=\s*['"](?<version>[^'"]+)['"]/);
-  const version = versionMatch?.groups?.['version'];
+  const versionMatch = content.match(/engineInputVersion\s*=\s*['"]([^'"]+)['"]/);
+  const version = versionMatch?.at(1);
   if (version === undefined || version.length === 0) {
     fail(PREFIX, 'Unable to resolve engineInputVersion from EngineInput.ts', { fix: FIX });
   }
