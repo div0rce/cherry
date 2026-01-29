@@ -26,7 +26,7 @@ const PolicySchema = z
     engineFixtures: z
       .object({
         hash: z.string().min(1),
-        files: z.array(z.string().min(1)).min(1),
+        files: z.array(z.string().min(1)),
       })
       .strict(),
   })
@@ -66,6 +66,18 @@ function loadPolicy(): z.infer<typeof PolicySchema> {
       fix: FIX,
     });
   }
+  if (raw !== null && typeof raw === 'object') {
+    const keys = Object.keys(raw as Record<string, unknown>);
+    const allowed = new Set(['engineVersions', 'engineFixtures']);
+    const extras = keys.filter((key) => !allowed.has(key));
+    if (extras.length > 0) {
+      fail(PREFIX, 'Narrative keys are forbidden in engine-freeze policy', {
+        details: extras.map((key) => `remove=${key}`),
+        fix: 'Move narrative metadata to docs/engine-freeze.md.',
+      });
+    }
+  }
+
   const parsed = PolicySchema.safeParse(raw);
   if (!parsed.success) {
     const [firstIssue] = parsed.error.issues;
@@ -141,6 +153,10 @@ function main(): void {
   const isSorted = sortedFiles.every((value, index) => value === policy.engineFixtures.files[index]);
   if (!isSorted) {
     fail(PREFIX, 'engineFixtures.files must be sorted', { fix: FIX });
+  }
+
+  if (policy.engineFixtures.files.length === 0) {
+    fail(PREFIX, 'engineFixtures.files must not be empty', { fix: FIX });
   }
 
   const actualHash = hashFixtures(policy.engineFixtures.files);
