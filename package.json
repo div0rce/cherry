@@ -22,6 +22,7 @@
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
+    "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:scripts": "eslint scripts --max-warnings=0",

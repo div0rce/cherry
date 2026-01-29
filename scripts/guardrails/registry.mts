@@ -39,6 +39,7 @@ const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as cons
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const DOCTRINE_PRESENT_PATH = `${CHECK_PATH_BASE}doctrine-present.mts` as const;
+const CHANGE_ISOLATION_PATH = `${CHECK_PATH_BASE}change-isolation.mts` as const;
 const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
   `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
 const GUARDRAIL_EXECUTION_PARITY_PATH =
@@ -108,6 +109,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:doctrine-present': DOCTRINE_PRESENT_PATH,
+  'check:change-isolation': CHANGE_ISOLATION_PATH,
   'check:authority-lint': `${CHECK_PATH_BASE}authority-lint.mts`,
   'check:authority-invariants': `${CHECK_PATH_BASE}authority-invariants.mts`,
   'check:prisma-assumptions': `${CHECK_PATH_BASE}prisma-assumptions.mts`,
