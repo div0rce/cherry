@@ -138,6 +138,7 @@ function setupSimulationMocks() {
     },
     world: { baseInterestRate: null, inflationEstimate: null },
     cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    preferences: { profileId: 'BALANCED', customWeights: null },
   };
 
   mockModule('../../lib/engine', {
