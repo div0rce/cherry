@@ -1,7 +1,7 @@
 {
   "status": "ACTIVE",
   "lastUpdated": "2026-01-29",
-  "baseline": "025607ecfbd7911fd6ad141a6cdb3b8307f49363",
+  "baseline": "19fa39654dff3297035f6ceba2b3c9b2b334cae7",
   "contract": {
     "ranked": true,
     "deterministic": true,
