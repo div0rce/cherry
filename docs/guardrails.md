@@ -9,6 +9,8 @@ Last updated: 2026-01-29
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 - Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
+- Doctrine presence/versioning is enforced (`check:doctrine-present`).
+- Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
 - Vendor shim patches are forbidden unless explicitly allowlisted (`check:no-vendor-shims`).
@@ -294,6 +296,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Boundary files (`lib/engine/input/**`, `check:engine-freeze`) may not use array element access (`arr[i]`).
 - Enforcement: `check:engine-input-boundary`.
 
+### Guardrail 16 — Doctrine Presence
+
+- `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.
+- Guardrail check: `check:doctrine-present`.
+
 ## Meta-Guardrails (Guardrail System Integrity)
 
 These guardrails exist to ensure the guardrail system itself cannot drift, fork, or be bypassed.
@@ -329,6 +336,11 @@ These guardrails exist to ensure the guardrail system itself cannot drift, fork,
 All guardrail and script helpers must be imported exclusively from
 `scripts/guardrails/lib/*`.
 Any duplication is a hard CI failure.
+
+### Guardrail 51 — Commit Scope Isolation
+
+- Staged file paths must match the commit category prefix (`engine:`, `guardrails:`, `docs:`, `tests:`, `chore(engine-freeze):`).
+- Guardrail check: `check:change-isolation`.
 
 ### Guardrail 20 — Subprocess Totality
 
