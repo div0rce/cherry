@@ -87,18 +87,27 @@ function loadPolicy(): z.infer<typeof PolicySchema> {
   return parsed.data;
 }
 
+function extractVersion(content: string, name: string): string | undefined {
+  const pattern = new RegExp(`${name}\\s*=\\s*['"]([^'"]+)['"]`);
+  const match = content.match(pattern);
+  return match?.[1];
+}
+
 function parseVersions(): Record<string, string> {
   if (!fs.existsSync(VERSION_PATH)) {
     fail(PREFIX, `Missing engine version gates at ${VERSION_PATH}`, { fix: FIX });
   }
   const content = fs.readFileSync(VERSION_PATH, 'utf8');
-  const pattern = /export const ([A-Za-z0-9_]+)\\s*=\\s*['"]([^'"]+)['"]\\s+as const/g;
   const versions: Record<string, string> = {};
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(content)) !== null) {
-    const key = match[1];
-    const value = match[2];
-    if (key !== undefined && value !== undefined) {
+  const keys = [
+    'engineBehaviorVersion',
+    'engineInputVersion',
+    'engineCandidateSpaceVersion',
+    'engineAccountingVersion',
+  ];
+  for (const key of keys) {
+    const value = extractVersion(content, key);
+    if (value !== undefined) {
       versions[key] = value;
     }
   }
