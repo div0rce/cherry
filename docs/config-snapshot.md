@@ -9049,6 +9049,8 @@
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
+    "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
+    "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:scripts": "eslint scripts --max-warnings=0",
@@ -10948,6 +10950,8 @@ const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
 const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
+const DOCTRINE_PRESENT_PATH = `${CHECK_PATH_BASE}doctrine-present.mts` as const;
+const CHANGE_ISOLATION_PATH = `${CHECK_PATH_BASE}change-isolation.mts` as const;
 const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
   `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
 const GUARDRAIL_EXECUTION_PARITY_PATH =
@@ -11016,6 +11020,8 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-optimality': ENGINE_OPTIMALITY_PATH,
   'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
+  'check:doctrine-present': DOCTRINE_PRESENT_PATH,
+  'check:change-isolation': CHANGE_ISOLATION_PATH,
   'check:authority-lint': `${CHECK_PATH_BASE}authority-lint.mts`,
   'check:authority-invariants': `${CHECK_PATH_BASE}authority-invariants.mts`,
   'check:prisma-assumptions': `${CHECK_PATH_BASE}prisma-assumptions.mts`,
@@ -16099,7 +16105,7 @@ Reach a fixed point where all checks pass with zero warnings and no allowlists.
 
 <!-- docs/guardrails.md -->
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-01-29
 
 # Guardrails
 
@@ -16108,6 +16114,12 @@ Last updated: 2026-01-18
 - CI runs `npm run ci:verify` as the sole truth gate; `check` remains pure (guardrails + lint + typecheck), and env checks live in `check:env`.
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
+- Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
+- Doctrine presence/versioning is enforced (`check:doctrine-present`).
+- Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
+- Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
+- Function size budgets are enforced from Vercel output (`check:function-size-budget`).
+- Vendor shim patches are forbidden unless explicitly allowlisted (`check:no-vendor-shims`).
 - DB truth scripts (`scripts/db-check-*`) must import PrismaClient directly and never use app-level Prisma helpers.
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
@@ -16169,7 +16181,7 @@ Last updated: 2026-01-18
 - NodeNext usage is quarantined to script configs only.
 - `docs/config-snapshot.md` must list every config file and match on-disk contents.
 - `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
-- `next.config.ts` must exclude `.next/cache/**`, `.next/export-detail.json`, `.next/lock`, `.next/server/proxy.js`, `.git/**`, `docs/**`, `scripts/**`, `tests/**`, `types/**`, and dev-only toolchains under `node_modules/` from output tracing to avoid non-export build failures and oversized serverless bundles.
+- `next.config.ts` must exclude `.next/export-detail.json`, `.next/lock`, and `.next/server/proxy.js` from output tracing to avoid non-export build failures.
 - Enforcement: `check:config-snapshot`.
 
 ### Authority `inputsVersion` Stability
@@ -16186,6 +16198,45 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `env:node` may not import `env:next`, `next/*`, `react`, or `react-dom`.
 - `tests/node/**` may only import `env:node`; `tests/next/**` may only import `env:next` or `env:node`.
 - Enforcement: `check:environment-import-integrity`.
+
+### Data Directory Policy (Documented)
+
+- `data/**` must contain deterministic literals only (no runtime side effects).
+- `data/**` must not import from `app/**` or `lib/**`.
+
+## Domain: Script Runtime Boundary
+
+### Guardrail 47 — Script Runtime Boundary
+
+- Scripts must not import Next runtime modules (`app/`, `components/`, or `lib/client/**`).
+- Proof harnesses should use `lib/engine/**` APIs instead of runtime modules.
+- Enforcement: `check:script-runtime-boundary`.
+
+## Domain: Dependency Integrity
+
+### Guardrail 48 — Lockfile Sync
+
+- `package.json` and `package-lock.json` must be in sync; `npm ci --ignore-scripts` must succeed in a clean temp dir.
+- This guardrail catches dependency drift that would fail CI even if local installs appear to work.
+- Enforcement: `check:lockfile-sync`.
+
+### Guardrail 50 — No Vendor Shims
+
+- `types/vendor/**` shims are forbidden unless explicitly allowlisted.
+- Allowlist entries must include reason, upstream version, audit date, and removal criteria.
+- Any `tsconfig` path mapping into `types/vendor/` requires a separate allowlist entry.
+- `patches/**.patch` files are allowed only if explicitly allowlisted with the same metadata.
+- `types/compat/auth-core-*` shims are forbidden; upstream type fixes must use patch-package.
+- Enforcement: `check:no-vendor-shims`.
+
+## Domain: Deployment Budgets
+
+### Guardrail 49 — Function Size Budget
+
+- Serverless function bundles must stay under a fixed uncompressed size budget.
+- Guardrail reads `.vercel/output/functions/**/.vc-config.json` and sums each function directory size.
+- If `.vercel/output` is missing, the guardrail reports a skip; run after `vercel build` to enforce.
+- Enforcement: `check:function-size-budget`.
 
 ## Domain: DB Truth Lane
 
@@ -16344,6 +16395,18 @@ Silent misuse of policy metadata causes long-term system rot.
 
 Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-type-enforcement.test.ts`.
 
+### Guardrail 15 — EngineInput Boundary Hygiene
+
+- EngineInput is defined only in `lib/engine/input/EngineInput.ts`.
+- EngineInput imports must use the canonical module path.
+- Boundary files (`lib/engine/input/**`, `check:engine-freeze`) may not use array element access (`arr[i]`).
+- Enforcement: `check:engine-input-boundary`.
+
+### Guardrail 16 — Doctrine Presence
+
+- `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.
+- Guardrail check: `check:doctrine-present`.
+
 ## Meta-Guardrails (Guardrail System Integrity)
 
 These guardrails exist to ensure the guardrail system itself cannot drift, fork, or be bypassed.
@@ -16379,6 +16442,11 @@ These guardrails exist to ensure the guardrail system itself cannot drift, fork,
 All guardrail and script helpers must be imported exclusively from
 `scripts/guardrails/lib/*`.
 Any duplication is a hard CI failure.
+
+### Guardrail 51 — Commit Scope Isolation
+
+- Staged file paths must match the commit category prefix (`engine:`, `guardrails:`, `docs:`, `tests:`, `chore(engine-freeze):`).
+- Guardrail check: `check:change-isolation`.
 
 ### Guardrail 20 — Subprocess Totality
 
