@@ -3,11 +3,33 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { readJsonFile } from '../../../../scripts/guardrails/lib/read-json.mjs';
 import { engineInputVersion } from '../../../../lib/engine/input/EngineInput.js';
 import { fromLegacy, type LegacyEngineAdapterInput } from '../../../../lib/engine/input/fromLegacy.js';
 import { validateEngineInput } from '../../../../lib/engine/input/validate.js';
 import type { EngineInput } from '../../../../lib/engine/input/EngineInput.js';
+
+const parseJsonText = globalThis.JSON['parse'] as (value: string) => unknown;
+const JsonTextSchema = z.string().transform((value, ctx) => {
+  try {
+    return parseJsonText(value);
+  } catch (error: unknown) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    });
+    return z.NEVER;
+  }
+});
+
+function parseJsonFixture(text: string): unknown {
+  const parsed = JsonTextSchema.safeParse(text);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const message = issue?.message ?? parsed.error.message;
+    throw Error(message);
+  }
+  return parsed.data;
+}
 
 const FixtureSchema = z.object({
   engineInputVersion: z.string(),
@@ -26,7 +48,8 @@ const fixtures = fs
   .sort();
 
 for (const name of fixtures) {
-  const parsed = FixtureSchema.parse(readJsonFile(path.join(fixturesDir, name)));
+  const raw = fs.readFileSync(path.join(fixturesDir, name), 'utf8');
+  const parsed = FixtureSchema.parse(parseJsonFixture(raw));
 
   assert.equal(
     parsed.engineInputVersion,
