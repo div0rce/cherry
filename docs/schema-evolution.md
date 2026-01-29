@@ -14,6 +14,7 @@ Last updated: 2026-01-29
    - bump schemaVersion for table/constraint changes
    - bump invariantsVersion for DB truth or accounting invariant changes
    - set lastMigration to the newest migration folder
+   - TODO: Consider linking schemaVersion to engine accounting versions.
 3. Run prisma generation and ensure migration hygiene guardrails pass.
 4. Update this document when rules or expectations change.
 
