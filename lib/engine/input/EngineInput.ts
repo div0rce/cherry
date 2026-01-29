@@ -4,7 +4,8 @@ import type {
   ObjectiveWeights,
 } from '../types.js';
 
-export const engineInputVersion = 'engine_input_v1' as const;
+import { engineInputVersion } from '../version.js';
+export { engineInputVersion };
 
 export type EngineInputWeights = {
   rewards: number | null;
