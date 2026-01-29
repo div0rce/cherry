@@ -108,7 +108,7 @@ Use explicit comparisons:
 
 Docs may reference only guardrail names:
 - check:engine-freeze
-- not scripts/check-engine-freeze.mts
+- not file paths (use check:<name>)
 
 ### 5.2 Registry parity rule
 
