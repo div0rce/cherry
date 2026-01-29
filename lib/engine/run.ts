@@ -16,6 +16,7 @@ import {
   buildEngineStateFromInput,
   buildSolverOptionsFromInput,
 } from './input/bridge.js';
+import { validateEngineInput } from './input/validate.js';
 
 export type EngineRunInput = {
   state: EngineState;
@@ -44,6 +45,10 @@ export async function runEngine(world: World, input: EngineRunInput): Promise<So
     context: input.context,
     options: adapterOptions,
   });
+  const inputIssues = validateEngineInput(engineInput);
+  if (inputIssues.length > 0) {
+    throw new EngineError(`EngineInput validation failed: ${inputIssues.length} issues`);
+  }
   const solverOptions = buildSolverOptionsFromInput(engineInput);
   const state = buildEngineStateFromInput({ input: engineInput, userId: input.state.userId });
   const ctx = buildEngineContextFromInput({ input: engineInput, nowMs: input.context.nowMs });
@@ -98,6 +103,14 @@ export async function safeSolveDecisionForWorld(
     context,
     options: adapterOptions,
   });
+  const inputIssues = validateEngineInput(engineInput);
+  if (inputIssues.length > 0) {
+    return {
+      ok: false,
+      reason: 'VALIDATION_ERROR',
+      message: `EngineInput validation failed: ${inputIssues.length} issues`,
+    };
+  }
   const solverOptions = buildSolverOptionsFromInput(engineInput);
   const state = buildEngineStateFromInput({ input: engineInput, userId });
   const ctx = buildEngineContextFromInput({ input: engineInput, nowMs: context.nowMs });
