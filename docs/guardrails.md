@@ -12,6 +12,8 @@ Last updated: 2026-01-29
 - Doctrine presence/versioning is enforced (`check:doctrine-present`).
 - Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
+- Engine version imports are restricted (`check:engine-version-imports`).
+- AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
@@ -315,6 +317,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.
 - Guardrail check: `check:doctrine-present`.
 
+### Guardrail 56 — AGENTS Doctrine Link
+
+- AGENTS.md must defer to `docs/doctrine.md` for execution invariants.
+- Guardrail check: `check:agents-doctrine-link`.
+
 ### Guardrail 52 — Engine Version Gates
 
 - Engine version gates in `lib/engine/version.ts` must match policy pins.
@@ -325,6 +332,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 
 - Engine-sensitive changes require a version bump and an engine-freeze baseline bump in a separate `chore(engine-freeze)` commit.
 - Guardrail check: `check:engine-version-bump`.
+
+### Guardrail 57 — Engine Version Import Restriction
+
+- Imports of `lib/engine/version.ts` are limited to EngineInput and engine entrypoints.
+- Guardrail check: `check:engine-version-imports`.
 
 ## Meta-Guardrails (Guardrail System Integrity)
 

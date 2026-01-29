@@ -9051,8 +9051,10 @@
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
+    "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",
     "check:schema-evolution": "npm run ts:esm -- scripts/guardrails/run.mts check:schema-evolution",
     "check:schema-breaking-plan": "npm run ts:esm -- scripts/guardrails/run.mts check:schema-breaking-plan",
+    "check:agents-doctrine-link": "npm run ts:esm -- scripts/guardrails/run.mts check:agents-doctrine-link",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
     "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
@@ -10956,8 +10958,10 @@ const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-vers
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
+const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
 const SCHEMA_EVOLUTION_PATH = `${CHECK_PATH_BASE}schema-evolution.mts` as const;
 const SCHEMA_BREAKING_PLAN_PATH = `${CHECK_PATH_BASE}schema-breaking-plan.mts` as const;
+const AGENTS_DOCTRINE_LINK_PATH = `${CHECK_PATH_BASE}agents-doctrine-link.mts` as const;
 const DOCTRINE_PRESENT_PATH = `${CHECK_PATH_BASE}doctrine-present.mts` as const;
 const CHANGE_ISOLATION_PATH = `${CHECK_PATH_BASE}change-isolation.mts` as const;
 const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
@@ -11030,8 +11034,10 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
+  'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
   'check:schema-evolution': SCHEMA_EVOLUTION_PATH,
   'check:schema-breaking-plan': SCHEMA_BREAKING_PLAN_PATH,
+  'check:agents-doctrine-link': AGENTS_DOCTRINE_LINK_PATH,
   'check:doctrine-present': DOCTRINE_PRESENT_PATH,
   'check:change-isolation': CHANGE_ISOLATION_PATH,
   'check:authority-lint': `${CHECK_PATH_BASE}authority-lint.mts`,
@@ -16130,6 +16136,8 @@ Last updated: 2026-01-29
 - Doctrine presence/versioning is enforced (`check:doctrine-present`).
 - Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
+- Engine version imports are restricted (`check:engine-version-imports`).
+- AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
@@ -16433,6 +16441,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.
 - Guardrail check: `check:doctrine-present`.
 
+### Guardrail 56 — AGENTS Doctrine Link
+
+- AGENTS.md must defer to `docs/doctrine.md` for execution invariants.
+- Guardrail check: `check:agents-doctrine-link`.
+
 ### Guardrail 52 — Engine Version Gates
 
 - Engine version gates in `lib/engine/version.ts` must match policy pins.
@@ -16443,6 +16456,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 
 - Engine-sensitive changes require a version bump and an engine-freeze baseline bump in a separate `chore(engine-freeze)` commit.
 - Guardrail check: `check:engine-version-bump`.
+
+### Guardrail 57 — Engine Version Import Restriction
+
+- Imports of `lib/engine/version.ts` are limited to EngineInput and engine entrypoints.
+- Guardrail check: `check:engine-version-imports`.
 
 ## Meta-Guardrails (Guardrail System Integrity)
 

@@ -32,6 +32,9 @@ Breaking changes require:
 Destructive migrations must include a plan at:
 docs/schema-breaking/<migration-id>.md
 
+Allowlisting destructive migrations requires adding the migration id to
+`scripts/schema/manifest.json` under `allowlistedDestructiveMigrations`.
+
 The plan must include:
 - rationale
 - backfill/rollback plan
