@@ -21,6 +21,7 @@
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
+    "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
     "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
     "lint": "npm run lint:tailwind && npm run lint:eslint",

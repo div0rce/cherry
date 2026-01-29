@@ -13,6 +13,7 @@ const PREFIX = 'check:engine-freeze';
 const POLICY_PATH = path.join(ROOT, 'scripts', 'guardrails', 'engine-freeze.policy.json');
 const FIX = `Update ${path.relative(ROOT, POLICY_PATH)} or avoid modifying engine-sensitive files.`;
 const ENGINE_INPUT_PATH = path.join(ROOT, 'lib', 'engine', 'input', 'EngineInput.ts');
+const ENGINE_VERSION_PATH = path.join(ROOT, 'lib', 'engine', 'version.ts');
 
 const PolicySchema = z
   .object({
@@ -33,6 +34,20 @@ const PolicySchema = z
         version: z.string().min(1),
         fixtureHash: z.string().min(1),
         fixtures: z.array(z.string().min(1)).min(1),
+      })
+      .strict(),
+    engineVersions: z
+      .object({
+        behavior: z.string().min(1),
+        input: z.string().min(1),
+        candidateSpace: z.string().min(1),
+        accounting: z.string().min(1),
+      })
+      .strict(),
+    engineFixtures: z
+      .object({
+        hash: z.string().min(1),
+        files: z.array(z.string().min(1)).min(1),
       })
       .strict(),
   })
@@ -86,27 +101,36 @@ function hashEngineInputFixtures(fixtures: string[]): string {
   return hash.digest('hex');
 }
 
-function loadEngineInputSource(): { content: string; version: string } {
+function loadEngineInputSource(): { content: string } {
   if (!fs.existsSync(ENGINE_INPUT_PATH)) {
     fail(PREFIX, `Missing EngineInput definition at ${ENGINE_INPUT_PATH}`, { fix: FIX });
   }
   const content = fs.readFileSync(ENGINE_INPUT_PATH, 'utf8');
-  const versionMatch = content.match(/engineInputVersion\s*=\s*['"]([^'"]+)['"]/);
-  const version = versionMatch?.at(1);
-  if (version === undefined || version.length === 0) {
-    fail(PREFIX, 'Unable to resolve engineInputVersion from EngineInput.ts', { fix: FIX });
+  return { content };
+}
+
+function loadEngineVersionSource(): { engineInputVersion: string } {
+  if (!fs.existsSync(ENGINE_VERSION_PATH)) {
+    fail(PREFIX, `Missing engine version gates at ${ENGINE_VERSION_PATH}`, { fix: FIX });
   }
-  return { content, version };
+  const content = fs.readFileSync(ENGINE_VERSION_PATH, 'utf8');
+  const versionMatch = content.match(/engineInputVersion\\s*=\\s*['"]([^'"]+)['"]/);
+  const engineInputVersion = versionMatch?.at(1);
+  if (engineInputVersion === undefined || engineInputVersion.length === 0) {
+    fail(PREFIX, 'Unable to resolve engineInputVersion from lib/engine/version.ts', { fix: FIX });
+  }
+  return { engineInputVersion };
 }
 
 function assertEngineInputBoundary(): void {
-  const { content: inputContent, version } = loadEngineInputSource();
+  const { content: inputContent } = loadEngineInputSource();
+  const { engineInputVersion } = loadEngineVersionSource();
 
-  if (engineInputPolicy.version !== version) {
+  if (engineInputPolicy.version !== engineInputVersion) {
     fail(PREFIX, 'engineInputVersion mismatch', {
       details: [
         `policy=${engineInputPolicy.version}`,
-        `code=${version}`,
+        `code=${engineInputVersion}`,
       ],
       fix: FIX,
     });
