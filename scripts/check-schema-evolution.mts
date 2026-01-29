@@ -23,6 +23,7 @@ const ManifestSchema = z
     schemaVersion: z.string().min(1),
     lastMigration: z.string().min(1),
     invariantsVersion: z.string().min(1),
+    allowlistedDestructiveMigrations: z.array(z.string().min(1)).optional(),
   })
   .strict();
 

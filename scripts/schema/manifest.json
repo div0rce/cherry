@@ -1,5 +1,6 @@
 {
   "schemaVersion": "schema_v1",
   "lastMigration": "20260117120000_accounting_ledger",
-  "invariantsVersion": "db_invariants_v1"
+  "invariantsVersion": "db_invariants_v1",
+  "allowlistedDestructiveMigrations": []
 }
