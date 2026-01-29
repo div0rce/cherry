@@ -221,5 +221,6 @@ export function buildSolverOptionsFromInput(input: EngineInput): {
   const weights = weightsToPartial(input.solver.weightsOverride);
   const maxCandidates =
     input.solver.maxCandidates !== null ? input.solver.maxCandidates : null;
-  return { weights: weights ?? null, maxCandidates };
+  const normalizedWeights = weights === undefined ? null : weights;
+  return { weights: normalizedWeights, maxCandidates };
 }

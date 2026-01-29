@@ -56,8 +56,8 @@ export async function runEngine(world: World, input: EngineRunInput): Promise<So
     input.options !== undefined && input.options.includeLegacyDecision === true;
   const legacyDecisionProvider =
     input.options !== undefined ? input.options.legacyDecisionProvider : undefined;
-  const { legacyDecisionProvider: _legacyDecisionProvider, ...safeOptions } =
-    input.options ?? {};
+  const safeOptionsBase = input.options !== undefined ? input.options : {};
+  const { legacyDecisionProvider: _legacyDecisionProvider, ...safeOptions } = safeOptionsBase;
 
   const solverOverrides: SolveDecisionOptions = {
     ...safeOptions,
