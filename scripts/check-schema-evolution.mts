@@ -11,7 +11,6 @@ const ROOT = process.cwd();
 const PREFIX = 'check:schema-evolution';
 const FIX = 'Update schema manifest + docs/schema-evolution.md and follow migration hygiene.';
 
-const SCHEMA_PATH = path.join(ROOT, 'prisma', 'schema.prisma');
 const MIGRATIONS_DIR = path.join(ROOT, 'prisma', 'migrations');
 const MANIFEST_PATH = path.join(ROOT, 'scripts', 'schema', 'manifest.json');
 const DOC_PATH = path.join(ROOT, 'docs', 'schema-evolution.md');
