@@ -11,6 +11,8 @@ Last updated: 2026-01-29
 - Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
 - Doctrine presence/versioning is enforced (`check:doctrine-present`).
 - Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
+- Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
+- Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
 - Vendor shim patches are forbidden unless explicitly allowlisted (`check:no-vendor-shims`).
@@ -195,6 +197,18 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - Approved entrypoints: persistence adapter, session confirm/verify flows, demo seeding, and admin clear routes.
 - Enforcement: `check:db-ledger-entrypoints`.
 
+## Domain: Schema Evolution
+
+### Guardrail 54 — Schema Evolution Protocol
+
+- Schema changes require manifest updates and doc updates plus migration hygiene enforcement.
+- Guardrail check: `check:schema-evolution`.
+
+### Guardrail 55 — Destructive Migration Plan
+
+- Destructive migrations (`DROP TABLE` / `DROP COLUMN`) require a plan in `docs/schema-breaking/<migration-id>.md`.
+- Guardrail check: `check:schema-breaking-plan`.
+
 ## Domain: Accounting Integrity
 
 ### Guardrail 40 — Accounting Invariants
@@ -300,6 +314,17 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 
 - `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.
 - Guardrail check: `check:doctrine-present`.
+
+### Guardrail 52 — Engine Version Gates
+
+- Engine version gates in `lib/engine/version.ts` must match policy pins.
+- Engine fixture hashes must match the engine-freeze policy.
+- Guardrail check: `check:engine-version-gates`.
+
+### Guardrail 53 — Engine Version Bump Required
+
+- Engine-sensitive changes require a version bump and an engine-freeze baseline bump in a separate `chore(engine-freeze)` commit.
+- Guardrail check: `check:engine-version-bump`.
 
 ## Meta-Guardrails (Guardrail System Integrity)
 
