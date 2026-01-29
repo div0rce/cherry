@@ -52,7 +52,7 @@ function resolveBaseRef(): string {
 
 function parsePrefix(message: string): string | null {
   const firstLine = message
-    .split(/\\r?\\n/)
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .find((line) => line.length > 0);
   if (firstLine === undefined || firstLine.length === 0) return null;
@@ -71,7 +71,7 @@ function getPolicyCommitMessages(): { latest: string; previous: string | null } 
     guardrailFail('Unable to read policy commit history', [log.stderr.trim(), log.stdout.trim()].filter(Boolean));
   }
   const commits = log.stdout
-    .split('\\n')
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
   const latestCommit = commits[0];
@@ -92,7 +92,7 @@ function diffFiles(range: string): string[] {
     guardrailFail(`Unable to compute diff for ${range}`, [result.stderr.trim(), result.stdout.trim()].filter(Boolean));
   }
   return result.stdout
-    .split('\\n')
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 }
