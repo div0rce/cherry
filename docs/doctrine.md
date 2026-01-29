@@ -56,6 +56,14 @@ legacy state/context
 - No optional semantics. If a field influences ordering, it cannot be nullable without a total normalization rule.
 - No derived duplication. Derived fields are computed post-boundary.
 
+### 1.4 Engine version gates
+
+- Engine behavior, inputs, candidate space, and accounting are version-gated.
+- Any engine-sensitive change requires:
+  - a version bump
+  - a freeze baseline bump in a separate chore(engine-freeze) commit
+- Enforced by: check:engine-version-gates and check:engine-version-bump.
+
 ## 2) Environment Separation
 
 ### 2.1 Hard rule
