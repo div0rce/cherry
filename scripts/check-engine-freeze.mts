@@ -92,7 +92,7 @@ function loadEngineInputSource(): { content: string; version: string } {
   }
   const content = fs.readFileSync(ENGINE_INPUT_PATH, 'utf8');
   const versionMatch = content.match(/engineInputVersion\s*=\s*['"](?<version>[^'"]+)['"]/);
-  const version = versionMatch?.groups?.version;
+  const version = versionMatch?.groups?.['version'];
   if (version === undefined || version.length === 0) {
     fail(PREFIX, 'Unable to resolve engineInputVersion from EngineInput.ts', { fix: FIX });
   }
