@@ -63,7 +63,7 @@ assert.ok(
 );
 
 const versionMismatch: EngineInput = structuredClone(baseInput);
-versionMismatch.__version = 'engine_input_v0';
+Object.defineProperty(versionMismatch, '__version', { value: 'engine_input_v0' });
 const versionIssues = validateEngineInput(versionMismatch);
 assert.ok(
   versionIssues.some((issue) => issue.field === '__version'),
