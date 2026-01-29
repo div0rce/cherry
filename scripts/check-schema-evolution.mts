@@ -110,7 +110,7 @@ function listMigrationDirs(): string[] {
 }
 
 function assertMigrationNames(dirs: string[]): void {
-  const pattern = /^\\d{14}_.+/;
+  const pattern = /^\d{14}_.+/;
   const invalid = dirs.filter((dir) => !pattern.test(dir));
   if (invalid.length > 0) {
     guardrailFail('Invalid migration folder name(s)', invalid.map((dir) => `prisma/migrations/${dir}`));
