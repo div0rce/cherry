@@ -52,12 +52,9 @@ export async function runEngine(world: World, input: EngineRunInput): Promise<So
   const solverOptions = buildSolverOptionsFromInput(engineInput);
   const state = buildEngineStateFromInput({ input: engineInput, userId: input.state.userId });
   const ctx = buildEngineContextFromInput({ input: engineInput, nowMs: input.context.nowMs });
-  const includeLegacyDecision =
-    input.options !== undefined && input.options.includeLegacyDecision === true;
-  const legacyDecisionProvider =
-    input.options !== undefined ? input.options.legacyDecisionProvider : undefined;
   const safeOptionsBase = input.options !== undefined ? input.options : {};
-  const { legacyDecisionProvider: _legacyDecisionProvider, ...safeOptions } = safeOptionsBase;
+  const { legacyDecisionProvider, ...safeOptions } = safeOptionsBase;
+  const includeLegacyDecision = safeOptionsBase.includeLegacyDecision === true;
 
   const solverOverrides: SolveDecisionOptions = {
     ...safeOptions,
@@ -121,9 +118,9 @@ export async function safeSolveDecisionForWorld(
   const solverOptions = buildSolverOptionsFromInput(engineInput);
   const state = buildEngineStateFromInput({ input: engineInput, userId });
   const ctx = buildEngineContextFromInput({ input: engineInput, nowMs: context.nowMs });
+  const { legacyDecisionProvider, ...safeOptions } = options;
   const includeLegacyDecision =
     options.includeLegacyDecision == null ? true : options.includeLegacyDecision;
-  const legacyDecisionProvider = options.legacyDecisionProvider;
 
   if (includeLegacyDecision && legacyDecisionProvider === undefined) {
     return {
@@ -133,7 +130,6 @@ export async function safeSolveDecisionForWorld(
     };
   }
 
-  const { legacyDecisionProvider: _legacyDecisionProvider, ...safeOptions } = options;
   const solverOverrides: SolveDecisionOptions = {
     ...safeOptions,
     includeLegacyDecision: false,
