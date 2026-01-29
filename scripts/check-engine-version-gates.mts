@@ -129,6 +129,7 @@ function main(): void {
   }
 
   const behaviorVersion = policy.engineVersions.behavior;
+  // TODO: Replace placeholder engine fixtures with real replay traces.
   if (!behaviorVersion.endsWith('_v1') && policy.engineFixtures.files.length === 0) {
     fail(PREFIX, 'Engine fixtures required for behavior versions beyond v1', {
       details: [`behavior=${behaviorVersion}`],

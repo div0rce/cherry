@@ -29,6 +29,7 @@ const ALLOWED_IMPORTERS = new Set([
   path.join(ROOT, 'lib', 'engine', 'public.ts'),
 ]);
 
+// TODO: If the repo grows significantly, scope the scan to engine-related paths.
 function collectFiles(startDir: string): string[] {
   const files: string[] = [];
   if (!fs.existsSync(startDir)) return files;
