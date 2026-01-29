@@ -115,7 +115,7 @@ function parseVersions(): Record<string, string> {
 }
 
 function assertVersionFormat(name: string, value: string): void {
-  if (!/_v\\d+$/.test(value)) {
+  if (!/_v\d+$/.test(value)) {
     fail(PREFIX, `Invalid version format for ${name}`, {
       details: [`value=${value}`],
       fix: FIX,
