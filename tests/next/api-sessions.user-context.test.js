@@ -98,6 +98,7 @@ function setupSessionMocks({ engineOk = true } = {}) {
     constraints: { hard: { minEssentialCoverageDays: 0, maxCardUtilization: null }, soft: { avoidInterest: false, avoidNewDebt: false } },
     world: { baseInterestRate: null, inflationEstimate: null },
     cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    preferences: { profileId: 'BALANCED', customWeights: null },
   };
 
   const solverDecision = {
