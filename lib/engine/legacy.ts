@@ -3,7 +3,7 @@ export {
   evaluateTransaction,
   resolveCategory,
   type EngineDecision,
-  type EngineInput,
+  type LegacyEngineInput,
   type CategoryCoverageMode,
   type EvaluateTransactionResult,
 } from '../legacy-engine.js';

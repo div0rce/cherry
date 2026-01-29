@@ -50,7 +50,7 @@ export type Bucket = {
   id: BucketId;
   name: string;
   categoryKey: string;
-  limitCents: number;
+  limitCents: number | null;
   postedSpendCents: number;
   pendingSpendCents: number;
   committedCents: number;

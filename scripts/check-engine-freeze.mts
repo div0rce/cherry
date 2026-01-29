@@ -53,8 +53,8 @@ function loadPolicy(): z.infer<typeof PolicySchema> {
   }
   const parsed = PolicySchema.safeParse(raw);
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    const message = first?.message ?? parsed.error.message;
+    const [firstIssue] = parsed.error.issues;
+    const message = firstIssue?.message ?? parsed.error.message;
     fail(PREFIX, `Invalid engine-freeze policy`, { details: [message], fix: FIX });
   }
   return parsed.data;

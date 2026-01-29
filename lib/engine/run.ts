@@ -8,7 +8,7 @@ import {
 } from './solver.js';
 import type { EngineContext, EngineState } from './types.js';
 import { DEFAULT_ENGINE_RUNTIME } from './runtime.js';
-import type { EngineInput as LegacyEngineInput } from '../legacy-engine-types.js';
+import type { LegacyEngineInput } from '../legacy-engine-types.js';
 import { EngineError } from './guardrails.js';
 import { fromLegacy } from './input/fromLegacy.js';
 import {
@@ -56,15 +56,22 @@ export async function runEngine(world: World, input: EngineRunInput): Promise<So
     input.options !== undefined && input.options.includeLegacyDecision === true;
   const legacyDecisionProvider =
     input.options !== undefined ? input.options.legacyDecisionProvider : undefined;
+  const { legacyDecisionProvider: _legacyDecisionProvider, ...safeOptions } =
+    input.options ?? {};
 
-  const result = await solveDecision(state, ctx, {
-    ...input.options,
-    weights: solverOptions.weights,
-    maxCandidates: solverOptions.maxCandidates,
+  const solverOverrides: SolveDecisionOptions = {
+    ...safeOptions,
     includeLegacyDecision: false,
-    legacyDecisionProvider: undefined,
     runtime: runtimeWithLogger,
-  });
+  };
+  if (solverOptions.weights !== null) {
+    solverOverrides.weights = solverOptions.weights;
+  }
+  if (solverOptions.maxCandidates !== null) {
+    solverOverrides.maxCandidates = solverOptions.maxCandidates;
+  }
+
+  const result = await solveDecision(state, ctx, solverOverrides);
 
   if (includeLegacyDecision) {
     if (legacyDecisionProvider === undefined) {
@@ -126,15 +133,21 @@ export async function safeSolveDecisionForWorld(
     };
   }
 
-  const result = await safeSolveDecisionForUser(userId, ctx, {
-    ...options,
-    weights: solverOptions.weights,
-    maxCandidates: solverOptions.maxCandidates,
+  const { legacyDecisionProvider: _legacyDecisionProvider, ...safeOptions } = options;
+  const solverOverrides: SolveDecisionOptions = {
+    ...safeOptions,
     includeLegacyDecision: false,
-    legacyDecisionProvider: undefined,
     runtime: runtimeWithLogger,
     stateOverride: state,
-  });
+  };
+  if (solverOptions.weights !== null) {
+    solverOverrides.weights = solverOptions.weights;
+  }
+  if (solverOptions.maxCandidates !== null) {
+    solverOverrides.maxCandidates = solverOptions.maxCandidates;
+  }
+
+  const result = await safeSolveDecisionForUser(userId, ctx, solverOverrides);
 
   if (result.ok !== true) return result;
 

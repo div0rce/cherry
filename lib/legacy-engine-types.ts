@@ -3,7 +3,7 @@ import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
 
 export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 
-export type EngineInput = {
+export type LegacyEngineInput = {
   userId: string;
   amountCents: number;
   category?: RewardCategory | string | null;

@@ -4,7 +4,7 @@ export {
   evaluateTransaction,
   resolveCategory,
   type EngineDecision as LegacyEngineDecision,
-  type EngineInput,
+  type LegacyEngineInput,
   type CategoryCoverageMode,
   type EvaluateTransactionResult,
 } from './engine/legacy.js';

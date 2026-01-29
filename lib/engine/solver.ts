@@ -25,7 +25,7 @@ import type {
   ObjectiveWeights,
 } from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
-import type { EngineDecision as LegacyEngineDecision, EngineInput as LegacyEngineInput } from '../legacy-engine-types.js';
+import type { EngineDecision as LegacyEngineDecision, LegacyEngineInput } from '../legacy-engine-types.js';
 import { asAppError } from '../errors.js';
 import {
   attachAccountingProof,

@@ -138,6 +138,11 @@ export function buildEngineStateFromInput(params: {
   const { input, userId } = params;
   const linkLabels = buildLinkLabels(input.debtCardLinks);
 
+  const customWeights =
+    input.preferences.customWeights === null
+      ? undefined
+      : weightsToPartial(input.preferences.customWeights);
+
   return {
     userId,
     cards: toCards(input, userId, linkLabels.byCardId),
@@ -184,12 +189,9 @@ export function buildEngineStateFromInput(params: {
       nextPaycheckNetCents: null,
     },
     preferences:
-      input.preferences.customWeights === null
+      customWeights === undefined
         ? { profileId: input.preferences.profileId }
-        : {
-            profileId: input.preferences.profileId,
-            customWeights: weightsToPartial(input.preferences.customWeights),
-          },
+        : { profileId: input.preferences.profileId, customWeights },
   };
 }
 
@@ -213,11 +215,11 @@ export function buildEngineContextFromInput(params: {
 }
 
 export function buildSolverOptionsFromInput(input: EngineInput): {
-  weights: Partial<ObjectiveWeights> | undefined;
-  maxCandidates: number | undefined;
+  weights: Partial<ObjectiveWeights> | null;
+  maxCandidates: number | null;
 } {
   const weights = weightsToPartial(input.solver.weightsOverride);
   const maxCandidates =
-    input.solver.maxCandidates !== null ? input.solver.maxCandidates : undefined;
-  return { weights, maxCandidates };
+    input.solver.maxCandidates !== null ? input.solver.maxCandidates : null;
+  return { weights: weights ?? null, maxCandidates };
 }

@@ -127,8 +127,7 @@ function validateCard(card: EngineInputCard, index: number): EngineValidationIss
     issues.push({ field: `${prefix}.id`, message: 'Card id required' });
   }
 
-  for (let i = 0; i < card.rewardRules.length; i += 1) {
-    const rule = card.rewardRules[i];
+  for (const [i, rule] of card.rewardRules.entries()) {
     const rulePrefix = `${prefix}.rewardRules[${i}]`;
 
     if (!hasNonEmptyString(rule.categoryKey)) {
@@ -157,8 +156,7 @@ function validateLinks(
   const debtIds = new Set(debts.map((debt) => debt.id));
   const seen = new Set<string>();
 
-  for (let i = 0; i < links.length; i += 1) {
-    const link = links[i];
+  for (const [i, link] of links.entries()) {
     const prefix = `debtCardLinks[${i}]`;
 
     if (!hasNonEmptyString(link.cardId)) {
@@ -217,16 +215,16 @@ export function validateEngineInput(input: EngineInput): EngineValidationIssue[]
     }
   }
 
-  for (let i = 0; i < input.buckets.length; i += 1) {
-    issues.push(...validateBucket(input.buckets[i], i));
+  for (const [i, bucket] of input.buckets.entries()) {
+    issues.push(...validateBucket(bucket, i));
   }
 
-  for (let i = 0; i < input.debts.length; i += 1) {
-    issues.push(...validateDebt(input.debts[i], i));
+  for (const [i, debt] of input.debts.entries()) {
+    issues.push(...validateDebt(debt, i));
   }
 
-  for (let i = 0; i < input.cards.length; i += 1) {
-    issues.push(...validateCard(input.cards[i], i));
+  for (const [i, card] of input.cards.entries()) {
+    issues.push(...validateCard(card, i));
   }
 
   if (input.constraints.hard.maxCardUtilization !== null) {

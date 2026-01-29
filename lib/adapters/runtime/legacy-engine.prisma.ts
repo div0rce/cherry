@@ -8,13 +8,13 @@ import { assertPrismaReady } from '../assert-prisma-ready.js';
 import type {
   CategoryCoverageMode,
   EngineDecision,
-  EngineInput,
+  LegacyEngineInput,
 } from '../../legacy-engine-types.js';
 
 export type {
   CategoryCoverageMode,
   EngineDecision,
-  EngineInput,
+  LegacyEngineInput,
   EvaluateTransactionResult,
 } from '../../legacy-engine-types.js';
 
@@ -169,7 +169,7 @@ async function resolveBestCardForTransaction(input: {
   };
 }
 
-export async function runEngine(input: EngineInput): Promise<EngineDecision> {
+export async function runEngine(input: LegacyEngineInput): Promise<EngineDecision> {
   if (input.amountCents == null || Number.isNaN(input.amountCents) || input.amountCents < 0) {
     throw new Error('amountCents must be a non-negative integer');
   }

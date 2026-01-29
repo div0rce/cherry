@@ -62,4 +62,30 @@ assert.ok(
   'expected amountCents integer issue'
 );
 
+const versionMismatch = JSON.parse(JSON.stringify(baseInput));
+versionMismatch.__version = 'engine_input_v0';
+const versionIssues = validateEngineInput(versionMismatch);
+assert.ok(
+  versionIssues.some((issue) => issue.field === '__version'),
+  'expected __version mismatch issue'
+);
+
+const aprNaN: EngineInput = {
+  ...baseInput,
+  debts: [
+    {
+      id: 'debt-1',
+      type: 'CREDIT_CARD',
+      balanceCents: 0,
+      creditLimitCents: null,
+      aprPercent: Number.NaN,
+    },
+  ],
+};
+const aprIssues = validateEngineInput(aprNaN);
+assert.ok(
+  aprIssues.some((issue) => issue.field === 'debts[0].aprPercent'),
+  'expected aprPercent finite issue'
+);
+
 console.warn('engine-input/validate: ok');

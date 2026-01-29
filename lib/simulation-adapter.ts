@@ -1,6 +1,6 @@
-import type { EngineInput, LegacyEngineDecision } from './engine.js';
+import type { LegacyEngineInput, LegacyEngineDecision } from './engine.js';
 
-export type RunSimulationInput = EngineInput;
+export type RunSimulationInput = LegacyEngineInput;
 
 export type RunSimulationResult = {
   decision: LegacyEngineDecision;
@@ -16,7 +16,7 @@ export type RunSimulationResult = {
  */
 export async function runSimulation(
   input: RunSimulationInput,
-  overrides?: { runEngineFn?: (i: EngineInput) => Promise<LegacyEngineDecision> }
+  overrides?: { runEngineFn?: (i: LegacyEngineInput) => Promise<LegacyEngineDecision> }
 ): Promise<RunSimulationResult> {
   if (input.nowMs == null || Number.isNaN(input.nowMs)) {
     throw new Error('runSimulation requires explicit `nowMs`');
