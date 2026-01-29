@@ -177,6 +177,7 @@ function setupSessionMocks({ engineOk = true } = {}) {
 
   mockModule('../../lib/user-context', {
     resolveUserContext: async () => ({ userId: 'lab-user-1', mode: 'DEV' }),
+    isPrismaP2003: () => false,
   });
 
   mockModule('../../lib/prisma', {
