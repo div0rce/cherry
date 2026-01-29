@@ -24,6 +24,7 @@
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
     "check:schema-evolution": "npm run ts:esm -- scripts/guardrails/run.mts check:schema-evolution",
+    "check:schema-breaking-plan": "npm run ts:esm -- scripts/guardrails/run.mts check:schema-breaking-plan",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
     "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
