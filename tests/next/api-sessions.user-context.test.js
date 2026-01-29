@@ -172,6 +172,10 @@ function setupSessionMocks({ engineOk = true } = {}) {
         : { ok: false, reason: 'ENGINE_ERROR', message: 'fail' },
   });
 
+  mockModule('../../lib/legacy-engine', {
+    runEngine: async () => legacyDecision,
+  });
+
   mockModule('../../lib/engine-state', {
     fromPrismaUserToEngineState: async () => engineState,
   });
