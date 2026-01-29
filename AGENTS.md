@@ -1,9 +1,10 @@
 Status: Active
-Last updated: 2026-01-13
+Last updated: 2026-01-29
 
 # Cherry Agents — Canonical Operating Guide
 
 This file is the operating contract for humans and agents working in this repo. It is authoritative after CI/workflows and guardrail registries. If something conflicts, fix the lower authority, not the higher.
+This guide defers to docs/doctrine.md for all execution invariants and enforcement rules.
 
 ## Authority Ladder (highest to lowest)
 1. `package.json` scripts + `.github/workflows/*` (actual behavior)
