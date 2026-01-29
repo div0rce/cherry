@@ -128,6 +128,14 @@ function main(): void {
     }
   }
 
+  const behaviorVersion = policy.engineVersions.behavior;
+  if (!behaviorVersion.endsWith('_v1') && policy.engineFixtures.files.length === 0) {
+    fail(PREFIX, 'Engine fixtures required for behavior versions beyond v1', {
+      details: [`behavior=${behaviorVersion}`],
+      fix: FIX,
+    });
+  }
+
   const sortedFiles = [...policy.engineFixtures.files].sort();
   const isSorted = sortedFiles.every((value, index) => value === policy.engineFixtures.files[index]);
   if (!isSorted) {

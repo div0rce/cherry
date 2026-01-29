@@ -191,3 +191,4 @@
     "typescript": "^5"
   }
 }
+    "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",

@@ -38,6 +38,26 @@ function guardrailFail(message: string, details?: string[]): never {
   fail(PREFIX, message, { details, fix: FIX });
 }
 
+function resolveBaseRef(): string {
+  const override = process.env['CHERRY_BASE_REF'];
+  if (override !== undefined && override.length > 0) {
+    return override;
+  }
+  const originBase = runTool('git', ['merge-base', 'HEAD', 'origin/main']);
+  if (originBase.exitCode === 0 && originBase.stdout.trim().length > 0) {
+    return originBase.stdout.trim();
+  }
+  const mainBase = runTool('git', ['merge-base', 'HEAD', 'main']);
+  if (mainBase.exitCode === 0 && mainBase.stdout.trim().length > 0) {
+    return mainBase.stdout.trim();
+  }
+  const headParent = runTool('git', ['rev-parse', '--verify', 'HEAD~1']);
+  if (headParent.exitCode === 0 && headParent.stdout.trim().length > 0) {
+    return headParent.stdout.trim();
+  }
+  return 'HEAD';
+}
+
 function loadPolicy(): z.infer<typeof PolicySchema> {
   let raw: unknown;
   try {
@@ -133,6 +153,10 @@ function main(): void {
   const { latest, previous } = getPolicyCommitMessages();
   const latestPrefix = parsePrefix(latest);
 
+  const baseRef = resolveBaseRef();
+  const baseRange = `${baseRef}...HEAD`;
+  const baseChanged = diffFiles(baseRange);
+
   const baseline = policy.baseline;
   let prevBaseline: string | null = null;
   if (previous !== null) {
@@ -140,16 +164,13 @@ function main(): void {
   }
 
   const baselineChanged = prevBaseline !== null && prevBaseline !== baseline;
-  const range = baselineChanged ? `${prevBaseline}...${baseline}` : `${baseline}...HEAD`;
-  const changed = diffFiles(range);
-
-  const engineChanges = changed.filter(isEngineSensitive);
+  const engineChanges = baseChanged.filter(isEngineSensitive);
   if (engineChanges.length === 0) {
     process.stdout.write('check:engine-version-bump: ok (no engine-sensitive diffs)\\n');
     return;
   }
 
-  const versionTouched = changed.includes(VERSION_PATH);
+  const versionTouched = baseChanged.includes(VERSION_PATH);
   if (!versionTouched) {
     guardrailFail('Engine-sensitive changes require engine version bump', [
       ...engineChanges.map((filePath) => `${filePath}:1:1: engine-version-bump-required`),
