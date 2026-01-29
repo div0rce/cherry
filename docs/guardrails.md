@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-27
+Last updated: 2026-01-29
 
 # Guardrails
 
@@ -286,6 +286,13 @@ Rationale:
 Silent misuse of policy metadata causes long-term system rot.
 
 Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-type-enforcement.test.ts`.
+
+### Guardrail 15 — EngineInput Boundary Hygiene
+
+- EngineInput is defined only in `lib/engine/input/EngineInput.ts`.
+- EngineInput imports must use the canonical module path.
+- Boundary files (`lib/engine/input/**`, `check:engine-freeze`) may not use array element access (`arr[i]`).
+- Enforcement: `check:engine-input-boundary`.
 
 ## Meta-Guardrails (Guardrail System Integrity)
 
