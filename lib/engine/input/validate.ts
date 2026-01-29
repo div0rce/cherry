@@ -236,7 +236,7 @@ export function validateEngineInput(input: EngineInput): EngineValidationIssue[]
     }
   }
 
-  if (OBJECTIVE_PROFILES[input.preferences.profileId] === undefined) {
+  if (!Object.prototype.hasOwnProperty.call(OBJECTIVE_PROFILES, input.preferences.profileId)) {
     issues.push({ field: 'preferences.profileId', message: 'profileId invalid' });
   }
 
