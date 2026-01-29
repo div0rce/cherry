@@ -40,8 +40,10 @@ const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-vers
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
+const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
 const SCHEMA_EVOLUTION_PATH = `${CHECK_PATH_BASE}schema-evolution.mts` as const;
 const SCHEMA_BREAKING_PLAN_PATH = `${CHECK_PATH_BASE}schema-breaking-plan.mts` as const;
+const AGENTS_DOCTRINE_LINK_PATH = `${CHECK_PATH_BASE}agents-doctrine-link.mts` as const;
 const DOCTRINE_PRESENT_PATH = `${CHECK_PATH_BASE}doctrine-present.mts` as const;
 const CHANGE_ISOLATION_PATH = `${CHECK_PATH_BASE}change-isolation.mts` as const;
 const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
@@ -114,8 +116,10 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
+  'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
   'check:schema-evolution': SCHEMA_EVOLUTION_PATH,
   'check:schema-breaking-plan': SCHEMA_BREAKING_PLAN_PATH,
+  'check:agents-doctrine-link': AGENTS_DOCTRINE_LINK_PATH,
   'check:doctrine-present': DOCTRINE_PRESENT_PATH,
   'check:change-isolation': CHANGE_ISOLATION_PATH,
   'check:authority-lint': `${CHECK_PATH_BASE}authority-lint.mts`,
@@ -152,7 +156,3 @@ export function guardrailNameToPath(name: GuardrailName): GuardrailPath {
   return GUARDRAILS[name];
 }
 export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as GuardrailName[]);
-const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
-  'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
-const AGENTS_DOCTRINE_LINK_PATH = `${CHECK_PATH_BASE}agents-doctrine-link.mts` as const;
-  'check:agents-doctrine-link': AGENTS_DOCTRINE_LINK_PATH,
