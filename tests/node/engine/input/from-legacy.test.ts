@@ -2,16 +2,19 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+import { readJsonFile } from '../../../../scripts/guardrails/lib/read-json.mjs';
 import { engineInputVersion } from '../../../../lib/engine/input/EngineInput.js';
 import { fromLegacy, type LegacyEngineAdapterInput } from '../../../../lib/engine/input/fromLegacy.js';
 import { validateEngineInput } from '../../../../lib/engine/input/validate.js';
 import type { EngineInput } from '../../../../lib/engine/input/EngineInput.js';
 
-type Fixture = {
-  engineInputVersion: string;
-  legacy: LegacyEngineAdapterInput;
-  expected: EngineInput;
-};
+const FixtureSchema = z.object({
+  engineInputVersion: z.string(),
+  legacy: z.custom<LegacyEngineAdapterInput>(),
+  expected: z.custom<EngineInput>(),
+});
+type Fixture = z.infer<typeof FixtureSchema>;
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '../../../..');
@@ -23,8 +26,7 @@ const fixtures = fs
   .sort();
 
 for (const name of fixtures) {
-  const raw = fs.readFileSync(path.join(fixturesDir, name), 'utf8');
-  const parsed = JSON.parse(raw) as Fixture;
+  const parsed = FixtureSchema.parse(readJsonFile(path.join(fixturesDir, name)));
 
   assert.equal(
     parsed.engineInputVersion,

@@ -62,7 +62,7 @@ assert.ok(
   'expected amountCents integer issue'
 );
 
-const versionMismatch = JSON.parse(JSON.stringify(baseInput));
+const versionMismatch: EngineInput = structuredClone(baseInput);
 versionMismatch.__version = 'engine_input_v0';
 const versionIssues = validateEngineInput(versionMismatch);
 assert.ok(
