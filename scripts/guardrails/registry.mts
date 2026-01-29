@@ -154,3 +154,5 @@ export function guardrailNameToPath(name: GuardrailName): GuardrailPath {
 export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as GuardrailName[]);
 const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
   'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
+const AGENTS_DOCTRINE_LINK_PATH = `${CHECK_PATH_BASE}agents-doctrine-link.mts` as const;
+  'check:agents-doctrine-link': AGENTS_DOCTRINE_LINK_PATH,

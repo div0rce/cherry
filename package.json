@@ -192,3 +192,4 @@
   }
 }
     "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",
+    "check:agents-doctrine-link": "npm run ts:esm -- scripts/guardrails/run.mts check:agents-doctrine-link",
