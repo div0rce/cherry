@@ -1,0 +1,272 @@
+{
+  "engineInputVersion": "engine_input_v1",
+  "legacy": {
+    "state": {
+      "userId": "user_1",
+      "cards": [
+        {
+          "id": "card_credit",
+          "userId": "user_1",
+          "issuer": "Test Bank",
+          "productSlug": null,
+          "label": "Cherry Card",
+          "last4": null,
+          "network": "VISA",
+          "isCredit": true,
+          "isActive": true,
+          "isVirtual": false,
+          "rewardRules": [
+            {
+              "id": "rule_1",
+              "cardId": "card_credit",
+              "categoryKey": "GROCERIES",
+              "mccPattern": null,
+              "rateType": "CASHBACK",
+              "rateValue": 0.02,
+              "capAmountCents": null,
+              "capPeriod": null,
+              "promoStartMs": null,
+              "promoEndMs": null,
+              "source": "STATIC_CONFIG",
+              "confidence": 1
+            },
+            {
+              "id": "rule_2",
+              "cardId": "card_credit",
+              "categoryKey": "OTHER",
+              "mccPattern": null,
+              "rateType": "POINTS_PER_DOLLAR",
+              "rateValue": 1.5,
+              "capAmountCents": null,
+              "capPeriod": null,
+              "promoStartMs": null,
+              "promoEndMs": null,
+              "source": "STATIC_CONFIG",
+              "confidence": 1
+            }
+          ],
+          "creditLimitCents": 500000,
+          "currentBalanceCents": null
+        },
+        {
+          "id": "card_debit",
+          "userId": "user_1",
+          "issuer": "Test Bank",
+          "productSlug": null,
+          "label": "Everyday Debit",
+          "last4": null,
+          "network": "MASTERCARD",
+          "isCredit": false,
+          "isActive": true,
+          "isVirtual": false,
+          "rewardRules": [
+            {
+              "id": "rule_3",
+              "cardId": "card_debit",
+              "categoryKey": "OTHER",
+              "mccPattern": null,
+              "rateType": "CASHBACK",
+              "rateValue": 0.01,
+              "capAmountCents": null,
+              "capPeriod": null,
+              "promoStartMs": null,
+              "promoEndMs": null,
+              "source": "STATIC_CONFIG",
+              "confidence": 1
+            }
+          ],
+          "creditLimitCents": null,
+          "currentBalanceCents": null
+        }
+      ],
+      "buckets": [
+        {
+          "id": "bucket_grocery",
+          "name": "Groceries",
+          "categoryKey": "GROCERIES",
+          "limitCents": 50000,
+          "postedSpendCents": 10000,
+          "pendingSpendCents": 2000,
+          "committedCents": 12000,
+          "remainingCents": 38000,
+          "period": "MONTHLY",
+          "isEssential": true,
+          "strictMode": true
+        },
+        {
+          "id": "bucket_misc",
+          "name": "Misc",
+          "categoryKey": "OTHER",
+          "limitCents": null,
+          "postedSpendCents": 0,
+          "pendingSpendCents": 0,
+          "committedCents": 0,
+          "remainingCents": 0,
+          "period": "MONTHLY",
+          "isEssential": false,
+          "strictMode": false
+        }
+      ],
+      "debts": [
+        {
+          "id": "debt_cc",
+          "name": "Cherry Card",
+          "type": "CREDIT_CARD",
+          "balanceCents": 20000,
+          "creditLimitCents": 100000,
+          "aprPercent": 0.199,
+          "minPaymentCents": null,
+          "dueDayOfMonth": null
+        }
+      ],
+      "constraints": {
+        "hard": {
+          "minEssentialCoverageDays": 0,
+          "maxCardUtilization": 0.4
+        },
+        "soft": {
+          "avoidNewDebt": false,
+          "avoidInterest": false
+        }
+      },
+      "world": {
+        "baseInterestRate": null,
+        "inflationEstimate": null
+      },
+      "cash": {
+        "liquidCents": 15000,
+        "nextPaycheckDateMs": 1700000000000,
+        "nextPaycheckNetCents": 50000
+      },
+      "preferences": {
+        "profileId": "BALANCED",
+        "customWeights": {
+          "rewards": 1.2
+        }
+      }
+    },
+    "context": {
+      "surface": "web",
+      "nowMs": 1700000000000,
+      "merchantName": "Trader Joe's",
+      "merchantDomain": null,
+      "merchantCategoryKey": "GROCERIES",
+      "mcc": null,
+      "amountCents": 12345,
+      "locationCity": null,
+      "locationCountry": null,
+      "payPeriodDayOfCycle": null
+    },
+    "options": {
+      "maxCandidates": 32,
+      "weightsOverride": {
+        "runway": 0.7,
+        "debtRelief": 1.1
+      }
+    }
+  },
+  "expected": {
+    "__version": "engine_input_v1",
+    "request": {
+      "surface": "web",
+      "amountCents": 12345,
+      "merchantCategoryKey": "GROCERIES"
+    },
+    "balances": {
+      "cash": {
+        "liquidCents": 15000
+      }
+    },
+    "buckets": [
+      {
+        "id": "bucket_grocery",
+        "categoryKey": "GROCERIES",
+        "limitCents": 50000,
+        "postedSpendCents": 10000,
+        "pendingSpendCents": 2000,
+        "isEssential": true,
+        "strictMode": true
+      },
+      {
+        "id": "bucket_misc",
+        "categoryKey": "OTHER",
+        "limitCents": null,
+        "postedSpendCents": 0,
+        "pendingSpendCents": 0,
+        "isEssential": false,
+        "strictMode": false
+      }
+    ],
+    "debts": [
+      {
+        "id": "debt_cc",
+        "type": "CREDIT_CARD",
+        "balanceCents": 20000,
+        "creditLimitCents": 100000,
+        "aprPercent": 0.199
+      }
+    ],
+    "debtCardLinks": [
+      {
+        "cardId": "card_credit",
+        "debtId": "debt_cc"
+      }
+    ],
+    "cards": [
+      {
+        "id": "card_credit",
+        "isActive": true,
+        "isCredit": true,
+        "rewardRules": [
+          {
+            "categoryKey": "GROCERIES",
+            "rateType": "CASHBACK",
+            "rateValue": 0.02
+          },
+          {
+            "categoryKey": "OTHER",
+            "rateType": "POINTS_PER_DOLLAR",
+            "rateValue": 1.5
+          }
+        ]
+      },
+      {
+        "id": "card_debit",
+        "isActive": true,
+        "isCredit": false,
+        "rewardRules": [
+          {
+            "categoryKey": "OTHER",
+            "rateType": "CASHBACK",
+            "rateValue": 0.01
+          }
+        ]
+      }
+    ],
+    "constraints": {
+      "hard": {
+        "maxCardUtilization": 0.4
+      }
+    },
+    "preferences": {
+      "profileId": "BALANCED",
+      "customWeights": {
+        "rewards": 1.2,
+        "runway": null,
+        "debtRelief": null,
+        "volatility": null,
+        "ruleViolations": null
+      }
+    },
+    "solver": {
+      "maxCandidates": 32,
+      "weightsOverride": {
+        "rewards": null,
+        "runway": 0.7,
+        "debtRelief": 1.1,
+        "volatility": null,
+        "ruleViolations": null
+      }
+    }
+  }
+}

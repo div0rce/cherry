@@ -2,10 +2,12 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import { z } from 'zod';
 import { fail } from './guardrails/lib/fail.mjs';
 import { readJsonFile } from './guardrails/lib/read-json.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
+import { engineInputVersion } from '../lib/engine/input/EngineInput.js';
 
 const ROOT = process.cwd();
 const PREFIX = 'check:engine-freeze';
@@ -24,6 +26,13 @@ const PolicySchema = z
         accountingSafe: z.literal(true),
         unsafeDecisionsForbidden: z.literal(true),
         outputType: z.literal('EngineDecisionWithAccounting[]'),
+      })
+      .strict(),
+    engineInput: z
+      .object({
+        version: z.string().min(1),
+        fixtureHash: z.string().min(1),
+        fixtures: z.array(z.string().min(1)).min(1),
       })
       .strict(),
   })
@@ -53,6 +62,76 @@ function loadPolicy(): z.infer<typeof PolicySchema> {
 
 const policy = loadPolicy();
 const baseline = policy.baseline;
+const engineInputPolicy = policy.engineInput;
+assertEngineInputBoundary();
+
+function normalizeText(input: string): string {
+  return input.replace(/\r\n/g, '\n');
+}
+
+function hashEngineInputFixtures(fixtures: string[]): string {
+  const hash = crypto.createHash('sha256');
+  const sorted = [...fixtures].sort();
+  for (const relPath of sorted) {
+    const absolute = path.join(ROOT, relPath);
+    if (!fs.existsSync(absolute)) {
+      fail(PREFIX, `Missing engine input fixture: ${relPath}`, { fix: FIX });
+    }
+    const content = normalizeText(fs.readFileSync(absolute, 'utf8'));
+    hash.update(relPath);
+    hash.update('\n');
+    hash.update(content);
+    hash.update('\n');
+  }
+  return hash.digest('hex');
+}
+
+function assertEngineInputBoundary(): void {
+  if (engineInputPolicy.version !== engineInputVersion) {
+    fail(PREFIX, 'engineInputVersion mismatch', {
+      details: [
+        `policy=${engineInputPolicy.version}`,
+        `code=${engineInputVersion}`,
+      ],
+      fix: FIX,
+    });
+  }
+
+  const fixtureHash = hashEngineInputFixtures(engineInputPolicy.fixtures);
+  if (fixtureHash !== engineInputPolicy.fixtureHash) {
+    fail(PREFIX, 'engine input fixture hash mismatch', {
+      details: [`expected=${engineInputPolicy.fixtureHash}`, `actual=${fixtureHash}`],
+      fix: FIX,
+    });
+  }
+
+  const inputPath = path.join(ROOT, 'lib', 'engine', 'input', 'EngineInput.ts');
+  if (!fs.existsSync(inputPath)) {
+    fail(PREFIX, `Missing EngineInput definition at ${inputPath}`, { fix: FIX });
+  }
+  const inputContent = fs.readFileSync(inputPath, 'utf8');
+  if (!inputContent.includes('__version')) {
+    fail(PREFIX, 'EngineInput must include __version field', { fix: FIX });
+  }
+
+  const fromLegacyPath = path.join(ROOT, 'lib', 'engine', 'input', 'fromLegacy.ts');
+  if (!fs.existsSync(fromLegacyPath)) {
+    fail(PREFIX, `Missing fromLegacy adapter at ${fromLegacyPath}`, { fix: FIX });
+  }
+  const adapterContent = fs.readFileSync(fromLegacyPath, 'utf8');
+  if (!adapterContent.includes('__version: engineInputVersion')) {
+    fail(PREFIX, 'fromLegacy must set __version: engineInputVersion', { fix: FIX });
+  }
+
+  const validatePath = path.join(ROOT, 'lib', 'engine', 'input', 'validate.ts');
+  if (!fs.existsSync(validatePath)) {
+    fail(PREFIX, `Missing engine input validator at ${validatePath}`, { fix: FIX });
+  }
+  const validateContent = fs.readFileSync(validatePath, 'utf8');
+  if (!validateContent.includes('engineInputVersion')) {
+    fail(PREFIX, 'validateEngineInput must assert engineInputVersion', { fix: FIX });
+  }
+}
 
 const baselineResult = runTool('git', ['rev-parse', '--verify', baseline]);
 if (baselineResult.exitCode !== 0) {

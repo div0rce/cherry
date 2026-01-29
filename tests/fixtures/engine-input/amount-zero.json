@@ -1,0 +1,120 @@
+{
+  "engineInputVersion": "engine_input_v1",
+  "legacy": {
+    "state": {
+      "userId": "user_2",
+      "cards": [
+        {
+          "id": "card_debit_only",
+          "userId": "user_2",
+          "issuer": "Test Bank",
+          "productSlug": null,
+          "label": "Daily Debit",
+          "last4": null,
+          "network": "VISA",
+          "isCredit": false,
+          "isActive": true,
+          "isVirtual": false,
+          "rewardRules": [],
+          "creditLimitCents": null,
+          "currentBalanceCents": null
+        }
+      ],
+      "buckets": [
+        {
+          "id": "bucket_other",
+          "name": "Other",
+          "categoryKey": "OTHER",
+          "limitCents": null,
+          "postedSpendCents": 0,
+          "pendingSpendCents": 0,
+          "committedCents": 0,
+          "remainingCents": 0,
+          "period": "MONTHLY",
+          "isEssential": false,
+          "strictMode": false
+        }
+      ],
+      "debts": [],
+      "constraints": {
+        "hard": {
+          "minEssentialCoverageDays": 0,
+          "maxCardUtilization": null
+        },
+        "soft": {
+          "avoidNewDebt": false,
+          "avoidInterest": false
+        }
+      },
+      "world": {
+        "baseInterestRate": null,
+        "inflationEstimate": null
+      },
+      "cash": null,
+      "preferences": {
+        "profileId": "BALANCED",
+        "customWeights": null
+      }
+    },
+    "context": {
+      "surface": "extension",
+      "nowMs": 1700000000000,
+      "merchantName": null,
+      "merchantDomain": null,
+      "merchantCategoryKey": null,
+      "mcc": null,
+      "amountCents": null,
+      "locationCity": null,
+      "locationCountry": null,
+      "payPeriodDayOfCycle": null
+    },
+    "options": null
+  },
+  "expected": {
+    "__version": "engine_input_v1",
+    "request": {
+      "surface": "extension",
+      "amountCents": 0,
+      "merchantCategoryKey": null
+    },
+    "balances": {
+      "cash": {
+        "liquidCents": null
+      }
+    },
+    "buckets": [
+      {
+        "id": "bucket_other",
+        "categoryKey": "OTHER",
+        "limitCents": null,
+        "postedSpendCents": 0,
+        "pendingSpendCents": 0,
+        "isEssential": false,
+        "strictMode": false
+      }
+    ],
+    "debts": [],
+    "debtCardLinks": [],
+    "cards": [
+      {
+        "id": "card_debit_only",
+        "isActive": true,
+        "isCredit": false,
+        "rewardRules": []
+      }
+    ],
+    "constraints": {
+      "hard": {
+        "maxCardUtilization": null
+      }
+    },
+    "preferences": {
+      "profileId": "BALANCED",
+      "customWeights": null
+    },
+    "solver": {
+      "maxCandidates": null,
+      "weightsOverride": null
+    }
+  }
+}
