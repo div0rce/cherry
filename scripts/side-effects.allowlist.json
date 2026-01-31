@@ -256,7 +256,7 @@
       "fs",
       "path"
     ],
-    "source": "boundary",
+    "source": "legacy",
     "tier": "boundary-time"
   },
   "lib/unified-activity.ts": {
