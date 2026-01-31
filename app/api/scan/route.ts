@@ -128,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
       const inputIssues = validateEngineInput(engineInput);
       if (inputIssues.length === 0) {
-        const replayEnabled = process.env.CHERRY_ENGINE_REPLAY_RECORD === '1';
+        const replayEnabled = process.env['CHERRY_ENGINE_REPLAY_RECORD'] === '1';
         if (replayEnabled) {
           const userToken =
             typeof userId === 'string' && userId.length > 0 ? userId : 'unknown';
