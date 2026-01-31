@@ -322,6 +322,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Temp artifacts must live under `CHERRY_TMP_ROOT` and remain below the 5GB quota.
 - Enforcement: `check:temp-quota`.
 
+### Guardrail 60 — Artifact Size Budgets
+
+- Artifact size budgets are hard caps; failures are expected signals.
+- Enforcement: `check:artifact-size-budgets`.
+
 ### Guardrail 16 — Doctrine Presence
 
 - `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.
