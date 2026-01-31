@@ -27,6 +27,7 @@ export const EXECUTION = {
   'cleanup:vine-sessions': 'scripts/cleanup_expired_vine_sessions.mts',
   'cleanup:kill-alias-imports': 'scripts/codemod-kill-alias-imports.mts',
   'cleanup:replay-blobs': 'scripts/replay/migrate-replay-blobs.mts',
+  'tmp:gc': 'scripts/tmp/gc.mts',
   'report:authority': 'scripts/authority-coverage.mts',
   'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
 } as const;
