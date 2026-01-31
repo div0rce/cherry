@@ -108,8 +108,8 @@ function main(): void {
   const touchedDirs = new Set<string>();
   for (const filePath of changed) {
     const segments = filePath.split('/');
-    const dirName = segments.length > 2 ? segments[2] : null;
-    if (dirName !== null && dirName.length > 0) {
+    const dirName = segments.at(2);
+    if (dirName !== undefined && dirName.length > 0) {
       touchedDirs.add(dirName);
     }
   }
