@@ -4,15 +4,10 @@ Last updated: 2026-01-31
 # Engine Replay Corpus
 
 ## Current
-- Each replay trace lives in `tests/replay/<YYYY-MM>/<traceId>/`.
-- Required files per trace:
-  - payload.json (hash reference only)
-  - versions.json
-- Payload blobs live in `tests/replay/blobs/<hash>/`:
-  - input.json
-  - output.json
-  - meta.json
-- Placeholder traces may have empty `payload.json`; the replay test skips empty traces.
+- Replay payloads are content-addressed objects under `tests/replay/objects/aa/bb/<hash>.json`.
+- Replay indexes live in `tests/replay/index/engine@*.json` (version snapshot + hash list).
+- Indexes reference objects by hash only; payloads are stored once.
+- Staging traces live under `tests/replay/_staging/` and must never be committed.
 
 ## Future
 - Populate traces from real boundary recordings.

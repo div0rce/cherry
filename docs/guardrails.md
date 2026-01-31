@@ -317,6 +317,14 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Replay staging artifacts must never be committed under `tests/replay/_staging/**`.
 - Enforcement: `check:replay-staging-empty`.
 
+### Guardrail 62 — Replay Object Store Integrity
+
+- Replay payloads must live only under `tests/replay/objects/**`.
+- Replay indexes must live under `tests/replay/index/**` and reference objects by hash only.
+- No inline replay payload JSON is permitted outside the object store.
+- Orphan objects (not referenced by any index) are forbidden.
+- Enforcement: `check:replay-object-store`.
+
 ### Guardrail 59 — Temp Quota Enforcement
 
 - Temp artifacts must live under `CHERRY_TMP_ROOT` and remain below the 5GB quota.
