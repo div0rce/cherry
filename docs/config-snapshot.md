@@ -9160,7 +9160,7 @@
     "backfill:seed-demo": "npm run ts:esm -- scripts/execution/run.mts backfill:seed-demo",
     "cleanup:kill-alias-imports": "npm run ts:esm -- scripts/execution/run.mts cleanup:kill-alias-imports",
     "cleanup:vine-sessions": "npm run ts:esm -- scripts/execution/run.mts cleanup:vine-sessions",
-    "replay:migrate-blobs": "npm run ts:esm -- scripts/execution/run.mts replay:migrate-blobs",
+    "cleanup:replay-blobs": "npm run ts:esm -- scripts/execution/run.mts cleanup:replay-blobs",
     "check:prisma-assumptions": "npm run ts:esm -- scripts/guardrails/run.mts check:prisma-assumptions",
     "check:db:optional": "npm run ts:esm -- scripts/execution/run-db.mts check:db:optional",
     "check:db:required": "npm run ts:esm -- scripts/execution/run-db.mts check:db:required",
@@ -10858,7 +10858,7 @@ export const EXECUTION = {
   'backfill:category-preference-enum': 'scripts/backfill_category_preference_enum.mts',
   'cleanup:vine-sessions': 'scripts/cleanup_expired_vine_sessions.mts',
   'cleanup:kill-alias-imports': 'scripts/codemod-kill-alias-imports.mts',
-  'replay:migrate-blobs': 'scripts/replay/migrate-replay-blobs.mts',
+  'cleanup:replay-blobs': 'scripts/replay/migrate-replay-blobs.mts',
   'report:authority': 'scripts/authority-coverage.mts',
   'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
 } as const;
