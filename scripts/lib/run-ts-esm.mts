@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fail } from '../guardrails/lib/fail.mjs';
 import { runTool, type ToolResult } from '../guardrails/lib/run-tool.mjs';
+import { resolveTmpRoot } from './tmp-root.mjs';
 
 const requireFn = createRequire(import.meta.url);
 
@@ -24,6 +25,7 @@ export function runTsEsm(
   args: string[] = [],
   env: NodeJS.ProcessEnv
 ): ToolResult {
+  const tmpRoot = resolveTmpRoot();
   const entryPath = path.isAbsolute(entry) ? entry : path.join(ROOT, entry);
   const nodeArgs: string[] = [];
   const scriptArgs: string[] = [];
@@ -43,12 +45,17 @@ export function runTsEsm(
     }
     scriptArgs.push(arg);
   }
+  const runEnv: NodeJS.ProcessEnv = {
+    ...env,
+    TMPDIR: tmpRoot,
+    CHERRY_TMP_ROOT: process.env['CHERRY_TMP_ROOT'],
+  };
   return runTool(
     process.execPath,
     [TSX_CLI, '--tsconfig', TSCONFIG, ...nodeArgs, entryPath, ...scriptArgs],
     {
       cwd: ROOT,
-      env,
+      env: runEnv,
     }
   );
 }

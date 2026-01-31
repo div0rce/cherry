@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import '../lib/loaders/config.loader.mjs';
 import { ensureTsEsm } from '../lib/ensure-ts-esm.mjs';
+import { resolveTmpRoot } from '../lib/tmp-root.mjs';
 import { fail } from '../guardrails/lib/fail.mjs';
 import { EXECUTION, type ExecutionName } from './registry.mjs';
 
@@ -27,6 +28,7 @@ async function maybeRegisterPrismaMock(name: ExecutionName): Promise<void> {
 }
 
 async function runExecution(): Promise<void> {
+  resolveTmpRoot();
   const args = process.argv.slice(2);
   const name = args[0];
   if (name === undefined || name.length === 0) {
