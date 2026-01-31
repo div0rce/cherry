@@ -20,6 +20,7 @@ type ReplayArgs = {
 };
 
 const VERSION_PATH = path.join(process.cwd(), 'lib', 'engine', 'version.ts');
+const REDACTION_VERSION = 'replay_redaction_v1';
 
 function hashInput(serializedInput: string): string {
   return crypto.createHash('sha256').update(serializedInput).digest('hex');
@@ -56,7 +57,7 @@ export async function maybeRecordReplayTrace(args: ReplayArgs): Promise<void> {
     const root = path.join(process.cwd(), 'tests', 'replay', '_staging', monthKey, traceId);
     fs.mkdirSync(root, { recursive: true });
 
-    const meta = { ...args.meta, traceId };
+    const meta = { ...args.meta, traceId, redactionVersion: REDACTION_VERSION };
 
     fs.writeFileSync(path.join(root, 'input.json'), serializedInput);
     fs.writeFileSync(path.join(root, 'versions.json'), serializeJson(args.versions));
