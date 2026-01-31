@@ -53,6 +53,7 @@ const EngineInputSchema = z.custom<EngineInput>();
 const MetaSchema = z
   .object({
     traceId: z.string(),
+    redactionVersion: z.string(),
     source: z.enum(['api/scan', 'api/simulate', 'autopilot']),
     surface: z.string(),
     timestampMs: z.number().int().optional(),
