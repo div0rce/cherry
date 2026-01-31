@@ -10826,6 +10826,7 @@ certs/
 .tmp/
 problems.md
 .env*.local
+paste
 ```
 
 ```ts
