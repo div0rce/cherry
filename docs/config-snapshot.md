@@ -9061,7 +9061,7 @@
     "check:agents-doctrine-link": "npm run ts:esm -- scripts/guardrails/run.mts check:agents-doctrine-link",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
     "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
-    "tmp:gc": "npm run ts:esm -- scripts/tmp/gc.mts",
+    "tmp:gc": "npm run ts:esm -- scripts/execution/run.mts tmp:gc",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:scripts": "eslint scripts --max-warnings=0",
@@ -10863,6 +10863,7 @@ export const EXECUTION = {
   'cleanup:vine-sessions': 'scripts/cleanup_expired_vine_sessions.mts',
   'cleanup:kill-alias-imports': 'scripts/codemod-kill-alias-imports.mts',
   'cleanup:replay-blobs': 'scripts/replay/migrate-replay-blobs.mts',
+  'tmp:gc': 'scripts/tmp/gc.mts',
   'report:authority': 'scripts/authority-coverage.mts',
   'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
 } as const;
