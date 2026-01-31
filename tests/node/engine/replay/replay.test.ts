@@ -210,7 +210,9 @@ for (const replay of inputs) {
     ...(solverOptions.maxCandidates === null ? {} : { maxCandidates: solverOptions.maxCandidates }),
   };
   const result = await safeSolveDecisionForUser(userId, ctx, solverOverrides);
-  assert.ok(result.ok, `${replay.dir}: replay solve failed: ${result.message}`);
+  if (!result.ok) {
+    assert.fail(`${replay.dir}: replay solve failed: ${result.message}`);
+  }
   const output = { decisions: result.decisions, trace: result.trace, state: result.state };
 
   const outputRaw = fs.readFileSync(replay.outputPath, 'utf8');
