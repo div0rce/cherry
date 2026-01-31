@@ -21,7 +21,7 @@ function normalizeJson(value: unknown): unknown {
   }
   if (value !== null && typeof value === 'object') {
     const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
+    const keys = Object.keys(record).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     const normalized: Record<string, unknown> = {};
     for (const key of keys) {
       normalized[key] = normalizeJson(record[key]);
