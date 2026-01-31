@@ -10827,6 +10827,7 @@ certs/
 problems.md
 .env*.local
 paste
+paste.txt
 ```
 
 ```ts
