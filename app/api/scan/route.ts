@@ -131,6 +131,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
       const inputIssues = validateEngineInput(engineInput);
       if (inputIssues.length === 0) {
+        const replayEnabled = process.env.CHERRY_ENGINE_REPLAY_RECORD === '1';
         const userToken =
           typeof userId === 'string' && userId.length > 0 ? userId : 'unknown';
         const userHash = crypto.createHash('sha256').update(userToken).digest('hex').slice(0, 4);
@@ -141,6 +142,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           state: { ...engineResult.state, userId: userLabel },
         };
         void maybeRecordReplayTrace({
+          enabled: replayEnabled,
           input: engineInput,
           versions: {
             engineBehaviorVersion,

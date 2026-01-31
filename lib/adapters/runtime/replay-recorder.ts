@@ -11,9 +11,8 @@ import {
   type VersionSnapshot,
 } from '../../engine/replay/record.js';
 
-const RECORD_ENV = 'CHERRY_ENGINE_REPLAY_RECORD';
-
 type ReplayArgs = {
+  enabled: boolean;
   input: EngineInput;
   versions: VersionSnapshot;
   output: unknown;
@@ -25,7 +24,7 @@ function hashInput(serializedInput: string): string {
 }
 
 export async function maybeRecordReplayTrace(args: ReplayArgs): Promise<void> {
-  if (process.env[RECORD_ENV] !== '1') return;
+  if (!args.enabled) return;
   try {
     const serializedInput = normalizeReplayInput(args.input);
     const hash = hashInput(serializedInput).slice(0, 12);
@@ -43,8 +42,6 @@ export async function maybeRecordReplayTrace(args: ReplayArgs): Promise<void> {
     fs.writeFileSync(path.join(root, 'output.json'), serializeJson(args.output));
     fs.writeFileSync(path.join(root, 'meta.json'), serializeJson(meta));
   } catch (error: unknown) {
-    if (process.env[RECORD_ENV] === '1') {
-      console.warn('[engine] replay recording failed', error);
-    }
+    console.warn('[engine] replay recording failed', error);
   }
 }
