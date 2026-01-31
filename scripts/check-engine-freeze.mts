@@ -110,7 +110,7 @@ if (offending.length > 0) {
 process.stdout.write('check-engine-freeze: OK (engine policy present).\n');
 
 function resolveBaseRef(): string {
-  const env: { CHERRY_BASE_REF?: string } = process.env;
+  const env = process.env as { CHERRY_BASE_REF?: string };
   const override = env.CHERRY_BASE_REF;
   if (override !== undefined && override.length > 0) {
     return override;
