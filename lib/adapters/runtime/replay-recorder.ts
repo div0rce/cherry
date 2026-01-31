@@ -9,7 +9,7 @@ import {
   serializeJson,
   type ReplayMeta,
   type VersionSnapshot,
-} from '../../engine/replay/record.js';
+} from '../../replay/record.js';
 
 type ReplayArgs = {
   enabled: boolean;
