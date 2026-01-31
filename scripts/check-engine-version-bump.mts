@@ -58,6 +58,9 @@ function parsePrefix(message: string): string | null {
     .map((line) => line.trim())
     .find((line) => line.length > 0);
   if (firstLine === undefined || firstLine.length === 0) return null;
+  if (firstLine.startsWith('chore(engine-freeze):')) {
+    return 'chore(engine-freeze)';
+  }
   const match = firstLine.match(/^([a-z-]+(?:\\([^)]+\\))?):/);
   return match?.at(1) ?? null;
 }
@@ -81,7 +84,7 @@ function getPolicyCommitMessages(): { latest: string; previous: string | null } 
     guardrailFail('No commit history for engine-freeze policy');
   }
   const previousCommit = commits[1] ?? null;
-  const latestMessage = runTool('git', ['log', '-n', '1', '--format=%B', latestCommit]);
+  const latestMessage = runTool('git', ['log', '-n', '1', '--format=%s', latestCommit]);
   if (latestMessage.exitCode !== 0) {
     guardrailFail('Unable to read policy commit message', [latestMessage.stderr.trim(), latestMessage.stdout.trim()].filter(Boolean));
   }
