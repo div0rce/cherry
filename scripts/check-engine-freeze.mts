@@ -44,6 +44,17 @@ function loadPolicy(): z.infer<typeof PolicySchema> {
       fix: FIX,
     });
   }
+  if (raw !== null && typeof raw === 'object') {
+    const keys = Object.keys(raw as Record<string, unknown>);
+    const allowed = new Set(['engineVersions', 'engineFixtures']);
+    const extras = keys.filter((key) => !allowed.has(key));
+    if (extras.length > 0) {
+      fail(PREFIX, 'Narrative keys are forbidden in engine-freeze policy', {
+        details: extras.map((key) => `remove=${key}`),
+        fix: 'Move narrative metadata to docs/engine-freeze.md.',
+      });
+    }
+  }
   const parsed = PolicySchema.safeParse(raw);
   if (!parsed.success) {
     const [firstIssue] = parsed.error.issues;
