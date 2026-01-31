@@ -42,6 +42,7 @@ function pad2(value: number): string {
 
 function toUtcDateParts(timestampMs: number): { year: number; month: number; day: number } {
   const dayMs = 86_400_000;
+  const daysPerCentury = 100;
   const days = Math.floor(timestampMs / dayMs);
   let z = days + 719468;
   const era = Math.floor(z / 146097);
@@ -50,7 +51,7 @@ function toUtcDateParts(timestampMs: number): { year: number; month: number; day
     (doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365
   );
   let year = yoe + era * 400;
-  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / daysPerCentury));
   const mp = Math.floor((5 * doy + 2) / 153);
   const day = doy - Math.floor((153 * mp + 2) / 5) + 1;
   const month = mp < 10 ? mp + 3 : mp - 9;
