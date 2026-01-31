@@ -1,14 +1,14 @@
 {
   "engineVersions": {
-    "behavior": "engine_behavior_v1",
+    "behavior": "engine_behavior_v2",
     "input": "engine_input_v1",
     "candidateSpace": "engine_candidate_space_v1",
     "accounting": "engine_accounting_v1"
   },
   "engineFixtures": {
-    "hash": "64b5f7b4825592088c09a37425adfa272376e7a82d3323c2ce311ae7af0db58d",
+    "hash": "a681327731cc3ea6cc1314a54f37860a7fd637d12ff8a7212b22edf5531a1ca3",
     "files": [
-      "scripts/guardrails/fixtures/engine-freeze/behavior-v1.json"
+      "scripts/guardrails/fixtures/engine-freeze/behavior-v2.json"
     ]
   }
 }
