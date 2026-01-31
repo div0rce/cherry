@@ -2,7 +2,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ensureTsEsm } from '../lib/ensure-ts-esm.mjs';
 import { fail } from '../guardrails/lib/fail.mjs';
-import { runTool } from '../guardrails/lib/run-tool.mjs';
 import { TMP_BUCKETS } from '../lib/tmp/allocate.mjs';
 import { resolveTmpRootReadOnly } from '../lib/tmp-root.mjs';
 
@@ -59,15 +58,63 @@ function removePath(target: string): void {
   }
 }
 
-function dumpDu(label: string, root: string): void {
-  const result = runTool('du', ['-h', root]);
+function formatBytes(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
+  let value = bytes;
+  let index = 0;
+  while (value >= 1024 && index < units.length - 1) {
+    value /= 1024;
+    index += 1;
+  }
+  return `${value.toFixed(value < 10 && index > 0 ? 1 : 0)}${units[index]}`;
+}
+
+function sizeBytes(target: string): number {
+  let total = 0;
+  const stack = [target];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (current === undefined) continue;
+    if (!fs.existsSync(current)) continue;
+    const stat = safeStat(current);
+    if (stat.isSymbolicLink()) continue;
+    if (stat.isFile()) {
+      total += stat.size;
+      continue;
+    }
+    if (stat.isDirectory()) {
+      const entries = sortDirents(safeReaddir(current));
+      for (let i = entries.length - 1; i >= 0; i -= 1) {
+        const entry = entries[i];
+        if (entry === undefined) continue;
+        stack.push(path.join(current, entry.name));
+      }
+    }
+  }
+  return total;
+}
+
+function dumpSummary(label: string, root: string): void {
+  const entries = sortDirents(safeReaddir(root));
   const lines: string[] = [label];
-  if (result.stdout.trim().length > 0) {
-    lines.push(result.stdout.trim());
+  const totals: Array<{ name: string; size: number }> = [];
+  let rootTotal = 0;
+  for (const entry of entries) {
+    const entryPath = path.join(root, entry.name);
+    const size = sizeBytes(entryPath);
+    rootTotal += size;
+    totals.push({ name: entry.name, size });
   }
-  if (!result.ok && result.stderr.trim().length > 0) {
-    lines.push(`du-error=${result.stderr.trim()}`);
+  totals.sort((a, b) => {
+    if (a.size !== b.size) return b.size - a.size;
+    if (a.name < b.name) return -1;
+    if (a.name > b.name) return 1;
+    return 0;
+  });
+  for (const entry of totals) {
+    lines.push(`${formatBytes(entry.size)}\t${path.join(root, entry.name)}`);
   }
+  lines.push(`${formatBytes(rootTotal)}\t${root}`);
   process.stdout.write(`${lines.join('\n')}\n`);
 }
 
@@ -76,7 +123,7 @@ function main(): void {
   const ttlMs = parseTtlMs();
   const nowMs = Date.now();
 
-  dumpDu('tmp:gc before', root);
+  dumpSummary('tmp:gc before', root);
 
   const allowed = new Set<string>(TMP_BUCKETS);
   const rootEntries = sortDirents(safeReaddir(root));
@@ -104,7 +151,7 @@ function main(): void {
     }
   }
 
-  dumpDu('tmp:gc after', root);
+  dumpSummary('tmp:gc after', root);
 }
 
 main();
