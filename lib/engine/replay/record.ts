@@ -1,6 +1,3 @@
-import * as crypto from 'node:crypto';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import type { EngineInput } from '../input/EngineInput.js';
 
 export type ReplayMeta = {
@@ -18,15 +15,6 @@ export type VersionSnapshot = {
   engineAccountingVersion: string;
 };
 
-type ReplayArgs = {
-  input: EngineInput;
-  versions: VersionSnapshot;
-  output: unknown;
-  meta: ReplayMeta;
-};
-
-const RECORD_ENV = 'CHERRY_ENGINE_REPLAY_RECORD';
-
 function normalizeJson(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((entry) => normalizeJson(entry));
@@ -43,7 +31,7 @@ function normalizeJson(value: unknown): unknown {
   return value;
 }
 
-function serializeJson(value: unknown): string {
+export function serializeJson(value: unknown): string {
   const normalized = normalizeJson(value);
   return `${JSON.stringify(normalized, null, 2)}\n`;
 }
@@ -70,38 +58,23 @@ function toUtcDateParts(timestampMs: number): { year: number; month: number; day
   return { year, month, day };
 }
 
-function formatDateKeys(timestampMs: number): { monthKey: string; dayKey: string } {
+export function formatDateKeys(timestampMs: number): { monthKey: string; dayKey: string } {
   const parts = toUtcDateParts(timestampMs);
   const monthKey = `${parts.year}-${pad2(parts.month)}`;
   const dayKey = `${parts.year}${pad2(parts.month)}${pad2(parts.day)}`;
   return { monthKey, dayKey };
 }
 
-function hashInput(serializedInput: string): string {
-  return crypto.createHash('sha256').update(serializedInput).digest('hex');
+function toTracePrefix(source: ReplayMeta['source']): string {
+  if (source === 'api/scan') return 'scan';
+  if (source === 'api/simulate') return 'simulate';
+  return 'autopilot';
 }
 
-export async function maybeRecordReplayTrace(args: ReplayArgs): Promise<void> {
-  if (process.env[RECORD_ENV] !== '1') return;
-  try {
-    const serializedInput = serializeJson(args.input);
-    const hash = hashInput(serializedInput).slice(0, 12);
-    const timestampMs = args.meta.timestampMs ?? 0;
-    const { monthKey, dayKey } = formatDateKeys(timestampMs);
-    const traceId = `scan-${dayKey}-${hash}`;
+export function buildTraceId(source: ReplayMeta['source'], dayKey: string, hash: string): string {
+  return `${toTracePrefix(source)}-${dayKey}-${hash}`;
+}
 
-    const root = path.join(process.cwd(), 'tests', 'replay', '_staging', monthKey, traceId);
-    fs.mkdirSync(root, { recursive: true });
-
-    const meta = { ...args.meta, traceId };
-
-    fs.writeFileSync(path.join(root, 'input.json'), serializedInput);
-    fs.writeFileSync(path.join(root, 'versions.json'), serializeJson(args.versions));
-    fs.writeFileSync(path.join(root, 'output.json'), serializeJson(args.output));
-    fs.writeFileSync(path.join(root, 'meta.json'), serializeJson(meta));
-  } catch (error: unknown) {
-    if (process.env[RECORD_ENV] === '1') {
-      console.warn('[engine] replay recording failed', error);
-    }
-  }
+export function normalizeReplayInput(input: EngineInput): string {
+  return serializeJson(input);
 }

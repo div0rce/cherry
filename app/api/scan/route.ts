@@ -9,7 +9,7 @@ import {
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
 import { fromLegacy } from '../../../lib/engine/input/fromLegacy.js';
 import { validateEngineInput } from '../../../lib/engine/input/validate.js';
-import { maybeRecordReplayTrace } from '../../../lib/engine/replay/record.js';
+import { maybeRecordReplayTrace } from '../../../lib/adapters/runtime/replay-recorder.js';
 import {
   engineBehaviorVersion,
   engineInputVersion,
