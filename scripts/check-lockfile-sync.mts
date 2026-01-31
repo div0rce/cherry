@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { buildDeterministicEnv } from './lib/deterministic-env.mjs';
-import { resolveTmpRoot } from './lib/tmp-root.mts';
+import { resolveTmpRoot } from './lib/tmp-root.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
