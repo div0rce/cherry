@@ -322,9 +322,16 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Temp artifacts must live under `CHERRY_TMP_ROOT` and remain below the 5GB quota.
 - Enforcement: `check:temp-quota`.
 
+### Guardrail 61 — Temp Root Shape
+
+- `CHERRY_TMP_ROOT` may only contain the bucket directories: `npm`, `next`, `prisma`, `guardrails`.
+- No files or symlinks are allowed at the temp root.
+- Enforcement: `check:tmp-root-shape`.
+
 ### Guardrail 60 — Artifact Size Budgets
 
 - Artifact size budgets are hard caps; failures are expected signals.
+- Temp budgets are enforced per bucket as defined in `artifact-budgets.policy.json`.
 - Enforcement: `check:artifact-size-budgets`.
 
 ### Guardrail 16 — Doctrine Presence

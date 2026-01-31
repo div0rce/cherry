@@ -9051,6 +9051,7 @@
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
     "check:replay-staging-empty": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-staging-empty",
     "check:temp-quota": "npm run ts:esm -- scripts/guardrails/run.mts check:temp-quota",
+    "check:tmp-root-shape": "npm run ts:esm -- scripts/guardrails/run.mts check:tmp-root-shape",
     "check:artifact-size-budgets": "npm run ts:esm -- scripts/guardrails/run.mts check:artifact-size-budgets",
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
@@ -9060,6 +9061,7 @@
     "check:agents-doctrine-link": "npm run ts:esm -- scripts/guardrails/run.mts check:agents-doctrine-link",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
     "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
+    "tmp:gc": "npm run ts:esm -- scripts/tmp/gc.mts",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:scripts": "eslint scripts --max-warnings=0",
@@ -10965,6 +10967,7 @@ const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-vers
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
 const TEMP_QUOTA_PATH = `${CHECK_PATH_BASE}temp-quota.mts` as const;
+const TMP_ROOT_SHAPE_PATH = `${CHECK_PATH_BASE}tmp-root-shape.mts` as const;
 const ARTIFACT_SIZE_BUDGETS_PATH = `${CHECK_PATH_BASE}artifact-size-budgets.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
@@ -11044,6 +11047,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
   'check:temp-quota': TEMP_QUOTA_PATH,
+  'check:tmp-root-shape': TMP_ROOT_SHAPE_PATH,
   'check:artifact-size-budgets': ARTIFACT_SIZE_BUDGETS_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
@@ -16037,8 +16041,8 @@ Last updated: 2026-01-03
 
 ## Guardrail System Health (Human Summary)
 
-- Total registered guardrails: 53 (from `scripts/guardrails/registry.mts`).
-- Enforced in CI: 53 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
+- Total registered guardrails: 54 (from `scripts/guardrails/registry.mts`).
+- Enforced in CI: 54 (via `ci:verify` → `check` → `check:guardrails`; coverage enforced by `check:ci-guardrail-coverage`).
 - Partial / legacy-allowlisted: 3 (floating-point money math allowlist, idempotent writes coverage, determinism guardrail allows global fake timers).
 - Known gaps:
   - Idempotent writes: session/ledger coverage incomplete.
@@ -16459,9 +16463,16 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Temp artifacts must live under `CHERRY_TMP_ROOT` and remain below the 5GB quota.
 - Enforcement: `check:temp-quota`.
 
+### Guardrail 61 — Temp Root Shape
+
+- `CHERRY_TMP_ROOT` may only contain the bucket directories: `npm`, `next`, `prisma`, `guardrails`.
+- No files or symlinks are allowed at the temp root.
+- Enforcement: `check:tmp-root-shape`.
+
 ### Guardrail 60 — Artifact Size Budgets
 
 - Artifact size budgets are hard caps; failures are expected signals.
+- Temp budgets are enforced per bucket as defined in `artifact-budgets.policy.json`.
 - Enforcement: `check:artifact-size-budgets`.
 
 ### Guardrail 16 — Doctrine Presence
