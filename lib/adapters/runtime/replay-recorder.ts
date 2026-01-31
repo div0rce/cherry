@@ -19,8 +19,29 @@ type ReplayArgs = {
   meta: ReplayMeta;
 };
 
+const VERSION_PATH = path.join(process.cwd(), 'lib', 'engine', 'version.ts');
+
 function hashInput(serializedInput: string): string {
   return crypto.createHash('sha256').update(serializedInput).digest('hex');
+}
+
+function extractVersion(contents: string, key: keyof VersionSnapshot): string {
+  const pattern = new RegExp(`export const ${key} = ['"]([^'"]+)['"]`);
+  const match = contents.match(pattern);
+  if (!match || match[1] === undefined) {
+    throw new Error(`Missing ${key} in lib/engine/version.ts`);
+  }
+  return match[1];
+}
+
+export function getEngineVersionSnapshot(): VersionSnapshot {
+  const contents = fs.readFileSync(VERSION_PATH, 'utf8');
+  return {
+    engineBehaviorVersion: extractVersion(contents, 'engineBehaviorVersion'),
+    engineInputVersion: extractVersion(contents, 'engineInputVersion'),
+    engineCandidateSpaceVersion: extractVersion(contents, 'engineCandidateSpaceVersion'),
+    engineAccountingVersion: extractVersion(contents, 'engineAccountingVersion'),
+  };
 }
 
 export async function maybeRecordReplayTrace(args: ReplayArgs): Promise<void> {

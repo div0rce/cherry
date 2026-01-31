@@ -9,13 +9,10 @@ import {
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
 import { fromLegacy } from '../../../lib/engine/input/fromLegacy.js';
 import { validateEngineInput } from '../../../lib/engine/input/validate.js';
-import { maybeRecordReplayTrace } from '../../../lib/adapters/runtime/replay-recorder.js';
 import {
-  engineBehaviorVersion,
-  engineInputVersion,
-  engineCandidateSpaceVersion,
-  engineAccountingVersion,
-} from '../../../lib/engine/version.js';
+  getEngineVersionSnapshot,
+  maybeRecordReplayTrace,
+} from '../../../lib/adapters/runtime/replay-recorder.js';
 import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
 import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma.js';
@@ -132,33 +129,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const inputIssues = validateEngineInput(engineInput);
       if (inputIssues.length === 0) {
         const replayEnabled = process.env.CHERRY_ENGINE_REPLAY_RECORD === '1';
-        const userToken =
-          typeof userId === 'string' && userId.length > 0 ? userId : 'unknown';
-        const userHash = crypto.createHash('sha256').update(userToken).digest('hex').slice(0, 4);
-        const userLabel = `user-${userHash}`;
-        const replayOutput = {
-          decisions: engineResult.decisions,
-          trace: engineResult.trace,
-          state: { ...engineResult.state, userId: userLabel },
-        };
-        void maybeRecordReplayTrace({
-          enabled: replayEnabled,
-          input: engineInput,
-          versions: {
-            engineBehaviorVersion,
-            engineInputVersion,
-            engineCandidateSpaceVersion,
-            engineAccountingVersion,
-          },
-          output: replayOutput,
-          meta: {
-            traceId: 'scan',
-            source: 'api/scan',
-            surface: ctx.surface,
-            timestampMs: ctx.nowMs,
-            user: userLabel,
-          },
-        });
+        if (replayEnabled) {
+          const userToken =
+            typeof userId === 'string' && userId.length > 0 ? userId : 'unknown';
+          const userHash = crypto.createHash('sha256').update(userToken).digest('hex').slice(0, 4);
+          const userLabel = `user-${userHash}`;
+          const replayOutput = {
+            decisions: engineResult.decisions,
+            trace: engineResult.trace,
+            state: { ...engineResult.state, userId: userLabel },
+          };
+          void maybeRecordReplayTrace({
+            enabled: replayEnabled,
+            input: engineInput,
+            versions: getEngineVersionSnapshot(),
+            output: replayOutput,
+            meta: {
+              traceId: 'scan',
+              source: 'api/scan',
+              surface: ctx.surface,
+              timestampMs: ctx.nowMs,
+              user: userLabel,
+            },
+          });
+        }
       }
 
       const topDecision =
