@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import {
@@ -6,6 +7,15 @@ import {
   type LegacyEngineDecision,
 } from '../../../lib/engine.js';
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
+import { fromLegacy } from '../../../lib/engine/input/fromLegacy.js';
+import { validateEngineInput } from '../../../lib/engine/input/validate.js';
+import { maybeRecordReplayTrace } from '../../../lib/engine/replay/record.js';
+import {
+  engineBehaviorVersion,
+  engineInputVersion,
+  engineCandidateSpaceVersion,
+  engineAccountingVersion,
+} from '../../../lib/engine/version.js';
 import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
 import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma.js';
@@ -109,6 +119,44 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           },
           { status: 200 }
         );
+      }
+
+      const engineInput = fromLegacy({
+        state,
+        context: ctx,
+        options: {
+          maxCandidates: 64,
+          weightsOverride: null,
+        },
+      });
+      const inputIssues = validateEngineInput(engineInput);
+      if (inputIssues.length === 0) {
+        const userToken =
+          typeof userId === 'string' && userId.length > 0 ? userId : 'unknown';
+        const userHash = crypto.createHash('sha256').update(userToken).digest('hex').slice(0, 4);
+        const userLabel = `user-${userHash}`;
+        const replayOutput = {
+          decisions: engineResult.decisions,
+          trace: engineResult.trace,
+          state: { ...engineResult.state, userId: userLabel },
+        };
+        void maybeRecordReplayTrace({
+          input: engineInput,
+          versions: {
+            engineBehaviorVersion,
+            engineInputVersion,
+            engineCandidateSpaceVersion,
+            engineAccountingVersion,
+          },
+          output: replayOutput,
+          meta: {
+            traceId: 'scan',
+            source: 'api/scan',
+            surface: ctx.surface,
+            timestampMs: ctx.nowMs,
+            user: userLabel,
+          },
+        });
       }
 
       const topDecision =
