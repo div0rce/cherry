@@ -250,15 +250,6 @@
     "source": "legacy",
     "tier": "persistence-only"
   },
-  "lib/tmp/allocate.ts": {
-    "effects": [
-      "env",
-      "fs",
-      "path"
-    ],
-    "source": "legacy",
-    "tier": "boundary-time"
-  },
   "lib/unified-activity.ts": {
     "effects": [
       "prisma",
