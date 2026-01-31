@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { allocateTempDir } from '../lib/tmp/allocate.js';
+import { allocateTempDir } from './lib/tmp/allocate.mjs';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { buildDeterministicEnv } from './lib/deterministic-env.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';
