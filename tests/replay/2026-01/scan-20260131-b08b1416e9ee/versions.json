@@ -1,6 +1,6 @@
 {
   "engineAccountingVersion": "engine_accounting_v1",
-  "engineBehaviorVersion": "engine_behavior_v1",
+  "engineBehaviorVersion": "engine_behavior_v2",
   "engineCandidateSpaceVersion": "engine_candidate_space_v1",
   "engineInputVersion": "engine_input_v1"
 }
