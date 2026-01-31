@@ -4,7 +4,7 @@ import { ensureTsEsm } from '../lib/ensure-ts-esm.mjs';
 import { asMessage } from '../guardrails/lib/error.mjs';
 import { fail } from '../guardrails/lib/fail.mjs';
 import { readJsonFile } from '../guardrails/lib/read-json.mjs';
-import { hashReplayPayload, normalizeJson, type ReplayPayload } from '../../tests/replay/lib/payload.js';
+import { hashReplayPayload, normalizeJson, type ReplayPayload } from './payload.js';
 
 ensureTsEsm();
 

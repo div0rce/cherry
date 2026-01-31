@@ -16,7 +16,7 @@ import {
   hashReplayPayload,
   normalizeJson,
   type ReplayPayload,
-} from '../../../replay/lib/payload.js';
+} from '../../../scripts/replay/payload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '../../../..');
