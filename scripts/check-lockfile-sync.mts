@@ -61,15 +61,20 @@ function main(): void {
     }
     let result;
     try {
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-        fs.mkdirSync(tempDir, { recursive: true, mode: 0o700 });
-      } catch (error: unknown) {
-        fail(PREFIX, 'Failed to reset lockfile-sync workspace', {
-          details: [String(error)],
-          fix: FIX,
-        });
-      }
+    const resetResult = runTool('rm', ['-rf', tempDir]);
+    if (!resetResult.ok) {
+      fail(PREFIX, 'Failed to clear lockfile-sync workspace', {
+        details: [resetResult.stderr.trim(), resetResult.stdout.trim()].filter(Boolean),
+        fix: FIX,
+      });
+    }
+    const mkdirResult = runTool('mkdir', ['-p', tempDir]);
+    if (!mkdirResult.ok) {
+      fail(PREFIX, 'Failed to create lockfile-sync workspace', {
+        details: [mkdirResult.stderr.trim(), mkdirResult.stdout.trim()].filter(Boolean),
+        fix: FIX,
+      });
+    }
       fs.copyFileSync(PACKAGE_JSON, path.join(tempDir, 'package.json'));
       fs.copyFileSync(PACKAGE_LOCK, path.join(tempDir, 'package-lock.json'));
 
@@ -84,12 +89,17 @@ function main(): void {
         env,
       });
     } finally {
-      try {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-        fs.mkdirSync(tempDir, { recursive: true, mode: 0o700 });
-      } catch (error: unknown) {
+      const cleanupResult = runTool('rm', ['-rf', tempDir]);
+      if (!cleanupResult.ok) {
         fail(PREFIX, 'Failed to clean lockfile-sync workspace', {
-          details: [String(error)],
+          details: [cleanupResult.stderr.trim(), cleanupResult.stdout.trim()].filter(Boolean),
+          fix: FIX,
+        });
+      }
+      const recreateResult = runTool('mkdir', ['-p', tempDir]);
+      if (!recreateResult.ok) {
+        fail(PREFIX, 'Failed to reset lockfile-sync workspace', {
+          details: [recreateResult.stderr.trim(), recreateResult.stdout.trim()].filter(Boolean),
           fix: FIX,
         });
       }
@@ -101,10 +111,12 @@ function main(): void {
         }
         lockFd = null;
       }
-      try {
-        fs.unlinkSync(lockPath);
-      } catch {
-        // best effort
+      const lockCleanup = runTool('rm', ['-f', lockPath]);
+      if (!lockCleanup.ok) {
+        fail(PREFIX, 'Failed to remove lockfile-sync lock', {
+          details: [lockCleanup.stderr.trim(), lockCleanup.stdout.trim()].filter(Boolean),
+          fix: FIX,
+        });
       }
     }
 
