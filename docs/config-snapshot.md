@@ -9049,6 +9049,7 @@
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
+    "check:replay-staging-empty": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-staging-empty",
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
     "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",
@@ -10956,6 +10957,7 @@ const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
 const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
+const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
 const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
@@ -11032,6 +11034,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-optimality': ENGINE_OPTIMALITY_PATH,
   'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
+  'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
   'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
@@ -16123,7 +16126,7 @@ Reach a fixed point where all checks pass with zero warnings and no allowlists.
 
 <!-- docs/guardrails.md -->
 Status: Active
-Last updated: 2026-01-29
+Last updated: 2026-01-31
 
 # Guardrails
 
@@ -16435,6 +16438,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - EngineInput imports must use the canonical module path.
 - Boundary files (`lib/engine/input/**`, `check:engine-freeze`) may not use array element access (`arr[i]`).
 - Enforcement: `check:engine-input-boundary`.
+
+### Guardrail 58 — Replay Staging Hygiene
+
+- Replay staging artifacts must never be committed under `tests/replay/_staging/**`.
+- Enforcement: `check:replay-staging-empty`.
 
 ### Guardrail 16 — Doctrine Presence
 

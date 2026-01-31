@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-29
+Last updated: 2026-01-31
 
 # Guardrails
 
@@ -311,6 +311,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - EngineInput imports must use the canonical module path.
 - Boundary files (`lib/engine/input/**`, `check:engine-freeze`) may not use array element access (`arr[i]`).
 - Enforcement: `check:engine-input-boundary`.
+
+### Guardrail 58 — Replay Staging Hygiene
+
+- Replay staging artifacts must never be committed under `tests/replay/_staging/**`.
+- Enforcement: `check:replay-staging-empty`.
 
 ### Guardrail 16 — Doctrine Presence
 

@@ -21,6 +21,7 @@
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
+    "check:replay-staging-empty": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-staging-empty",
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
     "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",
