@@ -1,0 +1,13 @@
+{
+  "version": "artifact_budgets_v1",
+  "budgets": {
+    "repo.nextDir.maxBytes": 1610612736,
+    "repo.distDir.maxBytes": 1073741824,
+    "repo.coverageDir.maxBytes": 1073741824,
+    "repo.nodeModulesPrisma.maxBytes": 524288000,
+    "repo.replayBlobs.maxBytes": 209715200,
+    "repo.replayStaging.maxBytes": 0,
+    "repo.tsbuildinfo.maxBytes": 52428800,
+    "tmpRoot.maxBytes": 5368709120
+  }
+}
