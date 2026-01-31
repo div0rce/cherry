@@ -26,6 +26,7 @@ export const EXECUTION = {
   'backfill:category-preference-enum': 'scripts/backfill_category_preference_enum.mts',
   'cleanup:vine-sessions': 'scripts/cleanup_expired_vine_sessions.mts',
   'cleanup:kill-alias-imports': 'scripts/codemod-kill-alias-imports.mts',
+  'replay:migrate-blobs': 'scripts/replay/migrate-replay-blobs.mts',
   'report:authority': 'scripts/authority-coverage.mts',
   'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
 } as const;
