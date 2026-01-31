@@ -16,6 +16,8 @@ const ENGINE_SENSITIVE_PREFIXES = [
   'lib/engine.ts',
   'lib/engine/legacy.ts',
   'lib/engine/input/',
+  'lib/replay/',
+  'lib/adapters/runtime/replay-recorder.ts',
   'lib/authority/',
   'lib/vine/',
   'lib/scan-types.ts',
