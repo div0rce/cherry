@@ -6,11 +6,13 @@ Last updated: 2026-01-31
 ## Current
 - Each replay trace lives in `tests/replay/<YYYY-MM>/<traceId>/`.
 - Required files per trace:
-  - input.json
+  - payload.json (hash reference only)
   - versions.json
+- Payload blobs live in `tests/replay/blobs/<hash>/`:
+  - input.json
   - output.json
   - meta.json
-- Placeholder traces may have empty files; the replay test skips empty traces.
+- Placeholder traces may have empty `payload.json`; the replay test skips empty traces.
 
 ## Future
 - Populate traces from real boundary recordings.

@@ -12,10 +12,16 @@ import {
 import { safeSolveDecisionForUser } from '../../../../lib/engine/solver.js';
 import { DEFAULT_ENGINE_RUNTIME } from '../../../../lib/engine/runtime.js';
 import type { EngineInput } from '../../../../lib/engine/input/EngineInput.js';
+import {
+  hashReplayPayload,
+  normalizeJson,
+  type ReplayPayload,
+} from '../../../replay/lib/payload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '../../../..');
 const replayRoot = path.join(repoRoot, 'tests', 'replay');
+const blobsRoot = path.join(replayRoot, 'blobs');
 const versionSourcePath = path.join(repoRoot, 'lib', 'engine', 'version.ts');
 
 const parseJsonText = globalThis.JSON['parse'] as (value: string) => unknown;
@@ -61,6 +67,12 @@ const MetaSchema = z
   })
   .strict();
 
+const PayloadRefSchema = z
+  .object({
+    hash: z.string(),
+  })
+  .strict();
+
 type VersionSnapshot = {
   engineBehaviorVersion: string;
   engineInputVersion: string;
@@ -70,13 +82,18 @@ type VersionSnapshot = {
 
 type ReplayPaths = {
   dir: string;
-  inputPath: string;
+  payloadPath: string;
   versionsPath: string;
+};
+
+type ReplayBlobPaths = {
+  hash: string;
+  inputPath: string;
   outputPath: string;
   metaPath: string;
 };
 
-function listReplayInputs(root: string): ReplayPaths[] {
+function listReplayRefs(root: string): ReplayPaths[] {
   const results: ReplayPaths[] = [];
   const stack = [root];
   while (stack.length > 0) {
@@ -86,17 +103,16 @@ function listReplayInputs(root: string): ReplayPaths[] {
     for (const entry of entries) {
       const fullPath = path.join(current, entry.name);
       if (entry.isDirectory()) {
+        if (entry.name === 'blobs' || entry.name === '_staging') continue;
         stack.push(fullPath);
         continue;
       }
-      if (entry.isFile() && entry.name === 'input.json') {
+      if (entry.isFile() && entry.name === 'payload.json') {
         const dir = path.dirname(fullPath);
         results.push({
           dir,
-          inputPath: fullPath,
+          payloadPath: fullPath,
           versionsPath: path.join(dir, 'versions.json'),
-          outputPath: path.join(dir, 'output.json'),
-          metaPath: path.join(dir, 'meta.json'),
         });
       }
     }
@@ -104,25 +120,19 @@ function listReplayInputs(root: string): ReplayPaths[] {
   return results;
 }
 
+function blobPathsForHash(hash: string): ReplayBlobPaths {
+  const blobDir = path.join(blobsRoot, hash);
+  return {
+    hash,
+    inputPath: path.join(blobDir, 'input.json'),
+    outputPath: path.join(blobDir, 'output.json'),
+    metaPath: path.join(blobDir, 'meta.json'),
+  };
+}
+
 function isEmptyFile(filePath: string): boolean {
   if (!fs.existsSync(filePath)) return true;
   return fs.statSync(filePath).size === 0;
-}
-
-function normalizeJson(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((entry) => normalizeJson(entry));
-  }
-  if (value !== null && typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
-    const normalized: Record<string, unknown> = {};
-    for (const key of keys) {
-      normalized[key] = normalizeJson(record[key]);
-    }
-    return normalized;
-  }
-  return value;
 }
 
 function extractVersion(content: string, name: string): string | undefined {
@@ -149,24 +159,38 @@ function loadVersionSnapshot(): VersionSnapshot {
   };
 }
 
-const inputs = listReplayInputs(replayRoot);
-assert.ok(inputs.length > 0, 'expected at least one replay input.json');
+const references = listReplayRefs(replayRoot);
+assert.ok(references.length > 0, 'expected at least one replay payload.json');
 const versionSnapshot = loadVersionSnapshot();
+let samplePayload: ReplayPayload | null = null;
+let sampleHash: string | null = null;
 
-for (const replay of inputs) {
-  const inputEmpty = isEmptyFile(replay.inputPath);
+for (const replay of references) {
+  const payloadEmpty = isEmptyFile(replay.payloadPath);
   const versionsEmpty = isEmptyFile(replay.versionsPath);
-  const outputEmpty = isEmptyFile(replay.outputPath);
-  const metaEmpty = isEmptyFile(replay.metaPath);
+  const legacyFiles = ['input.json', 'output.json', 'meta.json'];
+  for (const legacyFile of legacyFiles) {
+    assert.ok(
+      fs.existsSync(path.join(replay.dir, legacyFile)) === false,
+      `${replay.dir}: legacy fixture file must be removed (${legacyFile})`
+    );
+  }
 
-  if (inputEmpty) {
-    assert.ok(versionsEmpty, `${replay.dir}: versions.json must be empty when input.json is empty`);
-    assert.ok(outputEmpty, `${replay.dir}: output.json must be empty when input.json is empty`);
-    assert.ok(metaEmpty, `${replay.dir}: meta.json must be empty when input.json is empty`);
+  if (payloadEmpty) {
+    assert.ok(versionsEmpty, `${replay.dir}: versions.json must be empty when payload.json is empty`);
     continue;
   }
 
-  const inputRaw = fs.readFileSync(replay.inputPath, 'utf8');
+  assert.ok(versionsEmpty === false, `${replay.dir}: versions.json must be present`);
+
+  const payloadRaw = fs.readFileSync(replay.payloadPath, 'utf8');
+  const payloadRef = PayloadRefSchema.parse(parseJson(payloadRaw));
+  const blob = blobPathsForHash(payloadRef.hash);
+  assert.ok(fs.existsSync(blob.inputPath), `${replay.dir}: missing blob input.json for ${payloadRef.hash}`);
+  assert.ok(fs.existsSync(blob.outputPath), `${replay.dir}: missing blob output.json for ${payloadRef.hash}`);
+  assert.ok(fs.existsSync(blob.metaPath), `${replay.dir}: missing blob meta.json for ${payloadRef.hash}`);
+
+  const inputRaw = fs.readFileSync(blob.inputPath, 'utf8');
   const input = EngineInputSchema.parse(parseJson(inputRaw));
   const issues = validateEngineInput(input);
   assert.equal(issues.length, 0, `${replay.dir}: EngineInput validation failed: ${JSON.stringify(issues)}`);
@@ -194,7 +218,7 @@ for (const replay of inputs) {
     `${replay.dir}: accounting version mismatch`
   );
 
-  const metaRaw = fs.readFileSync(replay.metaPath, 'utf8');
+  const metaRaw = fs.readFileSync(blob.metaPath, 'utf8');
   const meta = MetaSchema.parse(parseJson(metaRaw));
   const nowMs = meta.timestampMs !== undefined ? meta.timestampMs : 0;
   const userId = meta.user;
@@ -216,12 +240,34 @@ for (const replay of inputs) {
   }
   const output = { decisions: result.decisions, trace: result.trace, state: result.state };
 
-  const outputRaw = fs.readFileSync(replay.outputPath, 'utf8');
+  const outputRaw = fs.readFileSync(blob.outputPath, 'utf8');
   const expectedOutput = parseJson(outputRaw);
+
+  const payload: ReplayPayload = { input, output: expectedOutput, meta };
+  const payloadHash = hashReplayPayload(payload);
+  assert.equal(payloadHash, payloadRef.hash, `${replay.dir}: payload hash mismatch`);
+  if (samplePayload === null) {
+    samplePayload = payload;
+    sampleHash = payloadHash;
+  }
 
   const normalizedActual = normalizeJson(output);
   const normalizedExpected = normalizeJson(expectedOutput);
   assert.deepEqual(normalizedActual, normalizedExpected, `${replay.dir}: output mismatch`);
+}
+
+if (samplePayload !== null && sampleHash !== null) {
+  const altVersions: VersionSnapshot = {
+    ...versionSnapshot,
+    engineBehaviorVersion: `${versionSnapshot.engineBehaviorVersion}-alt`,
+  };
+  assert.ok(altVersions.engineBehaviorVersion !== versionSnapshot.engineBehaviorVersion);
+  assert.equal(
+    hashReplayPayload(samplePayload),
+    sampleHash,
+    'payload hash must not depend on engine versions'
+  );
+  assert.ok(fs.existsSync(path.join(blobsRoot, sampleHash)), 'payload blob must exist');
 }
 
 console.warn('engine/replay: ok');
