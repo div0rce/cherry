@@ -23,6 +23,7 @@
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
     "check:replay-staging-empty": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-staging-empty",
     "check:temp-quota": "npm run ts:esm -- scripts/guardrails/run.mts check:temp-quota",
+    "check:artifact-size-budgets": "npm run ts:esm -- scripts/guardrails/run.mts check:artifact-size-budgets",
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
     "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",
