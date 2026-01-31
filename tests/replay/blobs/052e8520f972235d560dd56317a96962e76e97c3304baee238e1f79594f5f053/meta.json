@@ -1,8 +1,0 @@
-{
-  "redactionVersion": "replay_redaction_v1",
-  "source": "api/scan",
-  "surface": "web",
-  "timestampMs": 1769878005784,
-  "traceId": "scan-20260131-b08b1416e9ee",
-  "user": "user-e1e1"
-}

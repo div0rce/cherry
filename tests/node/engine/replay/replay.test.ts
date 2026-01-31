@@ -15,13 +15,16 @@ import type { EngineInput } from '../../../../lib/engine/input/EngineInput.js';
 import {
   hashReplayPayload,
   normalizeJson,
+  replayIndexFilename,
+  replayObjectPath,
   type ReplayPayload,
+  type VersionSnapshot,
 } from '../../../../scripts/lib/replay-payload.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '../../../..');
 const replayRoot = path.join(repoRoot, 'tests', 'replay');
-const blobsRoot = path.join(replayRoot, 'blobs');
+const indexRoot = path.join(replayRoot, 'index');
 const versionSourcePath = path.join(repoRoot, 'lib', 'engine', 'version.ts');
 
 const parseJsonText = globalThis.JSON['parse'] as (value: string) => unknown;
@@ -47,14 +50,24 @@ function parseJson(text: string): unknown {
   return parsed.data;
 }
 
-const VersionsSchema = z.object({
-  engineBehaviorVersion: z.string(),
-  engineInputVersion: z.string(),
-  engineCandidateSpaceVersion: z.string(),
-  engineAccountingVersion: z.string(),
-}).strict();
+const VersionsSchema = z
+  .object({
+    engineBehaviorVersion: z.string(),
+    engineInputVersion: z.string(),
+    engineCandidateSpaceVersion: z.string(),
+    engineAccountingVersion: z.string(),
+  })
+  .strict();
 
 const EngineInputSchema = z.custom<EngineInput>();
+
+const PayloadSchema = z
+  .object({
+    input: EngineInputSchema,
+    output: z.unknown(),
+    meta: z.unknown(),
+  })
+  .strict();
 
 const MetaSchema = z
   .object({
@@ -67,72 +80,32 @@ const MetaSchema = z
   })
   .strict();
 
-const PayloadRefSchema = z
+const IndexSchema = z
   .object({
-    hash: z.string(),
+    versions: VersionsSchema,
+    hashes: z.array(z.string()).min(1),
   })
   .strict();
 
-type VersionSnapshot = {
-  engineBehaviorVersion: string;
-  engineInputVersion: string;
-  engineCandidateSpaceVersion: string;
-  engineAccountingVersion: string;
+type ReplayIndexPath = {
+  path: string;
 };
 
-type ReplayPaths = {
-  dir: string;
-  payloadPath: string;
-  versionsPath: string;
-};
-
-type ReplayBlobPaths = {
-  hash: string;
-  inputPath: string;
-  outputPath: string;
-  metaPath: string;
-};
-
-function listReplayRefs(root: string): ReplayPaths[] {
-  const results: ReplayPaths[] = [];
-  const stack = [root];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    if (current === undefined) continue;
-    const entries = fs.readdirSync(current, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = path.join(current, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === 'blobs' || entry.name === '_staging') continue;
-        stack.push(fullPath);
-        continue;
-      }
-      if (entry.isFile() && entry.name === 'payload.json') {
-        const dir = path.dirname(fullPath);
-        results.push({
-          dir,
-          payloadPath: fullPath,
-          versionsPath: path.join(dir, 'versions.json'),
-        });
-      }
-    }
+function listIndexFiles(root: string): ReplayIndexPath[] {
+  const results: ReplayIndexPath[] = [];
+  if (!fs.existsSync(root)) return results;
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.endsWith('.json')) continue;
+    results.push({ path: path.join(root, entry.name) });
   }
+  results.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return results;
 }
 
-function blobPathsForHash(hash: string): ReplayBlobPaths {
-  const blobDir = path.join(blobsRoot, hash);
-  return {
-    hash,
-    inputPath: path.join(blobDir, 'input.json'),
-    outputPath: path.join(blobDir, 'output.json'),
-    metaPath: path.join(blobDir, 'meta.json'),
-  };
-}
-
-function isEmptyFile(filePath: string): boolean {
-  if (!fs.existsSync(filePath)) return true;
-  return fs.statSync(filePath).size === 0;
+function objectPathForHash(hash: string): string {
+  return replayObjectPath(replayRoot, hash);
 }
 
 function extractVersion(content: string, name: string): string | undefined {
@@ -159,101 +132,95 @@ function loadVersionSnapshot(): VersionSnapshot {
   };
 }
 
-const references = listReplayRefs(replayRoot);
-assert.ok(references.length > 0, 'expected at least one replay payload.json');
+const references = listIndexFiles(indexRoot);
+assert.ok(references.length > 0, 'expected at least one replay index file');
 const versionSnapshot = loadVersionSnapshot();
+const expectedIndexPath = path.join(indexRoot, replayIndexFilename(versionSnapshot));
+assert.ok(fs.existsSync(expectedIndexPath), 'missing index for current engine version');
+
 let samplePayload: ReplayPayload | null = null;
 let sampleHash: string | null = null;
 
 for (const replay of references) {
-  const payloadEmpty = isEmptyFile(replay.payloadPath);
-  const versionsEmpty = isEmptyFile(replay.versionsPath);
-  const legacyFiles = ['input.json', 'output.json', 'meta.json'];
-  for (const legacyFile of legacyFiles) {
-    assert.ok(
-      fs.existsSync(path.join(replay.dir, legacyFile)) === false,
-      `${replay.dir}: legacy fixture file must be removed (${legacyFile})`
+  const indexRaw = fs.readFileSync(replay.path, 'utf8');
+  const index = IndexSchema.parse(parseJson(indexRaw));
+  const indexName = path.basename(replay.path);
+  assert.equal(indexName, replayIndexFilename(index.versions), `${replay.path}: index filename mismatch`);
+
+  if (replay.path !== expectedIndexPath) continue;
+
+  const hashes = index.hashes;
+  const seenHashes = new Set<string>();
+  for (const hash of hashes) {
+    assert.ok(seenHashes.has(hash) === false, `${replay.path}: duplicate hash ${hash}`);
+    seenHashes.add(hash);
+  }
+
+  for (const hash of hashes) {
+    const objectPath = objectPathForHash(hash);
+    assert.ok(fs.existsSync(objectPath), `${replay.path}: missing replay object ${hash}`);
+
+    const payloadRaw = fs.readFileSync(objectPath, 'utf8');
+    const payload = PayloadSchema.parse(parseJson(payloadRaw));
+    const input = EngineInputSchema.parse(payload.input);
+    const meta = MetaSchema.parse(payload.meta);
+    const expectedOutput = payload.output;
+
+    const issues = validateEngineInput(input);
+    assert.equal(issues.length, 0, `${replay.path}: EngineInput validation failed: ${JSON.stringify(issues)}`);
+
+    assert.equal(
+      index.versions.engineBehaviorVersion,
+      versionSnapshot.engineBehaviorVersion,
+      `${replay.path}: behavior version mismatch`
     );
+    assert.equal(
+      index.versions.engineInputVersion,
+      versionSnapshot.engineInputVersion,
+      `${replay.path}: input version mismatch`
+    );
+    assert.equal(
+      index.versions.engineCandidateSpaceVersion,
+      versionSnapshot.engineCandidateSpaceVersion,
+      `${replay.path}: candidate space version mismatch`
+    );
+    assert.equal(
+      index.versions.engineAccountingVersion,
+      versionSnapshot.engineAccountingVersion,
+      `${replay.path}: accounting version mismatch`
+    );
+
+    const nowMs = meta.timestampMs !== undefined ? meta.timestampMs : 0;
+    const userId = meta.user;
+
+    const solverOptions = buildSolverOptionsFromInput(input);
+    const state = buildEngineStateFromInput({ input, userId });
+    const ctx = buildEngineContextFromInput({ input, nowMs });
+
+    const solverOverrides = {
+      includeLegacyDecision: false,
+      runtime: DEFAULT_ENGINE_RUNTIME,
+      stateOverride: state,
+      ...(solverOptions.weights === null ? {} : { weights: solverOptions.weights }),
+      ...(solverOptions.maxCandidates === null ? {} : { maxCandidates: solverOptions.maxCandidates }),
+    };
+    const result = await safeSolveDecisionForUser(userId, ctx, solverOverrides);
+    if (!result.ok) {
+      assert.fail(`${replay.path}: replay solve failed: ${result.message}`);
+    }
+    const output = { decisions: result.decisions, trace: result.trace, state: result.state };
+
+    const payloadHash = hashReplayPayload({ input, output: expectedOutput, meta });
+    assert.equal(payloadHash, hash, `${replay.path}: payload hash mismatch`);
+    if (samplePayload === null) {
+      samplePayload = { input, output: expectedOutput, meta };
+      sampleHash = payloadHash;
+    }
+
+    const normalizedActual = normalizeJson(output);
+    const normalizedExpected = normalizeJson(expectedOutput);
+    assert.deepEqual(normalizedActual, normalizedExpected, `${replay.path}: output mismatch`);
   }
-
-  if (payloadEmpty) {
-    assert.ok(versionsEmpty, `${replay.dir}: versions.json must be empty when payload.json is empty`);
-    continue;
-  }
-
-  assert.ok(versionsEmpty === false, `${replay.dir}: versions.json must be present`);
-
-  const payloadRaw = fs.readFileSync(replay.payloadPath, 'utf8');
-  const payloadRef = PayloadRefSchema.parse(parseJson(payloadRaw));
-  const blob = blobPathsForHash(payloadRef.hash);
-  assert.ok(fs.existsSync(blob.inputPath), `${replay.dir}: missing blob input.json for ${payloadRef.hash}`);
-  assert.ok(fs.existsSync(blob.outputPath), `${replay.dir}: missing blob output.json for ${payloadRef.hash}`);
-  assert.ok(fs.existsSync(blob.metaPath), `${replay.dir}: missing blob meta.json for ${payloadRef.hash}`);
-
-  const inputRaw = fs.readFileSync(blob.inputPath, 'utf8');
-  const input = EngineInputSchema.parse(parseJson(inputRaw));
-  const issues = validateEngineInput(input);
-  assert.equal(issues.length, 0, `${replay.dir}: EngineInput validation failed: ${JSON.stringify(issues)}`);
-
-  const versionsRaw = fs.readFileSync(replay.versionsPath, 'utf8');
-  const versions = VersionsSchema.parse(parseJson(versionsRaw));
-  assert.equal(
-    versions.engineBehaviorVersion,
-    versionSnapshot.engineBehaviorVersion,
-    `${replay.dir}: behavior version mismatch`
-  );
-  assert.equal(
-    versions.engineInputVersion,
-    versionSnapshot.engineInputVersion,
-    `${replay.dir}: input version mismatch`
-  );
-  assert.equal(
-    versions.engineCandidateSpaceVersion,
-    versionSnapshot.engineCandidateSpaceVersion,
-    `${replay.dir}: candidate space version mismatch`
-  );
-  assert.equal(
-    versions.engineAccountingVersion,
-    versionSnapshot.engineAccountingVersion,
-    `${replay.dir}: accounting version mismatch`
-  );
-
-  const metaRaw = fs.readFileSync(blob.metaPath, 'utf8');
-  const meta = MetaSchema.parse(parseJson(metaRaw));
-  const nowMs = meta.timestampMs !== undefined ? meta.timestampMs : 0;
-  const userId = meta.user;
-
-  const solverOptions = buildSolverOptionsFromInput(input);
-  const state = buildEngineStateFromInput({ input, userId });
-  const ctx = buildEngineContextFromInput({ input, nowMs });
-
-  const solverOverrides = {
-    includeLegacyDecision: false,
-    runtime: DEFAULT_ENGINE_RUNTIME,
-    stateOverride: state,
-    ...(solverOptions.weights === null ? {} : { weights: solverOptions.weights }),
-    ...(solverOptions.maxCandidates === null ? {} : { maxCandidates: solverOptions.maxCandidates }),
-  };
-  const result = await safeSolveDecisionForUser(userId, ctx, solverOverrides);
-  if (!result.ok) {
-    assert.fail(`${replay.dir}: replay solve failed: ${result.message}`);
-  }
-  const output = { decisions: result.decisions, trace: result.trace, state: result.state };
-
-  const outputRaw = fs.readFileSync(blob.outputPath, 'utf8');
-  const expectedOutput = parseJson(outputRaw);
-
-  const payload: ReplayPayload = { input, output: expectedOutput, meta };
-  const payloadHash = hashReplayPayload(payload);
-  assert.equal(payloadHash, payloadRef.hash, `${replay.dir}: payload hash mismatch`);
-  if (samplePayload === null) {
-    samplePayload = payload;
-    sampleHash = payloadHash;
-  }
-
-  const normalizedActual = normalizeJson(output);
-  const normalizedExpected = normalizeJson(expectedOutput);
-  assert.deepEqual(normalizedActual, normalizedExpected, `${replay.dir}: output mismatch`);
 }
 
 if (samplePayload !== null && sampleHash !== null) {
@@ -267,7 +234,7 @@ if (samplePayload !== null && sampleHash !== null) {
     sampleHash,
     'payload hash must not depend on engine versions'
   );
-  assert.ok(fs.existsSync(path.join(blobsRoot, sampleHash)), 'payload blob must exist');
+  assert.ok(fs.existsSync(objectPathForHash(sampleHash)), 'payload object must exist');
 }
 
 console.warn('engine/replay: ok');

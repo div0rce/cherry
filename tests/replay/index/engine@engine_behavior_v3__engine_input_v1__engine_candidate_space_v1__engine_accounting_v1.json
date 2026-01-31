@@ -1,0 +1,11 @@
+{
+  "hashes": [
+    "052e8520f972235d560dd56317a96962e76e97c3304baee238e1f79594f5f053"
+  ],
+  "versions": {
+    "engineAccountingVersion": "engine_accounting_v1",
+    "engineBehaviorVersion": "engine_behavior_v3",
+    "engineCandidateSpaceVersion": "engine_candidate_space_v1",
+    "engineInputVersion": "engine_input_v1"
+  }
+}
