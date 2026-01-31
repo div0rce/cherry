@@ -1,0 +1,37 @@
+{
+  "__version": "engine_input_v1",
+  "balances": {
+    "cash": {
+      "liquidCents": null
+    }
+  },
+  "buckets": [],
+  "cards": [
+    {
+      "id": "card-1",
+      "isActive": true,
+      "isCredit": true,
+      "rewardRules": []
+    }
+  ],
+  "constraints": {
+    "hard": {
+      "maxCardUtilization": null
+    }
+  },
+  "debtCardLinks": [],
+  "debts": [],
+  "preferences": {
+    "customWeights": null,
+    "profileId": "BALANCED"
+  },
+  "request": {
+    "amountCents": 1000,
+    "merchantCategoryKey": "DINING",
+    "surface": "web"
+  },
+  "solver": {
+    "maxCandidates": 64,
+    "weightsOverride": null
+  }
+}

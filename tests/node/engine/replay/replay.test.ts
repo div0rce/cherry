@@ -9,7 +9,7 @@ import {
   buildEngineStateFromInput,
   buildSolverOptionsFromInput,
 } from '../../../../lib/engine/input/bridge.js';
-import { solveDecision } from '../../../../lib/engine/solver.js';
+import { safeSolveDecisionForUser } from '../../../../lib/engine/solver.js';
 import { DEFAULT_ENGINE_RUNTIME } from '../../../../lib/engine/runtime.js';
 import type { EngineInput } from '../../../../lib/engine/input/EngineInput.js';
 
@@ -52,8 +52,11 @@ const EngineInputSchema = z.custom<EngineInput>();
 
 const MetaSchema = z
   .object({
+    traceId: z.string(),
+    source: z.enum(['api/scan', 'api/simulate', 'autopilot']),
+    surface: z.string(),
     timestampMs: z.number().int().optional(),
-    userId: z.string().optional(),
+    user: z.string(),
   })
   .strict();
 
@@ -193,7 +196,7 @@ for (const replay of inputs) {
   const metaRaw = fs.readFileSync(replay.metaPath, 'utf8');
   const meta = MetaSchema.parse(parseJson(metaRaw));
   const nowMs = meta.timestampMs !== undefined ? meta.timestampMs : 0;
-  const userId = meta.userId !== undefined ? meta.userId : 'replay-user';
+  const userId = meta.user;
 
   const solverOptions = buildSolverOptionsFromInput(input);
   const state = buildEngineStateFromInput({ input, userId });
@@ -202,15 +205,18 @@ for (const replay of inputs) {
   const solverOverrides = {
     includeLegacyDecision: false,
     runtime: DEFAULT_ENGINE_RUNTIME,
+    stateOverride: state,
     ...(solverOptions.weights === null ? {} : { weights: solverOptions.weights }),
     ...(solverOptions.maxCandidates === null ? {} : { maxCandidates: solverOptions.maxCandidates }),
   };
-  const result = await solveDecision(state, ctx, solverOverrides);
+  const result = await safeSolveDecisionForUser(userId, ctx, solverOverrides);
+  assert.ok(result.ok, `${replay.dir}: replay solve failed: ${result.message}`);
+  const output = { decisions: result.decisions, trace: result.trace, state: result.state };
 
   const outputRaw = fs.readFileSync(replay.outputPath, 'utf8');
   const expectedOutput = parseJson(outputRaw);
 
-  const normalizedActual = normalizeJson(result);
+  const normalizedActual = normalizeJson(output);
   const normalizedExpected = normalizeJson(expectedOutput);
   assert.deepEqual(normalizedActual, normalizedExpected, `${replay.dir}: output mismatch`);
 }
