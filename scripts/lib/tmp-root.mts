@@ -1,1 +1,1 @@
-export { resolveTmpRoot } from './tmp/allocate.mjs';
+export { resolveTmpRoot, resolveTmpRootReadOnly } from './tmp/allocate.mjs';

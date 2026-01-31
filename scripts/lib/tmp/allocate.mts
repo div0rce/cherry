@@ -13,6 +13,20 @@ const FORBIDDEN_PREFIXES = [
   path.join(path.sep, 'tmp'),
 ];
 
+function parseTmpRoot(): string {
+  const raw = process.env['CHERRY_TMP_ROOT'];
+  if (raw === undefined || raw.trim().length === 0) {
+    fail(PREFIX, 'CHERRY_TMP_ROOT is required for temp isolation', { fix: FIX });
+  }
+  const resolved = path.resolve(raw);
+  for (const prefix of FORBIDDEN_PREFIXES) {
+    if (resolved === prefix || resolved.startsWith(`${prefix}${path.sep}`)) {
+      fail(PREFIX, `CHERRY_TMP_ROOT must not point to OS temp (${prefix})`, { fix: FIX });
+    }
+  }
+  return resolved;
+}
+
 function ensureDir(dirPath: string): void {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true, mode: 0o700 });
@@ -29,17 +43,21 @@ function ensureDir(dirPath: string): void {
 }
 
 export function resolveTmpRoot(): string {
-  const raw = process.env['CHERRY_TMP_ROOT'];
-  if (raw === undefined || raw.trim().length === 0) {
-    fail(PREFIX, 'CHERRY_TMP_ROOT is required for temp isolation', { fix: FIX });
-  }
-  const resolved = path.resolve(raw);
-  for (const prefix of FORBIDDEN_PREFIXES) {
-    if (resolved === prefix || resolved.startsWith(`${prefix}${path.sep}`)) {
-      fail(PREFIX, `CHERRY_TMP_ROOT must not point to OS temp (${prefix})`, { fix: FIX });
-    }
-  }
+  const resolved = parseTmpRoot();
   ensureDir(resolved);
+  process.env['TMPDIR'] = resolved;
+  return resolved;
+}
+
+export function resolveTmpRootReadOnly(): string {
+  const resolved = parseTmpRoot();
+  if (!fs.existsSync(resolved)) {
+    fail(PREFIX, `CHERRY_TMP_ROOT does not exist: ${resolved}`, { fix: FIX });
+  }
+  const stat = fs.statSync(resolved);
+  if (!stat.isDirectory()) {
+    fail(PREFIX, `CHERRY_TMP_ROOT must be a directory: ${resolved}`, { fix: FIX });
+  }
   process.env['TMPDIR'] = resolved;
   return resolved;
 }

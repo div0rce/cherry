@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 import { readJsonFile } from './guardrails/lib/read-json.mjs';
-import { resolveTmpRoot } from './lib/tmp-root.mjs';
+import { resolveTmpRootReadOnly } from './lib/tmp-root.mjs';
+import { TMP_BUCKETS } from './lib/tmp/allocate.mjs';
 
 ensureTsEsm();
 
@@ -23,6 +24,10 @@ const BudgetsSchema = z
     'repo.replayStaging.maxBytes': z.number().int().nonnegative(),
     'repo.tsbuildinfo.maxBytes': z.number().int().nonnegative(),
     'tmpRoot.maxBytes': z.number().int().nonnegative(),
+    'tmpBuckets.npm.maxBytes': z.number().int().nonnegative(),
+    'tmpBuckets.next.maxBytes': z.number().int().nonnegative(),
+    'tmpBuckets.prisma.maxBytes': z.number().int().nonnegative(),
+    'tmpBuckets.guardrails.maxBytes': z.number().int().nonnegative(),
   })
   .strict();
 
@@ -40,6 +45,13 @@ type BudgetResult = {
   offenders: Array<{ path: string; sizeBytes: number }>;
   symlinks: string[];
 };
+
+const TMP_BUCKET_BUDGETS = {
+  npm: 'tmpBuckets.npm.maxBytes',
+  next: 'tmpBuckets.next.maxBytes',
+  prisma: 'tmpBuckets.prisma.maxBytes',
+  guardrails: 'tmpBuckets.guardrails.maxBytes',
+} as const;
 
 function guardrailFail(message: string, details: string[]): never {
   fail(PREFIX, message, { details, fix: FIX });
@@ -256,7 +268,7 @@ function main(): void {
     symlinks: tsbuildinfo.symlinks,
   });
 
-  const tmpRoot = resolveTmpRoot();
+  const tmpRoot = resolveTmpRootReadOnly();
   const tmpSizes = collectSizes([tmpRoot]);
   results.push({
     key: 'tmpRoot.maxBytes',
@@ -265,6 +277,18 @@ function main(): void {
     offenders: tmpSizes.offenders,
     symlinks: tmpSizes.symlinks,
   });
+
+  for (const bucket of TMP_BUCKETS) {
+    const key = TMP_BUCKET_BUDGETS[bucket];
+    const bucketSizes = collectSizes([path.join(tmpRoot, bucket)]);
+    results.push({
+      key,
+      maxBytes: budgets[key],
+      actualBytes: bucketSizes.totalBytes,
+      offenders: bucketSizes.offenders,
+      symlinks: bucketSizes.symlinks,
+    });
+  }
 
   const failures: string[] = [];
   for (const result of results) {

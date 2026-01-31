@@ -8,6 +8,10 @@
     "repo.replayBlobs.maxBytes": 209715200,
     "repo.replayStaging.maxBytes": 0,
     "repo.tsbuildinfo.maxBytes": 52428800,
-    "tmpRoot.maxBytes": 5368709120
+    "tmpRoot.maxBytes": 5368709120,
+    "tmpBuckets.npm.maxBytes": 2147483648,
+    "tmpBuckets.next.maxBytes": 2147483648,
+    "tmpBuckets.prisma.maxBytes": 536870912,
+    "tmpBuckets.guardrails.maxBytes": 268435456
   }
 }
