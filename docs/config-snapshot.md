@@ -11311,6 +11311,17 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "source": "legacy",
     "tier": "persistence-only"
   },
+  "lib/engine/replay/record.ts": {
+    "effects": [
+      "console",
+      "crypto",
+      "env",
+      "fs",
+      "path"
+    ],
+    "source": "legacy",
+    "tier": "boundary-time"
+  },
   "lib/evaluator/prisma-safe.ts": {
     "effects": [
       "prisma"
@@ -17800,4 +17811,3 @@ Last updated: 2026-01-02
 ## Related docs
 - `docs/guardrails.md`
 - `docs/script-standards.md`
-
