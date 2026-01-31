@@ -26,6 +26,7 @@ export function runTsEsm(
   env: NodeJS.ProcessEnv
 ): ToolResult {
   const tmpRoot = resolveTmpRoot();
+  const tmpDir = process.env['TMPDIR'] ?? tmpRoot;
   const entryPath = path.isAbsolute(entry) ? entry : path.join(ROOT, entry);
   const nodeArgs: string[] = [];
   const scriptArgs: string[] = [];
@@ -47,7 +48,7 @@ export function runTsEsm(
   }
   const runEnv: NodeJS.ProcessEnv = {
     ...env,
-    TMPDIR: tmpRoot,
+    TMPDIR: tmpDir,
     CHERRY_TMP_ROOT: process.env['CHERRY_TMP_ROOT'],
   };
   return runTool(

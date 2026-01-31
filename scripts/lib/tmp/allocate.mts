@@ -45,7 +45,9 @@ function ensureDir(dirPath: string): void {
 export function resolveTmpRoot(): string {
   const resolved = parseTmpRoot();
   ensureDir(resolved);
-  process.env['TMPDIR'] = resolved;
+  const guardrailsRoot = path.join(resolved, 'guardrails');
+  ensureDir(guardrailsRoot);
+  process.env['TMPDIR'] = guardrailsRoot;
   return resolved;
 }
 
@@ -58,7 +60,7 @@ export function resolveTmpRootReadOnly(): string {
   if (!stat.isDirectory()) {
     fail(PREFIX, `CHERRY_TMP_ROOT must be a directory: ${resolved}`, { fix: FIX });
   }
-  process.env['TMPDIR'] = resolved;
+  process.env['TMPDIR'] = path.join(resolved, 'guardrails');
   return resolved;
 }
 
@@ -72,6 +74,7 @@ export function allocateTempDir(params: { bucket: TempBucket; subpath: string })
   const root = resolveTmpRoot();
   const bucketRoot = path.join(root, params.bucket);
   ensureDir(bucketRoot);
+  process.env['TMPDIR'] = bucketRoot;
   const targetPath = path.join(bucketRoot, params.subpath);
   ensureDir(targetPath);
   return { bucket: params.bucket, root, path: targetPath };
