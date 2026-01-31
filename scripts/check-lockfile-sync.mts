@@ -18,6 +18,7 @@ const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
 const PACKAGE_JSON = path.join(ROOT, 'package.json');
 const PACKAGE_LOCK = path.join(ROOT, 'package-lock.json');
 const WORK_SUBPATH = 'lockfile-sync/work';
+const LOCK_FILENAME = '.lock';
 
 function ensureExists(filePath: string, label: string): void {
   if (fs.existsSync(filePath)) return;
@@ -34,55 +35,76 @@ function main(): void {
 
     const allocation = allocateTempDir({ bucket: 'npm', subpath: WORK_SUBPATH });
     const tempDir = allocation.path;
+    const lockDir = path.dirname(tempDir);
+    const lockPath = path.join(lockDir, LOCK_FILENAME);
+    let lockFd: number | null = null;
     if (tempDir.startsWith(`${allocation.root}${path.sep}`) === false) {
       fail(PREFIX, 'Refusing to write outside CHERRY_TMP_ROOT', {
         details: [`tempDir=${tempDir}`, `root=${allocation.root}`],
         fix: FIX,
       });
     }
-    const resetResult = runTool('rm', ['-rf', tempDir]);
-    if (!resetResult.ok) {
-      fail(PREFIX, 'Failed to clear lockfile-sync workspace', {
-        details: [resetResult.stderr.trim(), resetResult.stdout.trim()].filter(Boolean),
+    try {
+      lockFd = fs.openSync(lockPath, 'wx');
+    } catch (error: unknown) {
+      const err = error as NodeJS.ErrnoException;
+      if (err.code === 'EEXIST') {
+        fail(PREFIX, 'Lockfile-sync workspace already in use', {
+          details: [`lock=${lockPath}`],
+          fix: 'Ensure no other lockfile-sync is running, then delete the stale lock file.',
+        });
+      }
+      fail(PREFIX, 'Failed to acquire lockfile-sync lock', {
+        details: [String(error)],
         fix: FIX,
       });
     }
-    const mkdirResult = runTool('mkdir', ['-p', tempDir]);
-    if (!mkdirResult.ok) {
-      fail(PREFIX, 'Failed to create lockfile-sync workspace', {
-        details: [mkdirResult.stderr.trim(), mkdirResult.stdout.trim()].filter(Boolean),
-        fix: FIX,
-      });
-    }
-    fs.copyFileSync(PACKAGE_JSON, path.join(tempDir, 'package.json'));
-    fs.copyFileSync(PACKAGE_LOCK, path.join(tempDir, 'package-lock.json'));
-
-    const env = buildDeterministicEnv();
-    env['npm_config_audit'] = 'false';
-    env['npm_config_fund'] = 'false';
-    env['npm_config_update_notifier'] = 'false';
-    env['npm_config_progress'] = 'false';
-
     let result;
     try {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        fs.mkdirSync(tempDir, { recursive: true, mode: 0o700 });
+      } catch (error: unknown) {
+        fail(PREFIX, 'Failed to reset lockfile-sync workspace', {
+          details: [String(error)],
+          fix: FIX,
+        });
+      }
+      fs.copyFileSync(PACKAGE_JSON, path.join(tempDir, 'package.json'));
+      fs.copyFileSync(PACKAGE_LOCK, path.join(tempDir, 'package-lock.json'));
+
+      const env = buildDeterministicEnv();
+      env['npm_config_audit'] = 'false';
+      env['npm_config_fund'] = 'false';
+      env['npm_config_update_notifier'] = 'false';
+      env['npm_config_progress'] = 'false';
+
       result = runTool('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], {
         cwd: tempDir,
         env,
       });
     } finally {
-      const cleanupResult = runTool('rm', ['-rf', tempDir]);
-      if (!cleanupResult.ok) {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        fs.mkdirSync(tempDir, { recursive: true, mode: 0o700 });
+      } catch (error: unknown) {
         fail(PREFIX, 'Failed to clean lockfile-sync workspace', {
-          details: [cleanupResult.stderr.trim(), cleanupResult.stdout.trim()].filter(Boolean),
+          details: [String(error)],
           fix: FIX,
         });
       }
-      const recreateResult = runTool('mkdir', ['-p', tempDir]);
-      if (!recreateResult.ok) {
-        fail(PREFIX, 'Failed to reset lockfile-sync workspace', {
-          details: [recreateResult.stderr.trim(), recreateResult.stdout.trim()].filter(Boolean),
-          fix: FIX,
-        });
+      if (lockFd !== null) {
+        try {
+          fs.closeSync(lockFd);
+        } catch {
+          // best effort
+        }
+        lockFd = null;
+      }
+      try {
+        fs.unlinkSync(lockPath);
+      } catch {
+        // best effort
       }
     }
 
