@@ -134,10 +134,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             typeof userId === 'string' && userId.length > 0 ? userId : 'unknown';
           const userHash = crypto.createHash('sha256').update(userToken).digest('hex').slice(0, 4);
           const userLabel = `user-${userHash}`;
+          const replayState = {
+            ...engineResult.state,
+            userId: userLabel,
+            cards: engineResult.state.cards.map((card) => ({ ...card, userId: userLabel })),
+          };
           const replayOutput = {
             decisions: engineResult.decisions,
             trace: engineResult.trace,
-            state: { ...engineResult.state, userId: userLabel },
+            state: replayState,
           };
           void maybeRecordReplayTrace({
             enabled: replayEnabled,
