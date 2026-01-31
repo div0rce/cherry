@@ -317,6 +317,11 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Replay staging artifacts must never be committed under `tests/replay/_staging/**`.
 - Enforcement: `check:replay-staging-empty`.
 
+### Guardrail 59 — Temp Quota Enforcement
+
+- Temp artifacts must live under `CHERRY_TMP_ROOT` and remain below the 5GB quota.
+- Enforcement: `check:temp-quota`.
+
 ### Guardrail 16 — Doctrine Presence
 
 - `docs/doctrine.md` must exist and include a version line (`Version: doctrine_*`) plus the Exit criteria block.

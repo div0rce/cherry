@@ -39,6 +39,7 @@ const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as cons
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
+const TEMP_QUOTA_PATH = `${CHECK_PATH_BASE}temp-quota.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
 const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
@@ -116,6 +117,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
+  'check:temp-quota': TEMP_QUOTA_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
   'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,

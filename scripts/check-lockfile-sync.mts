@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { buildDeterministicEnv } from './lib/deterministic-env.mjs';
+import { resolveTmpRoot } from './lib/tmp-root.mts';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
@@ -31,7 +31,8 @@ function main(): void {
     ensureExists(PACKAGE_JSON, 'package.json');
     ensureExists(PACKAGE_LOCK, 'package-lock.json');
 
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cherry-lockfile-sync-'));
+    const tempRoot = resolveTmpRoot();
+    const tempDir = fs.mkdtempSync(path.join(tempRoot, 'cherry-lockfile-sync-'));
     fs.copyFileSync(PACKAGE_JSON, path.join(tempDir, 'package.json'));
     fs.copyFileSync(PACKAGE_LOCK, path.join(tempDir, 'package-lock.json'));
 
