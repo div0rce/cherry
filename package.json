@@ -33,6 +33,7 @@
     "check:agents-doctrine-link": "npm run ts:esm -- scripts/guardrails/run.mts check:agents-doctrine-link",
     "check:doctrine-present": "npm run ts:esm -- scripts/guardrails/run.mts check:doctrine-present",
     "check:change-isolation": "npm run ts:esm -- scripts/guardrails/run.mts check:change-isolation",
+    "tmp:gc": "npm run ts:esm -- scripts/tmp/gc.mts",
     "lint": "npm run lint:tailwind && npm run lint:eslint",
     "lint:eslint": "eslint . --max-warnings=0",
     "lint:scripts": "eslint scripts --max-warnings=0",
