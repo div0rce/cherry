@@ -20,7 +20,7 @@ const BudgetsSchema = z
     'repo.distDir.maxBytes': z.number().int().nonnegative(),
     'repo.coverageDir.maxBytes': z.number().int().nonnegative(),
     'repo.nodeModulesPrisma.maxBytes': z.number().int().nonnegative(),
-    'repo.replayBlobs.maxBytes': z.number().int().nonnegative(),
+    'repo.replayObjects.maxBytes': z.number().int().nonnegative(),
     'repo.replayStaging.maxBytes': z.number().int().nonnegative(),
     'repo.tsbuildinfo.maxBytes': z.number().int().nonnegative(),
     'tmpRoot.maxBytes': z.number().int().nonnegative(),
@@ -241,13 +241,13 @@ function main(): void {
     symlinks: prismaDirs.symlinks,
   });
 
-  const replayBlobs = collectSizes([path.join(ROOT, 'tests', 'replay', 'blobs')]);
+  const replayObjects = collectSizes([path.join(ROOT, 'tests', 'replay', 'objects')]);
   results.push({
-    key: 'repo.replayBlobs.maxBytes',
-    maxBytes: budgets['repo.replayBlobs.maxBytes'],
-    actualBytes: replayBlobs.totalBytes,
-    offenders: replayBlobs.offenders,
-    symlinks: replayBlobs.symlinks,
+    key: 'repo.replayObjects.maxBytes',
+    maxBytes: budgets['repo.replayObjects.maxBytes'],
+    actualBytes: replayObjects.totalBytes,
+    offenders: replayObjects.offenders,
+    symlinks: replayObjects.symlinks,
   });
 
   const replayStaging = collectSizes([path.join(ROOT, 'tests', 'replay', '_staging')]);

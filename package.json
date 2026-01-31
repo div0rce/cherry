@@ -22,6 +22,7 @@
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
     "check:replay-staging-empty": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-staging-empty",
+    "check:replay-object-store": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-object-store",
     "check:temp-quota": "npm run ts:esm -- scripts/guardrails/run.mts check:temp-quota",
     "check:tmp-root-shape": "npm run ts:esm -- scripts/guardrails/run.mts check:tmp-root-shape",
     "check:artifact-size-budgets": "npm run ts:esm -- scripts/guardrails/run.mts check:artifact-size-budgets",

@@ -39,6 +39,7 @@ const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as cons
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
+const REPLAY_OBJECT_STORE_PATH = `${CHECK_PATH_BASE}replay-object-store.mts` as const;
 const TEMP_QUOTA_PATH = `${CHECK_PATH_BASE}temp-quota.mts` as const;
 const TMP_ROOT_SHAPE_PATH = `${CHECK_PATH_BASE}tmp-root-shape.mts` as const;
 const ARTIFACT_SIZE_BUDGETS_PATH = `${CHECK_PATH_BASE}artifact-size-budgets.mts` as const;
@@ -119,6 +120,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
+  'check:replay-object-store': REPLAY_OBJECT_STORE_PATH,
   'check:temp-quota': TEMP_QUOTA_PATH,
   'check:tmp-root-shape': TMP_ROOT_SHAPE_PATH,
   'check:artifact-size-budgets': ARTIFACT_SIZE_BUDGETS_PATH,

@@ -5,7 +5,7 @@
     "repo.distDir.maxBytes": 1073741824,
     "repo.coverageDir.maxBytes": 1073741824,
     "repo.nodeModulesPrisma.maxBytes": 524288000,
-    "repo.replayBlobs.maxBytes": 209715200,
+    "repo.replayObjects.maxBytes": 209715200,
     "repo.replayStaging.maxBytes": 0,
     "repo.tsbuildinfo.maxBytes": 52428800,
     "tmpRoot.maxBytes": 5368709120,
