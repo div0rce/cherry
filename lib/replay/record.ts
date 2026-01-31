@@ -1,4 +1,4 @@
-import type { EngineInput } from '../input/EngineInput.js';
+import type { EngineInput } from '../engine/input/EngineInput.js';
 
 export type ReplayMeta = {
   traceId: string;
