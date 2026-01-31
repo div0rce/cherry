@@ -106,8 +106,8 @@ function main(): void {
       if (lockFd !== null) {
         try {
           fs.closeSync(lockFd);
-        } catch {
-          // best effort
+        } catch (error: unknown) {
+          void error;
         }
         lockFd = null;
       }

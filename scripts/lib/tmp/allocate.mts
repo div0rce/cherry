@@ -37,8 +37,8 @@ function ensureDir(dirPath: string): void {
   }
   try {
     fs.chmodSync(dirPath, 0o700);
-  } catch {
-    // Best effort; permissions can be constrained.
+  } catch (error: unknown) {
+    void error;
   }
 }
 
