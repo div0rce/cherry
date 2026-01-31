@@ -341,6 +341,7 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Artifact size budgets are hard caps; failures are expected signals.
 - Temp budgets are enforced per bucket as defined in `artifact-budgets.policy.json`.
 - Enforcement: `check:artifact-size-budgets`.
+- Storage doctrine and failure modes are defined in `docs/storage-doctrine.md`.
 
 ### Guardrail 16 — Doctrine Presence
 
