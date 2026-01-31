@@ -44,7 +44,7 @@ function toUtcDateParts(timestampMs: number): { year: number; month: number; day
   const dayMs = 86_400_000;
   const daysPerCentury = 100;
   const days = Math.floor(timestampMs / dayMs);
-  let z = days + 719468;
+  const z = days + 719468;
   const era = Math.floor(z / 146097);
   const doe = z - era * 146097;
   const yoe = Math.floor(
