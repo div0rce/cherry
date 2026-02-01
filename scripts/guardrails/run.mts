@@ -38,8 +38,24 @@ const AGGREGATE_ALIASES = new Set(['check', 'all', 'check:guardrails']);
 const AGGREGATE_SORT_FLAG = '--sort';
 const AGGREGATE_SORT_PREFIX = `${AGGREGATE_SORT_FLAG}=`;
 const AGGREGATE_SORT_VALUES = new Set(['registry', 'name']);
+const TIER_FLAG = '--tier';
+const TIER_PREFIX = `${TIER_FLAG}=`;
+const TIER_VALUES = new Set(['core', 'env', 'all']);
+
+type GuardrailTier = 'core' | 'env' | 'all';
 
 type AggregateSort = 'registry' | 'name';
+
+const TIER1_GUARDRAILS = new Set<GuardrailName>([
+  'check:env-contract',
+  'check:lockfile-sync',
+  'check:tmp-root-safety',
+  'check:temp-quota',
+  'check:tmp-root-shape',
+  'check:artifact-size-budgets',
+  'check:evidence-present',
+  'check:evidence-verifies',
+]);
 
 type FailureInfo = {
   message: string;
@@ -131,6 +147,82 @@ function stripAllFlag(args: string[]): { all: boolean; rest: string[] } {
     rest.push(arg);
   }
   return { all, rest };
+}
+
+function stripTierFlag(args: string[]): { tier: GuardrailTier; rest: string[] } {
+  let tier: GuardrailTier = 'all';
+  const rest: string[] = [];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i] ?? '';
+    if (arg === TIER_FLAG) {
+      const value = args[i + 1];
+      if (value === undefined || value.startsWith('-')) {
+        fail(PREFIX, 'Tier value required', {
+          fix: 'Use --tier=core, --tier=env, or --tier=all.',
+        });
+      }
+      if (!TIER_VALUES.has(value)) {
+        fail(PREFIX, `Unknown tier: ${value}`, {
+          fix: 'Use --tier=core, --tier=env, or --tier=all.',
+        });
+      }
+      tier = value as GuardrailTier;
+      i += 1;
+      continue;
+    }
+    if (arg.startsWith(TIER_PREFIX)) {
+      const value = arg.slice(TIER_PREFIX.length);
+      if (!TIER_VALUES.has(value)) {
+        fail(PREFIX, `Unknown tier: ${value}`, {
+          fix: 'Use --tier=core, --tier=env, or --tier=all.',
+        });
+      }
+      tier = value as GuardrailTier;
+      continue;
+    }
+    rest.push(arg);
+  }
+  return { tier, rest };
+}
+
+function hasCherryTmpRoot(): boolean {
+  const value = process.env['CHERRY_TMP_ROOT'];
+  return value !== undefined && value.trim().length > 0;
+}
+
+function selectTierGuardrails(
+  tier: GuardrailTier,
+  envReady: boolean,
+  ciMode: boolean
+): { names: GuardrailName[]; skippedTier1: boolean } {
+  const tier0 = GUARDRAIL_NAMES.filter((name) => !TIER1_GUARDRAILS.has(name));
+  const tier1 = GUARDRAIL_NAMES.filter((name) => TIER1_GUARDRAILS.has(name));
+
+  if (tier === 'core') {
+    return { names: tier0, skippedTier1: false };
+  }
+
+  if (tier === 'env') {
+    if (!envReady) {
+      fail(PREFIX, 'Tier 1 guardrails require CHERRY_TMP_ROOT', {
+        fix: 'Set CHERRY_TMP_ROOT and rerun check:env.',
+      });
+    }
+    return { names: tier1, skippedTier1: false };
+  }
+
+  if (!envReady) {
+    const message = 'Tier 1 skipped: missing CHERRY_TMP_ROOT';
+    if (ciMode) {
+      process.stderr.write(`${message}\n`);
+      process.exitCode = 1;
+    } else {
+      process.stdout.write(`${message}\n`);
+    }
+    return { names: tier0, skippedTier1: true };
+  }
+
+  return { names: [...tier0, ...tier1], skippedTier1: false };
 }
 
 function resolveAggregateNames(raw: string[]): GuardrailName[] {
@@ -403,7 +495,11 @@ async function main(): Promise<void> {
   const allStrip = stripAllFlag(aggregateStrip.rest);
   const aggregate = aggregateStrip.aggregate;
   const all = allStrip.all;
-  const rest = allStrip.rest;
+  const tierStrip = stripTierFlag(allStrip.rest);
+  const tier = tierStrip.tier;
+  const rest = tierStrip.rest;
+  const ciMode = process.env['CI'] === 'true';
+  const envReady = hasCherryTmpRoot();
 
   if (aggregate === true && all === true) {
     fail(PREFIX, 'Use either --aggregate or --all, not both', {
@@ -430,7 +526,8 @@ async function main(): Promise<void> {
   }
 
   if (all === true) {
-    for (const name of GUARDRAIL_NAMES) {
+    const selection = selectTierGuardrails(tier, envReady, ciMode);
+    for (const name of selection.names) {
       const result = await runGuardrail(name, [], false);
       if (result.ok === false) {
         return;
@@ -440,7 +537,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { names, sort } = parseAggregateArgs(rest);
+  const { names: requestedNames, sort } = parseAggregateArgs(rest);
+  const selection = selectTierGuardrails(tier, envReady, ciMode);
+  const names = requestedNames.filter((name) => selection.names.includes(name));
   const failures: GuardrailFailure[] = [];
   for (const name of names) {
     const result = await runGuardrail(name, [], true);

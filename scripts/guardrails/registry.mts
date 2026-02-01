@@ -15,6 +15,9 @@ const SCRIPT_RUNTIME_BOUNDARY_PATH = `${CHECK_PATH_BASE}script-runtime-boundary.
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const LOCKFILE_SYNC_PATH = `${CHECK_PATH_BASE}lockfile-sync.mts` as const;
+const LOCKFILE_INTEGRITY_PATH = `${CHECK_PATH_BASE}lockfile-integrity.mts` as const;
+const PACKAGE_MANAGER_PIN_PATH = `${CHECK_PATH_BASE}package-manager-pin.mts` as const;
+const CI_USES_NPM_CI_PATH = `${CHECK_PATH_BASE}ci-uses-npm-ci.mts` as const;
 const FUNCTION_SIZE_BUDGET_PATH = `${CHECK_PATH_BASE}function-size-budget.mts` as const;
 const NO_VENDOR_SHIMS_PATH = `${CHECK_PATH_BASE}no-vendor-shims.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
@@ -40,9 +43,12 @@ const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-vers
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
 const REPLAY_OBJECT_STORE_PATH = `${CHECK_PATH_BASE}replay-object-store.mts` as const;
+const ENV_CONTRACT_PATH = `${CHECK_PATH_BASE}env-contract.mts` as const;
+const TMP_ROOT_SAFETY_PATH = `${CHECK_PATH_BASE}tmp-root-safety.mts` as const;
 const TEMP_QUOTA_PATH = `${CHECK_PATH_BASE}temp-quota.mts` as const;
 const TMP_ROOT_SHAPE_PATH = `${CHECK_PATH_BASE}tmp-root-shape.mts` as const;
 const ARTIFACT_SIZE_BUDGETS_PATH = `${CHECK_PATH_BASE}artifact-size-budgets.mts` as const;
+const VERCEL_PARITY_PATH = `${CHECK_PATH_BASE}vercel-parity.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
 const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
@@ -80,6 +86,9 @@ export const GUARDRAILS = Object.freeze({
   'check:script-json-parse': `${CHECK_PATH_BASE}script-json-parse.mts`,
   'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:lockfile-sync': LOCKFILE_SYNC_PATH,
+  'check:lockfile-integrity': LOCKFILE_INTEGRITY_PATH,
+  'check:package-manager-pin': PACKAGE_MANAGER_PIN_PATH,
+  'check:ci-uses-npm-ci': CI_USES_NPM_CI_PATH,
   'check:function-size-budget': FUNCTION_SIZE_BUDGET_PATH,
   'check:no-vendor-shims': NO_VENDOR_SHIMS_PATH,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
@@ -125,9 +134,12 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
   'check:replay-object-store': REPLAY_OBJECT_STORE_PATH,
+  'check:env-contract': ENV_CONTRACT_PATH,
+  'check:tmp-root-safety': TMP_ROOT_SAFETY_PATH,
   'check:temp-quota': TEMP_QUOTA_PATH,
   'check:tmp-root-shape': TMP_ROOT_SHAPE_PATH,
   'check:artifact-size-budgets': ARTIFACT_SIZE_BUDGETS_PATH,
+  'check:vercel-parity': VERCEL_PARITY_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
   'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
