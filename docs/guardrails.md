@@ -11,10 +11,15 @@ Last updated: 2026-01-31
 - Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
 - Doctrine presence/versioning is enforced (`check:doctrine-present`).
 - Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
+- Guardrails are tiered: core checks run via `check:guardrails`, env checks run via `check:env`.
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
 - Engine version imports are restricted (`check:engine-version-imports`).
 - AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
 - Completion evidence is enforced in agent/CI mode (`check:evidence-present`, `check:evidence-verifies`).
+- Env contracts, local env bans, and temp root safety are enforced (`check:env-contract`, `check:no-local-env-files`, `check:tmp-root-safety`).
+- Package manager pinning and CI install policy are enforced (`check:package-manager-pin`, `check:ci-uses-npm-ci`, `check:lockfile-integrity`).
+- Vercel parity is enforced (`check:vercel-parity`).
+- Native bindings are verified (`check:native-bindings`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
@@ -97,6 +102,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `env:node` may not import `env:next`, `next/*`, `react`, or `react-dom`.
 - `tests/node/**` may only import `env:node`; `tests/next/**` may only import `env:next` or `env:node`.
 - Enforcement: `check:environment-import-integrity`.
+
+### Guardrail 46b — No Local Env Files
+
+- Local env files (`.env.local`, `.env.development`, `.env.production`) must not be tracked.
+- Enforcement: `check:no-local-env-files`.
 
 ### Data Directory Policy (Documented)
 
@@ -244,6 +254,12 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `check` and `check:aggregate` must execute the same guardrails in registry order; only failure handling may differ.
 - Enforcement: `check:guardrail-execution-parity`.
 - Prevents skipped, reordered, or ad hoc guardrail execution lists.
+
+### Guardrail 45b — Guardrail Runner Shape
+
+- Guardrail execution must iterate `GUARDRAIL_NAMES` exactly once; filtering is membership only.
+- Execution must not iterate selection arrays directly.
+- Enforcement: `check:guardrail-runner-shape`.
 
 ## Domain: Loader & Guardrail Event Integrity
 

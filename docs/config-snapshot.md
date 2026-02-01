@@ -19,6 +19,7 @@
         "@auth/prisma-adapter": "2.11.1",
         "@prisma/client": "^6.19.0",
         "@radix-ui/react-slot": "^1.2.4",
+        "@tailwindcss/oxide": "^4.1.18",
         "class-variance-authority": "^0.7.1",
         "csv-parse": "^6.1.0",
         "lightningcss": "1.24.1",
@@ -2922,7 +2923,6 @@
       "version": "4.1.18",
       "resolved": "https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.1.18.tgz",
       "integrity": "sha512-EgCR5tTS5bUSKQgzeMClT6iCY3ToqE1y+ZB0AKldj809QXk1Y+3jB0upOYZrn9aGIzPtUsP7sX4QQ4XtjBB95A==",
-      "dev": true,
       "license": "MIT",
       "engines": {
         "node": ">= 10"
@@ -2942,6 +2942,22 @@
         "@tailwindcss/oxide-win32-x64-msvc": "4.1.18"
       }
     },
+    "node_modules/@tailwindcss/oxide-android-arm64": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-android-arm64/-/oxide-android-arm64-4.1.18.tgz",
+      "integrity": "sha512-dJHz7+Ugr9U/diKJA0W6N/6/cjI+ZTAoxPf9Iz9BFRF2GzEX8IvXxFIi/dZBloVJX/MZGvRuFA9rqwdiIEZQ0Q==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "android"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
     "node_modules/@tailwindcss/oxide-darwin-arm64": {
       "version": "4.1.18",
       "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-darwin-arm64/-/oxide-darwin-arm64-4.1.18.tgz",
@@ -2949,11 +2965,237 @@
       "cpu": [
         "arm64"
       ],
-      "dev": true,
       "license": "MIT",
       "optional": true,
       "os": [
         "darwin"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-darwin-x64": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-darwin-x64/-/oxide-darwin-x64-4.1.18.tgz",
+      "integrity": "sha512-FL5oxr2xQsFrc3X9o1fjHKBYBMD1QZNyc1Xzw/h5Qu4XnEBi3dZn96HcHm41c/euGV+GRiXFfh2hUCyKi/e+yw==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "darwin"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-freebsd-x64": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-freebsd-x64/-/oxide-freebsd-x64-4.1.18.tgz",
+      "integrity": "sha512-Fj+RHgu5bDodmV1dM9yAxlfJwkkWvLiRjbhuO2LEtwtlYlBgiAT4x/j5wQr1tC3SANAgD+0YcmWVrj8R9trVMA==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "freebsd"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-linux-arm-gnueabihf": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-linux-arm-gnueabihf/-/oxide-linux-arm-gnueabihf-4.1.18.tgz",
+      "integrity": "sha512-Fp+Wzk/Ws4dZn+LV2Nqx3IilnhH51YZoRaYHQsVq3RQvEl+71VGKFpkfHrLM/Li+kt5c0DJe/bHXK1eHgDmdiA==",
+      "cpu": [
+        "arm"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-linux-arm64-gnu": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-linux-arm64-gnu/-/oxide-linux-arm64-gnu-4.1.18.tgz",
+      "integrity": "sha512-S0n3jboLysNbh55Vrt7pk9wgpyTTPD0fdQeh7wQfMqLPM/Hrxi+dVsLsPrycQjGKEQk85Kgbx+6+QnYNiHalnw==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-linux-arm64-musl": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-linux-arm64-musl/-/oxide-linux-arm64-musl-4.1.18.tgz",
+      "integrity": "sha512-1px92582HkPQlaaCkdRcio71p8bc8i/ap5807tPRDK/uw953cauQBT8c5tVGkOwrHMfc2Yh6UuxaH4vtTjGvHg==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-linux-x64-gnu": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-linux-x64-gnu/-/oxide-linux-x64-gnu-4.1.18.tgz",
+      "integrity": "sha512-v3gyT0ivkfBLoZGF9LyHmts0Isc8jHZyVcbzio6Wpzifg/+5ZJpDiRiUhDLkcr7f/r38SWNe7ucxmGW3j3Kb/g==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-linux-x64-musl": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-linux-x64-musl/-/oxide-linux-x64-musl-4.1.18.tgz",
+      "integrity": "sha512-bhJ2y2OQNlcRwwgOAGMY0xTFStt4/wyU6pvI6LSuZpRgKQwxTec0/3Scu91O8ir7qCR3AuepQKLU/kX99FouqQ==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "linux"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-wasm32-wasi/-/oxide-wasm32-wasi-4.1.18.tgz",
+      "integrity": "sha512-LffYTvPjODiP6PT16oNeUQJzNVyJl1cjIebq/rWWBF+3eDst5JGEFSc5cWxyRCJ0Mxl+KyIkqRxk1XPEs9x8TA==",
+      "bundleDependencies": [
+        "@napi-rs/wasm-runtime",
+        "@emnapi/core",
+        "@emnapi/runtime",
+        "@tybys/wasm-util",
+        "@emnapi/wasi-threads",
+        "tslib"
+      ],
+      "cpu": [
+        "wasm32"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "@emnapi/core": "^1.7.1",
+        "@emnapi/runtime": "^1.7.1",
+        "@emnapi/wasi-threads": "^1.1.0",
+        "@napi-rs/wasm-runtime": "^1.1.0",
+        "@tybys/wasm-util": "^0.10.1",
+        "tslib": "^2.4.0"
+      },
+      "engines": {
+        "node": ">=14.0.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/core": {
+      "version": "1.7.1",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "@emnapi/wasi-threads": "1.1.0",
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/runtime": {
+      "version": "1.7.1",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/wasi-threads": {
+      "version": "1.1.0",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@napi-rs/wasm-runtime": {
+      "version": "1.1.0",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "@emnapi/core": "^1.7.1",
+        "@emnapi/runtime": "^1.7.1",
+        "@tybys/wasm-util": "^0.10.1"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@tybys/wasm-util": {
+      "version": "0.10.1",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/tslib": {
+      "version": "2.8.1",
+      "inBundle": true,
+      "license": "0BSD",
+      "optional": true
+    },
+    "node_modules/@tailwindcss/oxide-win32-arm64-msvc": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-win32-arm64-msvc/-/oxide-win32-arm64-msvc-4.1.18.tgz",
+      "integrity": "sha512-HjSA7mr9HmC8fu6bdsZvZ+dhjyGCLdotjVOgLA2vEqxEBZaQo9YTX4kwgEvPCpRh8o4uWc4J/wEoFzhEmjvPbA==",
+      "cpu": [
+        "arm64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "win32"
+      ],
+      "engines": {
+        "node": ">= 10"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-win32-x64-msvc": {
+      "version": "4.1.18",
+      "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.1.18.tgz",
+      "integrity": "sha512-bJWbyYpUlqamC8dpR7pfjA0I7vdF6t5VpUGMWRkXVE3AXgIZjYUYAK7II1GNaxR8J1SSrSrppRar8G++JekE3Q==",
+      "cpu": [
+        "x64"
+      ],
+      "license": "MIT",
+      "optional": true,
+      "os": [
+        "win32"
       ],
       "engines": {
         "node": ">= 10"
@@ -9035,6 +9277,7 @@
     "node": ">=22 <23"
   },
   "engineStrict": true,
+  "packageManager": "npm@10.9.4",
   "scripts": {
     "predev": "npm run check:db-ready",
     "dev": "next dev --webpack",
@@ -9051,9 +9294,14 @@
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
     "check:replay-staging-empty": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-staging-empty",
     "check:replay-object-store": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-object-store",
+    "check:env-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:env-contract",
+    "check:no-local-env-files": "npm run ts:esm -- scripts/guardrails/run.mts check:no-local-env-files",
+    "check:tmp-root-safety": "npm run ts:esm -- scripts/guardrails/run.mts check:tmp-root-safety",
     "check:temp-quota": "npm run ts:esm -- scripts/guardrails/run.mts check:temp-quota",
     "check:tmp-root-shape": "npm run ts:esm -- scripts/guardrails/run.mts check:tmp-root-shape",
     "check:artifact-size-budgets": "npm run ts:esm -- scripts/guardrails/run.mts check:artifact-size-budgets",
+    "check:native-bindings": "npm run ts:esm -- scripts/guardrails/run.mts check:native-bindings",
+    "check:vercel-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:vercel-parity",
     "check:engine-version-gates": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-gates",
     "check:engine-version-bump": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-bump",
     "check:engine-version-imports": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-version-imports",
@@ -9082,6 +9330,9 @@
     "check:script-json-parse": "npm run ts:esm -- scripts/guardrails/run.mts check:script-json-parse",
     "check:npm-arg-forwarding": "npm run ts:esm -- scripts/guardrails/run.mts check:npm-arg-forwarding",
     "check:lockfile-sync": "npm run ts:esm -- scripts/guardrails/run.mts check:lockfile-sync",
+    "check:lockfile-integrity": "npm run ts:esm -- scripts/guardrails/run.mts check:lockfile-integrity",
+    "check:package-manager-pin": "npm run ts:esm -- scripts/guardrails/run.mts check:package-manager-pin",
+    "check:ci-uses-npm-ci": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-uses-npm-ci",
     "check:function-size-budget": "npm run ts:esm -- scripts/guardrails/run.mts check:function-size-budget",
     "check:no-vendor-shims": "npm run ts:esm -- scripts/guardrails/run.mts check:no-vendor-shims",
     "check:loader-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:loader-contract",
@@ -9115,6 +9366,7 @@
     "check:guardrail-doc-sync": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-doc-sync",
     "check:guardrail-execution": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-execution",
     "check:guardrail-execution-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-execution-parity",
+    "check:guardrail-runner-shape": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-runner-shape",
     "check:guardrail-helpers-exclusive": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-helpers-exclusive",
     "check:guardrail-subprocess-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-subprocess-totality",
     "check:evidence-present": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-present",
@@ -9137,11 +9389,12 @@
     "check:config-snapshot": "npm run ts:esm -- scripts/guardrails/run.mts check:config-snapshot",
     "check:ts-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ts-coverage",
     "check:check-contract": "npm run ts:esm -- scripts/guardrails/run.mts check:check-contract",
-    "check:env": "npm run check:db:required && npm run check:migrations:required",
+    "check:env": "npm run check:guardrails:env && npm run check:db:required && npm run check:migrations:required",
     "check:node": "npm run lint:scripts && npm run typecheck:scripts && npm run check:run-tests:node",
     "check:next": "npm run lint && npm run typecheck && npm run check:run-tests:next",
     "check": "npm run check:guardrails && npm run check:node && npm run check:next",
-    "check:guardrails": "npm run ts:esm -- scripts/guardrails/run.mts --all",
+    "check:guardrails": "npm run ts:esm -- scripts/guardrails/run.mts --all --tier=core",
+    "check:guardrails:env": "npm run check:guardrails -- --tier=env",
     "check:dev-ui-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:dev-ui-parity",
     "check:shell-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:shell-boundaries",
     "check:route-collisions": "npm run ts:esm -- scripts/guardrails/run.mts check:route-collisions",
@@ -9185,8 +9438,10 @@
     "@auth/prisma-adapter": "2.11.1",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-slot": "^1.2.4",
+    "@tailwindcss/oxide": "4.1.18",
     "class-variance-authority": "^0.7.1",
     "csv-parse": "^6.1.0",
+    "lightningcss": "1.24.1",
     "next": "^16.0.8",
     "next-auth": "5.0.0-beta.30",
     "nodemailer": "^7.0.10",
@@ -9194,8 +9449,7 @@
     "pdf-parse": "^2.4.5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "zod": "^4.1.13",
-    "lightningcss": "1.24.1"
+    "zod": "^4.1.13"
   },
   "overrides": {
     "@auth/core": "0.41.1",
@@ -10670,6 +10924,7 @@ jobs:
     env:
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
+      CHERRY_TMP_ROOT: ${{ runner.temp }}/cherry-tmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -10686,6 +10941,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ripgrep
+
+      - name: Prepare temp root
+        run: |
+          mkdir -p "$CHERRY_TMP_ROOT"
+          chmod 700 "$CHERRY_TMP_ROOT"
 
       - name: Install dependencies
         run: npm ci
@@ -10735,6 +10995,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
+      CHERRY_TMP_ROOT: ${{ runner.temp }}/cherry-tmp
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -10751,6 +11012,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client ripgrep
+
+      - name: Prepare temp root
+        run: |
+          mkdir -p "$CHERRY_TMP_ROOT"
+          chmod 700 "$CHERRY_TMP_ROOT"
 
       - name: Install dependencies
         run: npm ci
@@ -10947,6 +11213,9 @@ const SCRIPT_RUNTIME_BOUNDARY_PATH = `${CHECK_PATH_BASE}script-runtime-boundary.
 const TS_COVERAGE_PATH = `${CHECK_PATH_BASE}ts-coverage.mts` as const;
 const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const LOCKFILE_SYNC_PATH = `${CHECK_PATH_BASE}lockfile-sync.mts` as const;
+const LOCKFILE_INTEGRITY_PATH = `${CHECK_PATH_BASE}lockfile-integrity.mts` as const;
+const PACKAGE_MANAGER_PIN_PATH = `${CHECK_PATH_BASE}package-manager-pin.mts` as const;
+const CI_USES_NPM_CI_PATH = `${CHECK_PATH_BASE}ci-uses-npm-ci.mts` as const;
 const FUNCTION_SIZE_BUDGET_PATH = `${CHECK_PATH_BASE}function-size-budget.mts` as const;
 const NO_VENDOR_SHIMS_PATH = `${CHECK_PATH_BASE}no-vendor-shims.mts` as const;
 const GUARDRAIL_NO_RUNTIME_IO_PATH = `${CHECK_PATH_BASE}guardrail-no-runtime-io.mts` as const;
@@ -10972,9 +11241,13 @@ const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-vers
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
 const REPLAY_OBJECT_STORE_PATH = `${CHECK_PATH_BASE}replay-object-store.mts` as const;
+const ENV_CONTRACT_PATH = `${CHECK_PATH_BASE}env-contract.mts` as const;
+const NO_LOCAL_ENV_FILES_PATH = `${CHECK_PATH_BASE}no-local-env-files.mts` as const;
+const TMP_ROOT_SAFETY_PATH = `${CHECK_PATH_BASE}tmp-root-safety.mts` as const;
 const TEMP_QUOTA_PATH = `${CHECK_PATH_BASE}temp-quota.mts` as const;
 const TMP_ROOT_SHAPE_PATH = `${CHECK_PATH_BASE}tmp-root-shape.mts` as const;
 const ARTIFACT_SIZE_BUDGETS_PATH = `${CHECK_PATH_BASE}artifact-size-budgets.mts` as const;
+const VERCEL_PARITY_PATH = `${CHECK_PATH_BASE}vercel-parity.mts` as const;
 const ENGINE_VERSION_GATES_PATH = `${CHECK_PATH_BASE}engine-version-gates.mts` as const;
 const ENGINE_VERSION_BUMP_PATH = `${CHECK_PATH_BASE}engine-version-bump.mts` as const;
 const ENGINE_VERSION_IMPORTS_PATH = `${CHECK_PATH_BASE}engine-version-imports.mts` as const;
@@ -10987,8 +11260,11 @@ const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
   `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
 const GUARDRAIL_EXECUTION_PARITY_PATH =
   `${CHECK_PATH_BASE}guardrail-execution-parity.mts` as const;
+const GUARDRAIL_RUNNER_SHAPE_PATH =
+  `${CHECK_PATH_BASE}guardrail-runner-shape.mts` as const;
 const EVIDENCE_PRESENT_PATH = `${CHECK_PATH_BASE}evidence-present.mts` as const;
 const EVIDENCE_VERIFIES_PATH = `${CHECK_PATH_BASE}evidence-verifies.mts` as const;
+const NATIVE_BINDINGS_PATH = `${CHECK_PATH_BASE}native-bindings.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -11012,6 +11288,9 @@ export const GUARDRAILS = Object.freeze({
   'check:script-json-parse': `${CHECK_PATH_BASE}script-json-parse.mts`,
   'check:npm-arg-forwarding': `${CHECK_PATH_BASE}npm-arg-forwarding.mts`,
   'check:lockfile-sync': LOCKFILE_SYNC_PATH,
+  'check:lockfile-integrity': LOCKFILE_INTEGRITY_PATH,
+  'check:package-manager-pin': PACKAGE_MANAGER_PIN_PATH,
+  'check:ci-uses-npm-ci': CI_USES_NPM_CI_PATH,
   'check:function-size-budget': FUNCTION_SIZE_BUDGET_PATH,
   'check:no-vendor-shims': NO_VENDOR_SHIMS_PATH,
   'check:loader-contract': `${CHECK_PATH_BASE}loader-contract.mts`,
@@ -11033,6 +11312,7 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-doc-sync': `${CHECK_PATH_BASE}guardrail-doc-sync.mts`,
   'check:guardrail-execution': `${CHECK_PATH_BASE}guardrail-execution.mts`,
   'check:guardrail-execution-parity': GUARDRAIL_EXECUTION_PARITY_PATH,
+  'check:guardrail-runner-shape': GUARDRAIL_RUNNER_SHAPE_PATH,
   'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
   'check:evidence-present': EVIDENCE_PRESENT_PATH,
@@ -11057,9 +11337,14 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
   'check:replay-object-store': REPLAY_OBJECT_STORE_PATH,
+  'check:env-contract': ENV_CONTRACT_PATH,
+  'check:no-local-env-files': NO_LOCAL_ENV_FILES_PATH,
+  'check:tmp-root-safety': TMP_ROOT_SAFETY_PATH,
   'check:temp-quota': TEMP_QUOTA_PATH,
   'check:tmp-root-shape': TMP_ROOT_SHAPE_PATH,
   'check:artifact-size-budgets': ARTIFACT_SIZE_BUDGETS_PATH,
+  'check:native-bindings': NATIVE_BINDINGS_PATH,
+  'check:vercel-parity': VERCEL_PARITY_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,
   'check:engine-version-imports': ENGINE_VERSION_IMPORTS_PATH,
@@ -15611,7 +15896,7 @@ If no → rethink it.
 
 <!-- docs/ci-and-guardrails.md -->
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-02-01
 
 # CI and guardrails
 
@@ -15649,6 +15934,7 @@ Last updated: 2026-01-18
 
 ### Ordering invariant
 - Guardrails execute before env-specific correctness and build.
+- `check:guardrails` runs core (env-free) guardrails; `check:env` runs env-dependent guardrails plus DB requirements.
 - Inside `check:node` and `check:next`, lint runs before typecheck and typecheck runs before tests.
 - Build executes after `check` completes.
 
@@ -15688,7 +15974,6 @@ Run the npm scripts: `check:aggregate` (guardrails only), `check` (aggregate + n
 - `docs/script-standards.md`
 - `.github/workflows/ci.yml`
 - `.github/workflows/env-checks.yml`
-
 <!-- docs/core-loop-audit.md -->
 Status: Deprecated
 Last updated: 2026-01-02
@@ -16170,10 +16455,15 @@ Last updated: 2026-01-31
 - Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
 - Doctrine presence/versioning is enforced (`check:doctrine-present`).
 - Commit scope isolation is enforced via staged-file checks (`check:change-isolation`).
+- Guardrails are tiered: core checks run via `check:guardrails`, env checks run via `check:env`.
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
 - Engine version imports are restricted (`check:engine-version-imports`).
 - AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
 - Completion evidence is enforced in agent/CI mode (`check:evidence-present`, `check:evidence-verifies`).
+- Env contracts, local env bans, and temp root safety are enforced (`check:env-contract`, `check:no-local-env-files`, `check:tmp-root-safety`).
+- Package manager pinning and CI install policy are enforced (`check:package-manager-pin`, `check:ci-uses-npm-ci`, `check:lockfile-integrity`).
+- Vercel parity is enforced (`check:vercel-parity`).
+- Native bindings are verified (`check:native-bindings`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
@@ -16256,6 +16546,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `env:node` may not import `env:next`, `next/*`, `react`, or `react-dom`.
 - `tests/node/**` may only import `env:node`; `tests/next/**` may only import `env:next` or `env:node`.
 - Enforcement: `check:environment-import-integrity`.
+
+### Guardrail 46b — No Local Env Files
+
+- Local env files (`.env.local`, `.env.development`, `.env.production`) must not be tracked.
+- Enforcement: `check:no-local-env-files`.
 
 ### Data Directory Policy (Documented)
 
@@ -16403,6 +16698,12 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - `check` and `check:aggregate` must execute the same guardrails in registry order; only failure handling may differ.
 - Enforcement: `check:guardrail-execution-parity`.
 - Prevents skipped, reordered, or ad hoc guardrail execution lists.
+
+### Guardrail 45b — Guardrail Runner Shape
+
+- Guardrail execution must iterate `GUARDRAIL_NAMES` exactly once; filtering is membership only.
+- Execution must not iterate selection arrays directly.
+- Enforcement: `check:guardrail-runner-shape`.
 
 ## Domain: Loader & Guardrail Event Integrity
 
@@ -16673,7 +16974,6 @@ Any duplication is a hard CI failure.
 - `docs/script-standards.md`
 - `scripts/guardrails/registry.mts`
 - `scripts/guardrails/run.mts`
-
 <!-- docs/storage-doctrine.md -->
 Status: Active
 Last updated: 2026-01-31
@@ -16698,7 +16998,7 @@ Writing outside these locations is a correctness failure.
 ### Temp ownership and isolation
 
 - `CHERRY_TMP_ROOT` is required for all temp writes.
-- OS temp roots are forbidden (`/var/folders`, `/private/var`, `/tmp`).
+- OS temp roots are forbidden (`/var/folders`, `/private/var`); `/tmp` is allowed for CI/Vercel.
 - All scripts must resolve temp roots explicitly.
 
 Enforcement: `check:tmp-root-shape`, `check:temp-quota`.
@@ -16740,7 +17040,6 @@ reproducibility. Therefore, storage violations are correctness bugs.
 - `docs/guardrails.md`
 - `docs/doctrine.md`
 - `tests/replay/README.md`
-
 <!-- docs/home-ui-contract.md -->
 Status: Active
 Last updated: 2026-01-03

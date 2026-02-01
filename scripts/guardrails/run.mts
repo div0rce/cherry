@@ -239,7 +239,6 @@ function resolveAggregateNames(raw: string[]): GuardrailName[] {
     }
     requested.add(name);
   }
-  // Aggregate output order is defined by GUARDRAIL_NAMES (registry order).
   return GUARDRAIL_NAMES.filter((name) => requested.has(name));
 }
 
@@ -250,7 +249,10 @@ function parseAggregateSort(value: string): AggregateSort {
   });
 }
 
-function parseAggregateArgs(raw: string[]): { names: GuardrailName[]; sort: AggregateSort } {
+function parseAggregateArgs(raw: string[]): {
+  requested: Set<GuardrailName>;
+  sort: AggregateSort;
+} {
   let sort: AggregateSort = 'registry';
   const names: string[] = [];
   const flagArgs: string[] = [];
@@ -289,8 +291,8 @@ function parseAggregateArgs(raw: string[]): { names: GuardrailName[]; sort: Aggr
   }
 
   const resolved = resolveAggregateNames(names);
-  const ordered = sort === 'name' ? [...resolved].sort() : resolved;
-  return { names: ordered, sort };
+  const requested = new Set(resolved);
+  return { requested, sort };
 }
 
 function parseFailureText(text: string): FailureInfo {
@@ -525,36 +527,58 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (all === true) {
-    const selection = selectTierGuardrails(tier, envReady, ciMode);
-    for (const name of selection.names) {
-      const result = await runGuardrail(name, [], false);
-      if (result.ok === false) {
-        return;
-      }
-    }
-    process.stdout.write('guardrail-fail-fast: ok\n');
-    return;
-  }
-
-  const { names: requestedNames, sort } = parseAggregateArgs(rest);
   const selection = selectTierGuardrails(tier, envReady, ciMode);
-  const names = requestedNames.filter((name) => selection.names.includes(name));
-  const failures: GuardrailFailure[] = [];
-  for (const name of names) {
-    const result = await runGuardrail(name, [], true);
-    if (result.ok !== true && result.failure !== undefined) {
-      failures.push(result.failure);
+  const selectionSet = new Set(selection.names);
+  const aggregateMode = aggregate === true;
+  let requested = new Set<GuardrailName>();
+  let sort: AggregateSort = 'registry';
+
+  if (aggregateMode) {
+    const parsed = parseAggregateArgs(rest);
+    requested = parsed.requested;
+    sort = parsed.sort;
+  } else {
+    requested = selectionSet;
+  }
+
+  for (const name of requested) {
+    if (GUARDRAIL_NAMES.includes(name) === false) {
+      fail(PREFIX, 'Requested guardrail not in registry order', {
+        details: [name],
+        fix: 'Use guardrails registered in scripts/guardrails/registry.mts.',
+      });
     }
   }
 
-  if (failures.length > 0) {
-    process.stderr.write(formatAggregateReport(failures, sort));
-    process.exitCode = 1;
+  const failures: GuardrailFailure[] = [];
+  for (const name of GUARDRAIL_NAMES) {
+    if (!selectionSet.has(name)) continue;
+    if (!requested.has(name)) continue;
+    const result = await runGuardrail(name, [], aggregateMode);
+    if (aggregateMode) {
+      if (result.ok !== true && result.failure !== undefined) {
+        failures.push(result.failure);
+      }
+      continue;
+    }
+    if (result.ok === false) {
+      return;
+    }
+  }
+
+  if (aggregateMode) {
+    if (failures.length > 0) {
+      const orderedFailures =
+        sort === 'name' ? [...failures].sort((a, b) => a.name.localeCompare(b.name)) : failures;
+      process.stderr.write(formatAggregateReport(orderedFailures, sort));
+      process.exitCode = 1;
+      return;
+    }
+    process.stdout.write('guardrail-aggregate: ok\n');
     return;
   }
 
-  process.stdout.write('guardrail-aggregate: ok\n');
+  process.stdout.write('guardrail-fail-fast: ok\n');
 }
 
 void main().catch((err: unknown) => {

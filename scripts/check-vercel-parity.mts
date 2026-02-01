@@ -18,7 +18,10 @@ if (!isVercel) {
   process.exitCode = 0;
 } else {
   const packageJsonPath = path.join(process.cwd(), 'package.json');
-  const packageJson = readJsonFile(packageJsonPath) as { engines?: { node?: unknown } };
+  const packageJson = readJsonFile(packageJsonPath) as {
+    engines?: { node?: unknown };
+    packageManager?: unknown;
+  };
   const enginesNode = packageJson.engines?.node;
   if (typeof enginesNode !== 'string' || enginesNode.length === 0) {
     guardrailFail('package.json engines.node is required');
@@ -36,6 +39,29 @@ if (!isVercel) {
   const tmpRoot = process.env['CHERRY_TMP_ROOT'];
   if (tmpRoot === undefined || tmpRoot.trim().length === 0) {
     guardrailFail('CHERRY_TMP_ROOT must be set when VERCEL=1');
+  }
+
+  const packageManager = packageJson.packageManager;
+  if (typeof packageManager !== 'string' || packageManager.length === 0) {
+    guardrailFail('package.json packageManager is required for Vercel parity');
+  }
+  const npmMatch = /^npm@(.+)$/.exec(packageManager);
+  if (npmMatch === null) {
+    guardrailFail('package.json packageManager must be npm@<version>', [packageManager]);
+  }
+  const requiredVersion = npmMatch[1] ?? '';
+  const requiredMajor = requiredVersion.split('.')[0] ?? '';
+  const userAgent = process.env['npm_config_user_agent'] ?? '';
+  if (userAgent.length === 0) {
+    guardrailFail('npm_config_user_agent is required when VERCEL=1');
+  }
+  const exact = `npm/${requiredVersion}`;
+  const majorPrefix = requiredMajor.length > 0 ? `npm/${requiredMajor}.` : '';
+  if (!userAgent.includes(exact) && (majorPrefix.length === 0 || !userAgent.includes(majorPrefix))) {
+    guardrailFail('npm user agent must match packageManager version', [
+      `expected=${exact}`,
+      `actual=${userAgent}`,
+    ]);
   }
 
   process.stdout.write('check:vercel-parity: ok\n');

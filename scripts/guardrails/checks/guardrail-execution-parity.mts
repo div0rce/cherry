@@ -96,12 +96,11 @@ function assertRunnerUsesGuardrailNames(): string[] {
     errors.push('runnerMissing: fail-fast loop must iterate GUARDRAIL_NAMES');
   }
 
-  if (/runGuardrail\(\s*\w+\s*,\s*\[\]\s*,\s*true\s*\)/.test(content) === false) {
-    errors.push('runnerMissing: aggregate must run guardrails with empty args');
-  }
-
-  if (/runGuardrail\(\s*\w+\s*,\s*\[\]\s*,\s*false\s*\)/.test(content) === false) {
-    errors.push('runnerMissing: fail-fast --all must run guardrails with empty args');
+  if (
+    /runGuardrail\(\s*\w+\s*,\s*\[\]\s*,\s*(true|false|aggregateMode)\s*\)/.test(content) ===
+    false
+  ) {
+    errors.push('runnerMissing: guardrails must run with empty args and explicit aggregate flag');
   }
 
   const aliasMatch = content.match(/AGGREGATE_ALIASES\s*=\s*new Set\s*\(\s*\[([\s\S]*?)\]\s*\)/);

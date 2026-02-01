@@ -7,7 +7,8 @@ import { fail } from './guardrails/lib/fail.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:tmp-root-safety';
-const FIX = 'Set CHERRY_TMP_ROOT to a private, writable directory under $HOME or /tmp.';
+const FIX =
+  'Set CHERRY_TMP_ROOT to a private, writable directory under $HOME (local) or /tmp (CI/Vercel).';
 
 function guardrailFail(message: string, details: string[] = []): never {
   fail(PREFIX, message, { details, fix: FIX });
@@ -30,10 +31,23 @@ if (resolved === repoRoot || resolved.startsWith(`${repoRoot}${path.sep}`)) {
 
 const homeRoot = path.resolve(os.homedir());
 const tmpRoot = path.resolve(path.sep, 'tmp');
-const allowed = [homeRoot, tmpRoot];
-const allowedMatch = allowed.some((base) => resolved === base || resolved.startsWith(`${base}${path.sep}`));
-if (!allowedMatch) {
-  guardrailFail('CHERRY_TMP_ROOT must be under $HOME or /tmp', [resolved]);
+const forbiddenRoots = [
+  path.resolve(path.sep, 'var', 'folders'),
+  path.resolve(path.sep, 'private', 'var', 'folders'),
+];
+for (const root of forbiddenRoots) {
+  if (resolved === root || resolved.startsWith(`${root}${path.sep}`)) {
+    guardrailFail('CHERRY_TMP_ROOT must not use macOS temp roots', [resolved]);
+  }
+}
+
+const isCi = process.env['CI'] === 'true';
+const isVercel = process.env['VERCEL'] === '1' || process.env['VERCEL'] === 'true';
+const allowTmp = isCi || isVercel;
+const isUnderHome = resolved === homeRoot || resolved.startsWith(`${homeRoot}${path.sep}`);
+const isUnderTmp = resolved === tmpRoot || resolved.startsWith(`${tmpRoot}${path.sep}`);
+if (!isUnderHome && !(allowTmp && isUnderTmp)) {
+  guardrailFail('CHERRY_TMP_ROOT must be under $HOME (local) or /tmp (CI/Vercel)', [resolved]);
 }
 
 if (!fs.existsSync(resolved)) {

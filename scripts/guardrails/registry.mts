@@ -44,6 +44,7 @@ const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts`
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
 const REPLAY_OBJECT_STORE_PATH = `${CHECK_PATH_BASE}replay-object-store.mts` as const;
 const ENV_CONTRACT_PATH = `${CHECK_PATH_BASE}env-contract.mts` as const;
+const NO_LOCAL_ENV_FILES_PATH = `${CHECK_PATH_BASE}no-local-env-files.mts` as const;
 const TMP_ROOT_SAFETY_PATH = `${CHECK_PATH_BASE}tmp-root-safety.mts` as const;
 const TEMP_QUOTA_PATH = `${CHECK_PATH_BASE}temp-quota.mts` as const;
 const TMP_ROOT_SHAPE_PATH = `${CHECK_PATH_BASE}tmp-root-shape.mts` as const;
@@ -61,8 +62,11 @@ const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
   `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
 const GUARDRAIL_EXECUTION_PARITY_PATH =
   `${CHECK_PATH_BASE}guardrail-execution-parity.mts` as const;
+const GUARDRAIL_RUNNER_SHAPE_PATH =
+  `${CHECK_PATH_BASE}guardrail-runner-shape.mts` as const;
 const EVIDENCE_PRESENT_PATH = `${CHECK_PATH_BASE}evidence-present.mts` as const;
 const EVIDENCE_VERIFIES_PATH = `${CHECK_PATH_BASE}evidence-verifies.mts` as const;
+const NATIVE_BINDINGS_PATH = `${CHECK_PATH_BASE}native-bindings.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -110,6 +114,7 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-doc-sync': `${CHECK_PATH_BASE}guardrail-doc-sync.mts`,
   'check:guardrail-execution': `${CHECK_PATH_BASE}guardrail-execution.mts`,
   'check:guardrail-execution-parity': GUARDRAIL_EXECUTION_PARITY_PATH,
+  'check:guardrail-runner-shape': GUARDRAIL_RUNNER_SHAPE_PATH,
   'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
   'check:evidence-present': EVIDENCE_PRESENT_PATH,
@@ -135,10 +140,12 @@ export const GUARDRAILS = Object.freeze({
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
   'check:replay-object-store': REPLAY_OBJECT_STORE_PATH,
   'check:env-contract': ENV_CONTRACT_PATH,
+  'check:no-local-env-files': NO_LOCAL_ENV_FILES_PATH,
   'check:tmp-root-safety': TMP_ROOT_SAFETY_PATH,
   'check:temp-quota': TEMP_QUOTA_PATH,
   'check:tmp-root-shape': TMP_ROOT_SHAPE_PATH,
   'check:artifact-size-budgets': ARTIFACT_SIZE_BUDGETS_PATH,
+  'check:native-bindings': NATIVE_BINDINGS_PATH,
   'check:vercel-parity': VERCEL_PARITY_PATH,
   'check:engine-version-gates': ENGINE_VERSION_GATES_PATH,
   'check:engine-version-bump': ENGINE_VERSION_BUMP_PATH,

@@ -80,6 +80,24 @@ function main(): void {
     }
   }
 
+  const guardrailsEnv = scripts['check:guardrails:env'];
+  if (guardrailsEnv !== undefined) {
+    if (!guardrailsEnv.includes('npm run check:guardrails')) {
+      violations.push({
+        script: 'check:guardrails:env',
+        command: guardrailsEnv,
+        issue: 'check:guardrails:env must delegate to check:guardrails',
+      });
+    }
+    if (guardrailsEnv.includes('scripts/guardrails/run.mts')) {
+      violations.push({
+        script: 'check:guardrails:env',
+        command: guardrailsEnv,
+        issue: 'check:guardrails:env must not invoke guardrails runner directly',
+      });
+    }
+  }
+
   if (violations.length > 0) {
     const details = violations.map(
       (violation) => `script=${violation.script} issue=${violation.issue} command=${violation.command}`
