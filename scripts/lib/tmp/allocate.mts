@@ -10,7 +10,6 @@ const FIX = 'Set CHERRY_TMP_ROOT to a writable, private directory (e.g. "$HOME/.
 const FORBIDDEN_PREFIXES = [
   path.join(path.sep, 'var', 'folders'),
   path.join(path.sep, 'private', 'var'),
-  path.join(path.sep, 'tmp'),
 ];
 
 function parseTmpRoot(): string {

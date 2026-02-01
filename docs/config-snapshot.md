@@ -10547,7 +10547,7 @@ export default config;
 
 <!-- .github/copilot-instructions.md -->
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-02-01
 
 # Cherry • AI Agent Playbook
 
@@ -10811,6 +10811,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -15636,6 +15637,13 @@ Last updated: 2026-01-18
 - `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
 - `check` is the aggregate of guardrails + node correctness + UI correctness; env checks live in `check:env`.
 - The last non-empty command in the CI job must be `npm run ci:verify`.
+
+### Temp root requirement
+- `CHERRY_TMP_ROOT` is required for all guardrails and scripts that allocate temp.
+- Local dev: copy `.env.example` to `.env.local` and set `CHERRY_TMP_ROOT="$HOME/.cherry-tmp"`.
+- CI: workflows must set `CHERRY_TMP_ROOT` and create the directory before installs.
+- Vercel: set `CHERRY_TMP_ROOT=/tmp/cherry-tmp` and ensure the build command creates the directory.
+- Enforcement: `check:temp-quota`, `check:tmp-root-shape`, `check:artifact-size-budgets`.
 
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 

@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-02-01
 
 # CI and guardrails
 
@@ -26,10 +26,18 @@ Last updated: 2026-01-18
 - `check` is the aggregate of guardrails + node correctness + UI correctness; env checks live in `check:env`.
 - The last non-empty command in the CI job must be `npm run ci:verify`.
 
+### Temp root requirement
+- `CHERRY_TMP_ROOT` is required for all guardrails and scripts that allocate temp.
+- Local dev: copy `.env.example` to `.env.local` and set `CHERRY_TMP_ROOT="$HOME/.cherry-tmp"`.
+- CI: workflows must set `CHERRY_TMP_ROOT` and create the directory before installs.
+- Vercel: set `CHERRY_TMP_ROOT=/tmp/cherry-tmp` and ensure the build command creates the directory.
+- Enforcement: `check:temp-quota`, `check:tmp-root-shape`, `check:artifact-size-budgets`.
+
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 
 ### Ordering invariant
 - Guardrails execute before env-specific correctness and build.
+- `check:guardrails` runs core (env-free) guardrails; `check:env` runs env-dependent guardrails plus DB requirements.
 - Inside `check:node` and `check:next`, lint runs before typecheck and typecheck runs before tests.
 - Build executes after `check` completes.
 

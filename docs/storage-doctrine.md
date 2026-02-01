@@ -21,7 +21,7 @@ Writing outside these locations is a correctness failure.
 ### Temp ownership and isolation
 
 - `CHERRY_TMP_ROOT` is required for all temp writes.
-- OS temp roots are forbidden (`/var/folders`, `/private/var`, `/tmp`).
+- OS temp roots are forbidden (`/var/folders`, `/private/var`); `/tmp` is allowed for CI/Vercel.
 - All scripts must resolve temp roots explicitly.
 
 Enforcement: `check:tmp-root-shape`, `check:temp-quota`.
