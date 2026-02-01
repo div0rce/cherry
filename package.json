@@ -89,6 +89,8 @@
     "check:guardrail-execution-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-execution-parity",
     "check:guardrail-helpers-exclusive": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-helpers-exclusive",
     "check:guardrail-subprocess-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-subprocess-totality",
+    "check:evidence-present": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-present",
+    "check:evidence-verifies": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-verifies",
     "check:ci-must-run-check": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-must-run-check",
     "check:ci-guardrail-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-guardrail-coverage",
     "check:execution-registry-completeness": "npm run ts:esm -- scripts/guardrails/run.mts check:execution-registry-completeness",

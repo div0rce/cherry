@@ -55,6 +55,8 @@ const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
   `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
 const GUARDRAIL_EXECUTION_PARITY_PATH =
   `${CHECK_PATH_BASE}guardrail-execution-parity.mts` as const;
+const EVIDENCE_PRESENT_PATH = `${CHECK_PATH_BASE}evidence-present.mts` as const;
+const EVIDENCE_VERIFIES_PATH = `${CHECK_PATH_BASE}evidence-verifies.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -101,6 +103,8 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-execution-parity': GUARDRAIL_EXECUTION_PARITY_PATH,
   'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
+  'check:evidence-present': EVIDENCE_PRESENT_PATH,
+  'check:evidence-verifies': EVIDENCE_VERIFIES_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
   'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,
