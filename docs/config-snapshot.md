@@ -9371,6 +9371,9 @@
     "check:guardrail-subprocess-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-subprocess-totality",
     "check:evidence-present": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-present",
     "check:evidence-verifies": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-verifies",
+    "check:workflow-files-present": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-files-present",
+    "check:workflow-expressions-quoted": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-expressions-quoted",
+    "check:no-workflow-force-delete": "npm run ts:esm -- scripts/guardrails/run.mts check:no-workflow-force-delete",
     "check:ci-must-run-check": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-must-run-check",
     "check:ci-guardrail-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-guardrail-coverage",
     "check:execution-registry-completeness": "npm run ts:esm -- scripts/guardrails/run.mts check:execution-registry-completeness",
@@ -10910,6 +10913,7 @@ During an active engine freeze, engine-changing PRs are prohibited unless explic
 
 ```ts
 # .github/workflows/ci.yml
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: ci
 
 on:
@@ -10924,7 +10928,7 @@ jobs:
     env:
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: ${{ runner.temp }}/cherry-tmp
+      CHERRY_TMP_ROOT: "${{ runner.temp }}/cherry-tmp"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -10965,6 +10969,7 @@ jobs:
 
 ```ts
 # .github/workflows/env-checks.yml
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: env-checks
 
 on:
@@ -10995,7 +11000,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: ${{ runner.temp }}/cherry-tmp
+      CHERRY_TMP_ROOT: "${{ runner.temp }}/cherry-tmp"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -11264,6 +11269,11 @@ const GUARDRAIL_RUNNER_SHAPE_PATH =
   `${CHECK_PATH_BASE}guardrail-runner-shape.mts` as const;
 const EVIDENCE_PRESENT_PATH = `${CHECK_PATH_BASE}evidence-present.mts` as const;
 const EVIDENCE_VERIFIES_PATH = `${CHECK_PATH_BASE}evidence-verifies.mts` as const;
+const WORKFLOW_FILES_PRESENT_PATH = `${CHECK_PATH_BASE}workflow-files-present.mts` as const;
+const WORKFLOW_EXPRESSIONS_QUOTED_PATH =
+  `${CHECK_PATH_BASE}workflow-expressions-quoted.mts` as const;
+const NO_WORKFLOW_FORCE_DELETE_PATH =
+  `${CHECK_PATH_BASE}no-workflow-force-delete.mts` as const;
 const NATIVE_BINDINGS_PATH = `${CHECK_PATH_BASE}native-bindings.mts` as const;
 
 /**
@@ -11317,6 +11327,9 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
   'check:evidence-present': EVIDENCE_PRESENT_PATH,
   'check:evidence-verifies': EVIDENCE_VERIFIES_PATH,
+  'check:workflow-files-present': WORKFLOW_FILES_PRESENT_PATH,
+  'check:workflow-expressions-quoted': WORKFLOW_EXPRESSIONS_QUOTED_PATH,
+  'check:no-workflow-force-delete': NO_WORKFLOW_FORCE_DELETE_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
   'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,
@@ -16464,6 +16477,7 @@ Last updated: 2026-01-31
 - Package manager pinning and CI install policy are enforced (`check:package-manager-pin`, `check:ci-uses-npm-ci`, `check:lockfile-integrity`).
 - Vercel parity is enforced (`check:vercel-parity`).
 - Native bindings are verified (`check:native-bindings`).
+- Workflow presence, quoted expressions, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:no-workflow-force-delete`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).

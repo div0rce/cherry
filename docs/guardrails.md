@@ -29,6 +29,7 @@ Last updated: 2026-01-31
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
 - Engine optimality versions are frozen by `check:engine-optimality-version`.
 - Guardrail runner supports `--aggregate` shadow execution; it accepts guardrail names only (no per-guardrail args) and reports in registry order by default (`--sort=name` for alphabetical).
+- Workflow presence, quoted expressions, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:no-workflow-force-delete`).
 
 ## Guardrail Numbering (Legacy)
 - Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.
@@ -66,6 +67,21 @@ Last updated: 2026-01-31
 - Guardrail scripts cannot be executed directly via `node`, `tsx`, `ts-node`, workflows, docs, or nested npm scripts.
 - Guardrails are named capabilities, not files.
 - Enforcement: `check:guardrail-execution`, CI fixtures covering bypass attempts.
+
+### Guardrail 46c — Workflow Files Present
+
+- Required CI workflows must be tracked in git.
+- Enforcement: `check:workflow-files-present`.
+
+### Guardrail 46d — Workflow Expressions Quoted
+
+- `${{ runner.temp }}` expressions for `CHERRY_TMP_ROOT` must be quoted to avoid YAML tooling errors.
+- Enforcement: `check:workflow-expressions-quoted`.
+
+### Guardrail 46e — Workflow Force Delete Requires Tag
+
+- Deleting workflow files requires `[workflow-change]` in the commit message.
+- Enforcement: `check:no-workflow-force-delete`.
 
 ## Domain: Config & Boundary Safety
 
