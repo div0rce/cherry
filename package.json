@@ -7,6 +7,7 @@
     "node": ">=22 <23"
   },
   "engineStrict": true,
+  "packageManager": "npm@10.9.4",
   "scripts": {
     "predev": "npm run check:db-ready",
     "dev": "next dev --webpack",
@@ -164,6 +165,7 @@
     "@auth/prisma-adapter": "2.11.1",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-slot": "^1.2.4",
+    "@tailwindcss/oxide": "4.1.18",
     "class-variance-authority": "^0.7.1",
     "csv-parse": "^6.1.0",
     "lightningcss": "1.24.1",
