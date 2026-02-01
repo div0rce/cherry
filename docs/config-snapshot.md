@@ -9117,6 +9117,8 @@
     "check:guardrail-execution-parity": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-execution-parity",
     "check:guardrail-helpers-exclusive": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-helpers-exclusive",
     "check:guardrail-subprocess-totality": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-subprocess-totality",
+    "check:evidence-present": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-present",
+    "check:evidence-verifies": "npm run ts:esm -- scripts/guardrails/run.mts check:evidence-verifies",
     "check:ci-must-run-check": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-must-run-check",
     "check:ci-guardrail-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-guardrail-coverage",
     "check:execution-registry-completeness": "npm run ts:esm -- scripts/guardrails/run.mts check:execution-registry-completeness",
@@ -10984,6 +10986,8 @@ const ENVIRONMENT_IMPORT_INTEGRITY_PATH =
   `${CHECK_PATH_BASE}environment-import-integrity.mts` as const;
 const GUARDRAIL_EXECUTION_PARITY_PATH =
   `${CHECK_PATH_BASE}guardrail-execution-parity.mts` as const;
+const EVIDENCE_PRESENT_PATH = `${CHECK_PATH_BASE}evidence-present.mts` as const;
+const EVIDENCE_VERIFIES_PATH = `${CHECK_PATH_BASE}evidence-verifies.mts` as const;
 
 /**
  * TODO (non-optional):
@@ -11030,6 +11034,8 @@ export const GUARDRAILS = Object.freeze({
   'check:guardrail-execution-parity': GUARDRAIL_EXECUTION_PARITY_PATH,
   'check:guardrail-helpers-exclusive': GUARDRAIL_HELPERS_EXCLUSIVE_PATH,
   'check:guardrail-subprocess-totality': GUARDRAIL_SUBPROCESS_TOTALITY_PATH,
+  'check:evidence-present': EVIDENCE_PRESENT_PATH,
+  'check:evidence-verifies': EVIDENCE_VERIFIES_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
   'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,
@@ -16159,6 +16165,7 @@ Last updated: 2026-01-31
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
 - Engine version imports are restricted (`check:engine-version-imports`).
 - AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
+- Completion evidence is enforced in agent/CI mode (`check:evidence-present`, `check:evidence-verifies`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).

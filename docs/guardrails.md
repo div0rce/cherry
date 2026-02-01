@@ -14,6 +14,7 @@ Last updated: 2026-01-31
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
 - Engine version imports are restricted (`check:engine-version-imports`).
 - AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
+- Completion evidence is enforced in agent/CI mode (`check:evidence-present`, `check:evidence-verifies`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
