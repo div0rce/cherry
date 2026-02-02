@@ -6,14 +6,14 @@ import { fail } from './guardrails/lib/fail.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:workflow-expressions-quoted';
-const FIX = 'Quote runner.temp expressions, e.g. CHERRY_TMP_ROOT: "${{ runner.temp }}/cherry-tmp".';
+const FIX = 'Quote RUNNER_TEMP usage, e.g. CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp".';
 const ROOT = process.cwd();
 const WORKFLOWS = [
   '.github/workflows/ci.yml',
   '.github/workflows/env-checks.yml',
 ] as const;
-const UNQUOTED = /CHERRY_TMP_ROOT:\s*\${{\s*runner\.temp\s*}}/;
-const QUOTED = /CHERRY_TMP_ROOT:\s*"\${{\s*runner\.temp\s*}}\/[^\n"]+"/;
+const UNQUOTED = /CHERRY_TMP_ROOT:\s*\${\s*RUNNER_TEMP\s*}/;
+const QUOTED = /CHERRY_TMP_ROOT:\s*"\${RUNNER_TEMP}\/[^\n"]+"/;
 
 function guardrailFail(details: string[]): never {
   fail(PREFIX, 'Workflow temp expressions must be quoted', { details, fix: FIX });

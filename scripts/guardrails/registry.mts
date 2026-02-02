@@ -71,6 +71,8 @@ const WORKFLOW_EXPRESSIONS_QUOTED_PATH =
   `${CHECK_PATH_BASE}workflow-expressions-quoted.mts` as const;
 const NO_WORKFLOW_FORCE_DELETE_PATH =
   `${CHECK_PATH_BASE}no-workflow-force-delete.mts` as const;
+const WORKFLOW_RUNNER_CONTEXT_PATH =
+  `${CHECK_PATH_BASE}workflow-runner-context.mts` as const;
 const NATIVE_BINDINGS_PATH = `${CHECK_PATH_BASE}native-bindings.mts` as const;
 
 /**
@@ -127,6 +129,7 @@ export const GUARDRAILS = Object.freeze({
   'check:workflow-files-present': WORKFLOW_FILES_PRESENT_PATH,
   'check:workflow-expressions-quoted': WORKFLOW_EXPRESSIONS_QUOTED_PATH,
   'check:no-workflow-force-delete': NO_WORKFLOW_FORCE_DELETE_PATH,
+  'check:workflow-runner-context': WORKFLOW_RUNNER_CONTEXT_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
   'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,

@@ -29,7 +29,7 @@ Last updated: 2026-01-31
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
 - Engine optimality versions are frozen by `check:engine-optimality-version`.
 - Guardrail runner supports `--aggregate` shadow execution; it accepts guardrail names only (no per-guardrail args) and reports in registry order by default (`--sort=name` for alphabetical).
-- Workflow presence, quoted expressions, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:no-workflow-force-delete`).
+- Workflow presence, quoted expressions, runner-context, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:workflow-runner-context`, `check:no-workflow-force-delete`).
 
 ## Guardrail Numbering (Legacy)
 - Guardrail numbers are legacy identifiers; they do not imply ordering, completeness, or priority.
@@ -75,13 +75,18 @@ Last updated: 2026-01-31
 
 ### Guardrail 46d — Workflow Expressions Quoted
 
-- `${{ runner.temp }}` expressions for `CHERRY_TMP_ROOT` must be quoted to avoid YAML tooling errors.
+- `RUNNER_TEMP` usage for `CHERRY_TMP_ROOT` must be quoted to avoid YAML tooling errors.
 - Enforcement: `check:workflow-expressions-quoted`.
 
 ### Guardrail 46e — Workflow Force Delete Requires Tag
 
 - Deleting workflow files requires `[workflow-change]` in the commit message.
 - Enforcement: `check:no-workflow-force-delete`.
+
+### Guardrail 46f — Workflow Runner Context
+
+- `runner.*` expressions are forbidden outside `steps` blocks.
+- Enforcement: `check:workflow-runner-context`.
 
 ## Domain: Config & Boundary Safety
 

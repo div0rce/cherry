@@ -9374,6 +9374,7 @@
     "check:workflow-files-present": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-files-present",
     "check:workflow-expressions-quoted": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-expressions-quoted",
     "check:no-workflow-force-delete": "npm run ts:esm -- scripts/guardrails/run.mts check:no-workflow-force-delete",
+    "check:workflow-runner-context": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-runner-context",
     "check:ci-must-run-check": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-must-run-check",
     "check:ci-guardrail-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-guardrail-coverage",
     "check:execution-registry-completeness": "npm run ts:esm -- scripts/guardrails/run.mts check:execution-registry-completeness",
@@ -10928,7 +10929,7 @@ jobs:
     env:
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: "${{ runner.temp }}/cherry-tmp"
+      CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -11000,7 +11001,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: "${{ runner.temp }}/cherry-tmp"
+      CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -11274,6 +11275,8 @@ const WORKFLOW_EXPRESSIONS_QUOTED_PATH =
   `${CHECK_PATH_BASE}workflow-expressions-quoted.mts` as const;
 const NO_WORKFLOW_FORCE_DELETE_PATH =
   `${CHECK_PATH_BASE}no-workflow-force-delete.mts` as const;
+const WORKFLOW_RUNNER_CONTEXT_PATH =
+  `${CHECK_PATH_BASE}workflow-runner-context.mts` as const;
 const NATIVE_BINDINGS_PATH = `${CHECK_PATH_BASE}native-bindings.mts` as const;
 
 /**
@@ -11330,6 +11333,7 @@ export const GUARDRAILS = Object.freeze({
   'check:workflow-files-present': WORKFLOW_FILES_PRESENT_PATH,
   'check:workflow-expressions-quoted': WORKFLOW_EXPRESSIONS_QUOTED_PATH,
   'check:no-workflow-force-delete': NO_WORKFLOW_FORCE_DELETE_PATH,
+  'check:workflow-runner-context': WORKFLOW_RUNNER_CONTEXT_PATH,
   'check:ci-must-run-check': `${CHECK_PATH_BASE}ci-must-run-check.mts`,
   'check:ci-guardrail-coverage': `${CHECK_PATH_BASE}ci-guardrail-coverage.mts`,
   'check:execution-registry-completeness': `${CHECK_PATH_BASE}execution-registry-completeness.mts`,
@@ -16477,7 +16481,7 @@ Last updated: 2026-01-31
 - Package manager pinning and CI install policy are enforced (`check:package-manager-pin`, `check:ci-uses-npm-ci`, `check:lockfile-integrity`).
 - Vercel parity is enforced (`check:vercel-parity`).
 - Native bindings are verified (`check:native-bindings`).
-- Workflow presence, quoted expressions, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:no-workflow-force-delete`).
+- Workflow presence, quoted expressions, runner-context, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:workflow-runner-context`, `check:no-workflow-force-delete`).
 - Schema evolution protocol and destructive migration plans are enforced (`check:schema-evolution`, `check:schema-breaking-plan`).
 - Lockfile consistency is enforced via `npm ci --ignore-scripts` in an isolated temp dir (`check:lockfile-sync`).
 - Function size budgets are enforced from Vercel output (`check:function-size-budget`).
@@ -16565,6 +16569,21 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 
 - Local env files (`.env.local`, `.env.development`, `.env.production`) must not be tracked.
 - Enforcement: `check:no-local-env-files`.
+
+### Guardrail 46c — Workflow Expressions Quoted
+
+- `RUNNER_TEMP` usage for `CHERRY_TMP_ROOT` must be quoted to avoid YAML tooling errors.
+- Enforcement: `check:workflow-expressions-quoted`.
+
+### Guardrail 46d — Workflow Force Delete Requires Tag
+
+- Deleting workflow files requires `[workflow-change]` in the commit message.
+- Enforcement: `check:no-workflow-force-delete`.
+
+### Guardrail 46e — Workflow Runner Context
+
+- `runner.*` expressions are forbidden outside `steps` blocks.
+- Enforcement: `check:workflow-runner-context`.
 
 ### Data Directory Policy (Documented)
 

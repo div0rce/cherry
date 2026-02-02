@@ -104,6 +104,7 @@
     "check:workflow-files-present": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-files-present",
     "check:workflow-expressions-quoted": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-expressions-quoted",
     "check:no-workflow-force-delete": "npm run ts:esm -- scripts/guardrails/run.mts check:no-workflow-force-delete",
+    "check:workflow-runner-context": "npm run ts:esm -- scripts/guardrails/run.mts check:workflow-runner-context",
     "check:ci-must-run-check": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-must-run-check",
     "check:ci-guardrail-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-guardrail-coverage",
     "check:execution-registry-completeness": "npm run ts:esm -- scripts/guardrails/run.mts check:execution-registry-completeness",
