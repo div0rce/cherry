@@ -209,7 +209,6 @@
     "eslint-plugin-zod": "^1.4.0",
     "fast-glob": "^3.3.3",
     "patch-package": "^8.0.1",
-    "postinstall-postinstall": "^2.1.0",
     "prisma": "^6.19.0",
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
