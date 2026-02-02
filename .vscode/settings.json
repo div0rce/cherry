@@ -16,5 +16,8 @@
   "eslint.run": "onType",
   "tailwindCSS.validate": true,
   "tailwindCSS.lint.cssConflict": "error",
-  "prisma.pinToPrisma6": true
+  "prisma.pinToPrisma6": true,
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": ".github/workflows/*"
+  }
 }
