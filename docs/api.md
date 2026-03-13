@@ -162,7 +162,7 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 - `/api/dev/pending-sessions` — list PENDING-ledger sessions for the user.
 - `/api/dev/bank/ingest` — dev-only bank ingest; `POST { transactions: RawBankTransaction[] }` upserts `BankTransaction` rows idempotently (`source = "dev_simulator"`), `GET` dumps recent rows for the current user. In production, dev sources are rejected.
 - `/api/dev/verification/trigger` — dev-only manual verification trigger that forwards a `VerificationSignal` into `verifySessionFromSignal` (tests ledger POSTED/REVOKED without bank simulator UI).
-- Dev-only CSV ingest shortcut: `npm run dev:ingest:moustafa-bank` parses `data/bank/moustafa-adv-safebalance-2061.csv` and writes `BankTransaction` rows with `source = "csv_dev"`; blocked in production.
+- Dev-only CSV ingest shortcut: `npm run dev:ingest:moustafa-bank` parses the tracked synthetic fixture at `data/bank/moustafa-adv-safebalance-2061.csv` and writes `BankTransaction` rows with `source = "csv_dev"`; blocked in production. Only synthetic financial fixtures may be committed; see `docs/data-policy.md`.
 
 ---
 

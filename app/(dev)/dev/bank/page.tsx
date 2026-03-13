@@ -48,7 +48,7 @@ export default async function DevBankPage(): Promise<JSX.Element> {
         <PageHeader
           label="Dev"
           title="Bank ingest debug"
-          description="Recent BankTransaction rows for the current user. Dev-only; use npm run dev:ingest:moustafa-bank to re-run CSV ingest."
+          description="Recent BankTransaction rows for the current user. Dev-only; use npm run dev:ingest:moustafa-bank to re-run synthetic CSV ingest."
         />
 
         <Panel title="Recent bank rows" description="Sorted by posted date (desc); limit 100.">
@@ -60,7 +60,7 @@ export default async function DevBankPage(): Promise<JSX.Element> {
           ) : rows.length === 0 ? (
             <EmptyState
               title="No bank rows yet"
-              description="Run npm run dev:ingest:moustafa-bank to load the SafeBalance dataset."
+              description="Run npm run dev:ingest:moustafa-bank to load the tracked synthetic fixture."
             />
           ) : (
             <div className="overflow-x-auto">

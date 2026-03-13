@@ -15,6 +15,7 @@ Ground truth for product identity remains in:
 - `docs/cherry-vine.md` (context beacon)
 - `docs/wallet-pass.md` (storeCard scaffold, 501 until certs)
 - `docs/api.md` (endpoint contract, `/api/scan` advisory)
+- `docs/data-policy.md` (synthetic financial fixture policy)
 
 This file summarizes where those concepts live in code today and highlights gaps.
 

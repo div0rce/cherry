@@ -9,8 +9,8 @@ Last updated: 2026-01-03
 - Offline evaluator results are not consumed by any user-facing or authority surfaces.
 
 ## What it is
-- Read-only replay of historical bank transactions through the Cherry engine to answer “What would Cherry have told past-Moustafa?”.
-- Inputs: `BankTransaction` rows (today from `csv_dev` SafeBalance ingest; later from Plaid/Teller).
+- Read-only replay of historical bank transactions through the Cherry engine against a tracked synthetic dev fixture.
+- Inputs: `BankTransaction` rows (today from `csv_dev` synthetic ingest; later from Plaid/Teller).
 - Outputs: `HistoricalEngineEvaluation` rows storing the engine’s best decision and scores per transaction.
 - No Sessions, no Ledger, no Buckets are touched.
 
@@ -44,7 +44,7 @@ Schema: `HistoricalEngineEvaluation` (`runId`, `bankTransactionId` unique; store
 
 ## How to run
 ```bash
-npm run dev:ingest:moustafa-bank          # load SafeBalance CSV → BankTransaction
+npm run dev:ingest:moustafa-bank          # load tracked synthetic CSV → BankTransaction
 npm run dev:evaluator:moustafa            # offline engine replay → HistoricalEngineEvaluation
 npm run dev                               # then open /dev/evaluator (and /dev/bank, /history, /dev/statements)
 ```
@@ -88,3 +88,4 @@ Env controls:
 - `docs/income-regimes.md`
 - `docs/bank-ingest-notes.md`
 - `docs/legal-constraints.md`
+- `docs/data-policy.md`

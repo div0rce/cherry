@@ -124,7 +124,7 @@ export default async function OfflineEvaluatorPage(): Promise<JSX.Element> {
         <PageHeader
           label="Dev"
           title="Offline evaluator"
-          description="Read-only replay of SafeBalance transactions through the Cherry engine. No sessions, no ledger writes."
+          description="Read-only replay of tracked synthetic transactions through the Cherry engine. No sessions, no ledger writes."
         />
 
         {missingSetup ? (
@@ -242,7 +242,7 @@ export default async function OfflineEvaluatorPage(): Promise<JSX.Element> {
                       <p className="text-base font-semibold text-slate-200">No evaluations yet</p>
                       <p className="text-sm text-slate-400">
                         Run <code className="font-mono text-xs">npm run dev:evaluator:moustafa</code> after ingesting the
-                        CSV dataset with the same BANK_INGEST_USER_* user.
+                        synthetic CSV fixture with the same BANK_INGEST_USER_* user.
                       </p>
                     </div>
                   ) : (

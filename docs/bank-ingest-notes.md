@@ -33,7 +33,7 @@ Quick capture of how `BankTransaction` is read today and what an ingest pipeline
 - `SimulatedTransaction` (populated by `/api/simulate` and seeds) feeds the unified activity as `SIMULATED_TRANSACTION`.
 - `CherryPointLedger` rows show as `POINTS_EVENT` with inferred cash deltas.
 - No production bank ingest exists yet; only dev and CSV-based ingest paths populate `BankTransaction`. `app/bank-simulator` exposes pending sessions and manual verify/reject for points, but does not create `BankTransaction` rows.
-- Offline evaluator: `HistoricalEngineEvaluation` stores engine advice for historical `BankTransaction` rows (e.g., `csv_dev` SafeBalance ingest) and is populated by `lib/evaluator/offline-history.ts` via `npm run dev:evaluator:moustafa`. It is read-only and does not create sessions/ledger rows.
+- Offline evaluator: `HistoricalEngineEvaluation` stores engine advice for historical `BankTransaction` rows (e.g., the tracked synthetic `csv_dev` ingest fixture) and is populated by `lib/evaluator/offline-history.ts` via `npm run dev:evaluator:moustafa`. It is read-only and does not create sessions/ledger rows.
 
 ## Implications for ingest
 - Ingest must upsert `BankTransaction` rows (idempotent by provider transaction id).
@@ -51,12 +51,13 @@ Quick capture of how `BankTransaction` is read today and what an ingest pipeline
 - `externalId` must be stable per provider (e.g., provider transaction id or deterministic hash of date/amount/raw description for CSV).
 - Dev ingest/evaluator identity: `BANK_INGEST_USER_EMAIL`/`BANK_INGEST_USER_ID` picks the ingest user; evaluator scripts and `/dev/evaluator` must use the same user to render results.
 
-## Dev CSV provider guardrails (moustafa SafeBalance import)
-- Dataset lives at `data/bank/moustafa-adv-safebalance-2061.csv`; parser in `lib/bank/csv-dev-provider.ts` keeps the source shape as-is (no business logic).
+## Dev CSV provider guardrails (synthetic CSV import)
+- Dataset lives at `data/bank/moustafa-adv-safebalance-2061.csv`; it is a tracked synthetic fixture that preserves the CSV provider shape without keeping realistic financial data. Parser in `lib/bank/csv-dev-provider.ts` keeps the source shape as-is (no business logic).
 - Script `npm run dev:ingest:moustafa-bank` (uses lab or provided user) normalizes rows and upserts `BankTransaction` with `source = "csv_dev"` and unique `externalId` hash; reruns are idempotent.
 - `upsertBankTransactions` explicitly skips `csv_dev` rows in production to keep the CSV provider dev-only.
 - Unified activity treats `csv_dev` rows like other bank rows; merchant fallback uses `description` when merchant name is absent.
 - After ingest, run the dev classifier + regime builder (via `npm run dev:evaluator:moustafa`) to populate `incomeKind`/`p2pKind`, `HistoricalIncomeRegime`, and `HistoricalBucketTemplate` for offline evaluator metrics. These writes stay in dev tables and do not touch live Buckets or Ledger rows.
+- Only synthetic financial fixtures may be committed to the repo; see `docs/data-policy.md`.
 
 ## Future/Target behavior (explicitly speculative)
 - Production ingest provider support (Plaid/Teller/etc.) with stable `externalId` values and a verification pipeline.
@@ -66,3 +67,4 @@ Quick capture of how `BankTransaction` is read today and what an ingest pipeline
 - `docs/offline-evaluator.md`
 - `docs/verification-flow.md`
 - `docs/legal-constraints.md`
+- `docs/data-policy.md`
