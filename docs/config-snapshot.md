@@ -148,6 +148,7 @@ jobs:
 # next.js
 /.next/
 /out/
+workspace/
 
 # production
 /build
@@ -167,8 +168,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.*
 !.env.example
 
 # vercel
@@ -188,10 +190,18 @@ certs/
 
 # Local temp + Node compile cache
 .tmp/
+data/bank/raw/
+data/bank/*.real.csv
+data/bank/*.export.csv
 problems.md
-.env*.local
 paste
 paste.txt
+abandoned_subsystems.md
+api_inventory.md
+architecture_map.md
+scripts/audit/full-checkout-audit.mts
+workspace_audit.md
+repo_index.json
 ```
 
 ```ts

@@ -126,7 +126,7 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 
 ### Guardrail 46b — No Local Env Files
 
-- Local env files (`.env.local`, `.env.development`, `.env.production`) must not be tracked.
+- Env files must not be tracked except for `.env.example`.
 - Enforcement: `check:no-local-env-files`.
 
 ### Data Directory Policy (Documented)

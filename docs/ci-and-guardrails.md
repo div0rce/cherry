@@ -28,7 +28,7 @@ Last updated: 2026-02-01
 
 ### Temp root requirement
 - `CHERRY_TMP_ROOT` is required for all guardrails and scripts that allocate temp.
-- Local dev: copy `.env.example` to `.env.local` and set `CHERRY_TMP_ROOT="$HOME/.cherry-tmp"`.
+- Local dev: export `CHERRY_TMP_ROOT` from your shell, direnv, or launch configuration instead of storing it in a repo-root env file.
 - CI: workflows must set `CHERRY_TMP_ROOT` and create the directory before installs.
 - Vercel: set `CHERRY_TMP_ROOT=/tmp/cherry-tmp` and ensure the build command creates the directory.
 - Enforcement: `check:temp-quota`, `check:tmp-root-shape`, `check:artifact-size-budgets`.
@@ -74,6 +74,7 @@ Run the npm scripts: `check:aggregate` (guardrails only), `check` (aggregate + n
 
 ## Related docs
 - `docs/guardrails.md`
+- `docs/env-policy.md`
 - `docs/script-standards.md`
 - `.github/workflows/ci.yml`
 - `.github/workflows/env-checks.yml`

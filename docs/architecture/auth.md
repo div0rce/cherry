@@ -24,7 +24,7 @@ This document explains how authentication works in Cherry and how to keep it ali
   - **Google OAuth** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
   - **Dev Credentials** (non-production only; creates/fetches user by email, no secrets required)
 - Add providers by importing from `next-auth/providers/*` inside `authOptions.providers`.
-- Keep secrets in `.env.local` (never committed).
+- Keep secrets out of tracked files and supply them via exported environment or deployment configuration. `.env.example` is the documented contract; see `docs/env-policy.md`.
 
 ## Session Lifecycle
 1. User signs in via `/signin` or `signIn()` (client).
@@ -69,4 +69,5 @@ This document explains how authentication works in Cherry and how to keep it ali
 ## Related docs
 - `AGENTS.md`
 - `docs/ci-and-guardrails.md`
+- `docs/env-policy.md`
 - `docs/legal-constraints.md`
