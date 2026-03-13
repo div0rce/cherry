@@ -228,7 +228,7 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 ### Guardrail 39 — Ledger Write Entry Points
 
 - Direct `CherryPointLedger` writes are allowed only in approved entrypoints.
-- Approved entrypoints: persistence adapter, session confirm/verify flows, demo seeding, and admin clear routes.
+- Approved entrypoints: persistence adapter, session confirm/verify flows, and demo seeding.
 - Enforcement: `check:db-ledger-entrypoints`.
 
 ## Domain: Schema Evolution

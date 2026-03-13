@@ -16,9 +16,6 @@ const hasText = (value?: string | null): value is string =>
 export default function AdminClient(): JSX.Element {
   const router = useRouter();
   const [isSeeding, setIsSeeding] = useState(false);
-  const [isClearingUser, setIsClearingUser] = useState(false);
-  const [isClearingSessions, setIsClearingSessions] = useState(false);
-  const [isClearingLedger, setIsClearingLedger] = useState(false);
   const [seedFeedback, setSeedFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null
   );
@@ -26,15 +23,6 @@ export default function AdminClient(): JSX.Element {
     { type: 'success' | 'error'; text: string } | null
   >(null);
   const [isSeedingCardsBuckets, setIsSeedingCardsBuckets] = useState(false);
-  const [clearUserFeedback, setClearUserFeedback] = useState<
-    { type: 'success' | 'error'; text: string } | null
-  >(null);
-  const [clearSessionsFeedback, setClearSessionsFeedback] = useState<
-    { type: 'success' | 'error'; text: string } | null
-  >(null);
-  const [clearLedgerFeedback, setClearLedgerFeedback] = useState<
-    { type: 'success' | 'error'; text: string } | null
-  >(null);
   const [bankPayload, setBankPayload] = useState(
     JSON.stringify(
       [
@@ -72,24 +60,6 @@ export default function AdminClient(): JSX.Element {
     const id = setTimeout(() => setSeedCardsBucketsFeedback(null), 3000);
     return () => clearTimeout(id);
   }, [seedCardsBucketsFeedback]);
-
-  useEffect(() => {
-    if (clearUserFeedback === null) return;
-    const id = setTimeout(() => setClearUserFeedback(null), 3000);
-    return () => clearTimeout(id);
-  }, [clearUserFeedback]);
-
-  useEffect(() => {
-    if (clearSessionsFeedback === null) return;
-    const id = setTimeout(() => setClearSessionsFeedback(null), 3000);
-    return () => clearTimeout(id);
-  }, [clearSessionsFeedback]);
-
-  useEffect(() => {
-    if (clearLedgerFeedback === null) return;
-    const id = setTimeout(() => setClearLedgerFeedback(null), 3000);
-    return () => clearTimeout(id);
-  }, [clearLedgerFeedback]);
 
   useEffect(() => {
     if (bankFeedback === null) return;
@@ -256,102 +226,6 @@ export default function AdminClient(): JSX.Element {
               <Alert
                 variant={seedCardsBucketsFeedback.type === 'success' ? 'success' : 'danger'}
                 title={seedCardsBucketsFeedback.text}
-              />
-            ) : null}
-          </div>
-        </Card>
-
-        <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
-          <div>
-            <p className="text-sm font-semibold text-[#f8fafc]">Clear user data</p>
-            <p className="text-xs text-[#a5b0d0]">
-              Delete cards, buckets, and simulations for the current user.
-            </p>
-          </div>
-          <div className="mt-auto space-y-2">
-            <Button
-              type="button"
-              onClick={() =>
-                callEndpoint(
-                  '/api/admin/clear-user',
-                  setIsClearingUser,
-                  'Cleared user data',
-                  setClearUserFeedback
-                )
-              }
-              disabled={isClearingUser}
-              variant="destructive"
-            >
-              {isClearingUser ? 'Clearing…' : 'Clear user data'}
-            </Button>
-            {clearUserFeedback ? (
-              <Alert
-                variant={clearUserFeedback.type === 'success' ? 'success' : 'danger'}
-                title={clearUserFeedback.text}
-              />
-            ) : null}
-          </div>
-        </Card>
-
-        <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
-          <div>
-            <p className="text-sm font-semibold text-[#f8fafc]">Clear Cherry Session Diagnostics</p>
-            <p className="text-xs text-[#a5b0d0]">
-              Delete all Cherry recommendation sessions and their points for this user. Sandbox only.
-            </p>
-          </div>
-          <div className="mt-auto space-y-2">
-            <Button
-              type="button"
-              onClick={() =>
-                callEndpoint(
-                  '/api/admin/clear-sessions',
-                  setIsClearingSessions,
-                  'Cleared sessions and ledger',
-                  setClearSessionsFeedback
-                )
-              }
-              disabled={isClearingSessions}
-              variant="destructive"
-            >
-              {isClearingSessions ? 'Clearing…' : 'Clear sessions + diagnostics'}
-            </Button>
-            {clearSessionsFeedback ? (
-              <Alert
-                variant={clearSessionsFeedback.type === 'success' ? 'success' : 'danger'}
-                title={clearSessionsFeedback.text}
-              />
-            ) : null}
-          </div>
-        </Card>
-
-        <Card tone="base" padding="md" className="flex h-full flex-col gap-2">
-          <div>
-            <p className="text-sm font-semibold text-[#f8fafc]">Clear Cherry Points Ledger</p>
-            <p className="text-xs text-[#a5b0d0]">
-              Delete all CherryPointLedger entries for this user. Does not remove sessions.
-            </p>
-          </div>
-          <div className="mt-auto space-y-2">
-            <Button
-              type="button"
-              onClick={() =>
-                callEndpoint(
-                  '/api/admin/clear-ledger',
-                  setIsClearingLedger,
-                  'Cleared points ledger',
-                  setClearLedgerFeedback
-                )
-              }
-              disabled={isClearingLedger}
-              variant="destructive"
-            >
-              {isClearingLedger ? 'Clearing…' : 'Clear points ledger'}
-            </Button>
-            {clearLedgerFeedback ? (
-              <Alert
-                variant={clearLedgerFeedback.type === 'success' ? 'success' : 'danger'}
-                title={clearLedgerFeedback.text}
               />
             ) : null}
           </div>

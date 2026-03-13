@@ -46,7 +46,7 @@ Read this alongside `AGENTS.md`, `docs/legal-constraints.md`, `docs/cherry-visio
 ## Seed, MCC ingest, and Admin flows
 - MCC ingest: `npm run ingest:mcc [path]` → `scripts/ingest-mcc.mts`.
 - Demo seeding: `npm run seed:demo` → `scripts/seed-demo.mts` (also via `/api/seed-demo`).
-- Admin tools (local-only): `/admin` links to `/api/admin/clear-user`, `/api/admin/clear-sessions`, `/api/admin/clear-ledger`, `/api/admin/health`, `/api/health`.
+- Admin tools (local-only): `/admin` links to `/api/admin/health`, `/api/health`, and dev-only seed/diagnostic surfaces.
 - Integrity: `scripts/audit-integrity.mts` flags session/ledger anomalies.
 
 ## UI Conventions

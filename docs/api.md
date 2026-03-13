@@ -19,7 +19,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 - `/simulate` + `/simulations` exercise `/api/simulate` and inspect simulation history.
 - `/dev/statements` uses `/api/activity` for statement rollups.
 - `/vine-simulator` is the UI harness for `/api/vine/order`.
-- `/admin` fronts `/api/admin/*`, seed endpoints, and `/api/health`.
+- `/admin` fronts `/api/admin/health`, seed endpoints, and `/api/health`.
 - Buckets/History pages follow the same header → metrics → panels layout with standardized Empty/Loading/Error states.
 - `/history` is spend history (statement/bank-derived timeline); `/activity` is engine activity (sessions/ledger/engine events) under the Engine section.
 
@@ -154,10 +154,9 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 ---
 
 ## Admin/Dev Endpoints (local only)
-- `/api/admin/clear-user` — clear user data (cards/buckets/etc).
-- `/api/admin/clear-sessions` — clear `RecommendationSession` rows.
-- `/api/admin/clear-ledger` — clear `CherryPointLedger` rows.
-- `/api/admin/health` and `/api/health` — health checks.
+- `/api/admin/health` — authenticated dev/admin health check for the admin surface.
+- `/api/health` — public health check.
+- No destructive admin HTTP mutation routes remain under `/api/admin/*`.
 - `/api/seed-demo` and `/api/seed-demo/cards-buckets` — seed demo data.
 - `/api/dev/pending-sessions` — list PENDING-ledger sessions for the user.
 - `/api/dev/bank/ingest` — dev-only bank ingest; `POST { transactions: RawBankTransaction[] }` upserts `BankTransaction` rows idempotently (`source = "dev_simulator"`), `GET` dumps recent rows for the current user. In production, dev sources are rejected.

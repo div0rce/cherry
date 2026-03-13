@@ -7,15 +7,12 @@ ensureTsEsm();
 
 const PREFIX = 'check:db-ledger-entrypoints';
 const FIX =
-  'Move CherryPointLedger writes into approved entrypoints (persistence adapter, session flows, or admin clear routes).';
+  'Move CherryPointLedger writes into approved entrypoints (persistence adapter, session flows, or demo seeding).';
 const ROOT = process.cwd();
 const WRITE_PATTERN =
   '\\bcherryPointLedger\\.(createMany|create|updateMany|update|deleteMany|delete|upsert)\\b';
 const SEARCH_GLOBS = ['!tests/**', '!node_modules/**', '!prisma/**'];
 const ALLOWED_FILES = new Set([
-  'app/api/admin/clear-ledger/route.ts',
-  'app/api/admin/clear-sessions/route.ts',
-  'app/api/admin/clear-user/route.ts',
   'lib/adapters/runtime/persistence.prisma.ts',
   'lib/demo-seeder.ts',
   'lib/sessions/confirm-service.ts',

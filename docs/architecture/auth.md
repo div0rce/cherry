@@ -43,7 +43,8 @@ This document explains how authentication works in Cherry and how to keep it ali
   - `/api/autopilot/*`
   - Admin/dev utilities (`/api/admin/*`, `/api/seed-demo`, `/api/dev/*`, `/api/internal/*`)
 - Advisory `/api/scan` resolves user context but allows lab/demo access.
-- Health endpoints (`/api/health`, `/api/admin/health`) are open by design.
+- `/api/health` is open by design.
+- `/api/admin/health` requires authenticated dev/admin access.
 - UI pages calling protected endpoints must wrap in `useSession()` and redirect/prompt on unauthenticated states (`/signin?callbackUrl=...`).
 
 ## Error Handling and UX Rules
@@ -61,7 +62,7 @@ This document explains how authentication works in Cherry and how to keep it ali
 - **Do** keep session callbacks stamping `session.user.id`.
 - **Do** handle `401` intentionally in UI.
 - **Don’t** read cookies manually or create ad-hoc Prisma clients.
-- **Don’t** weaken auth on admin tools; they are local-only and should stay guarded.
+- **Don’t** reintroduce destructive admin HTTP routes guarded only by ordinary user auth.
 
 ## Future/Target behavior (explicitly speculative)
 - Add stricter role gating for admin/dev utilities before any production exposure.

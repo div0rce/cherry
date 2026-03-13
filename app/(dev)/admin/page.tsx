@@ -70,7 +70,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
         label="Admin"
         badge="Dev / Lab Tool"
         title="Admin & tools"
-        description="Dev utilities live here. Seed/nuke demo data and check basic health. Dangerous operations; do not expose to end users."
+        description="Dev utilities live here. Inspect diagnostics, seed demo data, and check basic health. Do not expose to end users."
       />
 
       <Panel tone="muted" title="Cherry Session Diagnostics" description="Counts for this user.">
@@ -95,7 +95,7 @@ export default async function AdminPage(): Promise<JSX.Element> {
       <Panel
         tone="muted"
         title="Admin tools"
-        description="Dangerous operations. Seeds and resets are for local/dev only."
+        description="Seed demo fixtures and inspect diagnostics for local/dev only."
       >
         <AdminClient />
       </Panel>
