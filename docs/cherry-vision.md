@@ -7,6 +7,10 @@ Last updated: 2026-01-03
 
 All other docs and code must conform to this file (and `docs/legal-constraints.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`). If reality drifts, fix the code—not this identity. See `docs/legal-constraints.md` for hard legal guardrails.
 
+Runtime status note:
+- Only `Current behavior` in this document reflects the live runtime today.
+- The product and mechanism sections below are reference architecture and future-facing product intent unless they restate current behavior explicitly.
+
 Where this lives in the repo today:
 - Advisory entry: `/api/scan` in `app/api/scan/route.ts` runs the engine and records a `DecisionEvent` for telemetry. It does not create sessions or ledger entries.
 - Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`. Bucket spend is incremented on confirm after `ensureBucketFresh` rollover.
@@ -32,7 +36,7 @@ Where this lives in the repo today:
 - Loss, reboot, or compromise of a Vine device must never affect correctness of user balances or rewards.
 
 ## Future/Target behavior (explicitly speculative)
-- Deeper verification (bank ingest + receipts + Vine) posts Cherry Points automatically once verification moves beyond the current stubbed flow.
+- Deeper verification (bank ingest + receipts + Vine) and automatic Cherry Point posting remain future work once verification moves beyond the current stubbed flow.
 - Production Vine paths require signature enforcement; broader context coverage and device lifecycle expansion remain planned.
 
 ---
@@ -52,7 +56,7 @@ Where this lives in the repo today:
 4. **Cherry is your spending copilot, not your payment proxy.**
    It shapes behavior and decisions, not the underlying financial plumbing.
 
-5. **Cherry can extend into the physical world via Cherry Vine.**
+5. **Cherry is designed to extend into the physical world via Cherry Vine.**
    Cherry Vine is an on-counter hardware node that only emits non-sensitive context (merchant + amount + timestamp) to nearby phones so Cherry can run its loop in real time, while still never touching payment rails.
 
 This document defines Cherry’s identity, constraints, and core product mechanisms so we never drift into illegal “card fronting” territory, and instead build a durable, legal, and actually more powerful engine.
@@ -158,7 +162,7 @@ These are **non-payment** signals it can rely on:
 
   * Buckets (categories + budgets + periods).
   * Cards and reward rules.
-  * Past simulated or “verified” transactions.
+  * Past simulated or recorded session history.
 
 * **Merchant-side Cherry Vine signals (where deployed)**:
 
@@ -219,7 +223,7 @@ This is where your existing logic lives.
   * Buckets
   * Cards
   * Reward rules
-  * Past simulation/verified transaction history
+  * Past simulation and recorded session history
 * Optional merchant metadata:
 
   * store/location identifiers from Cherry Vine
@@ -267,7 +271,7 @@ For a hypothetical transaction:
 
 The engine returns a **decision object** summarizing this evaluation.
 
-In environments with Cherry Vine, the evaluation can be triggered automatically at the right second (when the POS finalizes the total) without user confirmation and without affecting the transaction, but the decision object and its semantics remain exactly the same.
+In future Cherry Vine environments, the evaluation could be triggered automatically at the right second (when the POS finalizes the total) without user confirmation and without affecting the transaction, but the decision object and its semantics would remain exactly the same.
 
 ---
 
@@ -387,7 +391,7 @@ Cherry cannot see the live card authorization, but it can still verify behavior 
 * **Cherry Vine–assisted matching (where deployed)**:
 
   * Vine can attach an order ID and timestamp to the broadcast.
-  * Later, when Cherry sees a receipt or bank transaction for that merchant and amount within that window, it can automatically reconcile:
+  * In a future matching flow, when Cherry sees a receipt or bank transaction for that merchant and amount within that window, it could automatically reconcile:
 
     * which recommendation session this belonged to
     * whether the user’s reported card choice matches prior advice

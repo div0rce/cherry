@@ -3,7 +3,7 @@ Last updated: 2026-01-03
 
 # Cherry Vine Design Document
 
-*Reference architecture for the Cherry in-store hardware node*
+*Reference architecture and future hardware blueprint for the Cherry in-store node*
 
 Vine is context-only hardware, never a payment terminal. See `docs/legal-constraints.md` for the hard guardrails.
 
@@ -50,6 +50,10 @@ All firmware and future device work must match this document and **never** touch
 - Vine holds only ephemeral, local state (`currentOrder`).
 - All durable state (sessions, buckets, ledger, authority events) lives exclusively in the Cherry backend.
 - Vine reboot or failure must never affect correctness of user balances, rewards, or ledger state.
+
+Reference status note:
+- Only `Current code hooks` and `Current behavior` in this document reflect live runtime behavior today.
+- The remaining sections describe target hardware, App Clip, and deployment design; they are not live product surfaces.
 
 ## 0. Purpose of this Document
 

@@ -7,7 +7,7 @@ Cherry is a **real-time spending copilot**. It observes context (merchant, amoun
 - Does **not** act as a payment card or terminal.
 - Operates the loop **Observe → Evaluate → Recommend → Reward** only.
 
-Cherry Vine (future hardware) is a **context beacon** (merchant + amount) and never touches payment rails. Cherry Pass is a **storeCard-style Apple Wallet pass** that triggers advisory flows; until Apple certs exist, `GET /api/wallet/cherry-pass` intentionally returns **501**.
+Cherry Vine (future hardware) is a **context beacon** (merchant + amount) and never touches payment rails. Cherry Pass is scaffolded only today; until Apple certs exist and the feature flag is enabled, `GET /api/wallet/cherry-pass` intentionally returns **501**.
 
 Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `AGENTS.md`.
 
@@ -18,7 +18,7 @@ Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cher
 - Wallet pass stays gated at 501 until certs/flag are configured; Vine remains context-only.
 
 ## Future/Target behavior
-- Production-ready verification that posts ledger rows automatically after ingest verification.
+- Production-ready verification and automated ledger posting after ingest verification.
 - Enforced Vine signature lifecycle and expanded device coverage.
 
 ---
