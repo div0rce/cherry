@@ -57,9 +57,9 @@ export function getRewardSemanticsForRule(
 }
 
 export function getRewardSemanticsForCardSpend(params: {
-  card?: Pick<NormalizedCard, 'rewardRules'> | null;
-  amountCents?: number | null;
-  merchantCategoryKey?: string | null;
+  card?: Pick<NormalizedCard, 'rewardRules'> | null | undefined;
+  amountCents?: number | null | undefined;
+  merchantCategoryKey?: string | null | undefined;
 }): RewardSemantics | null {
   const { card, amountCents, merchantCategoryKey } = params;
 
