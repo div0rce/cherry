@@ -11,8 +11,6 @@ export type EngineInputWeights = {
   rewards: number | null;
   runway: number | null;
   debtRelief: number | null;
-  volatility: number | null;
-  ruleViolations: number | null;
 };
 
 export type EngineInputCardRewardRule = {

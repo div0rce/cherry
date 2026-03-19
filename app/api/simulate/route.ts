@@ -282,8 +282,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ? bucketBeforeCents
       : decision.budget.remainingAfterCents ?? null;
     const bucketLimitCents = decision.budget.limitCents ?? null;
-    const rewardMultiplier = decision.card.multiplier ?? null;
-    const rewardsEarnedPoints = decision.card.estimatedRewards ?? null;
+    const rewardMultiplier =
+      decision.card.rewardUnit === 'issuer_points' ? (decision.card.rewardRate ?? null) : null;
+    const rewardsEarnedPoints = decision.card.rewardPoints ?? null;
+    const rewardsEarnedCents = decision.card.rewardValueCents ?? null;
+    const cashbackPercent =
+      decision.card.rewardUnit === 'cashback_cents' && decision.card.rewardRate != null
+        ? decision.card.rewardRate * 100
+        : null;
     const shouldCommit = body.commit === true;
     const canCommit =
       shouldCommit &&
@@ -349,9 +355,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           rewardMultiplier,
           rewardsEarned: rewardsEarnedPoints,
           multiplier: rewardMultiplier,
-          cashbackPercent: null,
+          cashbackPercent,
           rewardsEarnedPoints: rewardsEarnedPoints,
-          rewardsEarnedCents: null,
+          rewardsEarnedCents,
 
           strictDecline,
           status: strictDecline ? TransactionStatus.DECLINED : TransactionStatus.APPROVED,

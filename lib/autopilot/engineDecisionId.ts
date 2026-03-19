@@ -83,7 +83,7 @@ function normalizeObjectiveWeights(raw: unknown): Record<string, number> | null 
   if (raw === null || raw === undefined || typeof raw !== 'object') return null;
 
   const weights: Record<string, number> = {};
-  const allowedKeys = ['rewards', 'runway', 'debtRelief', 'volatility', 'ruleViolations'];
+  const allowedKeys = ['rewards', 'runway', 'debtRelief'];
   for (const key of allowedKeys) {
     const val = (raw as Record<string, unknown>)[key];
     if (typeof val === 'number' && Number.isFinite(val)) {

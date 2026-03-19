@@ -5,7 +5,8 @@ export interface AutopilotDecision {
   cardId: string | null;
   reasonCode: string;
   userFacingMessage: string;
-  expectedMonetaryBenefitCents: number;
+  expectedMonetaryBenefitCents: number | null;
+  expectedPointsDelta: number | null;
   bucketDelta: {
     bucketId: string;
     newSpentCents: number;

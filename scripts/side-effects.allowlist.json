@@ -42,7 +42,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/autopilot/service.ts": {
     "effects": [
@@ -51,7 +51,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/bank/csv-dev-provider.ts": {
     "effects": [
@@ -68,7 +68,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/bank/user-link.ts": {
     "effects": [
@@ -98,7 +98,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/daily-state/runDailyForUser.ts": {
     "effects": [
@@ -107,7 +107,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/dashboard.ts": {
     "effects": [
@@ -116,7 +116,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/demo-seeder.ts": {
     "effects": [
@@ -125,7 +125,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/dev/dev-user.ts": {
     "effects": [
@@ -178,7 +178,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/ingest/bank-transactions.ts": {
     "effects": [
@@ -257,7 +257,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/user-context.ts": {
     "effects": [
@@ -281,7 +281,7 @@
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/vine/security.ts": {
     "effects": [

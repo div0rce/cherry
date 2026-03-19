@@ -79,11 +79,11 @@ Verbal diagrams:
 - Lifecycle: Idle → Simulating → Recommended (safe) or Warning (caution/fallback/blocked) → (Optional) Commit (current: simulated transaction only; target: shared confirm pipeline/session+ledger) or Ignore.
 
 ## 6. Engine Contract for Autopilot
-`lib/engine/public.getAutopilotDecisionForUserSwipe` requires: authenticated `userId`, normalized merchant name, positive `amountCents`, card universe IDs, and resolved category (via scan helper). It produces: decision kind (`OK`/`FALLBACK`/`BLOCKED`), recommended card ID (or null), expected monetary benefit vs runner-up, optional bucket delta (remaining/spent projections), reason code, and user-facing message. Internally it calls the solver (`safeSolveDecisionForUser`) using the standard objective weights (rewards, runway, debt relief, volatility, rule violations) and filters to card actions only.
+`lib/engine/public.getAutopilotDecisionForUserSwipe` requires: authenticated `userId`, normalized merchant name, positive `amountCents`, card universe IDs, and resolved category (via scan helper). It produces: decision kind (`OK`/`FALLBACK`/`BLOCKED`), recommended card ID (or null), known monetary benefit vs runner-up when computable, raw issuer-points delta when applicable, optional bucket delta (remaining/spent projections), reason code, and user-facing message. Internally it calls the solver (`safeSolveDecisionForUser`) using bounded heuristic scoring weights (`rewards`, `runway`, `debtRelief`) and filters to card actions only.
 
 ## 7. Preview Backend Integration Contract (/api/autopilot/preview)
 - Request (`/api/autopilot/preview`): JSON with `merchant` (string, trimmed, required), `amountCents` (positive int), optional `occurredAt`, **required** `category` (`AutopilotRewardCategory`). Auth required (`resolveUserContext`, allow lab demo). Stateless: no bucket writes. Parsed via `AutopilotPreviewInputSchema` in `lib/validation/autopilot/preview.ts`.
-- Response: JSON validated by `AutopilotPreviewOutputSchema` (decisionId, merchant, amountCents, occurredAt, status `ok|blocked|fallback`, recommendedCard, expectedBenefitCents, explanation {primary, secondary[], warnings[]}, bucketImpact {id, name, remainingCents, spentCents} | null, reasonCode).  
+- Response: JSON validated by `AutopilotPreviewOutputSchema` (decisionId, merchant, amountCents, occurredAt, status `ok|blocked|fallback`, recommendedCard, `expectedMonetaryBenefitCents`, `expectedPointsDelta`, explanation/UI bundle, bucketImpact {id, name, remainingCents, spentCents} | null, reasonCode).  
 - Status semantics: `ok` when engine returns a usable card; `blocked` when guardrails prevent safe recommendation; `fallback` when engine cannot produce a safe decision. Categories normalized via UI string → `AutopilotRewardCategory` → engine RewardCategory resolver; `occurredAt` defaults to “now” when absent.
 - Data flow (verbal diagram): UI (`AutopilotShell` form) → adapter (`runSimulation`) → preview route (`/api/autopilot/preview`) → service (`lib/autopilot/service#getAutopilotPreview`) → engine entry (`getAutopilotDecisionForUserSwipe` → solver) → preview response → adapter maps to `AutopilotSimulationResult` → UI renders panel.
 - Error shape: all non-200 responses from `/api/autopilot/preview` include `{ error, code }` (e.g., `INVALID_PAYLOAD`, `UNAUTHORIZED`, `ENGINE_ERROR`, `ENGINE_TIMEOUT`, `PREVIEW_UNEXPECTED_ERROR`).
@@ -97,7 +97,7 @@ Verbal diagrams:
 - Maps preview → `AutopilotSimulationResult`:
   - `state`: `recommended` only when status is `ok` and no warnings/budget exhaustion; else `warning`.
   - `cards`: primary from `recommendedCard`/primary message; secondary placeholder with neutral tone.
-  - `rewardStrength`: bands from expectedBenefit/amount (1–4).
+  - `rewardStrength`: bands from known monetary benefit/amount when available, otherwise issuer-points delta heuristics (1–4).
   - `impactSegments`: derived from bucketImpact used/remaining; always exactly 3 entries (padded if missing).
   - `impactNotes`: bucket remaining note + preview secondary + warnings.
   - Safety badges: green for recommended, amber for warning; CTAs are text-only.

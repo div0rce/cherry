@@ -255,13 +255,13 @@ For a hypothetical transaction:
 
      * matches the category exactly (e.g., DINING 4x)?
      * or falls back to general rewards (1–2% everywhere)?
-   * What is the implied reward multiplier?
+   * What is the explicit reward rate and reward unit?
    * Are there any special rules (rotating categories, caps) in the future?
 
 4. **Reward & decision summary**:
 
    * Recommended card.
-   * Projected rewards (e.g., 200 points).
+   * Projected rewards with explicit semantics (e.g., 200 issuer points or $2.00 cashback).
    * Proposed “Cherry Points” for compliance.
    * A classification:
 
@@ -319,8 +319,10 @@ Think of a canonical recommendation shape:
   },
   "cardRecommendation": {
     "cardNickname": "Amex Gold",
-    "multiplier": 4,
-    "estimatedRewards": 200
+    "rewardUnit": "issuer_points",
+    "rewardRate": 4,
+    "rewardPoints": 200,
+    "rewardValueCents": null
   },
   "cherryIncentive": {
     "pointsIfFollowed": 15,
@@ -702,7 +704,7 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 - Canonical types live in `lib/engine/types.ts` (`NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`); guardrails live in `lib/engine/guardrails.ts`; context/state builders in `lib/engine/context.ts`.
 - Legacy compatibility (`runEngine`, card/bucket verdicts) sits in `lib/engine/legacy.ts` until all surfaces migrate.
 - `/api/simulate`, `/api/scan`, and `/api/sessions` all wrap the engine through `safeSolveDecisionForUser` for graceful failures while mapping back to legacy response shapes.
-- Scoring: explicit multi-objective utility over `rewards`, `runway`, `debtRelief` minus `volatility`/`ruleViolations`. Per-user weights come from `engineObjectiveProfile` + optional JSON overrides on `User`; invalid/unknown values clamp to balanced defaults and never throw. External API shapes stay the same; only ranking adapts to the profile.
+- Scoring: bounded heuristic scoring over `rewards`, `runway`, and `debtRelief`. `rewards` is monetary only; raw issuer points remain non-monetary unless explicitly valued by runtime truth. Per-user weights come from `engineObjectiveProfile` + optional JSON overrides on `User`; invalid/unknown values clamp to balanced defaults and never throw. External API shapes stay the same; only ranking adapts to the profile.
 
 ---
 

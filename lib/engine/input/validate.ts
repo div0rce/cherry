@@ -39,8 +39,6 @@ function validateWeights(weights: EngineInputWeights, prefix: string): EngineVal
     ['rewards', weights.rewards],
     ['runway', weights.runway],
     ['debtRelief', weights.debtRelief],
-    ['volatility', weights.volatility],
-    ['ruleViolations', weights.ruleViolations],
   ];
 
   for (const [key, value] of entries) {

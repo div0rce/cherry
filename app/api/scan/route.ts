@@ -211,8 +211,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         cardRecommendation: {
           cardId: routing.cardId ?? null,
           cardNickname: routing.cardNickname ?? null,
-          rewardMultiplier: routing.multiplier ?? null,
-          estimatedRewards: routing.estimatedRewards ?? null,
+          rewardUnit: routing.rewardUnit ?? null,
+          rewardRate: routing.rewardRate ?? null,
+          rewardPoints: routing.rewardPoints ?? null,
+          rewardValueCents: routing.rewardValueCents ?? null,
           verdict: routing.verdict,
         },
         budgetVerdict: decision.budget.verdict,

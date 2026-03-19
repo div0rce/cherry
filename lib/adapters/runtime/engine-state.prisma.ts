@@ -197,9 +197,6 @@ function coerceObjectiveWeights(raw: unknown): Partial<ObjectiveWeights> | undef
   if (typeof maybeWeights['runway'] === 'number') partial.runway = maybeWeights['runway'];
   if (typeof maybeWeights['debtRelief'] === 'number')
     partial.debtRelief = maybeWeights['debtRelief'];
-  if (typeof maybeWeights['volatility'] === 'number') partial.volatility = maybeWeights['volatility'];
-  if (typeof maybeWeights['ruleViolations'] === 'number')
-    partial.ruleViolations = maybeWeights['ruleViolations'];
 
   return Object.values(partial).length > 0 ? partial : undefined;
 }

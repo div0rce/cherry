@@ -166,7 +166,8 @@ export function simulateAction(
       }));
 
   const cashState = getCashState(state.cash);
-  let projectedLiquid = cashState?.liquidCents ?? null;
+  let projectedLiquid =
+    cashState != null && cashState.liquidCents != null ? cashState.liquidCents : null;
   if (
     projectedLiquid != null &&
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&

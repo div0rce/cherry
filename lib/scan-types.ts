@@ -3,6 +3,7 @@ import type {
   EngineCapabilityMap,
   EngineDegradedDimensions,
   LegacyEngineDecision,
+  RewardSemantics,
 } from './engine.js';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
 import type { SimulatedAuthorityDecision } from './authority/simulateSpendAuthority.js';
@@ -34,8 +35,10 @@ export type ScanResponseBody = {
   cardRecommendation: {
     cardId: string | null;
     cardNickname: string | null;
-    rewardMultiplier: number | null;
-    estimatedRewards: number | null;
+    rewardUnit: RewardSemantics['rewardUnit'] | null;
+    rewardRate: number | null;
+    rewardPoints: number | null;
+    rewardValueCents: number | null;
     verdict: CardVerdict;
   };
 

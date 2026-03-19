@@ -24,6 +24,8 @@ Last updated: 2026-01-18
 
 The vector is total for all finite scores and uses only stable strings.
 
+The underlying scalar score that feeds this vector is bounded heuristic scoring, not a claim of economic optimality. Live dimensions are limited to `rewards`, `runway`, and `debtRelief`, and raw issuer points are not treated as monetary value unless runtime truth provides an explicit valuation.
+
 ### Ordering and tie-break
 
 Ordering is strict lexicographic:

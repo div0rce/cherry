@@ -11,13 +11,13 @@ const {
   normalizeObjectiveWeights,
   scoreAction,
 } = require('../lib/engine/objective');
-const { buildEngineContext } = require('../lib/engine');
+const { available, buildEngineContext, createLoadedEngineCapabilities } = require('../lib/engine');
 
 function buildStateForObjectives() {
   return {
     userId: 'user-obj',
     buckets: [],
-    debts: [
+    debts: available([
       {
         id: 'debt-1',
         name: 'Debt',
@@ -28,7 +28,7 @@ function buildStateForObjectives() {
         minPaymentCents: null,
         dueDayOfMonth: null,
       },
-    ],
+    ]),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -40,7 +40,8 @@ function buildStateForObjectives() {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: 5_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: 5_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -104,27 +105,21 @@ function testNormalizeClampsInvalid() {
     rewards: 1,
     runway: -1,
     debtRelief: Number.NaN,
-    volatility: Number.POSITIVE_INFINITY,
-    ruleViolations: -0.5,
   });
 
   assert.deepEqual(normalized, {
     rewards: 1,
     runway: 0,
     debtRelief: 0,
-    volatility: 0,
-    ruleViolations: 0,
   });
 }
 
 function testMergeOverridesApply() {
   const merged = mergeProfileWithOverrides(OBJECTIVE_PROFILES.BALANCED, {
     rewards: 2,
-    volatility: 5,
   });
 
   assert.equal(merged.rewards, 2);
-  assert.equal(merged.volatility, 5);
   assert.equal(merged.runway, OBJECTIVE_PROFILES.BALANCED.weights.runway);
 }
 

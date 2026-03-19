@@ -63,9 +63,7 @@
         "components": {
           "debtRelief": 0,
           "rewards": 0,
-          "ruleViolations": 0,
-          "runway": 0,
-          "volatility": 0
+          "runway": 0
         },
         "constraintsBreached": [],
         "projections": {
@@ -115,9 +113,7 @@
         "components": {
           "debtRelief": 0,
           "rewards": 0,
-          "ruleViolations": 0,
-          "runway": 0,
-          "volatility": 0
+          "runway": 0
         },
         "constraintsBreached": [],
         "projections": {
@@ -144,9 +140,7 @@
         "components": {
           "debtRelief": 0,
           "rewards": 0,
-          "ruleViolations": 0,
-          "runway": -10,
-          "volatility": 0
+          "runway": -10
         },
         "constraintsBreached": [],
         "projections": {
@@ -176,9 +170,7 @@
         "components": {
           "debtRelief": 0,
           "rewards": 0,
-          "ruleViolations": 0,
-          "runway": -10,
-          "volatility": 0
+          "runway": -10
         },
         "constraintsBreached": [],
         "projections": {
@@ -210,9 +202,7 @@
         "components": {
           "debtRelief": 0,
           "rewards": 0,
-          "ruleViolations": 0,
-          "runway": -50,
-          "volatility": 0
+          "runway": -50
         },
         "constraintsBreached": [],
         "projections": {
@@ -288,9 +278,7 @@
           "components": {
             "debtRelief": 0,
             "rewards": 0,
-            "ruleViolations": 0,
-            "runway": 0,
-            "volatility": 0
+            "runway": 0
           },
           "constraintsBreached": [],
           "score": 0
@@ -303,9 +291,7 @@
           "components": {
             "debtRelief": 0,
             "rewards": 0,
-            "ruleViolations": 0,
-            "runway": 0,
-            "volatility": 0
+            "runway": 0
           },
           "constraintsBreached": [],
           "score": 0
@@ -318,9 +304,7 @@
           "components": {
             "debtRelief": 0,
             "rewards": 0,
-            "ruleViolations": 0,
-            "runway": -10,
-            "volatility": 0
+            "runway": -10
           },
           "constraintsBreached": [],
           "score": -10
@@ -333,9 +317,7 @@
           "components": {
             "debtRelief": 0,
             "rewards": 0,
-            "ruleViolations": 0,
-            "runway": -10,
-            "volatility": 0
+            "runway": -10
           },
           "constraintsBreached": [],
           "score": -10
@@ -350,9 +332,7 @@
           "components": {
             "debtRelief": 0,
             "rewards": 0,
-            "ruleViolations": 0,
-            "runway": -50,
-            "volatility": 0
+            "runway": -50
           },
           "constraintsBreached": [],
           "score": -50
@@ -372,9 +352,7 @@
       "weights": {
         "debtRelief": 1,
         "rewards": 1,
-        "ruleViolations": 3,
-        "runway": 1,
-        "volatility": 1
+        "runway": 1
       }
     }
   }

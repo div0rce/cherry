@@ -38,6 +38,27 @@ const authorityDecisionStub = {
   counterfactuals: [],
 };
 
+function available(value) {
+  return { kind: 'available', value };
+}
+
+const loadedCapabilities = {
+  essentiality: { available: true, reason: 'loaded' },
+  debt: { available: true, reason: 'loaded' },
+  liquidCash: { available: true, reason: 'loaded' },
+  utilization: { available: true, reason: 'loaded' },
+};
+
+const loadedMetadata = {
+  capabilities: loadedCapabilities,
+  degraded: {
+    essentialProtection: false,
+    debtPressure: false,
+    liquidity: false,
+    utilization: false,
+  },
+};
+
 function mockModule(modulePath, exports) {
   require.cache[require.resolve(modulePath)] = {
     id: modulePath,
@@ -99,8 +120,10 @@ function setupSimulationMocks() {
       hasBucket: false,
     },
     card: {
-      multiplier: 1,
-      estimatedRewards: 10,
+      rewardUnit: 'issuer_points',
+      rewardRate: 1,
+      rewardPoints: 10,
+      rewardValueCents: null,
       cardId: 'card-1',
       cardNickname: 'Demo Card',
       verdict: 'OPTIMAL',
@@ -131,20 +154,24 @@ function setupSimulationMocks() {
       },
     ],
     buckets: [],
-    debts: [],
+    debts: available([]),
     constraints: {
       hard: { minEssentialCoverageDays: 0, maxCardUtilization: null },
       soft: { avoidInterest: false, avoidNewDebt: false },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: loadedCapabilities,
     preferences: { profileId: 'BALANCED', customWeights: null },
   };
 
   mockModule('../../lib/engine', {
     buildEngineContext: (input) => input,
     mapSolverDecisionToLegacyDecision: ({ fallback }) => fallback ?? legacyDecision,
-    safeSolveDecisionForUser: async () => ({
+    validateEngineDecision: () => {},
+  });
+  mockModule('../../lib/engine/run', {
+    safeSolveDecisionForWorld: async () => ({
       ok: true,
       decisions: [
         {
@@ -165,8 +192,9 @@ function setupSimulationMocks() {
       },
       legacyDecision,
       state: engineState,
+      capabilities: loadedMetadata.capabilities,
+      degraded: loadedMetadata.degraded,
     }),
-    validateEngineDecision: () => {},
   });
 
   mockModule('../../lib/legacy-engine', {

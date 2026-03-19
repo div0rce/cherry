@@ -60,8 +60,6 @@ function coerceWeights(raw: Partial<ObjectiveWeights> | null | undefined): Engin
     rewards: null,
     runway: null,
     debtRelief: null,
-    volatility: null,
-    ruleViolations: null,
   };
 
   let hasAny = false;
@@ -76,14 +74,6 @@ function coerceWeights(raw: Partial<ObjectiveWeights> | null | undefined): Engin
   }
   if (typeof raw.debtRelief === 'number' && Number.isFinite(raw.debtRelief)) {
     weights.debtRelief = raw.debtRelief;
-    hasAny = true;
-  }
-  if (typeof raw.volatility === 'number' && Number.isFinite(raw.volatility)) {
-    weights.volatility = raw.volatility;
-    hasAny = true;
-  }
-  if (typeof raw.ruleViolations === 'number' && Number.isFinite(raw.ruleViolations)) {
-    weights.ruleViolations = raw.ruleViolations;
     hasAny = true;
   }
 

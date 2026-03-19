@@ -3,9 +3,11 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 const {
+  available,
   solveDecision,
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
+  createLoadedEngineCapabilities,
 } = require('../lib/engine');
 
 async function testUsesRemainingNotLimit() {
@@ -26,13 +28,14 @@ async function testUsesRemainingNotLimit() {
         strictMode: false,
       },
     ],
-    debts: [],
+    debts: available([]),
     constraints: {
       hard: { minEssentialCoverageDays: 0, maxCardUtilization: null },
       soft: { avoidInterest: false, avoidNewDebt: false },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
     cards: [
       {

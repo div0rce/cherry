@@ -87,7 +87,10 @@ export function deriveDegradedDimensions(
 export function getEngineRuntimeMetadata(
   state?: Pick<EngineState, 'capabilities'>
 ): EngineRuntimeMetadata {
-  const capabilities = state?.capabilities ?? createUnavailableEngineCapabilities();
+  const capabilities =
+    state != null && state.capabilities != null
+      ? state.capabilities
+      : createUnavailableEngineCapabilities();
   return {
     capabilities,
     degraded: deriveDegradedDimensions(capabilities),
@@ -265,16 +268,12 @@ export type ObjectiveComponentScores = {
   rewards: number;
   runway: number;
   debtRelief: number;
-  volatility: number;
-  ruleViolations: number;
 };
 
 export type ObjectiveWeights = {
   rewards: number;
   runway: number;
   debtRelief: number;
-  volatility: number;
-  ruleViolations: number;
 };
 
 export type EngineConstraintSeverity = 'HARD' | 'SOFT';

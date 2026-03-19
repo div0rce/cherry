@@ -2,6 +2,7 @@ import type { RewardCategory } from '../enums.js';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from '../enums.js';
 import type { EngineContext, EngineDecision, EngineState } from './types.js';
 import type { EngineDecision as LegacyEngineDecision } from './legacy.js';
+import { getRewardSemanticsForCardSpend } from './reward-semantics.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -104,34 +105,11 @@ export function mapSolverDecisionToLegacyDecision(input: {
       ? state.cards.find((c) => c.id === solverDecision.action.cardId)
       : undefined;
 
-  const categoryKey = ctx.merchantCategoryKey == null ? 'OTHER' : ctx.merchantCategoryKey;
-  let rewardRule = null;
-  if (card !== undefined) {
-    const byCategory = card.rewardRules.find((r) => r.categoryKey === categoryKey);
-    if (byCategory !== undefined) {
-      rewardRule = byCategory;
-    } else {
-      const general = card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE');
-      if (general !== undefined) {
-        rewardRule = general;
-      } else {
-        const fallback = card.rewardRules.find((r) => r.categoryKey === 'OTHER');
-        if (fallback !== undefined) {
-          rewardRule = fallback;
-        }
-      }
-    }
-  }
-
-  const dollars = amountCents / 100;
-  const multiplier =
-    rewardRule?.rateType === 'POINTS_PER_DOLLAR' ? rewardRule.rateValue : null;
-  const estimatedRewards =
-    rewardRule == null
-      ? null
-      : rewardRule.rateType === 'POINTS_PER_DOLLAR'
-        ? Math.floor(dollars * rewardRule.rateValue)
-        : Math.floor(amountCents * rewardRule.rateValue);
+  const rewardSemantics = getRewardSemanticsForCardSpend({
+    card,
+    amountCents,
+    merchantCategoryKey: ctx.merchantCategoryKey,
+  });
 
   const cardVerdict: CardVerdict = card ? 'OPTIMAL' : 'NO_CARD_DATA';
   const overallVerdict = deriveOverallVerdict(budgetVerdict, cardVerdict);
@@ -166,8 +144,12 @@ export function mapSolverDecisionToLegacyDecision(input: {
   if (card?.label !== undefined && card.label !== null && card.label !== '') {
     cardPayload.cardNickname = card.label;
   }
-  if (multiplier != null) cardPayload.multiplier = multiplier;
-  if (estimatedRewards != null) cardPayload.estimatedRewards = estimatedRewards;
+  if (rewardSemantics !== null) {
+    cardPayload.rewardUnit = rewardSemantics.rewardUnit;
+    cardPayload.rewardRate = rewardSemantics.rewardRate;
+    cardPayload.rewardPoints = rewardSemantics.rewardPoints;
+    cardPayload.rewardValueCents = rewardSemantics.rewardValueCents;
+  }
 
   return {
     category,

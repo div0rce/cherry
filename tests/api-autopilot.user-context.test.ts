@@ -151,7 +151,8 @@ async function runUserContextPreview(): Promise<void> {
       occurredAt: '2024-01-01T00:00:00.000Z',
       status: 'ok',
       recommendedCard: { id: 'card-1', label: 'Alpha', issuer: 'Issuer', network: 'VISA' },
-      expectedBenefitCents: 10,
+      expectedMonetaryBenefitCents: 10,
+      expectedPointsDelta: null,
       bucketImpact: null,
       reasonCode: 'OK',
       authority: {

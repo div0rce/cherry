@@ -34,8 +34,10 @@ export const ScanResponseSchema = z
       .object({
         cardId: z.string().nullable(),
         cardNickname: z.string().nullable(),
-        rewardMultiplier: z.number().nullable(),
-        estimatedRewards: z.number().nullable(),
+        rewardUnit: z.enum(['cashback_cents', 'issuer_points']).nullable(),
+        rewardRate: z.number().nullable(),
+        rewardPoints: z.number().int().nullable(),
+        rewardValueCents: z.number().int().nullable(),
         verdict: z.string(),
       })
       .strict(),

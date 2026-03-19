@@ -1,5 +1,6 @@
 import type { RewardCategory } from '@prisma/client';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
+import type { RewardSemantics } from './engine/reward-semantics.js';
 
 export type CategoryCoverageMode = 'BUDGETED' | 'UNBUDGETED_INTENTIONAL' | 'UNCONFIGURED';
 
@@ -32,8 +33,10 @@ export type EngineDecision = {
     verdict: CardVerdict;
     cardId?: string;
     cardNickname?: string;
-    multiplier?: number;
-    estimatedRewards?: number;
+    rewardUnit?: RewardSemantics['rewardUnit'] | null;
+    rewardRate?: number | null;
+    rewardPoints?: number | null;
+    rewardValueCents?: number | null;
     hasCardData: boolean;
   };
   overallVerdict: OverallVerdict;

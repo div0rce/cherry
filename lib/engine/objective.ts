@@ -17,6 +17,7 @@ import {
   hasKnownBucketEssentiality,
   isBucketEssential,
 } from './types.js';
+import { getRewardSemanticsForCardSpend } from './reward-semantics.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
@@ -32,13 +33,11 @@ export const OBJECTIVE_PROFILES: Record<EngineObjectiveProfileId, EngineObjectiv
     id: 'MAX_REWARDS',
     label: 'Maximize rewards',
     description:
-      'Favor high-reward cards even at the cost of some volatility, while keeping hard rules intact.',
+      'Favor higher monetary rewards while still considering heuristic runway and debt-pressure relief.',
     weights: {
       rewards: 1,
       runway: 0.4,
       debtRelief: 0.4,
-      volatility: 0.3,
-      ruleViolations: 3,
     },
   },
   KILL_DEBT: {
@@ -49,32 +48,26 @@ export const OBJECTIVE_PROFILES: Record<EngineObjectiveProfileId, EngineObjectiv
       rewards: 0.5,
       runway: 0.7,
       debtRelief: 1.5,
-      volatility: 0.8,
-      ruleViolations: 3,
     },
   },
   DONT_GO_BROKE: {
     id: 'DONT_GO_BROKE',
     label: "Don't go broke",
-    description: 'Favor buffer and stability; rewards matter but safety wins.',
+    description: 'Favor heuristic buffer runway; rewards matter but runway wins.',
     weights: {
       rewards: 0.4,
       runway: 1.5,
       debtRelief: 0.7,
-      volatility: 1,
-      ruleViolations: 3,
     },
   },
   BALANCED: {
     id: 'BALANCED',
     label: 'Balanced',
-    description: 'Blend rewards, safety, and debt relief evenly.',
+    description: 'Blend monetary rewards, heuristic runway, and heuristic debt-pressure relief.',
     weights: {
       rewards: 1,
       runway: 1,
       debtRelief: 1,
-      volatility: 1,
-      ruleViolations: 3,
     },
   },
 };
@@ -98,13 +91,20 @@ function clampNonNegative(value: number): number {
   return value;
 }
 
+function centsOrZero(value?: number | null): number {
+  return value != null ? value : 0;
+}
+
+function formatCentsAsDollars(cents: number): string {
+  const centsPerDollar = 100;
+  return (cents / centsPerDollar).toFixed(2);
+}
+
 export function normalizeObjectiveWeights(weights: ObjectiveWeights): ObjectiveWeights {
   return {
     rewards: clampNonNegative(weights.rewards),
     runway: clampNonNegative(weights.runway),
     debtRelief: clampNonNegative(weights.debtRelief),
-    volatility: clampNonNegative(weights.volatility),
-    ruleViolations: clampNonNegative(weights.ruleViolations),
   };
 }
 
@@ -130,12 +130,6 @@ export function mergeProfileWithOverrides(
     runway: overrides && overrides.runway != null ? overrides.runway : profile.weights.runway,
     debtRelief:
       overrides && overrides.debtRelief != null ? overrides.debtRelief : profile.weights.debtRelief,
-    volatility:
-      overrides && overrides.volatility != null ? overrides.volatility : profile.weights.volatility,
-    ruleViolations:
-      overrides && overrides.ruleViolations != null
-        ? overrides.ruleViolations
-        : profile.weights.ruleViolations,
   };
 
   return normalizeObjectiveWeights(merged);
@@ -181,26 +175,12 @@ function scoreComponents(
   ) {
     const card = state.cards.find((c) => c.id === action.cardId);
     if (card !== undefined) {
-      const categoryKey = ctx.merchantCategoryKey == null ? 'ALL' : ctx.merchantCategoryKey;
-      let rule = card.rewardRules.find((r) => r.categoryKey === categoryKey);
-      if (rule === undefined) {
-        rule = card.rewardRules.find((r) => r.categoryKey === 'GENERAL_MERCHANDISE');
-      }
-      if (rule === undefined) {
-        rule = card.rewardRules.find((r) => r.categoryKey === 'OTHER');
-      }
-      if (rule === undefined) {
-        rule = card.rewardRules.find((r) => r.categoryKey === 'ALL');
-      }
-
-      if (rule !== undefined) {
-        const base = ctx.amountCents;
-        if (rule.rateType === 'CASHBACK') {
-          rewards = base * rule.rateValue;
-        } else if (rule.rateType === 'POINTS_PER_DOLLAR') {
-          rewards = base * rule.rateValue;
-        }
-      }
+      const rewardSemantics = getRewardSemanticsForCardSpend({
+        card,
+        amountCents: ctx.amountCents,
+        merchantCategoryKey: ctx.merchantCategoryKey,
+      });
+      rewards = centsOrZero(rewardSemantics?.rewardValueCents);
     }
   }
 
@@ -222,7 +202,10 @@ function scoreComponents(
   }
 
   // 3) Debt relief: reward lower utilization or balances, plus explicit paydowns.
-  let debtRelief = 0;
+  // This remains a bounded heuristic, but the subterms are now explicit.
+  let utilizationImprovementScore = 0;
+  let balanceReductionScore = 0;
+  let paydownActionBonus = 0;
   const debts = getDebtAccounts(state.debts);
   if (capabilities.debt.available === true) {
     for (const proj of projections.debt) {
@@ -240,10 +223,10 @@ function scoreComponents(
         proj.projectedUtilization != null &&
         currentUtil != null
       ) {
-        debtRelief += currentUtil - proj.projectedUtilization;
+        utilizationImprovementScore += currentUtil - proj.projectedUtilization;
       } else {
         const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
-        debtRelief += balanceDelta / 100_00;
+        balanceReductionScore += balanceDelta / 100_00;
       }
     }
   }
@@ -255,12 +238,10 @@ function scoreComponents(
     !Number.isNaN(action.paydownAmountCents) &&
     action.paydownAmountCents !== 0
   ) {
-    debtRelief += 1;
+    paydownActionBonus += 1;
   }
-
-  // 4) Volatility penalty: placeholder for now.
-  const volatility = 0;
-  const ruleViolations = 0;
+  const debtRelief =
+    utilizationImprovementScore + balanceReductionScore + paydownActionBonus;
 
   if (action.type === 'DELAY_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
     runway -= 0.01 * ctx.amountCents;
@@ -274,8 +255,6 @@ function scoreComponents(
     rewards,
     runway,
     debtRelief,
-    volatility,
-    ruleViolations,
   };
 }
 
@@ -285,9 +264,7 @@ function combineScores(components: ObjectiveComponentScores, weights: ObjectiveW
   return (
     components.rewards * w.rewards +
     components.runway * w.runway +
-    components.debtRelief * w.debtRelief -
-    components.volatility * w.volatility -
-    components.ruleViolations * w.ruleViolations
+    components.debtRelief * w.debtRelief
   );
 }
 
@@ -309,22 +286,33 @@ export function scoreDecision(
   const score = combineScores(components, normalizedWeights);
 
   const reasons: string[] = [];
+  const rewardSemantics =
+    (action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
+    hasNonEmptyString(action.cardId)
+      ? getRewardSemanticsForCardSpend({
+          card: state.cards.find((card) => card.id === action.cardId),
+          amountCents: ctx.amountCents,
+          merchantCategoryKey: ctx.merchantCategoryKey,
+        })
+      : null;
 
-  if (components.rewards !== 0) {
-    reasons.push(`Rewards impact: ${(components.rewards / 100).toFixed(2)}`);
+  const rewardValueCents = centsOrZero(rewardSemantics?.rewardValueCents);
+  const rewardPoints = rewardSemantics?.rewardPoints != null ? rewardSemantics.rewardPoints : 0;
+
+  if (rewardValueCents > 0) {
+    reasons.push(
+      `Estimated cashback value: $${formatCentsAsDollars(rewardValueCents)}.`
+    );
+  } else if (rewardPoints > 0) {
+    reasons.push(`Estimated issuer points: ${rewardPoints}.`);
   }
 
   if (components.runway !== 0) {
-    reasons.push('Runway adjusted by essential bucket margin.');
+    reasons.push('Heuristic essential-margin runway adjusted.');
   }
 
   if (components.debtRelief !== 0) {
-    const capabilities = getEngineCapabilities(state);
-    if (capabilities.utilization.available === true) {
-      reasons.push('Debt/utilization adjusted.');
-    } else {
-      reasons.push('Debt balance adjusted.');
-    }
+    reasons.push('Debt-pressure relief adjusted heuristically.');
   }
 
   if (
@@ -335,7 +323,7 @@ export function scoreDecision(
     action.paydownAmountCents !== 0
   ) {
     reasons.push(
-      `Includes a paydown of ${(action.paydownAmountCents / 100).toFixed(2)} toward debt.`
+      `Includes a paydown of ${formatCentsAsDollars(action.paydownAmountCents)} toward debt.`
     );
   }
 

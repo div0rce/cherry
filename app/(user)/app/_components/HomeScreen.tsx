@@ -24,6 +24,15 @@ export function HomeScreen(): JSX.Element {
             Activity will appear once real usage is recorded.
           </p>
         </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/app/autopilot"
+            className="inline-flex items-center rounded-full bg-[#0F172A] px-4 py-2 text-sm font-medium text-white"
+          >
+            Plan a purchase
+          </a>
+        </div>
       </section>
     </div>
   );

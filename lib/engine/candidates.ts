@@ -38,7 +38,7 @@ function computePaydownAmountCents(state: EngineState, ctx: EngineContext): numb
   const paydown = Math.min(base, hardCap);
 
   const cash = getCashState(state.cash);
-  const liquid = cash?.liquidCents ?? null;
+  const liquid = cash != null && cash.liquidCents != null ? cash.liquidCents : null;
   if (liquid != null) {
     const buffer = 0;
     if (paydown > liquid - buffer) {
@@ -72,7 +72,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
   }
 
   const cash = getCashState(state.cash);
-  const liquidCents = cash?.liquidCents ?? 0;
+  const liquidCents = cash != null && cash.liquidCents != null ? cash.liquidCents : 0;
   const debtCount = getDebtAccounts(state.debts).length;
   if (
     advanced &&
@@ -92,7 +92,8 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
             cardId: card.id,
             debtId,
             paydownAmountCents: paydownAmount,
-            paydownScheduledDateMs: cash?.nextPaycheckDateMs ?? null,
+            paydownScheduledDateMs:
+              cash != null && cash.nextPaycheckDateMs != null ? cash.nextPaycheckDateMs : null,
             meta: { reasonHint: 'CARD_PLUS_DEBT_RELIEF' },
           });
         }
@@ -103,7 +104,8 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
           type: 'PAY_DOWN_DEBT',
           debtId,
           paydownAmountCents: paydownAmount,
-          paydownScheduledDateMs: cash?.nextPaycheckDateMs ?? null,
+          paydownScheduledDateMs:
+            cash != null && cash.nextPaycheckDateMs != null ? cash.nextPaycheckDateMs : null,
           meta: { reasonHint: 'DEBT_ONLY_RELIEF' },
         });
       }

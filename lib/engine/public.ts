@@ -8,6 +8,7 @@ import { safeSolveDecisionForWorld } from './run.js';
 import type { EngineDecision, EngineState } from './types.js';
 import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types.js';
 import type { World } from '../adapters/world.js';
+import { getRewardSemanticsForCardSpend } from './reward-semantics.js';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];
 
@@ -57,35 +58,34 @@ function pickBucketDelta(decision: EngineDecision, state: EngineState): Autopilo
   return null;
 }
 
-function estimateBenefitCents(
+function estimateRewardSignals(
   decision: EngineDecision,
   state: EngineState,
   amountCents: number,
   merchantCategoryKey: RewardCategory | null
-): number {
+): { rewardValueCents: number | null; rewardPoints: number | null } {
   const cardId = decision.action.cardId;
-  if (!hasText(cardId)) return 0;
+  if (!hasText(cardId)) {
+    return { rewardValueCents: null, rewardPoints: null };
+  }
   const card = state.cards.find((candidate) => candidate.id === cardId);
-  if (card === undefined) return 0;
-
-  const category = merchantCategoryKey == null ? 'OTHER' : merchantCategoryKey;
-  let rewardRule = card.rewardRules.find((rule) => rule.categoryKey === category);
-  if (rewardRule === undefined) {
-    rewardRule = card.rewardRules.find((rule) => rule.categoryKey === 'GENERAL_MERCHANDISE');
-  }
-  if (rewardRule === undefined) {
-    rewardRule = card.rewardRules.find((rule) => rule.categoryKey === 'OTHER');
+  if (card === undefined) {
+    return { rewardValueCents: null, rewardPoints: null };
   }
 
-  if (rewardRule === undefined) return 0;
-
-  if (rewardRule.rateType === 'CASHBACK') {
-    const estimated = Math.floor(amountCents * rewardRule.rateValue);
-    return estimated > 0 ? estimated : 0;
+  const rewardSemantics = getRewardSemanticsForCardSpend({
+    card,
+    amountCents,
+    merchantCategoryKey,
+  });
+  if (rewardSemantics === null) {
+    return { rewardValueCents: null, rewardPoints: null };
   }
 
-  const estimatedPoints = Math.floor((amountCents / 100) * rewardRule.rateValue);
-  return estimatedPoints > 0 ? estimatedPoints : 0;
+  return {
+    rewardValueCents: rewardSemantics.rewardValueCents,
+    rewardPoints: rewardSemantics.rewardPoints,
+  };
 }
 
 function classifyReasonCode(decision: EngineDecision, bucketDelta: AutopilotDecision['bucketDelta']): string {
@@ -115,11 +115,12 @@ function classifyReasonCode(decision: EngineDecision, bucketDelta: AutopilotDeci
 function renderUserFacingMessage(params: {
   kind: AutopilotDecisionKind;
   cardLabel: string | null;
-  benefitCents: number;
+  benefitCents: number | null;
+  pointsDelta: number | null;
   bucketName: string | null;
   bucketRemainingCents: number | null;
 }): string {
-  const { kind, cardLabel, benefitCents, bucketName, bucketRemainingCents } = params;
+  const { kind, cardLabel, benefitCents, pointsDelta, bucketName, bucketRemainingCents } = params;
 
   if (kind === 'BLOCKED') {
     return 'This purchase would break your guardrails. We recommend skipping it.';
@@ -131,17 +132,28 @@ function renderUserFacingMessage(params: {
   const label = hasText(cardLabel) ? cardLabel : 'this card';
   const parts: string[] = [`Use ${label}`];
 
-  if (benefitCents > 0) {
-    parts.push(`about $${(benefitCents / 100).toFixed(2)} better than your next best card`);
+  if (benefitCents != null && benefitCents > 0) {
+    parts.push(`about $${formatCentsAsDollars(benefitCents)} better than your next best card`);
+  } else if (pointsDelta != null && pointsDelta > 0) {
+    parts.push(`for about ${pointsDelta} higher issuer points than your next best card`);
   }
 
   if (bucketRemainingCents != null) {
-    const remainingDollars = (bucketRemainingCents / 100).toFixed(2);
+    const remainingDollars = formatCentsAsDollars(bucketRemainingCents);
     const bucketLabel = bucketName == null ? 'your budget' : bucketName;
     parts.push(`keeps ${bucketLabel} on track ($${remainingDollars} left)`);
   }
 
   return `${parts.join(' – ')}.`;
+}
+
+function valueOrZero(value: number | null): number {
+  return value != null ? value : 0;
+}
+
+function formatCentsAsDollars(cents: number): string {
+  const centsPerDollar = 100;
+  return (cents / centsPerDollar).toFixed(2);
 }
 
 function fallbackDecision(reasonCode: string): AutopilotDecision {
@@ -150,7 +162,8 @@ function fallbackDecision(reasonCode: string): AutopilotDecision {
     cardId: null,
     reasonCode,
     userFacingMessage: 'We could not compute a safe recommendation. Use your usual card.',
-    expectedMonetaryBenefitCents: 0,
+    expectedMonetaryBenefitCents: null,
+    expectedPointsDelta: null,
     bucketDelta: null,
   };
 }
@@ -161,7 +174,8 @@ function blockedDecision(reasonCode: string): AutopilotDecision {
     cardId: null,
     reasonCode,
     userFacingMessage: 'This purchase would break your guardrails. We recommend skipping it.',
-    expectedMonetaryBenefitCents: 0,
+    expectedMonetaryBenefitCents: null,
+    expectedPointsDelta: null,
     bucketDelta: null,
   };
 }
@@ -254,7 +268,7 @@ export async function getAutopilotDecisionForUserSwipe(
     bucketName = matched && matched.name != null ? matched.name : null;
   }
 
-  const expectedBest = estimateBenefitCents(
+  const expectedBest = estimateRewardSignals(
     bestDecision,
     engineResult.state,
     amountCents,
@@ -262,9 +276,16 @@ export async function getAutopilotDecisionForUserSwipe(
   );
   const expectedRunnerUp =
     runnerUp != null
-      ? estimateBenefitCents(runnerUp, engineResult.state, amountCents, merchantCategoryKey)
-      : 0;
-  const expectedMonetaryBenefitCents = Math.max(0, expectedBest - expectedRunnerUp);
+      ? estimateRewardSignals(runnerUp, engineResult.state, amountCents, merchantCategoryKey)
+      : { rewardValueCents: null, rewardPoints: null };
+  const expectedMonetaryBenefitCents =
+    expectedBest.rewardValueCents != null
+      ? Math.max(0, expectedBest.rewardValueCents - valueOrZero(expectedRunnerUp.rewardValueCents))
+      : null;
+  const expectedPointsDelta =
+    expectedBest.rewardPoints != null
+      ? Math.max(0, expectedBest.rewardPoints - valueOrZero(expectedRunnerUp.rewardPoints))
+      : null;
 
   const reasonCode = classifyReasonCode(bestDecision, bucketDelta);
   const matchedCard = engineResult.state.cards.find(
@@ -280,6 +301,7 @@ export async function getAutopilotDecisionForUserSwipe(
     kind: 'OK',
     cardLabel,
     benefitCents: expectedMonetaryBenefitCents,
+    pointsDelta: expectedPointsDelta,
     bucketName,
     bucketRemainingCents:
       bucketDelta && bucketDelta.newRemainingCents != null
@@ -293,6 +315,7 @@ export async function getAutopilotDecisionForUserSwipe(
     reasonCode,
     userFacingMessage,
     expectedMonetaryBenefitCents,
+    expectedPointsDelta,
     bucketDelta,
   };
 }

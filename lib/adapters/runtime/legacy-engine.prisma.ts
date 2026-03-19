@@ -10,6 +10,7 @@ import type {
   EngineDecision,
   LegacyEngineInput,
 } from '../../legacy-engine-types.js';
+import type { RewardSemantics } from '../../engine/reward-semantics.js';
 
 export type {
   CategoryCoverageMode,
@@ -157,14 +158,21 @@ async function resolveBestCardForTransaction(input: {
     };
   }
 
-  const estimatedRewards = Math.floor((input.amountCents * bestMultiplier) / 100);
+  const rewardSemantics: RewardSemantics = {
+    rewardUnit: 'issuer_points',
+    rewardRate: bestMultiplier,
+    rewardPoints: Math.floor((input.amountCents / 100) * bestMultiplier),
+    rewardValueCents: null,
+  };
 
   return {
     verdict: 'OPTIMAL' as EngineDecision['card']['verdict'],
     cardId: bestCard.id,
     cardNickname: bestCard.nickname,
-    multiplier: bestMultiplier,
-    estimatedRewards,
+    rewardUnit: rewardSemantics.rewardUnit,
+    rewardRate: rewardSemantics.rewardRate,
+    rewardPoints: rewardSemantics.rewardPoints,
+    rewardValueCents: rewardSemantics.rewardValueCents,
     hasCardData: true,
   };
 }

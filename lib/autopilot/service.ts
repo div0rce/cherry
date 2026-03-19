@@ -75,7 +75,8 @@ type EvaluatedAutopilotContext = {
   decisionId: string;
   engineDecisionId: string;
   status: AutopilotDecisionStatus;
-  expectedBenefitCents: number;
+  expectedMonetaryBenefitCents: number | null;
+  expectedPointsDelta: number | null;
   bucketImpact: AutopilotPreviewOutput['bucketImpact'];
   bucketName: string | null;
   recommendedCard: CardSummary | null;
@@ -282,7 +283,6 @@ async function evaluateAutopilot(
     decision.cardId !== null ? cards.find((card) => card.id === decision.cardId) ?? null : null;
 
   const bucketImpact = await buildBucketImpact(decision.bucketDelta, userId);
-  const expectedBenefitCents = Math.max(0, decision.expectedMonetaryBenefitCents ?? 0);
   const stateSnapshot = await buildAutopilotStateSnapshot({
     userId,
     category: resolvedCategory,
@@ -331,7 +331,8 @@ async function evaluateAutopilot(
     decisionId: engineDecisionId,
     engineDecisionId,
     status,
-    expectedBenefitCents,
+    expectedMonetaryBenefitCents: decision.expectedMonetaryBenefitCents,
+    expectedPointsDelta: decision.expectedPointsDelta,
     bucketImpact,
     bucketName: bucketImpact?.name ?? null,
     recommendedCard,
@@ -446,10 +447,15 @@ function buildExplanation(
       : evaluation.recommendedCard.id;
     secondary.push(`Recommended card: ${cardLabel}`);
   }
-  if (evaluation.expectedBenefitCents > 0) {
+  if (
+    evaluation.expectedMonetaryBenefitCents != null &&
+    evaluation.expectedMonetaryBenefitCents > 0
+  ) {
     secondary.push(
-      `Estimated +$${(evaluation.expectedBenefitCents / 100).toFixed(2)} vs next best option`
+      `Estimated +$${(evaluation.expectedMonetaryBenefitCents / 100).toFixed(2)} vs next best option`
     );
+  } else if (evaluation.expectedPointsDelta != null && evaluation.expectedPointsDelta > 0) {
+    secondary.push(`Estimated +${evaluation.expectedPointsDelta} issuer points vs next best option`);
   }
   if (evaluation.bucketImpact !== null) {
     secondary.push(
@@ -469,14 +475,26 @@ function buildExplanation(
 }
 
 function computeRewardStrengthLevel(
-  expectedBenefitCents: number,
+  expectedMonetaryBenefitCents: number | null,
+  expectedPointsDelta: number | null,
   amountCents: number
 ): AutopilotPreviewUiBundle['rewardStrength']['level'] {
   if (!Number.isFinite(amountCents) || amountCents <= 0) return 1;
-  const ratio = expectedBenefitCents / amountCents;
-  if (ratio > 0.03) return 4;
-  if (ratio > 0.02) return 3;
-  if (ratio > 0.01) return 2;
+  if (expectedMonetaryBenefitCents != null) {
+    const ratio = expectedMonetaryBenefitCents / amountCents;
+    if (ratio > 0.03) return 4;
+    if (ratio > 0.02) return 3;
+    if (ratio > 0.01) return 2;
+    return 1;
+  }
+  if (expectedPointsDelta != null) {
+    const amountDollars = amountCents / 100;
+    if (!Number.isFinite(amountDollars) || amountDollars <= 0) return 1;
+    const extraPointsPerDollar = expectedPointsDelta / amountDollars;
+    if (extraPointsPerDollar > 3) return 4;
+    if (extraPointsPerDollar > 2) return 3;
+    if (extraPointsPerDollar > 1) return 2;
+  }
   return 1;
 }
 
@@ -525,7 +543,8 @@ export async function getAutopilotPreview(
 
   const explanation = buildExplanation(evaluation);
   const rewardStrengthLevel = computeRewardStrengthLevel(
-    evaluation.expectedBenefitCents,
+    evaluation.expectedMonetaryBenefitCents,
+    evaluation.expectedPointsDelta,
     evaluation.amountCents
   );
   const ui = buildPreviewUiBundle({ explanation, rewardStrengthLevel });
@@ -537,7 +556,8 @@ export async function getAutopilotPreview(
     occurredAt: evaluation.occurredAt.toISOString(),
     status: evaluation.status,
     recommendedCard: toRecommendedCard(evaluation.recommendedCard),
-    expectedBenefitCents: evaluation.expectedBenefitCents,
+    expectedMonetaryBenefitCents: evaluation.expectedMonetaryBenefitCents,
+    expectedPointsDelta: evaluation.expectedPointsDelta,
     bucketImpact: evaluation.bucketImpact,
     reasonCode: evaluation.decision.reasonCode,
     authority: authorityDecision,

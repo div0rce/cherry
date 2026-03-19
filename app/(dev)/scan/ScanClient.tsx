@@ -58,9 +58,13 @@ function mapScanResponseToPreview(api: ScanResponse, request: { merchantName: st
     bucketBudgetCents: bucket?.limitCents ?? null,
     recommendedCardName: api.cardRecommendation.cardNickname ?? null,
     recommendedRewardLabel:
-      api.cardRecommendation.rewardMultiplier != null
-        ? `${api.cardRecommendation.rewardMultiplier}x rewards`
-        : null,
+      api.cardRecommendation.rewardUnit === 'issuer_points' &&
+      api.cardRecommendation.rewardRate != null
+        ? `${api.cardRecommendation.rewardRate}x issuer points`
+        : api.cardRecommendation.rewardUnit === 'cashback_cents' &&
+            api.cardRecommendation.rewardRate != null
+          ? `${(api.cardRecommendation.rewardRate * 100).toFixed(0)}% cashback`
+          : null,
     advisoryPoints: api.cherryIncentive.pointsIfFollowed ?? 0,
     isSnapshot,
     decision: api.engineDecision as LegacyEngineDecision,

@@ -55,13 +55,19 @@ function buildEngineState(overrides = {}) {
         strictMode: false,
       },
     ],
-    debts: [],
+    debts: { kind: 'available', value: [] },
     constraints: {
       hard: { minEssentialCoverageDays: 0, maxCardUtilization: null },
       soft: { avoidInterest: false, avoidNewDebt: false },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: { kind: 'available', value: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null } },
+    capabilities: {
+      essentiality: { available: true, reason: 'loaded' },
+      debt: { available: true, reason: 'loaded' },
+      liquidCash: { available: true, reason: 'loaded' },
+      utilization: { available: true, reason: 'loaded' },
+    },
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -163,8 +169,8 @@ function setupMocks({ state, engineResult, category = 'DINING' }) {
   mockModule('../../lib/engine-state', {
     fromPrismaUserToEngineState: async () => state,
   });
-  mockModule('../../lib/engine/solver', {
-    safeSolveDecisionForUser: async () => engineResult,
+  mockModule('../../lib/engine/run', {
+    safeSolveDecisionForWorld: async () => engineResult,
   });
 }
 
@@ -175,12 +181,19 @@ async function runOkDecision() {
     decisions: [buildDecision({ cardId: 'card-a', score: 12, committedAfter: 3_000, remainingAfter: 7_000 })],
     trace: {
       engineVersion: 'test',
-      weights: { rewards: 1, runway: 1, debtRelief: 1, volatility: 1, ruleViolations: 1 },
+      weights: { rewards: 1, runway: 1, debtRelief: 1 },
       stateSummary: { bucketCount: 1, cardCount: 2, debtCount: 0 },
       contextSummary: { surface: 'web', merchantCategoryKey: 'DINING', amountCents: 4_000 },
       candidates: [],
     },
     state,
+    capabilities: state.capabilities,
+    degraded: {
+      essentialProtection: false,
+      debtPressure: false,
+      liquidity: false,
+      utilization: false,
+    },
   };
 
   resetModules();
@@ -198,7 +211,7 @@ async function runOkDecision() {
 
   assert.equal(result.kind, 'OK');
   assert.equal(result.cardId, 'card-a');
-  assert.ok(result.expectedMonetaryBenefitCents >= 0);
+  assert.ok(result.expectedMonetaryBenefitCents === null || result.expectedMonetaryBenefitCents >= 0);
   assert.ok(result.userFacingMessage.length > 0);
   assert.ok(result.bucketDelta);
   assert.equal(result.bucketDelta.bucketId, 'bucket-1');
@@ -211,12 +224,19 @@ async function runBlockedDecision() {
     decisions: [],
     trace: {
       engineVersion: 'test',
-      weights: { rewards: 1, runway: 1, debtRelief: 1, volatility: 1, ruleViolations: 1 },
+      weights: { rewards: 1, runway: 1, debtRelief: 1 },
       stateSummary: { bucketCount: 1, cardCount: 2, debtCount: 0 },
       contextSummary: { surface: 'web', merchantCategoryKey: 'DINING', amountCents: 5_000 },
       candidates: [],
     },
     state,
+    capabilities: state.capabilities,
+    degraded: {
+      essentialProtection: false,
+      debtPressure: false,
+      liquidity: false,
+      utilization: false,
+    },
   };
 
   resetModules();
@@ -244,12 +264,19 @@ async function runFallbackDecision() {
     decisions: [buildDecision({ cardId: 'card-a', score: 5, committedAfter: 2_500, remainingAfter: 7_500 })],
     trace: {
       engineVersion: 'test',
-      weights: { rewards: 1, runway: 1, debtRelief: 1, volatility: 1, ruleViolations: 1 },
+      weights: { rewards: 1, runway: 1, debtRelief: 1 },
       stateSummary: { bucketCount: 1, cardCount: 2, debtCount: 0 },
       contextSummary: { surface: 'web', merchantCategoryKey: 'DINING', amountCents: 1_000 },
       candidates: [],
     },
     state,
+    capabilities: state.capabilities,
+    degraded: {
+      essentialProtection: false,
+      debtPressure: false,
+      liquidity: false,
+      utilization: false,
+    },
   };
 
   resetModules();
@@ -267,7 +294,8 @@ async function runFallbackDecision() {
 
   assert.equal(result.kind, 'FALLBACK');
   assert.equal(result.cardId, null);
-  assert.equal(result.expectedMonetaryBenefitCents, 0);
+  assert.equal(result.expectedMonetaryBenefitCents, null);
+  assert.equal(result.expectedPointsDelta, null);
 }
 
 async function run() {

@@ -64,7 +64,8 @@ Repo/location primers:
     "occurredAt": "2025-12-05T05:00:00.000Z",
     "status": "ok|blocked|fallback",
     "recommendedCard": { "id": "...", "label": "...", "issuer": null, "network": null },
-    "expectedBenefitCents": 120,
+    "expectedMonetaryBenefitCents": 120,
+    "expectedPointsDelta": null,
     "explanation": { "primary": "...", "secondary": ["..."], "warnings": ["..."] },
     "bucketImpact": { "bucketId": "...", "name": "Dining", "remainingCents": 7000, "spentCents": 13000 },
     "reasonCode": "MAX_REWARDS"
@@ -84,11 +85,11 @@ Repo/location primers:
 - `state`: `recommended` only when `status === "ok"` AND no warnings AND bucket has remaining > 0; otherwise `warning`.
 - `status === "blocked"` indicates a preview generation failure or guardrail stop, not an authority verdict, and must not be presented as a spend warning or denial.
 - `cards`: index 0 is the recommended card (or “Your usual card”) with `labelTone` positive/negative by state; index 1 is a neutral “Alternate card” placeholder to keep UI loops stable even when no alternate exists.
-- `rewardStrength`: derived from `expectedBenefitCents / amountCents` bands (≤1% → 1, >1% → 2, >2% → 3, >3% → 4) with `rewardStrengthLabel` (“Low”→“Strong” rewards).
+- `rewardStrength`: derived from known monetary delta when `expectedMonetaryBenefitCents` is present, otherwise from raw issuer-points delta heuristics when `expectedPointsDelta` is present. Labels remain bounded heuristic copy, not an economic guarantee.
 - `recommendationSummary`: `explanation.primary` or fallback “Use <card>…”.
 - `impactSegments`: always exactly 3; uses `bucketImpact.spentCents` + `remainingCents` when present (used vs remaining vs everything else) or padded safe defaults otherwise.
 - `impactNotes`: bucket remaining note (when present) + `explanation.secondary` + `explanation.warnings`.
-- `monthImpactSummary`: bucket remaining narrative + reward uplift string when `expectedBenefitCents > 0`; `monthImpact.riskNote` concatenates warnings or a safe default.
+- `monthImpactSummary`: bucket remaining narrative + reward uplift string when `expectedMonetaryBenefitCents > 0`; if only points differ, the copy must stay in issuer-points terms. `monthImpact.riskNote` concatenates warnings or a safe default.
 - `riskBanner`: first warning when `state === "warning"`; omitted in recommended posture.
 - Safety badge: green for `recommended`, amber for `warning`; CTAs are text-only (“Use <card>…”, “View bucket impact”).
 

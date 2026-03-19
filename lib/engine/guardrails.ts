@@ -146,7 +146,7 @@ export function evaluateConstraintsForDecision(
     !Number.isNaN(action.paydownAmountCents) &&
     action.paydownAmountCents !== 0
   ) {
-    const liquid = cash?.liquidCents ?? null;
+    const liquid = cash != null && cash.liquidCents != null ? cash.liquidCents : null;
     if (liquid != null && liquid < action.paydownAmountCents) {
       breaches.push('HARD:PAYDOWN_EXCEEDS_LIQUID');
     }

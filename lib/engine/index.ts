@@ -3,6 +3,7 @@ export * from './solver.js';
 export * from './context.js';
 export * from './guardrails.js';
 export * from './objective.js';
+export * from './reward-semantics.js';
 export * from './candidates.js';
 export * from './simulate.js';
 export * from './legacy-mapper.js';

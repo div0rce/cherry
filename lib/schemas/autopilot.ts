@@ -14,7 +14,8 @@ export const AutopilotDecisionSchema = z
     cardId: z.string().trim().min(1).nullable(),
     reasonCode: z.string(),
     userFacingMessage: z.string(),
-    expectedMonetaryBenefitCents: z.number().int().nonnegative(),
+    expectedMonetaryBenefitCents: z.number().int().nonnegative().nullable(),
+    expectedPointsDelta: z.number().int().nonnegative().nullable(),
     bucketDelta: AutopilotBucketDeltaSchema.nullable(),
   })
   .strict();

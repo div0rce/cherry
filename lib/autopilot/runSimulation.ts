@@ -261,7 +261,7 @@ function mapPreviewToSimulationResult(
     state,
     cards,
     monthImpact: {
-      extraCash: Number((preview.expectedBenefitCents / 100).toFixed(2)),
+      extraCash: Number(((preview.expectedMonetaryBenefitCents ?? 0) / 100).toFixed(2)),
       feesAvoided: 0,
       riskNote: warningNote,
     },

@@ -60,14 +60,6 @@ function weightsToPartial(weights: EngineInputWeights | null | undefined): Parti
     partial.debtRelief = weights.debtRelief;
     hasAny = true;
   }
-  if (weights.volatility !== null) {
-    partial.volatility = weights.volatility;
-    hasAny = true;
-  }
-  if (weights.ruleViolations !== null) {
-    partial.ruleViolations = weights.ruleViolations;
-    hasAny = true;
-  }
 
   return hasAny ? partial : undefined;
 }

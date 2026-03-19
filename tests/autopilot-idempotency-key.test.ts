@@ -108,7 +108,7 @@ function buildBaseSnapshot(): AutopilotStateSnapshot {
     ],
     objectives: {
       profileId: 'BALANCED',
-      customWeights: { rewards: 1, runway: 1, debtRelief: 1, volatility: 1, ruleViolations: 1 },
+      customWeights: { rewards: 1, runway: 1, debtRelief: 1 },
     },
   };
 }
@@ -313,6 +313,7 @@ async function runUpsertIdempotencySuite() {
       reasonCode: 'MAX_REWARDS',
       userFacingMessage: 'Use card-1',
       expectedMonetaryBenefitCents: 250,
+      expectedPointsDelta: null,
       bucketDelta: {
         bucketId: 'bucket-1',
         newSpentCents: 25_000,

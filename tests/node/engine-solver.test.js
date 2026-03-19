@@ -129,11 +129,58 @@ function summarizeAccounting(decisions) {
 }
 
 async function testSolveDecisionSorts() {
-  const state = buildStubState();
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-strong',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Strong Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-1',
+            cardId: 'card-strong',
+            categoryKey: 'DINING',
+            rateType: 'CASHBACK',
+            rateValue: 0.02,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+      {
+        id: 'card-weak',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Weak Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-2',
+            cardId: 'card-weak',
+            categoryKey: 'DINING',
+            rateType: 'CASHBACK',
+            rateValue: 0.01,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
   const ctx = buildStubContext();
   const result = await solveDecision(state, ctx);
-
-  assert.equal(result.decisions[0]?.action.cardId, 'card-strong');
+  const bestCardDecision = result.decisions.find((decision) => decision.action.type === 'USE_CARD');
+  assert.equal(bestCardDecision?.action.cardId, 'card-strong');
 }
 
 async function testDeterministicOrderingForEqualScores() {

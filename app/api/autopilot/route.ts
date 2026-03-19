@@ -102,7 +102,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       cardName,
       cardId: decision.cardId,
       rationale,
-      savingsDollars: (decision.expectedMonetaryBenefitCents ?? 0) / 100,
+      savingsDollars:
+        decision.expectedMonetaryBenefitCents == null
+          ? null
+          : decision.expectedMonetaryBenefitCents / 100,
+      issuerPointsDelta: decision.expectedPointsDelta,
       bucketDelta,
     });
   } catch (err: unknown) {

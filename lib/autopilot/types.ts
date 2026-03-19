@@ -51,7 +51,8 @@ export type AutopilotPreviewOutput = {
   occurredAt: string;
   status: AutopilotDecisionStatus;
   recommendedCard: AutopilotRecommendedCard | null;
-  expectedBenefitCents: number;
+  expectedMonetaryBenefitCents: number | null;
+  expectedPointsDelta: number | null;
   explanation: {
     primary: string;
     secondary: string[];
@@ -120,7 +121,8 @@ export const AutopilotPreviewOutputSchema = z
       })
       .strict()
       .nullable(),
-    expectedBenefitCents: z.number().int().nonnegative(),
+    expectedMonetaryBenefitCents: z.number().int().nonnegative().nullable(),
+    expectedPointsDelta: z.number().int().nonnegative().nullable(),
     explanation: z
       .object({
         primary: z.string(),
