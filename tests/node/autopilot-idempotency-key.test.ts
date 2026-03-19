@@ -488,10 +488,190 @@ async function runUpsertIdempotencySuite() {
   assert.equal(commits.size, 1, 'Commit should be deduped for identical decision ids');
 }
 
+async function runTransitionalCommitDoesNotPostBucketSpendSuite() {
+  resetModules();
+
+  let bucketUpdateCalls = 0;
+
+  type SimulatedTransactionFindUniqueArgs = { where: { id: string } };
+  type SimulatedTransactionCreateArgs = { data: { id: string; bucketAfterCents?: number | null } };
+
+  mockModule(requireModule.resolve('../../lib/metrics/autopilot'), {
+    incrementCounter: () => {},
+    observeDuration: () => {},
+  });
+  mockModule(requireModule.resolve('../../lib/log'), {
+    logInvariantViolation: () => {},
+    logGuardrailEvent: () => {},
+  });
+  mockModule(requireModule.resolve('../../lib/engine/public'), {
+    getAutopilotDecisionForUserSwipe: async () => ({
+      kind: 'OK',
+      cardId: 'card-1',
+      reasonCode: 'MAX_REWARDS',
+      userFacingMessage: 'Use card-1',
+      expectedMonetaryBenefitCents: 250,
+      expectedPointsDelta: null,
+      bucketDelta: {
+        bucketId: 'bucket-1',
+        newSpentCents: 25_000,
+        newRemainingCents: 75_000,
+      },
+    }),
+  });
+  mockModule(requireModule.resolve('../../lib/scan-helpers'), {
+    resolveScanCategory: async () => RewardCategory.DINING,
+  });
+  mockModule(requireModule.resolve('../../lib/sessions/confirm-service'), {
+    confirmRecommendationSession: async () => {},
+    SessionConfirmError: class SessionConfirmError extends Error {
+      status = 400;
+      code = 'TEST';
+      detail?: unknown;
+    },
+  });
+  mockModule(requireModule.resolve('../../lib/buckets/ensure-fresh'), {
+    ensureBucketFresh: async () => ({
+      id: 'bucket-1',
+      userId: 'user-1',
+      name: 'Dining',
+      period: BucketPeriod.MONTHLY,
+      budgetAmount: 100_000,
+      currentAmount: 80_000,
+      spentCents: 20_000,
+      strictMode: true,
+      category: RewardCategory.DINING,
+      periodStart: new Date('2024-01-01T00:00:00.000Z'),
+      periodEnd: new Date('2024-02-01T00:00:00.000Z'),
+      lastResetAt: null,
+      createdAt: new Date('2023-12-01T00:00:00.000Z'),
+      updatedAt: new Date('2023-12-01T00:00:00.000Z'),
+    }),
+  });
+  mockModule(requireModule.resolve('../../lib/prisma'), {
+    prisma: {
+      card: {
+        findMany: async () => [
+          { id: 'card-1', nickname: 'Alpha', issuer: null, network: 'VISA', isCredit: true },
+        ],
+      },
+      rewardRule: {
+        findMany: async () => [
+          {
+            id: 'rr-1',
+            cardId: 'card-1',
+            category: RewardCategory.DINING,
+            multiplier: 3,
+            cashbackPercent: null,
+            capAmount: null,
+          },
+        ],
+      },
+      bucket: {
+        findMany: async () => [
+          {
+            id: 'bucket-1',
+            userId: 'user-1',
+            name: 'Dining',
+            period: BucketPeriod.MONTHLY,
+            budgetAmount: 100_000,
+            currentAmount: 80_000,
+            spentCents: 20_000,
+            strictMode: true,
+            category: RewardCategory.DINING,
+            periodStart: new Date('2024-01-01T00:00:00.000Z'),
+            periodEnd: new Date('2024-02-01T00:00:00.000Z'),
+            lastResetAt: null,
+            createdAt: new Date('2023-12-01T00:00:00.000Z'),
+            updatedAt: new Date('2023-12-01T00:00:00.000Z'),
+          },
+        ],
+        findUnique: async () => ({ name: 'Dining' }),
+      },
+      dailyState: {
+        findFirst: async () => null,
+      },
+      categoryPreference: {
+        findUnique: async () => null,
+      },
+      user: {
+        findUnique: async () => ({
+          engineObjectiveProfile: 'BALANCED',
+          engineObjectiveWeights: null,
+        }),
+      },
+      $transaction: async (
+        callback: (tx: {
+          simulatedTransaction: {
+            findUnique: (args: SimulatedTransactionFindUniqueArgs) => Promise<null>;
+            create: (args: SimulatedTransactionCreateArgs) => Promise<{ id: string }>;
+          };
+          bucket: {
+            update: () => Promise<never>;
+            updateMany: () => Promise<never>;
+          };
+        }) => Promise<unknown>
+      ) =>
+        callback({
+          simulatedTransaction: {
+            findUnique: async () => null,
+            create: async ({ data }) => ({ id: data.id }),
+          },
+          bucket: {
+            update: async () => {
+              bucketUpdateCalls += 1;
+              throw new Error('bucket.update should not be called');
+            },
+            updateMany: async () => {
+              bucketUpdateCalls += 1;
+              throw new Error('bucket.updateMany should not be called');
+            },
+          },
+        }),
+    },
+  });
+
+  const { commitAutopilotDecision, getAutopilotPreview } = requireModule(
+    '../../lib/autopilot/service'
+  ) as {
+    commitAutopilotDecision: (
+      world: World,
+      userId: string,
+      input: AutopilotCommitInput,
+      options: { now: Date }
+    ) => Promise<{ decisionId: string; transactionId: string; bucket: unknown; status: string }>;
+    getAutopilotPreview: (
+      world: World,
+      userId: string,
+      input: AutopilotPreviewInput,
+      options: { now: Date }
+    ) => Promise<AutopilotPreviewOutput>;
+  };
+
+  const input: AutopilotCommitInput = {
+    decisionId: '',
+    merchant: 'Test Shop',
+    amountCents: 25_00,
+    cardId: 'card-1',
+    occurredAt: '2024-01-02T12:00:00.000Z',
+    category: 'DINING',
+  };
+  const now = new Date('2024-01-02T12:00:00.000Z');
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
+  const preview = await getAutopilotPreview(world, 'user-1', input, { now });
+  input.decisionId = preview.decisionId;
+
+  const result = await commitAutopilotDecision(world, 'user-1', input, { now });
+
+  assert.equal(result.status, 'created');
+  assert.equal(bucketUpdateCalls, 0, 'Transitional commit must not post bucket spend');
+}
+
 async function run() {
   await runDeterminismSuite();
   await runSemanticStabilityAcrossRowIds();
   await runUpsertIdempotencySuite();
+  await runTransitionalCommitDoesNotPostBucketSpendSuite();
   process.stdout.write('autopilot-idempotency-key: ok\n');
 }
 

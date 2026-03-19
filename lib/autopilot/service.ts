@@ -22,8 +22,6 @@ import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
 import { asAppError } from '../errors.js';
 import {
   computeBucketBalance,
-  computeBucketBalanceFromNumbers,
-  deriveLegacyCurrentAmount,
   toBucketRuntime,
   type BucketRuntime,
 } from '../buckets-runtime.js';
@@ -777,7 +775,6 @@ export async function commitAutopilotDecision(
     }
 
     let bucketBefore: ReturnType<typeof computeBucketBalance> | null = null;
-    let bucketAfter: ReturnType<typeof computeBucketBalance> | null = null;
     let runtimeBucket: BucketRuntime | null = null;
 
     if (evaluation.decision.bucketDelta !== null) {
@@ -789,24 +786,7 @@ export async function commitAutopilotDecision(
 
       if (freshBucket !== null && freshBucket.userId === userId) {
         bucketBefore = computeBucketBalance(freshBucket);
-        const delta = evaluation.decision.bucketDelta.newSpentCents - bucketBefore.committedCents;
-
-        if (delta > 0) {
-          const newSpent = freshBucket.spentCents + delta;
-          const balanceAfter = computeBucketBalanceFromNumbers(freshBucket.budgetAmount, newSpent, 0);
-          const persisted = await tx.bucket.update({
-            where: { id: freshBucket.id, userId },
-            data: {
-              spentCents: newSpent,
-              currentAmount: deriveLegacyCurrentAmount(balanceAfter),
-            },
-          });
-          runtimeBucket = toBucketRuntime(persisted);
-          bucketAfter = balanceAfter;
-        } else {
-          runtimeBucket = toBucketRuntime(freshBucket);
-          bucketAfter = bucketBefore;
-        }
+        runtimeBucket = toBucketRuntime(freshBucket);
       } else {
         logInvariantViolation({
           surface: 'autopilot',
@@ -828,7 +808,7 @@ export async function commitAutopilotDecision(
         bucketName: runtimeBucket?.name ?? evaluation.bucketName ?? null,
         bucketPeriod: runtimeBucket?.period ?? null,
         bucketBeforeCents: bucketBefore?.remainingCents ?? null,
-        bucketAfterCents: bucketAfter?.remainingCents ?? null,
+        bucketAfterCents: evaluation.decision.bucketDelta?.newRemainingCents ?? null,
         bucketLimitCents: runtimeBucket?.budgetAmount ?? null,
         chosenCardId: recommendedCard.id,
         chosenCardName: cardLabel,

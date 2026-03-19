@@ -20,7 +20,6 @@ import {
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
 import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
 import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
-import { ensureBucketFresh } from '../../../lib/buckets/ensure-fresh.js';
 import { hasText } from '../../../lib/text.js';
 import { isPositiveNumber } from '../../../lib/numbers.js';
 import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';
@@ -365,26 +364,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       });
 
-      if (canCommit && hasText(decision.budget.bucketId)) {
-        const freshBucket = await ensureBucketFresh(decision.budget.bucketId, requestNow);
-        if (freshBucket !== null && freshBucket.userId === userId) {
-          await db.bucket.updateMany({
-            where: { id: freshBucket.id, userId },
-            data: { spentCents: (freshBucket.spentCents ?? 0) + body.amountCents },
-          });
-        } else {
-          logGuardrailEvent({
-            userId,
-            surface: 'simulate',
-            outcome: 'STOP',
-            reason: 'BUCKET_STALE_OR_MISMATCH',
-            detail: { bucketId: decision.budget.bucketId },
-            timestamp: requestTimestamp,
-            timestampSource: 'boundary',
-          });
-        }
-      }
-
       return simTx;
     });
 
@@ -393,7 +372,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       transaction: tx,
       decision,
       authority: authorityDecision,
-      committed: canCommit && !strictDecline,
+      committed: false,
     });
   } catch (caught: unknown) {
     const appError = asAppError(caught);

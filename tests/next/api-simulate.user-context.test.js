@@ -105,6 +105,10 @@ function mockNextServer() {
 }
 
 function setupSimulationMocks() {
+  const tracker = {
+    bucketUpdateManyCalls: 0,
+    createdTransactions: [],
+  };
   const legacyDecision = {
     budget: {
       wouldExceed: false,
@@ -114,10 +118,10 @@ function setupSimulationMocks() {
       spentAfterCents: 2_000,
       remainingAfterCents: 9_000,
       name: 'Demo Bucket',
-      bucketId: null,
-      coverageMode: 'UNCONFIGURED',
+      bucketId: 'bucket-1',
+      coverageMode: 'BUDGETED',
       verdict: 'HEALTHY',
-      hasBucket: false,
+      hasBucket: true,
     },
     card: {
       rewardUnit: 'issuer_points',
@@ -223,16 +227,45 @@ function setupSimulationMocks() {
       simulation: {
         create: async () => ({ id: 'sim-1' }),
       },
+      bucket: {
+        updateMany: async () => {
+          tracker.bucketUpdateManyCalls += 1;
+          return { count: 1 };
+        },
+      },
       simulatedTransaction: {
-        create: async (args) => ({ id: 'tx-1', ...args.data }),
+        create: async (args) => {
+          tracker.createdTransactions.push(args.data);
+          return { id: 'tx-1', ...args.data };
+        },
         findFirst: async () => null,
         delete: async () => null,
         count: async () => 0,
         findMany: async () => [],
       },
-      $transaction: async () => [0, []],
+      $transaction: async (arg) => {
+        if (typeof arg === 'function') {
+          return arg({
+            simulatedTransaction: {
+              create: async (args) => {
+                tracker.createdTransactions.push(args.data);
+                return { id: 'tx-1', ...args.data };
+              },
+            },
+            bucket: {
+              updateMany: async () => {
+                tracker.bucketUpdateManyCalls += 1;
+                return { count: 1 };
+              },
+            },
+          });
+        }
+        return arg;
+      },
     },
   });
+
+  return tracker;
 }
 
 function resetRouteCache() {
@@ -245,7 +278,7 @@ async function runSimulateDev() {
   mockNextAuth(null);
   mockNextServer();
   mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
-  setupSimulationMocks();
+  const tracker = setupSimulationMocks();
   resetRouteCache();
   const { POST } = require('../../app/api/simulate/route');
   const payload = {
@@ -253,11 +286,16 @@ async function runSimulateDev() {
     category: 'DINING',
     merchantName: 'Test',
     mccCode: 5812,
+    commit: true,
   };
   const res = await POST({
     json: async () => payload,
   });
   assert.equal(res.status, 200);
+  const json = await res.json();
+  assert.equal(json.committed, false);
+  assert.equal(tracker.bucketUpdateManyCalls, 0);
+  assert.equal(tracker.createdTransactions.length, 1);
 }
 
 async function runSimulateInvalidAmount() {
