@@ -92,8 +92,6 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
             cardId: card.id,
             debtId,
             paydownAmountCents: paydownAmount,
-            paydownScheduledDateMs:
-              cash != null && cash.nextPaycheckDateMs != null ? cash.nextPaycheckDateMs : null,
             meta: { reasonHint: 'CARD_PLUS_DEBT_RELIEF' },
           });
         }
@@ -104,8 +102,6 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
           type: 'PAY_DOWN_DEBT',
           debtId,
           paydownAmountCents: paydownAmount,
-          paydownScheduledDateMs:
-            cash != null && cash.nextPaycheckDateMs != null ? cash.nextPaycheckDateMs : null,
           meta: { reasonHint: 'DEBT_ONLY_RELIEF' },
         });
       }
