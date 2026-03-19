@@ -57,7 +57,10 @@ This file documents the server routes under `app/api/*` and how they align with 
   - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody` (`lib/validation.ts`).
   - Resolves category via `resolveScanCategory` (MCC-aware).
   - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; logs a `DecisionEvent` row per request (no session/bucket/ledger writes).
-- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging + `authority` (authority_v1: verdict, severity, reasons[], counterfactuals[], explanation, inputsVersion).
+- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging + top-level runtime truth metadata:
+  - `capabilities`: which financial primitives were actually available to the runtime engine state
+  - `degraded`: which reasoning dimensions are degraded because those primitives were unavailable
+  - `authority` (authority_v1: verdict, severity, reasons[], counterfactuals[], explanation, inputsVersion)
 
 ---
 
@@ -71,7 +74,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - Behavior:
   - Validates via `lib/schemas/sessions.ts`.
   - Runs engine solver (`safeSolveDecisionForUser`) and persists `RecommendationSession` with verdicts, coverageMode, offered points, expiry (~15 minutes), `orderToken` (UUID), `source = APP_SCAN`.
-  - Returns `{ sessionId, orderToken, expiresAt, source, decision }`.
+  - Returns `{ sessionId, orderToken, expiresAt, source, decision, capabilities, degraded }`.
 
 ### `GET /api/sessions`
 - Query params: `limit` (<=100), `offset`, `status` (`all|active|expired|confirmed`), `verdict` (comma list), `from`, `to`, `source`.
@@ -176,6 +179,7 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 - Errors must cross boundaries only via `AppError` (API) or `ApiResult<T>` (UI); do not throw or inspect raw errors across layers.
 - `/api/scan` is a hard stateless boundary; all persistence must occur via `/api/sessions` and ledger flows only.
 - Engine solver traces multiple action types internally; public APIs still expose card-centric recommendations for compatibility.
+- `/api/scan` and `/api/sessions` now expose top-level `capabilities` + `degraded` metadata so missing runtime primitives are machine-readable instead of silently collapsed into normal-looking advice.
 - Monetary values are integer cents in APIs and DB.
 - Bank ingest must be idempotent on `(userId, externalId)` only; provider data must never supply `BankTransaction.id`.
 - Do not store card PAN/CVV/track data; Vine payloads are context-only.
@@ -197,5 +201,6 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 - `docs/routes-map.md`
 - `docs/legal-constraints.md`
 - `docs/cherry-vision.md`
+- `docs/engine-state.md`
 - `docs/vine-security.md`
 - `docs/wallet-pass.md`

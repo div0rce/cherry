@@ -3,6 +3,7 @@ import { toBucketRuntime } from '../../buckets-runtime.js';
 import { prisma } from '../../prisma.js';
 import { assertPrismaReady } from '../assert-prisma-ready.js';
 import type {
+  EngineCapabilityMap,
   Bucket,
   DebtAccount,
   EngineState,
@@ -12,11 +13,13 @@ import type {
   ObjectiveWeights,
   RewardRule,
   UserConstraints,
+  UserLiquidityState,
   WorldParams,
 } from '../../engine/types.js';
 import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '../../engine/objective.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '../../engine/runtime.js';
 import { asAppError } from '../../errors.js';
+import { createUnavailableEngineCapabilities, unavailable } from '../../engine/types.js';
 
 export async function fromPrismaUserToEngineState(
   userId: string,
@@ -37,12 +40,10 @@ export async function fromPrismaUserToEngineState(
     loadUserPreferences(userId, runtime),
   ]);
 
-  const cash =
-    (await loadCashSnapshot(userId).catch((_error: unknown) => ({
-      liquidCents: null,
-      nextPaycheckDateMs: null,
-      nextPaycheckNetCents: null,
-    }))) ?? null;
+  const capabilities: EngineCapabilityMap = createUnavailableEngineCapabilities();
+  const cash: EngineState['cash'] = await loadCashSnapshot(userId).catch((_error: unknown) =>
+    unavailable<UserLiquidityState>()
+  );
 
   return {
     userId,
@@ -52,6 +53,7 @@ export async function fromPrismaUserToEngineState(
     constraints,
     world,
     cash,
+    capabilities,
     preferences,
   };
 }
@@ -142,15 +144,14 @@ async function loadBuckets(userId: string, nowMs: number): Promise<Bucket[]> {
       committedCents: runtime.committedCents,
       remainingCents: runtime.remainingCents,
       period: runtime.period === 'MONTHLY' ? 'MONTHLY' : 'WEEKLY',
-      isEssential: false,
+      essentiality: unavailable(),
       strictMode: runtime.strictMode ?? false,
     };
   });
 }
 
-async function loadDebts(_userId: string): Promise<DebtAccount[]> {
-  // Debt accounts are not modeled in the current schema; keep an empty list to satisfy the type.
-  return [];
+async function loadDebts(_userId: string): Promise<EngineState['debts']> {
+  return unavailable<DebtAccount[]>();
 }
 
 async function loadUserConstraints(_userId: string): Promise<UserConstraints> {
@@ -174,11 +175,7 @@ async function loadWorldParams(): Promise<WorldParams> {
 }
 
 async function loadCashSnapshot(_userId: string): Promise<EngineState['cash']> {
-  return {
-    liquidCents: null,
-    nextPaycheckDateMs: null,
-    nextPaycheckNetCents: null,
-  };
+  return unavailable();
 }
 
 function logPreferencesWarning(runtime: EngineRuntime, message: string, meta?: unknown) {

@@ -1,5 +1,5 @@
 import * as assert from 'node:assert/strict';
-import { buildEngineContext } from '../lib/engine.js';
+import { available, buildEngineContext, createLoadedEngineCapabilities } from '../lib/engine.js';
 import { runEngine } from '../lib/engine/run.js';
 import type { EngineState } from '../lib/engine/types.js';
 import { makeTestWorld } from './helpers/world.js';
@@ -8,7 +8,7 @@ function buildStubState(): EngineState {
   return {
     userId: 'user-1',
     buckets: [],
-    debts: [],
+    debts: available([]),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -20,7 +20,8 @@ function buildStubState(): EngineState {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
     cards: [
       {

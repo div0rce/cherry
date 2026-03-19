@@ -7,6 +7,12 @@ import type {
   EngineState,
   EngineValidationIssue,
 } from './types.js';
+import {
+  getCashState,
+  getEngineCapabilities,
+  hasKnownBucketEssentiality,
+  isBucketEssential,
+} from './types.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -73,8 +79,9 @@ export function validateEngineContext(ctx: EngineContext): EngineValidationIssue
 
 export function getHardConstraints(state: EngineState): EngineConstraint[] {
   const constraints: EngineConstraint[] = [];
+  const cash = getCashState(state.cash);
 
-  if (state.cash?.liquidCents != null && state.cash.liquidCents < 0) {
+  if (cash?.liquidCents != null && cash.liquidCents < 0) {
     constraints.push({
       id: 'NEGATIVE_LIQUID',
       description: 'User has negative liquid balance',
@@ -92,12 +99,16 @@ export function evaluateConstraintsForDecision(
   projections: EngineDecision['projections']
 ): string[] {
   const breaches: string[] = [];
+  const cash = getCashState(state.cash);
+  const capabilities = getEngineCapabilities(state);
 
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
     if (bucket === undefined) continue;
     if (
-      bucket.isEssential === true &&
+      capabilities.essentiality.available === true &&
+      hasKnownBucketEssentiality(bucket) &&
+      isBucketEssential(bucket) &&
       bucket.limitCents != null &&
       proj.projectedCommittedCents > bucket.limitCents
     ) {
@@ -112,7 +123,10 @@ export function evaluateConstraintsForDecision(
     }
   }
 
-  if (state.constraints.hard.maxCardUtilization != null) {
+  if (
+    capabilities.utilization.available === true &&
+    state.constraints.hard.maxCardUtilization != null
+  ) {
     for (const proj of projections.debt) {
       if (
         proj.projectedUtilization != null &&
@@ -132,8 +146,7 @@ export function evaluateConstraintsForDecision(
     !Number.isNaN(action.paydownAmountCents) &&
     action.paydownAmountCents !== 0
   ) {
-    const liquid =
-      state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : null;
+    const liquid = cash?.liquidCents ?? null;
     if (liquid != null && liquid < action.paydownAmountCents) {
       breaches.push('HARD:PAYDOWN_EXCEEDS_LIQUID');
     }
@@ -141,10 +154,14 @@ export function evaluateConstraintsForDecision(
 
   if (
     (action.type === 'DELAY_PURCHASE' || action.type === 'REJECT_PURCHASE') &&
-    hasNonEmptyString(ctx.merchantCategoryKey)
+    hasNonEmptyString(ctx.merchantCategoryKey) &&
+    capabilities.essentiality.available === true
   ) {
     const essentialBucket = state.buckets.find(
-      (bucket) => bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential
+      (bucket) =>
+        bucket.categoryKey === ctx.merchantCategoryKey &&
+        hasKnownBucketEssentiality(bucket) &&
+        isBucketEssential(bucket)
     );
     if (essentialBucket !== undefined && essentialBucket.limitCents != null) {
       const margin = essentialBucket.remainingCents - amount;

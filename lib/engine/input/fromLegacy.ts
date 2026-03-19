@@ -1,4 +1,13 @@
-import type { EngineContext, EngineState, ObjectiveWeights } from '../types.js';
+import {
+  getCashState,
+  getDebtAccounts,
+  hasKnownBucketEssentiality,
+  isBucketEssential,
+  type DebtAccount,
+  type EngineContext,
+  type EngineState,
+  type ObjectiveWeights,
+} from '../types.js';
 import {
   engineInputVersion,
   type EngineInput,
@@ -103,14 +112,14 @@ function buildBuckets(state: EngineState): EngineInputBucket[] {
       limitCents,
       postedSpendCents,
       pendingSpendCents,
-      isEssential: bucket.isEssential === true,
+      isEssential: hasKnownBucketEssentiality(bucket) && isBucketEssential(bucket),
       strictMode: bucket.strictMode === true,
     };
   });
 }
 
 function buildDebts(state: EngineState): EngineInputDebt[] {
-  return state.debts.map((debt) => {
+  return getDebtAccounts(state.debts).map((debt) => {
     const balanceCents =
       typeof debt.balanceCents === 'number' && Number.isFinite(debt.balanceCents)
         ? debt.balanceCents
@@ -148,14 +157,15 @@ function buildCards(state: EngineState): EngineInputCard[] {
 
 function buildDebtCardLinks(state: EngineState): EngineInputDebtCardLink[] {
   const links: EngineInputDebtCardLink[] = [];
+  const debts = getDebtAccounts(state.debts);
 
   for (const card of state.cards) {
     if (card.isCredit !== true) continue;
     if (card.creditLimitCents === null || card.creditLimitCents === undefined) continue;
     if (!hasNonEmptyString(card.label)) continue;
 
-    let matched: EngineState['debts'][number] | undefined;
-    for (const debt of state.debts) {
+    let matched: DebtAccount | undefined;
+    for (const debt of debts) {
       if (debt.type !== 'CREDIT_CARD') continue;
       if (debt.name !== card.label) continue;
       matched = debt;
@@ -179,9 +189,8 @@ export function fromLegacy(input: LegacyEngineAdapterInput): EngineInput {
   const weightsOverride =
     options !== null && options !== undefined ? coerceWeights(options.weightsOverride) : null;
 
-  const cash = input.state.cash;
-  const liquidCents =
-    cash !== null && cash !== undefined ? toFiniteNumber(cash.liquidCents) : null;
+  const cash = getCashState(input.state.cash);
+  const liquidCents = cash != null ? toFiniteNumber(cash.liquidCents) : null;
 
   const maxCardUtilization =
     input.state.constraints.hard.maxCardUtilization !== undefined

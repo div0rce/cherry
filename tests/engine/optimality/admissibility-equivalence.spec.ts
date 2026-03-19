@@ -1,6 +1,8 @@
 import * as assert from 'node:assert/strict';
 import {
+  available,
   buildEngineContext,
+  createLoadedEngineCapabilities,
   enforceHardConstraints,
   evaluateConstraintsForDecision,
   formatConstraintTag,
@@ -58,7 +60,7 @@ function buildBaseState(): EngineState {
         strictMode: false,
       },
     ],
-    debts: [
+    debts: available([
       {
         id: 'debt-1',
         name: 'Card Debt A',
@@ -79,7 +81,7 @@ function buildBaseState(): EngineState {
         minPaymentCents: 800,
         dueDayOfMonth: 15,
       },
-    ],
+    ]),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -91,11 +93,12 @@ function buildBaseState(): EngineState {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: {
+    cash: available({
       liquidCents: 20_000,
       nextPaycheckDateMs: NEXT_PAYCHECK_MS,
       nextPaycheckNetCents: 50_000,
-    },
+    }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -202,21 +205,21 @@ function buildStateCases(): StateCase[] {
   const base = buildBaseState();
 
   const blockedCash = buildBaseState();
-  blockedCash.cash = {
+  blockedCash.cash = available({
     liquidCents: -100,
     nextPaycheckDateMs: NEXT_PAYCHECK_MS,
     nextPaycheckNetCents: 50_000,
-  };
+  });
 
   const lowLiquid = buildBaseState();
-  lowLiquid.cash = {
+  lowLiquid.cash = available({
     liquidCents: 1_000,
     nextPaycheckDateMs: NEXT_PAYCHECK_MS,
     nextPaycheckNetCents: 50_000,
-  };
+  });
 
   const noDebts = buildBaseState();
-  noDebts.debts = [];
+  noDebts.debts = available([]);
 
   const allStrict = buildBaseState();
   allStrict.buckets = allStrict.buckets.map((bucket) => ({

@@ -105,6 +105,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             code: engineResult.reason,
             message: engineResult.message,
           },
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
         },
         { status: 200 }
       );
@@ -130,6 +132,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           orderToken: null,
           expiresAt: null,
           source: RecommendationSource.APP_SCAN,
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
         },
         { status: 200 }
       );
@@ -185,6 +189,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       expiresAt: session.expiresAt,
       source: session.source,
       decision,
+      capabilities: engineResult.capabilities,
+      degraded: engineResult.degraded,
     });
   } catch (error: unknown) {
     const appError = asAppError(error);

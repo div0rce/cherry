@@ -11,6 +11,12 @@ import type {
   ObjectiveComponentScores,
   ObjectiveWeights,
 } from './types.js';
+import {
+  getDebtAccounts,
+  getEngineCapabilities,
+  hasKnownBucketEssentiality,
+  isBucketEssential,
+} from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
@@ -200,31 +206,45 @@ function scoreComponents(
 
   // 2) Runway: prefer leaving room in essential buckets.
   let runway = 0;
-  for (const proj of projections.buckets) {
-    const bucket = state.buckets.find((b) => b.id === proj.bucketId);
-    if (bucket === undefined) continue;
-    if (bucket.isEssential === true && bucket.limitCents != null) {
-      runway += proj.projectedRemainingCents;
+  const capabilities = getEngineCapabilities(state);
+  if (capabilities.essentiality.available === true) {
+    for (const proj of projections.buckets) {
+      const bucket = state.buckets.find((b) => b.id === proj.bucketId);
+      if (bucket === undefined) continue;
+      if (
+        hasKnownBucketEssentiality(bucket) &&
+        isBucketEssential(bucket) &&
+        bucket.limitCents != null
+      ) {
+        runway += proj.projectedRemainingCents;
+      }
     }
   }
 
   // 3) Debt relief: reward lower utilization or balances, plus explicit paydowns.
   let debtRelief = 0;
-  for (const proj of projections.debt) {
-    const debt = state.debts.find((d) => d.id === proj.debtId);
-    if (debt === undefined) continue;
-    const currentUtil =
-      debt.creditLimitCents !== null &&
-      debt.creditLimitCents !== undefined &&
-      debt.creditLimitCents > 0
-        ? debt.balanceCents / debt.creditLimitCents
-        : null;
+  const debts = getDebtAccounts(state.debts);
+  if (capabilities.debt.available === true) {
+    for (const proj of projections.debt) {
+      const debt = debts.find((d) => d.id === proj.debtId);
+      if (debt === undefined) continue;
+      const currentUtil =
+        debt.creditLimitCents !== null &&
+        debt.creditLimitCents !== undefined &&
+        debt.creditLimitCents > 0
+          ? debt.balanceCents / debt.creditLimitCents
+          : null;
 
-    if (proj.projectedUtilization != null && currentUtil != null) {
-      debtRelief += currentUtil - proj.projectedUtilization;
-    } else {
-      const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
-      debtRelief += balanceDelta / 100_00;
+      if (
+        capabilities.utilization.available === true &&
+        proj.projectedUtilization != null &&
+        currentUtil != null
+      ) {
+        debtRelief += currentUtil - proj.projectedUtilization;
+      } else {
+        const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
+        debtRelief += balanceDelta / 100_00;
+      }
     }
   }
 
@@ -299,7 +319,12 @@ export function scoreDecision(
   }
 
   if (components.debtRelief !== 0) {
-    reasons.push('Debt/utilization adjusted.');
+    const capabilities = getEngineCapabilities(state);
+    if (capabilities.utilization.available === true) {
+      reasons.push('Debt/utilization adjusted.');
+    } else {
+      reasons.push('Debt balance adjusted.');
+    }
   }
 
   if (

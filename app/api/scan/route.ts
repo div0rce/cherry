@@ -112,6 +112,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
               message: engineResult.message,
             },
             decision: null,
+            capabilities: engineResult.capabilities,
+            degraded: engineResult.degraded,
             authority: authorityDecision,
           },
           { status: 200 }
@@ -177,6 +179,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           {
             error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
             decision: null,
+            capabilities: engineResult.capabilities,
+            degraded: engineResult.degraded,
             authority: authorityDecision,
           },
           { status: 200 }
@@ -216,6 +220,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         overallVerdict: decision.overallVerdict,
         cherryIncentive: decision.cherryIncentive,
         engineDecision: decision,
+        capabilities: engineResult.capabilities,
+        degraded: engineResult.degraded,
         authority: authorityDecision,
       };
 

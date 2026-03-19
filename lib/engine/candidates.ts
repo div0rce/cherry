@@ -1,4 +1,13 @@
-import type { EngineAction, EngineContext, EngineState } from './types.js';
+import {
+  getEngineCapabilities,
+  getCashState,
+  getDebtAccounts,
+  hasKnownBucketEssentiality,
+  isBucketEssential,
+  type EngineAction,
+  type EngineContext,
+  type EngineState,
+} from './types.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -11,7 +20,7 @@ function surfaceSupportsAdvancedActions(ctx: EngineContext): boolean {
 }
 
 function pickTopDebtAccounts(state: EngineState, max: number): string[] {
-  const sorted = [...state.debts].sort((a, b) => {
+  const sorted = [...getDebtAccounts(state.debts)].sort((a, b) => {
     const aprA = a.aprPercent == null ? 0 : a.aprPercent;
     const aprB = b.aprPercent == null ? 0 : b.aprPercent;
     if (aprA !== aprB) return aprB - aprA;
@@ -28,7 +37,8 @@ function computePaydownAmountCents(state: EngineState, ctx: EngineContext): numb
   const hardCap = 50_000;
   const paydown = Math.min(base, hardCap);
 
-  const liquid = state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : null;
+  const cash = getCashState(state.cash);
+  const liquid = cash?.liquidCents ?? null;
   if (liquid != null) {
     const buffer = 0;
     if (paydown > liquid - buffer) {
@@ -42,6 +52,7 @@ function computePaydownAmountCents(state: EngineState, ctx: EngineContext): numb
 
 export function generateCandidateActions(state: EngineState, ctx: EngineContext): EngineAction[] {
   const actions: EngineAction[] = [];
+  const capabilities = getEngineCapabilities(state);
   const amount = ctx.amountCents == null ? 0 : ctx.amountCents;
   const hasPositiveAmount = amount > 0;
   const advanced = surfaceSupportsAdvancedActions(ctx);
@@ -60,8 +71,16 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
     });
   }
 
-  const liquidCents = state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : 0;
-  if (advanced && state.debts.length > 0 && liquidCents > 0) {
+  const cash = getCashState(state.cash);
+  const liquidCents = cash?.liquidCents ?? 0;
+  const debtCount = getDebtAccounts(state.debts).length;
+  if (
+    advanced &&
+    capabilities.debt.available === true &&
+    capabilities.liquidCash.available === true &&
+    debtCount > 0 &&
+    liquidCents > 0
+  ) {
     const paydownAmount = computePaydownAmountCents(state, ctx);
     if (paydownAmount !== null && !Number.isNaN(paydownAmount) && paydownAmount > 0) {
       const debtIds = pickTopDebtAccounts(state, 2);
@@ -73,10 +92,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
             cardId: card.id,
             debtId,
             paydownAmountCents: paydownAmount,
-            paydownScheduledDateMs:
-              state.cash && state.cash.nextPaycheckDateMs != null
-                ? state.cash.nextPaycheckDateMs
-                : null,
+            paydownScheduledDateMs: cash?.nextPaycheckDateMs ?? null,
             meta: { reasonHint: 'CARD_PLUS_DEBT_RELIEF' },
           });
         }
@@ -87,10 +103,7 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
           type: 'PAY_DOWN_DEBT',
           debtId,
           paydownAmountCents: paydownAmount,
-          paydownScheduledDateMs:
-            state.cash && state.cash.nextPaycheckDateMs != null
-              ? state.cash.nextPaycheckDateMs
-              : null,
+          paydownScheduledDateMs: cash?.nextPaycheckDateMs ?? null,
           meta: { reasonHint: 'DEBT_ONLY_RELIEF' },
         });
       }
@@ -98,14 +111,17 @@ export function generateCandidateActions(state: EngineState, ctx: EngineContext)
   }
 
   const hasMerchantCategoryKey = hasNonEmptyString(ctx.merchantCategoryKey);
-  const isEssentialCategory = hasMerchantCategoryKey
-    ? state.buckets.some(
-        (bucket) =>
-          bucket.categoryKey === ctx.merchantCategoryKey && bucket.isEssential
-      )
-    : false;
+  const isEssentialCategory =
+    hasMerchantCategoryKey && capabilities.essentiality.available === true
+      ? state.buckets.some(
+          (bucket) =>
+            bucket.categoryKey === ctx.merchantCategoryKey &&
+            hasKnownBucketEssentiality(bucket) &&
+            isBucketEssential(bucket)
+        )
+      : null;
 
-  if (isEssentialCategory === false) {
+  if (!hasMerchantCategoryKey || isEssentialCategory === false) {
     actions.push({ type: 'DELAY_PURCHASE', delayDays: 3 });
     actions.push({ type: 'DELAY_PURCHASE', delayDays: 7 });
   }

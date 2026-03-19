@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 const {
+  available,
   solveDecision,
   safeSolveDecisionForUser,
   generateCandidateActions,
@@ -11,13 +12,32 @@ const {
   evaluateConstraintsForDecision,
   enforceHardConstraints,
   EngineError,
+  createLoadedEngineCapabilities,
+  createUnavailableEngineCapabilities,
+  getEngineRuntimeMetadata,
+  unavailable,
 } = require('../../lib/engine');
 
 function buildStubState(overrides = {}) {
+  const { debts: debtOverride, cash: cashOverride, ...restOverrides } = overrides;
+  const debts =
+    debtOverride === undefined
+      ? available([])
+      : Array.isArray(debtOverride)
+        ? available(debtOverride)
+        : debtOverride;
+  const cash =
+    cashOverride === undefined
+      ? available({ liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null })
+      : cashOverride === null
+        ? unavailable()
+        : cashOverride.kind
+          ? cashOverride
+          : available(cashOverride);
   return {
     userId: 'user-1',
     buckets: [],
-    debts: [],
+    debts,
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -29,7 +49,8 @@ function buildStubState(overrides = {}) {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash,
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -77,7 +98,7 @@ function buildStubState(overrides = {}) {
         isVirtual: false,
       },
     ],
-    ...overrides,
+    ...restOverrides,
   };
 }
 
@@ -259,6 +280,13 @@ async function testSafeSolveDecisionFailure() {
   assert.equal(outcome.ok, false);
   if (outcome.ok !== true) {
     assert.equal(outcome.reason, 'VALIDATION_ERROR');
+    assert.deepEqual(outcome.capabilities, createLoadedEngineCapabilities());
+    assert.deepEqual(outcome.degraded, {
+      essentialProtection: false,
+      debtPressure: false,
+      liquidity: false,
+      utilization: false,
+    });
   }
 
   if (process.env.NODE_ENV === 'test') {
@@ -517,6 +545,57 @@ async function testSolveDecisionRespondsToProfiles() {
   );
 }
 
+async function testSolveDecisionMarksDegradedCapabilities() {
+  const state = buildStubState({
+    buckets: [
+      {
+        id: 'bucket-essentials',
+        name: 'Essentials',
+        categoryKey: 'DINING',
+        limitCents: 5_000,
+        postedSpendCents: 1_000,
+        pendingSpendCents: 0,
+        committedCents: 1_000,
+        remainingCents: 4_000,
+        period: 'MONTHLY',
+        essentiality: { kind: 'unavailable' },
+        strictMode: true,
+      },
+    ],
+    debts: [],
+    cash: null,
+    capabilities: createUnavailableEngineCapabilities(),
+  });
+  const ctx = buildStubContext({ amountCents: 2_000 });
+  const result = await solveDecision(state, ctx);
+
+  assert.deepEqual(result.capabilities, createUnavailableEngineCapabilities());
+  assert.deepEqual(result.degraded, {
+    essentialProtection: true,
+    debtPressure: true,
+    liquidity: true,
+    utilization: true,
+  });
+
+  const allReasons = result.decisions.flatMap((decision) => decision.reasons);
+  for (const reason of allReasons) {
+    assert.equal(/safe|protected|within plan|covered reserves/i.test(reason), false);
+  }
+}
+
+function testGetEngineCapabilitiesDefaultsToUnavailable() {
+  const result = getEngineRuntimeMetadata();
+  assert.deepEqual(result, {
+    capabilities: createUnavailableEngineCapabilities(),
+    degraded: {
+      essentialProtection: true,
+      debtPressure: true,
+      liquidity: true,
+      utilization: true,
+    },
+  });
+}
+
 async function run() {
   await testSolveDecisionSorts();
   await testDeterministicOrderingForEqualScores();
@@ -531,6 +610,8 @@ async function run() {
   testPaydownGuardrailBlocksExcess();
   await testCompositeActionImprovesDebtRelief();
   await testSolveDecisionRespondsToProfiles();
+  await testSolveDecisionMarksDegradedCapabilities();
+  testGetEngineCapabilitiesDefaultsToUnavailable();
   console.warn('engine solver: ok');
 }
 

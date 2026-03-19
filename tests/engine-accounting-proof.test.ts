@@ -14,7 +14,11 @@
  */
 import * as assert from 'node:assert/strict';
 import { buildEngineContext } from '../lib/engine/context.js';
-import type { EngineState } from '../lib/engine/types.js';
+import {
+  available,
+  createLoadedEngineCapabilities,
+  type EngineState,
+} from '../lib/engine/types.js';
 import {
   buildAccountingSnapshot,
   filterAccountingSafeDecisions,
@@ -38,10 +42,11 @@ function buildState(
     userId: 'user-proof',
     cards: [],
     buckets: [],
-    debts: [],
+    debts: available([]),
     constraints: { hard: {}, soft: {} },
     world: {},
-    cash: { liquidCents: 0, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: 0, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
   };
   return { ...base, ...overrides };
@@ -92,7 +97,7 @@ function buildSpendTxn(
 }
 
 async function testOverdraftRequiresLiability(): Promise<void> {
-  const state = buildState({ cash: { liquidCents: 0, nextPaycheckDateMs: null, nextPaycheckNetCents: null } });
+  const state = buildState({ cash: available({ liquidCents: 0, nextPaycheckDateMs: null, nextPaycheckNetCents: null }) });
   const ctx = buildContext({ amountCents: 5000 });
   const snapshot = buildAccountingSnapshot(state, ctx.nowMs);
   const spend = buildSpendTxn(snapshot, 5000, ctx.nowMs);
@@ -104,7 +109,7 @@ async function testOverdraftRequiresLiability(): Promise<void> {
 }
 
 async function testUnbalancedSuggestionRejected(): Promise<void> {
-  const state = buildState({ cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null } });
+  const state = buildState({ cash: available({ liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null }) });
   const ctx = buildContext({ amountCents: 1000 });
   const snapshot = buildAccountingSnapshot(state, ctx.nowMs);
   const spend = buildSpendTxn(snapshot, 1000, ctx.nowMs);
@@ -124,7 +129,7 @@ async function testUnbalancedSuggestionRejected(): Promise<void> {
 }
 
 async function testSignAbuseRejected(): Promise<void> {
-  const state = buildState({ cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null } });
+  const state = buildState({ cash: available({ liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null }) });
   const ctx = buildContext({ amountCents: 1200 });
   const snapshot = buildAccountingSnapshot(state, ctx.nowMs);
   const spend = buildSpendTxn(snapshot, 1200, ctx.nowMs);

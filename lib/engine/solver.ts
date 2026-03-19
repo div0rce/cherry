@@ -21,8 +21,13 @@ import type {
   EngineContext,
   EngineDecision,
   EngineDecisionTrace,
+  EngineRuntimeMetadata,
   EngineState,
   ObjectiveWeights,
+} from './types.js';
+import {
+  getDebtAccounts,
+  getEngineRuntimeMetadata,
 } from './types.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 import type { EngineDecision as LegacyEngineDecision, LegacyEngineInput } from '../legacy-engine-types.js';
@@ -46,6 +51,8 @@ export type SolveDecisionOptions = {
 export type SolveDecisionResult = {
   decisions: EngineDecision[];
   trace: EngineDecisionTrace;
+  capabilities: EngineRuntimeMetadata['capabilities'];
+  degraded: EngineRuntimeMetadata['degraded'];
   legacyDecision?: LegacyEngineDecision;
 };
 
@@ -142,7 +149,7 @@ export async function solveDecision(
     stateSummary: {
       bucketCount: state.buckets.length,
       cardCount: state.cards.length,
-      debtCount: state.debts.length,
+      debtCount: getDebtAccounts(state.debts).length,
     },
     contextSummary: {
       surface: ctx.surface,
@@ -156,6 +163,7 @@ export async function solveDecision(
       ...(d.components ? { components: d.components } : {}),
     })),
   };
+  const { capabilities, degraded } = getEngineRuntimeMetadata(state);
 
   let legacyDecision: LegacyEngineDecision | undefined;
   if (options.includeLegacyDecision === true) {
@@ -177,7 +185,12 @@ export async function solveDecision(
     });
   }
 
-  const result: SolveDecisionResult = { decisions: filtered, trace };
+  const result: SolveDecisionResult = {
+    decisions: filtered,
+    trace,
+    capabilities,
+    degraded,
+  };
   if (legacyDecision !== undefined) {
     result.legacyDecision = legacyDecision;
   }
@@ -190,28 +203,41 @@ export type SafeDecisionOutcome =
       ok: true;
       decisions: EngineDecisionWithAccounting[];
       trace: EngineDecisionTrace;
+      capabilities: EngineRuntimeMetadata['capabilities'];
+      degraded: EngineRuntimeMetadata['degraded'];
       legacyDecision?: LegacyEngineDecision;
       state: EngineState;
     }
-  | { ok: false; reason: 'VALIDATION_ERROR' | 'ENGINE_ERROR'; message: string };
+  | {
+      ok: false;
+      reason: 'VALIDATION_ERROR' | 'ENGINE_ERROR';
+      message: string;
+      capabilities: EngineRuntimeMetadata['capabilities'];
+      degraded: EngineRuntimeMetadata['degraded'];
+    };
 
 export async function safeSolveDecisionForUser(
   userId: string,
   ctx: EngineContext,
   options: SolveDecisionOptions = {}
 ): Promise<SafeDecisionOutcome> {
+  const runtimeMetadata = getEngineRuntimeMetadata(options.stateOverride);
   try {
     const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
     const state = options.stateOverride;
     if (state === undefined) {
       throw new EngineError('safeSolveDecisionForUser requires a stateOverride');
     }
-    const { decisions, trace, legacyDecision } = await solveDecision(state, ctx, {
+    const { decisions, trace, capabilities, degraded, legacyDecision } = await solveDecision(
+      state,
+      ctx,
+      {
       ...options,
       includeLegacyDecision:
         options.includeLegacyDecision == null ? true : options.includeLegacyDecision,
       runtime,
-    });
+      }
+    );
     const snapshot = buildAccountingSnapshot(state, ctx.nowMs);
     const provedDecisions = attachAccountingProof({ decisions, ctx, snapshot });
     const safeDecisions = filterAccountingSafeDecisions(provedDecisions);
@@ -219,6 +245,8 @@ export async function safeSolveDecisionForUser(
       ok: true,
       decisions: safeDecisions,
       trace,
+      capabilities,
+      degraded,
       state,
     };
     if (legacyDecision !== undefined) {
@@ -234,6 +262,7 @@ export async function safeSolveDecisionForUser(
         ok: false,
         reason: 'VALIDATION_ERROR',
         message: err.message,
+        ...runtimeMetadata,
       };
     }
 
@@ -242,6 +271,7 @@ export async function safeSolveDecisionForUser(
       ok: false,
       reason: 'ENGINE_ERROR',
       message: 'Engine failed unexpectedly',
+      ...runtimeMetadata,
     };
   }
 }

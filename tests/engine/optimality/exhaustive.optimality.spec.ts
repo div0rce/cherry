@@ -1,5 +1,10 @@
 import * as assert from 'node:assert/strict';
-import { buildEngineContext, solveDecision } from '../../../lib/engine.js';
+import {
+  available,
+  buildEngineContext,
+  createLoadedEngineCapabilities,
+  solveDecision,
+} from '../../../lib/engine.js';
 import type { EngineDecision, EngineState } from '../../../lib/engine/types.js';
 import {
   candidateSpaceVersion,
@@ -103,7 +108,7 @@ function buildBaseState(): EngineState {
         strictMode: false,
       },
     ],
-    debts: [
+    debts: available([
       {
         id: 'debt-1',
         name: 'Card Debt A',
@@ -124,7 +129,7 @@ function buildBaseState(): EngineState {
         minPaymentCents: 800,
         dueDayOfMonth: 15,
       },
-    ],
+    ]),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -136,11 +141,12 @@ function buildBaseState(): EngineState {
       },
     },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: {
+    cash: available({
       liquidCents: 20_000,
       nextPaycheckDateMs: NEXT_PAYCHECK_MS,
       nextPaycheckNetCents: 50_000,
-    },
+    }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
     cards: [
       {
@@ -446,11 +452,11 @@ async function run(): Promise<void> {
       name: 'zero-admissible',
       state: {
         ...baseState,
-        cash: {
+        cash: available({
           liquidCents: -100,
           nextPaycheckDateMs: NEXT_PAYCHECK_MS,
           nextPaycheckNetCents: 50_000,
-        },
+        }),
       },
       ctx: baseCtx,
       bounds,

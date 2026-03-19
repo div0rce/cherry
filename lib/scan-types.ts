@@ -1,5 +1,9 @@
 import type { RewardCategory } from '@prisma/client';
-import type { LegacyEngineDecision } from './engine.js';
+import type {
+  EngineCapabilityMap,
+  EngineDegradedDimensions,
+  LegacyEngineDecision,
+} from './engine.js';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
 import type { SimulatedAuthorityDecision } from './authority/simulateSpendAuthority.js';
 
@@ -45,5 +49,7 @@ export type ScanResponseBody = {
   };
 
   engineDecision: LegacyEngineDecision;
+  capabilities: EngineCapabilityMap;
+  degraded: EngineDegradedDimensions;
   authority: SimulatedAuthorityDecision;
 };

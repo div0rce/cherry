@@ -8,6 +8,7 @@ import type {
   EngineState,
   NormalizedCardId,
 } from './types.js';
+import { available, getCashState, getDebtAccounts, hasAvailableValue } from './types.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -28,7 +29,8 @@ function cloneBuckets(buckets: EngineState['buckets']): EngineState['buckets'] {
 }
 
 function cloneDebts(debts: EngineState['debts']): EngineState['debts'] {
-  return debts.map((d) => ({ ...d }));
+  if (!hasAvailableValue(debts)) return debts;
+  return available(debts.value.map((d) => ({ ...d })));
 }
 
 function recomputeBucketBalance(bucket: EngineState['buckets'][number]): void {
@@ -60,7 +62,8 @@ function applyUseCard(
 
   const card = state.cards.find((c) => c.id === action.cardId);
   if (card !== undefined && card.isCredit === true && card.creditLimitCents != null) {
-    const debt = debts.find((d) => d.type === 'CREDIT_CARD' && d.name === card.label);
+    const resolvedDebts = getDebtAccounts(debts);
+    const debt = resolvedDebts.find((d) => d.type === 'CREDIT_CARD' && d.name === card.label);
     if (debt !== undefined) {
       debt.balanceCents += amount;
     }
@@ -77,7 +80,8 @@ function applyPaydown(
   ) {
     return;
   }
-  const debt = debts.find((d) => d.id === action.debtId);
+  const resolvedDebts = getDebtAccounts(debts);
+  const debt = resolvedDebts.find((d) => d.id === action.debtId);
   if (debt === undefined) return;
   const delta = Math.min(debt.balanceCents, action.paydownAmountCents);
   debt.balanceCents -= delta;
@@ -151,17 +155,18 @@ export function simulateAction(
     };
   });
 
-  const debt: DebtProjection[] = clonedDebts.map((d) => ({
-    debtId: d.id,
-    projectedBalanceCents: d.balanceCents,
-    projectedUtilization:
-      d.creditLimitCents != null && d.creditLimitCents > 0
-        ? d.balanceCents / d.creditLimitCents
-        : null,
-  }));
+  const debtAccounts = getDebtAccounts(clonedDebts);
+  const debt: DebtProjection[] = debtAccounts.map((d) => ({
+        debtId: d.id,
+        projectedBalanceCents: d.balanceCents,
+        projectedUtilization:
+          d.creditLimitCents != null && d.creditLimitCents > 0
+            ? d.balanceCents / d.creditLimitCents
+            : null,
+      }));
 
-  let projectedLiquid =
-    state.cash && state.cash.liquidCents != null ? state.cash.liquidCents : null;
+  const cashState = getCashState(state.cash);
+  let projectedLiquid = cashState?.liquidCents ?? null;
   if (
     projectedLiquid != null &&
     (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
@@ -170,10 +175,10 @@ export function simulateAction(
     projectedLiquid = Math.max(0, projectedLiquid - action.paydownAmountCents);
   }
 
-  const cash: CashProjection = {
+  const cashProjection: CashProjection = {
     projectedLiquidCents: projectedLiquid,
     projectedOverdraftRisk: null,
   };
 
-  return { buckets, debt, cash };
+  return { buckets, debt, cash: cashProjection };
 }

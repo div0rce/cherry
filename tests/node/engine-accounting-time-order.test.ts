@@ -14,7 +14,13 @@
  */
 import * as assert from 'node:assert/strict';
 import { buildEngineContext } from '../../lib/engine/context.js';
-import type { EngineActionType, EngineDecision, EngineState } from '../../lib/engine/types.js';
+import {
+  available,
+  createLoadedEngineCapabilities,
+  type EngineActionType,
+  type EngineDecision,
+  type EngineState,
+} from '../../lib/engine/types.js';
 import {
   attachAccountingProof,
   buildAccountingSnapshot,
@@ -29,10 +35,11 @@ function buildState(
     userId: 'user-time-order',
     cards: [],
     buckets: [],
-    debts: [],
+    debts: available([]),
     constraints: { hard: {}, soft: {} },
     world: {},
-    cash: { liquidCents: 20_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: 20_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences: { profileId: 'BALANCED' },
   };
   return { ...base, ...overrides };

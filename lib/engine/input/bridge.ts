@@ -1,4 +1,11 @@
-import type { EngineContext, EngineState, ObjectiveWeights } from '../types.js';
+import {
+  available,
+  createLoadedEngineCapabilities,
+  type DebtAccount,
+  type EngineContext,
+  type EngineState,
+  type ObjectiveWeights,
+} from '../types.js';
 import type {
   EngineInput,
   EngineInputCard,
@@ -113,7 +120,7 @@ function toCards(
 function toDebts(
   debts: EngineInputDebt[],
   linkLabels: Map<string, string>
-): EngineState['debts'] {
+): DebtAccount[] {
   return debts.map((debt) => {
     const linkedLabel = linkLabels.get(debt.id);
     const name = linkedLabel !== undefined ? linkedLabel : `debt:${debt.id}`;
@@ -164,11 +171,11 @@ export function buildEngineStateFromInput(params: {
         committedCents: committed,
         remainingCents: remaining,
         period: 'MONTHLY',
-        isEssential: bucket.isEssential === true,
+        essentiality: available(bucket.isEssential === true),
         strictMode: bucket.strictMode === true,
       };
     }),
-    debts: toDebts(input.debts, linkLabels.byDebtId),
+    debts: available(toDebts(input.debts, linkLabels.byDebtId)),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -183,11 +190,12 @@ export function buildEngineStateFromInput(params: {
       baseInterestRate: null,
       inflationEstimate: null,
     },
-    cash: {
+    cash: available({
       liquidCents: input.balances.cash.liquidCents,
       nextPaycheckDateMs: null,
       nextPaycheckNetCents: null,
-    },
+    }),
+    capabilities: createLoadedEngineCapabilities(),
     preferences:
       customWeights === undefined
         ? { profileId: input.preferences.profileId }

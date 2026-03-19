@@ -1,4 +1,11 @@
-import type { EngineAction, EngineContext, EngineDecision, EngineState } from '../engine/types.js';
+import {
+  getCashState,
+  getDebtAccounts,
+  type EngineAction,
+  type EngineContext,
+  type EngineDecision,
+  type EngineState,
+} from '../engine/types.js';
 import {
   applyLedgerEvent,
   asAccountId,
@@ -58,7 +65,7 @@ export function buildAccountingSnapshot(state: EngineState, nowMs: number): Acco
   const ledger = createLedgerState(ACCOUNT_DEFS, asCurrency('USD'));
   let snapshot = ledger;
 
-  const cashBalance = resolveNonNegative(state.cash?.liquidCents);
+  const cashBalance = resolveNonNegative(getCashState(state.cash)?.liquidCents ?? null);
   if (cashBalance > 0) {
     const txn = createTransaction(
       {
@@ -86,7 +93,7 @@ export function buildAccountingSnapshot(state: EngineState, nowMs: number): Acco
     snapshot = applyLedgerEvent(snapshot, { type: 'TXN', txn });
   }
 
-  const debtBalance = resolveNonNegative(sumDebtBalances(state.debts));
+  const debtBalance = resolveNonNegative(sumDebtBalances(getDebtAccounts(state.debts)));
   if (debtBalance > 0) {
     const txn = createTransaction(
       {
@@ -255,8 +262,7 @@ function buildPaydownTxn(
   );
 }
 
-function sumDebtBalances(debts: EngineState['debts']): number {
-  if (!Array.isArray(debts)) return 0;
+function sumDebtBalances(debts: Array<{ balanceCents: number }>): number {
   let total = 0;
   for (const debt of debts) {
     if (typeof debt.balanceCents !== 'number') continue;

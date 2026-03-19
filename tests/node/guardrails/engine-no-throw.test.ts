@@ -3,7 +3,10 @@ import * as Module from 'node:module';
 import type { Module as NodeModuleType } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
-import type { EngineContext } from '../../../lib/engine/types.js';
+import {
+  createUnavailableEngineCapabilities,
+  type EngineContext,
+} from '../../../lib/engine/types.js';
 import { makeTestWorld } from '../helpers/world.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,6 +36,13 @@ async function runSafeSolve(): Promise<void> {
   const result = await safeSolveDecisionForWorld(world, 'user-1', ctx);
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'VALIDATION_ERROR');
+  assert.deepEqual(result.capabilities, createUnavailableEngineCapabilities());
+  assert.deepEqual(result.degraded, {
+    essentialProtection: true,
+    debtPressure: true,
+    liquidity: true,
+    utilization: true,
+  });
 }
 
 async function runAuthorityFallback(): Promise<void> {

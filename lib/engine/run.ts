@@ -6,16 +6,16 @@ import {
   type SolveDecisionOptions,
   type SolveDecisionResult,
 } from './solver.js';
-import type { EngineContext, EngineState } from './types.js';
+import {
+  getEngineRuntimeMetadata,
+  type EngineContext,
+  type EngineState,
+} from './types.js';
 import { DEFAULT_ENGINE_RUNTIME } from './runtime.js';
 import type { LegacyEngineInput } from '../legacy-engine-types.js';
 import { EngineError } from './guardrails.js';
 import { fromLegacy } from './input/fromLegacy.js';
-import {
-  buildEngineContextFromInput,
-  buildEngineStateFromInput,
-  buildSolverOptionsFromInput,
-} from './input/bridge.js';
+import { buildSolverOptionsFromInput } from './input/bridge.js';
 import { validateEngineInput } from './input/validate.js';
 
 export type EngineRunInput = {
@@ -50,8 +50,6 @@ export async function runEngine(world: World, input: EngineRunInput): Promise<So
     throw new EngineError(`EngineInput validation failed: ${inputIssues.length} issues`);
   }
   const solverOptions = buildSolverOptionsFromInput(engineInput);
-  const state = buildEngineStateFromInput({ input: engineInput, userId: input.state.userId });
-  const ctx = buildEngineContextFromInput({ input: engineInput, nowMs: input.context.nowMs });
   const safeOptionsBase = input.options !== undefined ? input.options : {};
   const { legacyDecisionProvider, ...safeOptions } = safeOptionsBase;
   const includeLegacyDecision = safeOptionsBase.includeLegacyDecision === true;
@@ -68,13 +66,13 @@ export async function runEngine(world: World, input: EngineRunInput): Promise<So
     solverOverrides.maxCandidates = solverOptions.maxCandidates;
   }
 
-  const result = await solveDecision(state, ctx, solverOverrides);
+  const result = await solveDecision(input.state, input.context, solverOverrides);
 
   if (includeLegacyDecision) {
     if (legacyDecisionProvider === undefined) {
       throw new EngineError('legacyDecisionProvider required when includeLegacyDecision is true');
     }
-    const legacyInput = buildLegacyEngineInput(state.userId, input.context);
+    const legacyInput = buildLegacyEngineInput(input.state.userId, input.context);
     const legacyDecision = await legacyDecisionProvider(legacyInput);
     return { ...result, legacyDecision };
   }
@@ -88,11 +86,13 @@ export async function safeSolveDecisionForWorld(
   context: EngineContext,
   options: SolveDecisionOptions = {}
 ): Promise<SafeDecisionOutcome> {
+  const runtimeMetadata = getEngineRuntimeMetadata(options.stateOverride);
   if (options.stateOverride === undefined) {
     return {
       ok: false,
       reason: 'VALIDATION_ERROR',
       message: 'safeSolveDecisionForUser requires a stateOverride',
+      ...runtimeMetadata,
     };
   }
 
@@ -113,11 +113,10 @@ export async function safeSolveDecisionForWorld(
       ok: false,
       reason: 'VALIDATION_ERROR',
       message: `EngineInput validation failed: ${inputIssues.length} issues`,
+      ...runtimeMetadata,
     };
   }
   const solverOptions = buildSolverOptionsFromInput(engineInput);
-  const state = buildEngineStateFromInput({ input: engineInput, userId });
-  const ctx = buildEngineContextFromInput({ input: engineInput, nowMs: context.nowMs });
   const { legacyDecisionProvider, ...safeOptions } = options;
   const includeLegacyDecision =
     options.includeLegacyDecision == null ? true : options.includeLegacyDecision;
@@ -127,6 +126,7 @@ export async function safeSolveDecisionForWorld(
       ok: false,
       reason: 'VALIDATION_ERROR',
       message: 'legacyDecisionProvider required when includeLegacyDecision is true',
+      ...runtimeMetadata,
     };
   }
 
@@ -134,7 +134,7 @@ export async function safeSolveDecisionForWorld(
     ...safeOptions,
     includeLegacyDecision: false,
     runtime: runtimeWithLogger,
-    stateOverride: state,
+    stateOverride: options.stateOverride,
   };
   if (solverOptions.weights !== null) {
     solverOverrides.weights = solverOptions.weights;
@@ -143,7 +143,7 @@ export async function safeSolveDecisionForWorld(
     solverOverrides.maxCandidates = solverOptions.maxCandidates;
   }
 
-  const result = await safeSolveDecisionForUser(userId, ctx, solverOverrides);
+  const result = await safeSolveDecisionForUser(userId, context, solverOverrides);
 
   if (result.ok !== true) return result;
 

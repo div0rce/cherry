@@ -59,6 +59,44 @@ function mockNextServer() {
   }
 }
 
+function available(value) {
+  return { kind: 'available', value };
+}
+
+const loadedCapabilities = {
+  essentiality: { available: true, reason: 'loaded' },
+  debt: { available: true, reason: 'loaded' },
+  liquidCash: { available: true, reason: 'loaded' },
+  utilization: { available: true, reason: 'loaded' },
+};
+
+const unavailableCapabilities = {
+  essentiality: { available: false, reason: 'not_modeled' },
+  debt: { available: false, reason: 'not_modeled' },
+  liquidCash: { available: false, reason: 'not_modeled' },
+  utilization: { available: false, reason: 'not_modeled' },
+};
+
+const loadedMetadata = {
+  capabilities: loadedCapabilities,
+  degraded: {
+    essentialProtection: false,
+    debtPressure: false,
+    liquidity: false,
+    utilization: false,
+  },
+};
+
+const unavailableMetadata = {
+  capabilities: unavailableCapabilities,
+  degraded: {
+    essentialProtection: true,
+    debtPressure: true,
+    liquidity: true,
+    utilization: true,
+  },
+};
+
 function setupSessionMocks({ engineOk = true } = {}) {
   const engineState = {
     userId: 'lab-user-1',
@@ -94,10 +132,11 @@ function setupSessionMocks({ engineOk = true } = {}) {
         strictMode: false,
       },
     ],
-    debts: [],
+    debts: available([]),
     constraints: { hard: { minEssentialCoverageDays: 0, maxCardUtilization: null }, soft: { avoidInterest: false, avoidNewDebt: false } },
     world: { baseInterestRate: null, inflationEstimate: null },
-    cash: { liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+    cash: available({ liquidCents: null, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),
+    capabilities: loadedCapabilities,
     preferences: { profileId: 'BALANCED', customWeights: null },
   };
 
@@ -154,7 +193,9 @@ function setupSessionMocks({ engineOk = true } = {}) {
   mockModule('../../lib/engine', {
     buildEngineContext: (input) => input,
     mapSolverDecisionToLegacyDecision: () => legacyDecision,
-    safeSolveDecisionForUser: async () =>
+  });
+  mockModule('../../lib/engine/run', {
+    safeSolveDecisionForWorld: async () =>
       engineOk
         ? {
             ok: true,
@@ -168,8 +209,16 @@ function setupSessionMocks({ engineOk = true } = {}) {
             },
             legacyDecision,
             state: engineState,
+            capabilities: loadedMetadata.capabilities,
+            degraded: loadedMetadata.degraded,
           }
-        : { ok: false, reason: 'ENGINE_ERROR', message: 'fail' },
+        : {
+            ok: false,
+            reason: 'ENGINE_ERROR',
+            message: 'fail',
+            capabilities: unavailableMetadata.capabilities,
+            degraded: unavailableMetadata.degraded,
+          },
   });
 
   mockModule('../../lib/legacy-engine', {
@@ -219,6 +268,9 @@ async function runSessionsOk() {
     json: async () => payload,
   });
   assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(body.capabilities, loadedMetadata.capabilities);
+  assert.deepEqual(body.degraded, loadedMetadata.degraded);
 }
 
 async function runSessionsEngineFail() {
@@ -237,6 +289,9 @@ async function runSessionsEngineFail() {
     json: async () => payload,
   });
   assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.deepEqual(body.capabilities, unavailableMetadata.capabilities);
+  assert.deepEqual(body.degraded, unavailableMetadata.degraded);
 }
 
 async function run() {
