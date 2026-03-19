@@ -118,9 +118,16 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - Behavior:
   - Parses terminal event first; falls back to `OrderContext`.
   - Validates MCC when provided; rejects stale payloads (> ~3 minutes old).
+  - Enforces Vine signature mode via the shared server config:
+    - `off` and `warn` are non-production only.
+    - `enforce` is required in production.
+    - Invalid production config returns `500 { error, code: "VINE_SIGNATURE_MODE_INVALID" }` with `Cache-Control: no-store`.
+  - Normalizes invalid signature failures at the route boundary:
+    - `403 { error, code: "VINE_SIGNATURE_INVALID" }`
+    - `Cache-Control: no-store`
   - Calls `runRecommendationFromOrderContext` → engine; persists `RecommendationSession` with `source` = `VINE_SIM` or `VINE_DEVICE`, `orderToken` (nonce or UUID), expiry ~15 minutes; also runs `simulateSpendAuthority` (authority_v1) and logs a `DecisionEvent` when authority returns `ok: true`.
   - Returns `{ sessionId, decision, orderToken, authority }`.
-- Not implemented yet: HMAC/nonce verification, cleanup of expired order tokens.
+- HMAC signature verification is implemented; nonce cleanup and expired order-token cleanup are still pending.
 
 ---
 
@@ -183,11 +190,12 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 - Wallet pass remains gated until certs and the feature flag exist.
 
 ## Future/Target behavior (explicitly speculative)
-- Add enforced Vine signature lifecycle and a verified bank/receipt path that posts Cherry Points automatically.
+- Add nonce cleanup, broader device lifecycle controls, and a verified bank/receipt path that posts Cherry Points automatically.
 - Document any new API surfaces in this file before shipping.
 
 ## Related docs
 - `docs/routes-map.md`
 - `docs/legal-constraints.md`
 - `docs/cherry-vision.md`
+- `docs/vine-security.md`
 - `docs/wallet-pass.md`

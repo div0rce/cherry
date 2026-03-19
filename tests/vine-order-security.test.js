@@ -28,27 +28,19 @@ mockModule('../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async
 mockModule('../lib/engine-invariants', { validateEngineDecision: () => {} });
 
 const { prisma } = require('../lib/prisma');
-const { callApi } = require('../lib/client/api');
 const { getServerConfig, resetServerConfigForTests } = require('../lib/config/store');
 const { POST } = require('../app/api/vine/order/route');
 
 const baseUrl = 'http://localhost:3000';
 
-function setSignatureMode(mode) {
+function setSignatureConfig(mode, environment) {
   const current = getServerConfig();
-  resetServerConfigForTests({ ...current, vineSignatureMode: mode });
-}
-
-// Use the real route handler in-process so CHERRY_VINE_SIGNATURE_MODE applies during tests.
-global.fetch = async (url, init = {}) => {
-  const target = typeof url === 'string' ? url : url.toString();
-  const req = new Request(target, {
-    method: init.method,
-    headers: init.headers,
-    body: init.body,
+  resetServerConfigForTests({
+    ...current,
+    vineSignatureMode: mode,
+    environment: environment ?? current.environment,
   });
-  return POST(req);
-};
+}
 
 function hmac(secret, message) {
   return crypto.createHmac('sha256', secret).update(message).digest('hex');
@@ -84,10 +76,25 @@ async function seedDevice() {
   });
 }
 
+async function postOrder(body, headers = {}) {
+  const request = new Request(`${baseUrl}/api/vine/order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: JSON.stringify(body),
+  });
+  const response = await POST(request);
+  const json = await response.json();
+  return { response, json };
+}
+
 async function run() {
   const fixedMs = new Date('2024-01-01T00:00:00Z').getTime();
   const restoreDate = stubDate(fixedMs);
   const originalMode = process.env.CHERRY_VINE_SIGNATURE_MODE;
+  const originalConfig = getServerConfig();
   await seedDevice();
   const ctx = {
     deviceId: 'TEST-DEVICE-API',
@@ -108,56 +115,59 @@ async function run() {
     ctx.orderId,
   ].join('|');
   const goodSig = hmac('api-secret-123', message);
+  const payload = { ...ctx, source: 'VINE_SIM' };
 
   // Mode off: should allow missing signature
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'off';
-  setSignatureMode('off');
-  let res = await callApi('/api/vine/order', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    baseUrl,
-    body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
-  });
-  assert.equal(res.ok, true);
+  setSignatureConfig('off', 'development');
+  let result = await postOrder(payload);
+  assert.equal(result.response.status, 200);
 
   // Enforce with good signature
   process.env.CHERRY_VINE_SIGNATURE_MODE = 'enforce';
-  setSignatureMode('enforce');
-  res = await callApi('/api/vine/order', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Vine-Signature': goodSig,
-    },
-    baseUrl,
-    body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
-  });
-  assert.equal(res.ok, true, JSON.stringify(res.error));
+  setSignatureConfig('enforce', 'development');
+  result = await postOrder(payload, { 'X-Vine-Signature': goodSig });
+  assert.equal(result.response.status, 200, JSON.stringify(result.json));
+
+  // Warn mode should still allow invalid signatures in non-production.
+  process.env.CHERRY_VINE_SIGNATURE_MODE = 'warn';
+  setSignatureConfig('warn', 'development');
+  result = await postOrder(payload, { 'X-Vine-Signature': 'deadbeef' });
+  assert.equal(result.response.status, 200, JSON.stringify(result.json));
 
   // Enforce missing signature
-  res = await callApi('/api/vine/order', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    baseUrl,
-    body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
+  process.env.CHERRY_VINE_SIGNATURE_MODE = 'enforce';
+  setSignatureConfig('enforce', 'development');
+  result = await postOrder(payload);
+  assert.equal(result.response.status, 403);
+  assert.equal(result.response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(result.json, {
+    error: 'Invalid signature',
+    code: 'VINE_SIGNATURE_INVALID',
   });
-  assert.equal(res.ok, false);
-  assert.equal(res.error, 'UNAUTHORIZED');
 
   // Enforce wrong signature
-  res = await callApi('/api/vine/order', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Vine-Signature': 'deadbeef',
-    },
-    baseUrl,
-    body: JSON.stringify({ ...ctx, source: 'VINE_SIM' }),
+  result = await postOrder(payload, { 'X-Vine-Signature': 'deadbeef' });
+  assert.equal(result.response.status, 403);
+  assert.equal(result.response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(result.json, {
+    error: 'Invalid signature',
+    code: 'VINE_SIGNATURE_INVALID',
   });
-  assert.equal(res.ok, false);
-  assert.equal(res.error, 'UNAUTHORIZED');
+
+  // Production drift must fail even if config was overridden after startup.
+  process.env.CHERRY_VINE_SIGNATURE_MODE = 'warn';
+  setSignatureConfig('warn', 'production');
+  result = await postOrder(payload, { 'X-Vine-Signature': goodSig });
+  assert.equal(result.response.status, 500);
+  assert.equal(result.response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(result.json, {
+    error: 'Invalid server configuration',
+    code: 'VINE_SIGNATURE_MODE_INVALID',
+  });
 
   process.env.CHERRY_VINE_SIGNATURE_MODE = originalMode;
+  setSignatureConfig(originalMode ?? originalConfig.vineSignatureMode, originalConfig.environment);
   restoreDate();
   console.warn('vine order security: ok');
 }

@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 const crypto = require('crypto');
 const { prisma } = require('../../lib/prisma');
+const { assertServerConfig } = require('../../lib/config/server');
 const {
   buildVineSignatureMessage,
   verifyVineSignature,
@@ -35,6 +36,7 @@ async function seedDevice() {
 
 async function run() {
   const originalMode = process.env.CHERRY_VINE_SIGNATURE_MODE;
+  const current = getServerConfig();
   const device = await seedDevice();
   const ctx = {
     deviceId: device.deviceId,
@@ -84,6 +86,24 @@ async function run() {
   const unknownRes = await verifyVineSignature(unknownCtx, goodSig);
   assert.equal(unknownRes.ok, false);
   assert.equal(unknownRes.reason, 'unknown_device');
+
+  assert.throws(
+    () => assertServerConfig({ ...current, environment: 'production', vineSignatureMode: 'off' }),
+    /Invalid Vine configuration: production requires enforce mode/
+  );
+  assert.throws(
+    () => assertServerConfig({ ...current, environment: 'production', vineSignatureMode: 'warn' }),
+    /Invalid Vine configuration: production requires enforce mode/
+  );
+  assert.doesNotThrow(() =>
+    assertServerConfig({ ...current, environment: 'production', vineSignatureMode: 'enforce' })
+  );
+  assert.doesNotThrow(() =>
+    assertServerConfig({ ...current, environment: 'development', vineSignatureMode: 'off' })
+  );
+  assert.doesNotThrow(() =>
+    assertServerConfig({ ...current, environment: 'test', vineSignatureMode: 'warn' })
+  );
 
   setSignatureMode(originalMode ?? 'off');
   process.env.CHERRY_VINE_SIGNATURE_MODE = originalMode;

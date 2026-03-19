@@ -12,14 +12,14 @@ Current code hooks (dev-only) and caveats:
 - Types: `lib/vine/order-context.ts`, `lib/schemas/vine.ts`, `lib/schemas/vine-terminal.ts`.
 - Dev UI: `/vine-simulator` (App Router page) posts to `/api/vine/order` and shows decision/orderToken.
 - Engine: `lib/engine.ts` computes verdicts; results persist to `RecommendationSession` and Cherry Points ledger when confirmed.
-- MCC is optional but validated when provided; freshness window (~3 minutes) is enforced. HMAC/nonce auth is **TODO** (see `lib/vine/security.ts`).
+- MCC is optional but validated when provided; freshness window (~3 minutes) is enforced. HMAC signature verification is implemented, and production requires `CHERRY_VINE_SIGNATURE_MODE=enforce` (see `docs/vine-security.md`); nonce cleanup remains TODO.
 
 All firmware and future device work must match this document and **never** touch card rails.
 
 ---
 
 ## Current behavior (dev-only, enforced / in code)
-- Endpoint: `POST /api/vine/order` guarded by `withUser`.
+- Endpoint: `POST /api/vine/order` resolves user context with lab/demo access allowed; it is not guarded by `withUser`.
 - Accepted payloads:
   - **Terminal event form** (`lib/schemas/vine-terminal.ts`): amount (number), optional currency, merchant block (name/storeId/MCC), terminal block (terminalId), vine block with source/sessionId.
   - **OrderContext form** (`lib/schemas/vine.ts`): deviceId, amountCents (positive integer), timestamp (epoch ms), optional merchant/store/terminal/order IDs, optional MCC, optional nonce, `source` defaults to `VINE_SIM`.
@@ -30,7 +30,7 @@ All firmware and future device work must match this document and **never** touch
   - Runs `simulateSpendAuthority` and records a `DecisionEvent` when authority returns `ok: true`.
   - Returns `{ sessionId, decision, orderToken, authority }` to the simulator/client.
 - Not implemented yet (explicit TODOs):
-  - HMAC/nonce verification and device secrets.
+  - Nonce cleanup and stricter device lifecycle management.
   - Order token cleanup/expiry sweeps.
   - Hardware/firmware transport; today is backend-only for simulation.
 

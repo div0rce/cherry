@@ -3,6 +3,7 @@ import { prisma } from '../prisma.js';
 import type { VineDevice, PrismaClient } from '@prisma/client';
 import { getServerConfig } from '../config/store.js';
 import type { VineSignatureMode } from '../config/server.js';
+import { logWarn } from '../logger.js';
 
 export function getVineSignatureMode(mode?: VineSignatureMode): VineSignatureMode {
   if (mode === 'warn' || mode === 'enforce' || mode === 'off') return mode;
@@ -49,7 +50,7 @@ export async function verifyVineSignature(
   if (providedSignature === null || providedSignature === undefined || providedSignature === '') {
     const reason = 'missing_signature';
     if (mode === 'warn') {
-      console.warn('[Vine] signature missing', { ctx, reason });
+      logWarn('vine_signature_missing', { ctx, reason, mode });
       return { ok: true, mode, reason };
     }
     return { ok: false, mode, reason };
@@ -62,7 +63,7 @@ export async function verifyVineSignature(
   if (!device || !device.isActive) {
     const reason = !device ? 'unknown_device' : 'inactive_device';
     if (mode === 'warn') {
-      console.warn('[Vine] device invalid', { ctx, reason });
+      logWarn('vine_device_invalid', { ctx, reason, mode });
       return { ok: true, mode, reason };
     }
     return { ok: false, mode, reason };
@@ -76,7 +77,7 @@ export async function verifyVineSignature(
   if (normalizedProvided !== normalizedExpected) {
     const reason = 'signature_mismatch';
     if (mode === 'warn') {
-      console.warn('[Vine] signature mismatch', { ctx, reason });
+      logWarn('vine_signature_mismatch', { ctx, reason, mode });
       return { ok: true, mode, reason };
     }
     return { ok: false, mode, reason };

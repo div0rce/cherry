@@ -1,7 +1,11 @@
 export type InvariantMeta = {
   userId?: string | null;
   mode?: string | null;
+  environment?: string | null;
   endpoint?: string | null;
+  deviceId?: string | null;
+  reason?: string | null;
+  requestId?: string | null;
   meta?: string | null;
   err?: Error;
 };

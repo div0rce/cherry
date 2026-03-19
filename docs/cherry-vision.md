@@ -33,7 +33,7 @@ Where this lives in the repo today:
 
 ## Future/Target behavior (explicitly speculative)
 - Deeper verification (bank ingest + receipts + Vine) posts Cherry Points automatically once verification moves beyond the current stubbed flow.
-- Vine signature lifecycle enforcement and broader context coverage are planned but not yet in production.
+- Production Vine paths require signature enforcement; broader context coverage and device lifecycle expansion remain planned.
 
 ---
 

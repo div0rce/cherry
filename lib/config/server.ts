@@ -28,6 +28,12 @@ export type ServerConfig = {
   bankIngest: BankIngestConfig;
 };
 
+function assertVineSignatureModePolicy(config: ServerConfig): void {
+  if (config.environment === 'production' && config.vineSignatureMode !== 'enforce') {
+    throw new Error('Invalid Vine configuration: production requires enforce mode');
+  }
+}
+
 function assertNonEmptyString(value: unknown, field: string): asserts value is string {
   if (typeof value !== 'string' || value.trim() === '') {
     throw new Error(`ServerConfig.${field} required`);
@@ -88,6 +94,8 @@ export function assertServerConfig(config: ServerConfig): ServerConfig {
   if (config.vineSignatureMode !== 'off' && config.vineSignatureMode !== 'warn' && config.vineSignatureMode !== 'enforce') {
     throw new Error('ServerConfig.vineSignatureMode must be off | warn | enforce');
   }
+
+  assertVineSignatureModePolicy(config);
 
   if (typeof config.offlineEvaluatorEnabled !== 'boolean') {
     throw new Error('ServerConfig.offlineEvaluatorEnabled must be boolean');

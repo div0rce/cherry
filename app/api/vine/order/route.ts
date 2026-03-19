@@ -15,14 +15,37 @@ import { parseJsonBody } from '../../../../lib/validation.js';
 import { z } from 'zod';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../../lib/errors.js';
 import { auth } from '../../../../lib/auth.js';
+import { getServerConfig } from '../../../../lib/config/store.js';
 
 const VinePayloadSchema = z.union([vineTerminalEventSchema, OrderContextSchema]);
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
+const VINE_FAILURE_HEADERS = { 'Cache-Control': 'no-store' } as const;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestReceivedAt = new Date();
   const requestTimestampMs = requestReceivedAt.getTime();
+  const serverConfig = getServerConfig();
+  const requestId = request.headers.get('x-request-id');
+  if (
+    serverConfig.environment === 'production' &&
+    serverConfig.vineSignatureMode !== 'enforce'
+  ) {
+    logInvariant('Invalid Vine signature mode in production', {
+      endpoint: 'api/vine/order',
+      mode: serverConfig.vineSignatureMode,
+      environment: serverConfig.environment,
+      deviceId: null,
+      requestId,
+    });
+    return NextResponse.json(
+      {
+        error: 'Invalid server configuration',
+        code: 'VINE_SIGNATURE_MODE_INVALID',
+      },
+      { status: 500, headers: VINE_FAILURE_HEADERS }
+    );
+  }
   try {
     const { userId, mode } = await resolveUserContext({
       getSession: auth,
@@ -100,9 +123,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     };
     const sigResult = await verifyVineSignature(sigCtx, signatureHeader);
     if (sigResult.ok !== true) {
+      logInvariant('Invalid Vine signature', {
+        endpoint: 'api/vine/order',
+        mode: sigResult.mode,
+        environment: serverConfig.environment,
+        deviceId: orderContext.deviceId,
+        reason: sigResult.reason ?? null,
+        requestId,
+      });
       return NextResponse.json(
-        { error: 'vine_signature_invalid', reason: sigResult.reason ?? 'invalid_signature' },
-        { status: 401 }
+        { error: 'Invalid signature', code: 'VINE_SIGNATURE_INVALID' },
+        { status: 403, headers: VINE_FAILURE_HEADERS }
       );
     }
 
