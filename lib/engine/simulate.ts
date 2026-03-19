@@ -2,6 +2,7 @@ import type {
   BucketId,
   BucketProjection,
   CashProjection,
+  DebtAccount,
   DebtProjection,
   EngineAction,
   EngineContext,
@@ -41,50 +42,71 @@ function recomputeBucketBalance(bucket: EngineState['buckets'][number]): void {
   bucket.remainingCents = Math.max(0, limit - bucket.committedCents);
 }
 
+function reduceProjectedLiquid(projectedLiquid: number | null, amount: number): number | null {
+  if (projectedLiquid == null || !hasPositiveNumber(amount)) return projectedLiquid;
+  return Math.max(0, projectedLiquid - amount);
+}
+
+function findLinkedDebt(
+  debts: EngineState['debts'],
+  linkedDebtId?: string | null
+): DebtAccount | undefined {
+  if (!hasNonEmptyString(linkedDebtId)) return undefined;
+  const resolvedDebts = getDebtAccounts(debts);
+  return resolvedDebts.find((debt) => debt.id === linkedDebtId);
+}
+
 function applyUseCard(
   buckets: EngineState['buckets'],
   debts: EngineState['debts'],
   state: EngineState,
   ctx: EngineContext,
   action: EngineAction,
-  amount: number
-): void {
-  if (!hasNonEmptyString(action.cardId) || !hasPositiveNumber(amount)) return;
+  amount: number,
+  projectedLiquid: number | null
+): number | null {
+  if (!hasNonEmptyString(action.cardId) || !hasPositiveNumber(amount)) return projectedLiquid;
 
   const bucketId = pickBucketForContext(state, ctx);
   if (hasNonEmptyString(bucketId)) {
     const bucket = buckets.find((b) => b.id === bucketId);
     if (bucket !== undefined) {
-      bucket.postedSpendCents += amount;
+      bucket.pendingSpendCents += amount;
       recomputeBucketBalance(bucket);
     }
   }
 
   const card = state.cards.find((c) => c.id === action.cardId);
-  if (card !== undefined && card.isCredit === true && card.creditLimitCents != null) {
-    const resolvedDebts = getDebtAccounts(debts);
-    const debt = resolvedDebts.find((d) => d.type === 'CREDIT_CARD' && d.name === card.label);
+  if (card === undefined) return projectedLiquid;
+
+  if (card.isCredit === true) {
+    const debt = findLinkedDebt(debts, card.linkedDebtId);
     if (debt !== undefined) {
       debt.balanceCents += amount;
     }
+    return projectedLiquid;
   }
+
+  return reduceProjectedLiquid(projectedLiquid, amount);
 }
 
 function applyPaydown(
   debts: EngineState['debts'],
-  action: EngineAction
-): void {
+  action: EngineAction,
+  projectedLiquid: number | null
+): number | null {
   if (
     !hasNonEmptyString(action.debtId) ||
     !hasPositiveNumber(action.paydownAmountCents)
   ) {
-    return;
+    return projectedLiquid;
   }
   const resolvedDebts = getDebtAccounts(debts);
   const debt = resolvedDebts.find((d) => d.id === action.debtId);
-  if (debt === undefined) return;
+  if (debt === undefined) return projectedLiquid;
   const delta = Math.min(debt.balanceCents, action.paydownAmountCents);
   debt.balanceCents -= delta;
+  return reduceProjectedLiquid(projectedLiquid, delta);
 }
 
 function pickBestCashOrDebitCard(state: EngineState): NormalizedCardId | undefined {
@@ -107,19 +129,39 @@ export function simulateAction(
   const clonedBuckets = cloneBuckets(state.buckets);
   clonedBuckets.forEach(recomputeBucketBalance);
   const clonedDebts = cloneDebts(state.debts);
+  const cashState = getCashState(state.cash);
+  let projectedLiquid =
+    cashState != null && cashState.liquidCents != null ? cashState.liquidCents : null;
 
   switch (action.type) {
     case 'USE_CARD': {
-      applyUseCard(clonedBuckets, clonedDebts, state, ctx, action, amount);
+      projectedLiquid = applyUseCard(
+        clonedBuckets,
+        clonedDebts,
+        state,
+        ctx,
+        action,
+        amount,
+        projectedLiquid
+      );
       break;
     }
     case 'USE_CARD_WITH_PAYDOWN': {
-      applyUseCard(clonedBuckets, clonedDebts, state, ctx, action, amount);
-      applyPaydown(clonedDebts, action);
+      // Composite actions stay single-step and ordered: purchase first, paydown second.
+      projectedLiquid = applyUseCard(
+        clonedBuckets,
+        clonedDebts,
+        state,
+        ctx,
+        action,
+        amount,
+        projectedLiquid
+      );
+      projectedLiquid = applyPaydown(clonedDebts, action, projectedLiquid);
       break;
     }
     case 'PAY_DOWN_DEBT': {
-      applyPaydown(clonedDebts, action);
+      projectedLiquid = applyPaydown(clonedDebts, action, projectedLiquid);
       break;
     }
     case 'DELAY_PURCHASE':
@@ -129,7 +171,15 @@ export function simulateAction(
         const syntheticAction: EngineAction = hasNonEmptyString(syntheticCardId)
           ? { type: 'USE_CARD', cardId: syntheticCardId }
           : { type: 'USE_CARD' };
-        applyUseCard(clonedBuckets, clonedDebts, state, ctx, syntheticAction, amount);
+        projectedLiquid = applyUseCard(
+          clonedBuckets,
+          clonedDebts,
+          state,
+          ctx,
+          syntheticAction,
+          amount,
+          projectedLiquid
+        );
       }
       break;
     }
@@ -164,17 +214,6 @@ export function simulateAction(
             ? d.balanceCents / d.creditLimitCents
             : null,
       }));
-
-  const cashState = getCashState(state.cash);
-  let projectedLiquid =
-    cashState != null && cashState.liquidCents != null ? cashState.liquidCents : null;
-  if (
-    projectedLiquid != null &&
-    (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    hasPositiveNumber(action.paydownAmountCents)
-  ) {
-    projectedLiquid = Math.max(0, projectedLiquid - action.paydownAmountCents);
-  }
 
   const cashProjection: CashProjection = {
     projectedLiquidCents: projectedLiquid,

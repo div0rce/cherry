@@ -398,8 +398,201 @@ function testSimulateActionUpdatesBucket() {
   const ctx = buildStubContext();
   const projections = simulateAction(state, ctx, { type: 'USE_CARD', cardId: 'card-strong' });
   const bucketProj = projections.buckets.find((b) => b.bucketId === 'bucket-1');
-  assert.equal(bucketProj?.projectedPostedSpendCents, 2000);
+  assert.equal(bucketProj?.projectedPostedSpendCents, 1000);
+  assert.equal(bucketProj?.projectedPendingSpendCents, 1000);
   assert.equal(bucketProj?.projectedCommittedCents, 2000);
+}
+
+function testSimulateActionDebitPurchaseReducesLiquidCash() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-debit',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Debit Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+    buckets: [
+      {
+        id: 'bucket-1',
+        name: 'Dining',
+        categoryKey: 'DINING',
+        limitCents: 5000,
+        postedSpendCents: 1000,
+        pendingSpendCents: 0,
+        committedCents: 1000,
+        remainingCents: 4000,
+        period: 'MONTHLY',
+        isEssential: false,
+        strictMode: false,
+      },
+    ],
+    cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+  });
+
+  const ctx = buildStubContext({ amountCents: 1500 });
+  const projections = simulateAction(state, ctx, { type: 'USE_CARD', cardId: 'card-debit' });
+  const bucketProj = projections.buckets.find((b) => b.bucketId === 'bucket-1');
+  assert.equal(bucketProj?.projectedPostedSpendCents, 1000);
+  assert.equal(bucketProj?.projectedPendingSpendCents, 1500);
+  assert.equal(bucketProj?.projectedCommittedCents, 2500);
+  assert.equal(projections.cash.projectedLiquidCents, 8500);
+}
+
+function testSimulateActionCreditPurchaseUsesLinkedDebtId() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-strong',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Strong Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        linkedDebtId: 'debt-2',
+      },
+    ],
+    debts: [
+      {
+        id: 'debt-1',
+        name: 'Debt A',
+        type: 'CREDIT_CARD',
+        balanceCents: 10_000,
+        creditLimitCents: 20_000,
+        aprPercent: 20,
+        minPaymentCents: 500,
+        dueDayOfMonth: 5,
+      },
+      {
+        id: 'debt-2',
+        name: 'Debt B',
+        type: 'CREDIT_CARD',
+        balanceCents: 20_000,
+        creditLimitCents: 40_000,
+        aprPercent: 18,
+        minPaymentCents: 700,
+        dueDayOfMonth: 15,
+      },
+    ],
+  });
+
+  const ctx = buildStubContext({ amountCents: 1200 });
+  const projections = simulateAction(state, ctx, { type: 'USE_CARD', cardId: 'card-strong' });
+  const debtA = projections.debt.find((d) => d.debtId === 'debt-1');
+  const debtB = projections.debt.find((d) => d.debtId === 'debt-2');
+  assert.equal(debtA?.projectedBalanceCents, 10_000);
+  assert.equal(debtB?.projectedBalanceCents, 21_200);
+  assert.equal(projections.cash.projectedLiquidCents, 10_000);
+}
+
+function testSimulateActionCreditPurchaseWithoutLinkedDebtIdMutatesNoDebt() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-strong',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Strong Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+    debts: [
+      {
+        id: 'debt-1',
+        name: 'Strong Card',
+        type: 'CREDIT_CARD',
+        balanceCents: 10_000,
+        creditLimitCents: 20_000,
+        aprPercent: 20,
+        minPaymentCents: 500,
+        dueDayOfMonth: 5,
+      },
+    ],
+  });
+
+  const ctx = buildStubContext({ amountCents: 1200 });
+  const projections = simulateAction(state, ctx, { type: 'USE_CARD', cardId: 'card-strong' });
+  const debt = projections.debt.find((d) => d.debtId === 'debt-1');
+  assert.equal(debt?.projectedBalanceCents, 10_000);
+  assert.equal(projections.cash.projectedLiquidCents, 10_000);
+}
+
+function testSimulateActionUseCardWithPaydownAppliesPurchaseThenPaydown() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-strong',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Strong Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        linkedDebtId: 'debt-1',
+      },
+    ],
+    buckets: [
+      {
+        id: 'bucket-1',
+        name: 'Dining',
+        categoryKey: 'DINING',
+        limitCents: 5000,
+        postedSpendCents: 1000,
+        pendingSpendCents: 0,
+        committedCents: 1000,
+        remainingCents: 4000,
+        period: 'MONTHLY',
+        isEssential: false,
+        strictMode: false,
+      },
+    ],
+    debts: [
+      {
+        id: 'debt-1',
+        name: 'Debt A',
+        type: 'CREDIT_CARD',
+        balanceCents: 10_000,
+        creditLimitCents: 20_000,
+        aprPercent: 20,
+        minPaymentCents: 500,
+        dueDayOfMonth: 5,
+      },
+    ],
+    cash: { liquidCents: 10_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null },
+  });
+
+  const ctx = buildStubContext({ amountCents: 1200 });
+  const projections = simulateAction(state, ctx, {
+    type: 'USE_CARD_WITH_PAYDOWN',
+    cardId: 'card-strong',
+    debtId: 'debt-1',
+    paydownAmountCents: 500,
+  });
+  const bucketProj = projections.buckets.find((b) => b.bucketId === 'bucket-1');
+  const debt = projections.debt.find((d) => d.debtId === 'debt-1');
+  assert.equal(bucketProj?.projectedPendingSpendCents, 1200);
+  assert.equal(bucketProj?.projectedCommittedCents, 2200);
+  assert.equal(debt?.projectedBalanceCents, 10_700);
+  assert.equal(projections.cash.projectedLiquidCents, 9500);
 }
 
 function testGenerateCandidatesAddsAdvancedActions() {
@@ -431,6 +624,11 @@ function testGenerateCandidatesAddsAdvancedActions() {
   assert.ok(types.has('USE_CARD_WITH_PAYDOWN'));
   assert.ok(types.has('DELAY_PURCHASE'));
   assert.ok(types.has('REJECT_PURCHASE'));
+  assert.ok(
+    actions
+      .filter((action) => action.type === 'USE_CARD_WITH_PAYDOWN' || action.type === 'PAY_DOWN_DEBT')
+      .every((action) => action.paydownScheduledDateMs == null)
+  );
 }
 
 function testPaydownGuardrailBlocksExcess() {
@@ -653,6 +851,10 @@ async function run() {
   await testSafeSolveDecisionFailure();
   testGenerateCandidatesSkipsDisabled();
   testSimulateActionUpdatesBucket();
+  testSimulateActionDebitPurchaseReducesLiquidCash();
+  testSimulateActionCreditPurchaseUsesLinkedDebtId();
+  testSimulateActionCreditPurchaseWithoutLinkedDebtIdMutatesNoDebt();
+  testSimulateActionUseCardWithPaydownAppliesPurchaseThenPaydown();
   testGenerateCandidatesAddsAdvancedActions();
   testPaydownGuardrailBlocksExcess();
   await testCompositeActionImprovesDebtRelief();
