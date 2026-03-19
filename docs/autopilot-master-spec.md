@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-03-19
 
 # Autopilot Master Spec
 
@@ -9,14 +9,14 @@ Document purpose: Define the complete architecture, lifecycle, contracts, and in
 Governed subsystems: Autopilot UI (`/app/autopilot`), Autopilot adapter (`runSimulation`), Preview API (`/api/autopilot/preview`), Commit API (if present), and solver entry (`public.getAutopilotDecisionForUserSwipe`). This doc must stay aligned with `docs/autopilot-engine-adapter.md`, `docs/autopilot-integration-summary.md`, and the validation/service layers named below.
 
 ## Current behavior (enforced / in code)
-- Preview is read-only and advisory; commit is transitional and may write simulated transactions and bucket updates.
+- Preview is read-only and advisory; commit is transitional and may write simulated transactions, but it does not mutate buckets.
 - Autopilot uses the engine solver via `getAutopilotDecisionForUserSwipe` and authority_v1 for advisory warnings.
 - UI remains render-only; mapping lives in `lib/autopilot/runSimulation.ts`.
 
 ## Implementation status
 - Phase 1 — Autopilot preview wiring (UI ↔ adapter ↔ /preview ↔ engine): **COMPLETE**. Implemented in `app/api/autopilot/preview/route.ts`, `lib/autopilot/service.ts`, `lib/autopilot/runSimulation.ts`, `lib/validation/autopilot/preview.ts`, with coverage in `tests/api-autopilot-preview.test.js`, `tests/api-autopilot.user-context.test.ts`, and `tests/autopilot-runSimulation.test.js`.
 - Phase 2 — Autopilot preview reliability/observability: **COMPLETE**. Structured errors `{ error, code }`, engine timeout (503/`ENGINE_TIMEOUT`), metrics (request counts, status breakdown, latencies, bucket pressure/warnings) added to `/api/autopilot/preview` and `lib/autopilot/service.ts`, with adapter-aware error handling in `lib/autopilot/runSimulation.ts`.
-- Phase 3 — Autopilot commit re-spec (sessions/ledger alignment): **NOT COMPLETE**. Target contract is defined in §17; implementation is gated behind `AUTOPILOT_COMMIT_V2` and pending migration/backfill off the transitional bucket-mutating commit.
+- Phase 3 — Autopilot commit re-spec (sessions/ledger alignment): **NOT COMPLETE**. Target contract is defined in §17; implementation is gated behind `AUTOPILOT_COMMIT_V2` and pending migration/backfill off the transitional simulated-transaction-only commit.
 
 ## 1. Autopilot Identity and Positioning
 Autopilot is Cherry’s before-purchase spend planning copilot. It observes user-provided context (merchant, amount, category, timing), evaluates through the Cherry engine, recommends a card and budget impact, and presents advisory outputs. Autopilot is not a card, proxy, processor, terminal, or authorization layer; it never fronts or routes payments.
@@ -24,7 +24,7 @@ Autopilot is Cherry’s before-purchase spend planning copilot. It observes user
 ## 2. Surfaces and Entry Points
 - `/app/autopilot` (AutopilotShell): user-facing page that gathers context and renders results; stateless aside from client state.
 - `/api/autopilot/preview`: advisory API; auth required; consumes merchant/amount/category/occurredAt; returns an engine-backed preview; stateless (no bucket/session mutation).
-- `/api/autopilot/commit` (transitional): optional follow-up to persist a simulated swipe; auth required; re-evaluates via the same engine flow as preview, **writes a simulated transaction**, and **may mutate bucket state** when a valid `bucketDelta` is present. It does not create `RecommendationSession` or ledger rows today and should be treated as experimental until the Phase 3 commit spec is finalized.
+- `/api/autopilot/commit` (transitional): optional follow-up to persist a simulated swipe; auth required; re-evaluates via the same engine flow as preview and writes a simulated transaction. It does not create `RecommendationSession` or ledger rows today and should be treated as experimental until the Phase 3 commit spec is finalized.
 - Engine entry: `lib/engine/public.getAutopilotDecisionForUserSwipe` invoked by the preview service.
 - Validation entry: `lib/validation/autopilot/preview.ts` (input + output schemas; single source used by route, service, adapter).
 - Service entry: `lib/autopilot/service.ts#getAutopilotPreview` (engine orchestration + DTO mapping + output validation; no writes).
@@ -32,7 +32,7 @@ Autopilot is Cherry’s before-purchase spend planning copilot. It observes user
 For each:
 - Caller: UI (preview), backend service (commit).  
 - Inputs/outputs: preview request/response defined by `AutopilotPreviewOutputSchema`; commit request/response defined by `AutopilotCommitInputSchema`/result.  
-- Mutations: preview is read-only; commit may write simulated transaction/bucket adjustments.
+- Mutations: preview is read-only; commit may write simulated transactions only.
 
 ## 3. Autopilot Invariants (MUST Hold Across All Implementations)
 - Preview (`/api/autopilot/preview`) never mutates buckets, sessions, ledger, or simulated transactions; it is read-only.
@@ -59,16 +59,16 @@ The detailed target commit contract and confirm-pipeline integration are specifi
   - Resolves category via `resolveScanCategory` for the simulated transaction.
   - Inside a single DB transaction:
     - If a `simulatedTransaction` with this `decisionId` already exists, returns `status: "already_exists"` and may refresh the bucket snapshot.
-    - Otherwise, if the engine provided a `bucketDelta` and the bucket belongs to the user, it ensures freshness via `ensureBucketFresh`, computes `bucketBefore`/`bucketAfter` with `computeBucketBalance`/`computeBucketBalanceFromNumbers`, and when the delta is positive **updates the bucket** (`spentCents`, `currentAmount`) to reflect the simulated swipe.
+    - Otherwise, if the engine provided a `bucketDelta` and the bucket belongs to the user, it ensures freshness via `ensureBucketFresh` and records advisory `bucketBefore`/`bucketAfter` snapshot values on the simulated transaction without posting bucket state.
     - Writes a `simulatedTransaction` row with `status: APPROVED`, amount, merchant, resolved category, bucket identifiers and before/after/limit cents, chosen card info, and reason `AUTOPILOT_COMMIT`.
-  - Does **not** create `RecommendationSession` or `CherryPointLedger` rows today, but **does mutate bucket state** when a valid `bucketDelta` is present. This behavior is **transitional** and is **not** part of the Autopilot Phase 1 preview spec; any production use of commit must go through a dedicated Phase 3 spec.
+  - Does **not** create `RecommendationSession` or `CherryPointLedger` rows today and does **not** mutate bucket state. This behavior remains **transitional** and is **not** part of the Autopilot Phase 1 preview spec; any production use of commit must go through a dedicated Phase 3 spec.
 - Target:
   - Keep commit optional and clearly labeled as advisory/simulated; no points awarded.
   - If linked to sessions/ledger in the future, define explicit mapping to `RecommendationSession` and `CherryPointLedger`, with guardrails to avoid double-counting and to respect advisory-only scope.
   - Align commit semantics with the advisory-only positioning and bucket/session semantics used by `/api/sessions` confirm flows, or deprecate Autopilot commit in favor of session-based confirmation. Until then, treat commit as experimental and not user-facing.
 
 ## 5. Autopilot Life-Cycle and State Machine
-Current lifecycle (implemented): Idle (no summary) → Simulating (form submit triggers `runSimulation`/preview) → Recommended/Warning (adapter maps preview to `AutopilotSimulationResult`) → Optional Commit (simulated transaction write only, no sessions/ledger) or Ignore. Preview remains stateless regardless of commit.
+Current lifecycle (implemented): Idle (no summary) → Simulating (form submit triggers `runSimulation`/preview) → Recommended/Warning (adapter maps preview to `AutopilotSimulationResult`) → Optional Commit (simulated transaction write only, no sessions/ledger, no bucket posting) or Ignore. Preview remains stateless regardless of commit.
 
 Target lifecycle (Phase 3, see §17): Idle → Simulating → Recommended/Warning → Optional Commit (shared confirm pipeline creates/updates `RecommendationSession` + ledger, advisory-only, no payment rails) or Ignore. Preview stays stateless/read-only.
 
@@ -79,7 +79,7 @@ Verbal diagrams:
 - Lifecycle: Idle → Simulating → Recommended (safe) or Warning (caution/fallback/blocked) → (Optional) Commit (current: simulated transaction only; target: shared confirm pipeline/session+ledger) or Ignore.
 
 ## 6. Engine Contract for Autopilot
-`lib/engine/public.getAutopilotDecisionForUserSwipe` requires: authenticated `userId`, normalized merchant name, positive `amountCents`, card universe IDs, and resolved category (via scan helper). It produces: decision kind (`OK`/`FALLBACK`/`BLOCKED`), recommended card ID (or null), known monetary benefit vs runner-up when computable, raw issuer-points delta when applicable, optional bucket delta (remaining/spent projections), reason code, and user-facing message. Internally it calls the solver (`safeSolveDecisionForUser`) using bounded heuristic scoring weights (`rewards`, `runway`, `debtRelief`) and filters to card actions only.
+`lib/engine/public.getAutopilotDecisionForUserSwipe` requires: authenticated `userId`, normalized merchant name, positive `amountCents`, card universe IDs, and resolved category (via scan helper). It produces: decision kind (`OK`/`FALLBACK`/`BLOCKED`), recommended card ID (or null), known monetary benefit vs runner-up when computable, raw issuer-points delta when applicable, optional bucket delta (remaining/spent projections), reason code, and user-facing message. Live preview semantics are single-step and present-time: purchases are pending authorization effects, not posted settlement, and the live preview is not a future scheduler. `USE_CARD_WITH_PAYDOWN` applies purchase authorization first and immediate paydown second in the same preview. Internally it calls the solver (`safeSolveDecisionForUser`) using bounded heuristic scoring weights (`rewards`, `runway`, `debtRelief`) and filters to card actions only.
 
 ## 7. Preview Backend Integration Contract (/api/autopilot/preview)
 - Request (`/api/autopilot/preview`): JSON with `merchant` (string, trimmed, required), `amountCents` (positive int), optional `occurredAt`, **required** `category` (`AutopilotRewardCategory`). Auth required (`resolveUserContext`, allow lab demo). Stateless: no bucket writes. Parsed via `AutopilotPreviewInputSchema` in `lib/validation/autopilot/preview.ts`.
@@ -137,7 +137,7 @@ AutopilotSimulationResult Field Contract Table:
 - Degraded engine decisions (`status = fallback/blocked`): map to `state = warning`, risk banner from first warning, and neutral/negative card labels.
 
 ## 11. Relationship to Existing Engine Surfaces
-Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`safeSolveDecisionForUser`), filtered to card actions. It is a dedicated lens, not a different solver profile. It does not persist sessions/ledger rows (unlike `/api/sessions`) and does not mutate buckets on preview (unlike confirm flows). `/api/autopilot/commit` is analogous to simulated transaction commit today; the target confirm-pipeline behavior is defined in §17.
+Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`safeSolveDecisionForUser`), filtered to card actions. It is a dedicated lens, not a different solver profile. It does not persist sessions/ledger rows (unlike `/api/sessions`) and does not mutate buckets on preview or commit. `/api/autopilot/commit` is analogous to simulated transaction commit today; the target confirm-pipeline behavior is defined in §17.
 
 ## 12. Current vs Target Behavior
 - Engine contract  
@@ -168,7 +168,7 @@ Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`s
 
 ## 15. Known Gaps / Technical Debt
 - Preview still lacks rate limiting and explicit response versioning; adapter/backend currently rely on the implicit v1 response contract.
-- Commit migration to the shared confirm pipeline (see §17) is not implemented; current code still uses transitional bucket-mutating commit and lacks session/ledger linkage, creating double-counting risk until migration completes.
+- Commit migration to the shared confirm pipeline (see §17) is not implemented; current code still uses a transitional simulated-transaction-only commit and lacks session/ledger linkage.
 - Autopilot commit v2 is feature-flagged (`AUTOPILOT_COMMIT_V2`) and requires applying migration `20251206090000_autopilot_commit_v2` (adds `engineDecisionId`, `RecommendationSource.AUTOPILOT`, `AutopilotCommit`) before rollout.
 - Reason codes/warnings are limited; richer constraint tagging from the solver would improve UI messaging without adding UI logic.
 - Engine constraint tags are not surfaced to UI; warnings are coarse and not differentiated (safety vs soft advice).
@@ -182,7 +182,7 @@ Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`s
 - Future Autopilot behavior changes (backend, adapter, or UI) must first update this spec, then implement; no changes may bypass advisory-only/legal guardrails from `AGENTS.md`.
 
 ## 17. Phase 3 — Autopilot commit re-spec (target)
-- Goal: Replace transitional `/api/autopilot/commit` bucket mutations with the unified confirm pipeline used by `/api/sessions/confirm`, keeping Autopilot advisory-only while recording user confirmation.
+- Goal: Replace transitional `/api/autopilot/commit` simulated-transaction-only behavior with the unified confirm pipeline used by `/api/sessions/confirm`, keeping Autopilot advisory-only while recording user confirmation.
 - Flow (target): UI confirms → `/api/autopilot/commit` re-evaluates via `evaluateAutopilot`, validates `decisionId`/`cardId`/`status=ok`, resolves category, finds or creates `RecommendationSession (source='AUTOPILOT', engineDecisionId=decisionId)`, invokes shared confirm pipeline (buckets + `CherryPointLedger`), persists an idempotent commit artifact linked to `decisionId`/`sessionId`, and returns `{ decisionId, sessionId, status: created|already_exists, bucket? }`.
 - Errors: `{ error, code }` parity with preview plus commit-specific codes (`DECISION_MISMATCH`, `DECISION_BLOCKED`, `CARD_MISMATCH`, `COMMIT_INVARIANT_VIOLATION`), honoring `ENGINE_TIMEOUT`/`ENGINE_ERROR`.
 - Invariants: no direct bucket math in Autopilot commit; all bucket/ledger effects flow through the shared confirm service; `(userId, decisionId)` governs idempotency across sessions/ledger/artifacts; advisory-only (no payment rails).

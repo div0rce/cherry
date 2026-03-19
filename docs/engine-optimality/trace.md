@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-03-19
 
 # Engine Optimality Trace Schema
 
@@ -8,6 +8,7 @@ Last updated: 2026-01-18
 ### Trace version
 
 - `traceVersion`: `trace_v1`
+- Live solver traces are single-step present-time traces. Purchase effects are pending authorization effects, not posted settlement effects. Immediate paydowns may appear, and the live solver is not a future scheduler.
 
 ### JSON schema (informal)
 

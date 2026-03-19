@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-03-19
 
 # Cherry API Reference (App Router)
 
@@ -153,7 +153,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card (includes PATCH for updates).
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
 - `/api/buckets/[bucketId]` — Update or delete a specific bucket (PATCH/DELETE).
-- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent` when authority returns `ok: true`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
+- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Live simulation is single-step and present-time: purchase projections are pending authorization effects, not posted settlement, and the simulator is not a future scheduler. Paydowns are immediate-only. `USE_CARD_WITH_PAYDOWN` applies purchase authorization first and immediate paydown second in the same preview step. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent` when authority returns `ok: true`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.

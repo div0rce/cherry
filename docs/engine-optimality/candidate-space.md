@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-03-19
 
 # Engine Optimality Candidate Space
 
@@ -33,6 +33,14 @@ Each action type has explicit parameter axes bounded by `Bounds`:
   - `altMerchantCategoryKey`: `bounds.switchMerchant.altMerchantCategoryKeys`
 - **REJECT_PURCHASE**
   - Enabled when `bounds.rejectPurchase.enabled` is true.
+
+### Live solver note
+
+- The bounded optimality model still permits `paydownScheduledDateMs` as an axis in the abstract candidate space.
+- The live solver does not currently emit future-scheduled paydowns.
+- The live solver is not a future scheduler.
+- Live-generated `PAY_DOWN_DEBT` and `USE_CARD_WITH_PAYDOWN` actions are immediate-only and single-step.
+- `USE_CARD_WITH_PAYDOWN` is ordered as: purchase authorization effect, then immediate paydown effect.
 
 ### Completeness Lemma (Bounded)
 
