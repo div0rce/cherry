@@ -23,9 +23,11 @@ function buildLinkLabels(
 ): {
   byDebtId: Map<string, string>;
   byCardId: Map<string, string>;
+  debtIdByCardId: Map<string, string>;
 } {
   const byDebtId = new Map<string, string>();
   const byCardId = new Map<string, string>();
+  const debtIdByCardId = new Map<string, string>();
 
   for (const link of links) {
     if (!hasNonEmptyString(link.cardId) || !hasNonEmptyString(link.debtId)) {
@@ -37,9 +39,10 @@ function buildLinkLabels(
       byDebtId.set(link.debtId, label);
     }
     byCardId.set(link.cardId, label);
+    debtIdByCardId.set(link.cardId, link.debtId);
   }
 
-  return { byDebtId, byCardId };
+  return { byDebtId, byCardId, debtIdByCardId };
 }
 
 function weightsToPartial(weights: EngineInputWeights | null | undefined): Partial<ObjectiveWeights> | undefined {
@@ -84,7 +87,8 @@ function toRewardRules(card: EngineInputCard): EngineState['cards'][number]['rew
 function toCards(
   input: EngineInput,
   userId: string,
-  linkLabels: Map<string, string>
+  linkLabels: Map<string, string>,
+  linkedDebtIds: Map<string, string>
 ): EngineState['cards'] {
   return input.cards.map((card) => {
     const linkedLabel = linkLabels.get(card.id);
@@ -103,6 +107,12 @@ function toCards(
       isActive: card.isActive === true,
       isVirtual: false,
       rewardRules: toRewardRules(card),
+      linkedDebtId: linkedDebtIds.has(card.id)
+        ? (() => {
+            const linkedDebtId = linkedDebtIds.get(card.id);
+            return linkedDebtId === undefined ? null : linkedDebtId;
+          })()
+        : null,
       creditLimitCents,
       currentBalanceCents: null,
     };
@@ -144,7 +154,7 @@ export function buildEngineStateFromInput(params: {
 
   return {
     userId,
-    cards: toCards(input, userId, linkLabels.byCardId),
+    cards: toCards(input, userId, linkLabels.byCardId, linkLabels.debtIdByCardId),
     buckets: input.buckets.map((bucket) => {
       const committed = bucket.postedSpendCents + bucket.pendingSpendCents;
       let remaining = 0;

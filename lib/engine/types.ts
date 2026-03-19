@@ -124,6 +124,7 @@ export type NormalizedCard = {
   isActive: boolean;
   isVirtual?: boolean;
   rewardRules: RewardRule[];
+  linkedDebtId?: DebtAccountId | null;
   creditLimitCents?: number | null;
   currentBalanceCents?: number | null;
 };
@@ -328,10 +329,10 @@ export function getCashState(
 }
 
 export function hasKnownBucketEssentiality(bucket: Bucket): boolean {
-  return (
-    (bucket.essentiality != null && hasAvailableValue(bucket.essentiality)) ||
-    typeof bucket.isEssential === 'boolean'
-  );
+  if (bucket.essentiality != null && hasAvailableValue(bucket.essentiality)) {
+    return true;
+  }
+  return typeof bucket.isEssential === 'boolean';
 }
 
 export function isBucketEssential(bucket: Bucket): boolean {

@@ -83,6 +83,7 @@ async function loadNormalizedCards(userId: string): Promise<NormalizedCard[]> {
     isActive: true,
     isVirtual: false,
     rewardRules: mapRewardRules(card.rewardRules, card.id),
+    linkedDebtId: null,
     creditLimitCents: null,
     currentBalanceCents: null,
   }));

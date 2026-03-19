@@ -151,6 +151,10 @@ function buildDebtCardLinks(state: EngineState): EngineInputDebtCardLink[] {
 
   for (const card of state.cards) {
     if (card.isCredit !== true) continue;
+    if (hasNonEmptyString(card.linkedDebtId)) {
+      links.push({ cardId: card.id, debtId: card.linkedDebtId });
+      continue;
+    }
     if (card.creditLimitCents === null || card.creditLimitCents === undefined) continue;
     if (!hasNonEmptyString(card.label)) continue;
 
