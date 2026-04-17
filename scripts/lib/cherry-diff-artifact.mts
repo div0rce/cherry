@@ -29,6 +29,10 @@ export function ensurePatchExists(prefix: string, fix: string): void {
   }
 }
 
+function patchHasContent(): boolean {
+  return fs.readFileSync(PATCH_PATH, 'utf8').trim().length > 0;
+}
+
 export function collectExpectedChangedFiles(prefix: string): string[] {
   const tracked = runTool(
     'git',
@@ -126,6 +130,11 @@ export function withAppliedHeadWorktree(prefix: string, fn?: (worktreePath: stri
     );
 
     ensureNodeModulesLink(prefix, worktreePath);
+
+    if (!patchHasContent()) {
+      fn?.(worktreePath);
+      return;
+    }
 
     const applyCheck = runTool('git', ['apply', '--check', PATCH_PATH], { cwd: worktreePath });
     assertOk(
