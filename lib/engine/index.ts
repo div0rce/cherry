@@ -7,5 +7,7 @@ export * from './reward-semantics.js';
 export * from './candidates.js';
 export * from './simulate.js';
 export * from './legacy-mapper.js';
+export * from './credit-liability.js';
+export * from './degradation.js';
 export * from './public-types.js';
 export * from './public.js';
