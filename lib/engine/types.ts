@@ -265,6 +265,11 @@ export type EngineDecision = {
   components?: ObjectiveComponentScores;
 };
 
+export type EngineExclusions = {
+  creditActionsGeneratedCount: number;
+  creditUnresolvableLiabilityCount: number;
+};
+
 export type ObjectiveComponentScores = {
   rewards: number;
   runway: number;
