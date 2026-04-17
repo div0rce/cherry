@@ -57,7 +57,7 @@ This file documents the server routes under `app/api/*` and how they align with 
   - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody` (`lib/validation.ts`).
   - Resolves category via `resolveScanCategory` (MCC-aware).
   - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; logs a `DecisionEvent` row per request (no session/bucket/ledger writes).
-- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging + top-level runtime truth metadata:
+- Response: bucket/card verdicts + Cherry incentive + raw `decision` echo for debugging + top-level runtime truth metadata:
   - `capabilities`: which financial primitives were actually available to the runtime engine state
   - `degraded`: which reasoning dimensions are degraded because those primitives were unavailable
   - `authority` (authority_v1: verdict, severity, reasons[], counterfactuals[], explanation, inputsVersion)
