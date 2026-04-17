@@ -4,6 +4,7 @@ import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { buildDeterministicEnv } from './lib/deterministic-env.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
+import { GENERIC_ARTIFACT_PREFIX, withAppliedHeadWorktree, verifyCherryDiffArtifact } from './lib/cherry-diff-artifact.mjs';
 
 ensureTsEsm();
 
@@ -90,6 +91,10 @@ function runClosureSuite(cwd: string, label: string): void {
 
 function main(): void {
   runClosureSuite(ROOT, 'working-tree');
+  verifyCherryDiffArtifact(GENERIC_ARTIFACT_PREFIX);
+  withAppliedHeadWorktree(GENERIC_ARTIFACT_PREFIX, (worktreePath) => {
+    runClosureSuite(worktreePath, 'clean-applied-tree');
+  });
   process.stdout.write('verify:8.3-closure-artifact: ok\n');
 }
 
