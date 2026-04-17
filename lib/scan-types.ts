@@ -2,6 +2,7 @@ import type { RewardCategory } from '@prisma/client';
 import type {
   EngineCapabilityMap,
   EngineDegradedDimensions,
+  EngineDegradation,
   LegacyEngineDecision,
   RewardSemantics,
 } from './engine.js';
@@ -15,7 +16,7 @@ export type ScanRequestBody = {
   mccCode?: number | null;
 };
 
-export type ScanResponseBody = {
+export type ScanSuccessResponseBody = {
   merchantName: string;
   category: RewardCategory;
   amountCents: number;
@@ -51,8 +52,23 @@ export type ScanResponseBody = {
     expiryMinutes: number;
   };
 
-  engineDecision: LegacyEngineDecision;
+  decision: LegacyEngineDecision;
   capabilities: EngineCapabilityMap;
   degraded: EngineDegradedDimensions;
-  authority: SimulatedAuthorityDecision;
+  degradation: EngineDegradation;
+  authority: SimulatedAuthorityDecision | null;
 };
+
+export type ScanFallbackResponseBody = {
+  error: {
+    code: string;
+    message: string;
+  };
+  decision: null;
+  capabilities: EngineCapabilityMap;
+  degraded: EngineDegradedDimensions;
+  degradation: EngineDegradation;
+  authority: SimulatedAuthorityDecision | null;
+};
+
+export type ScanResponseBody = ScanSuccessResponseBody | ScanFallbackResponseBody;
