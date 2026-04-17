@@ -11,7 +11,39 @@ export const ScanRequestSchema = z
   })
   .strict();
 
-export const ScanResponseSchema = z
+const EngineCapabilitySchema = z
+  .object({
+    available: z.boolean(),
+    reason: z.string(),
+  })
+  .strict();
+
+const EngineCapabilitiesSchema = z.record(z.string(), EngineCapabilitySchema);
+
+const EngineDegradedSchema = z
+  .object({
+    essentialProtection: z.boolean(),
+    debtPressure: z.boolean(),
+    liquidity: z.boolean(),
+    utilization: z.boolean(),
+  })
+  .strict();
+
+const EngineDegradationSchema = z
+  .object({
+    code: z.literal('CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY'),
+    message: z.string(),
+  })
+  .nullable();
+
+const ScanErrorSchema = z
+  .object({
+    code: z.string(),
+    message: z.string(),
+  })
+  .strict();
+
+export const ScanSuccessResponseSchema = z
   .object({
     merchantName: z.string().nullable().optional(),
     category: z.string().nullable(),
@@ -50,7 +82,34 @@ export const ScanResponseSchema = z
         expiryMinutes: z.number().int().nonnegative(),
       })
       .strict(),
-    engineDecision: z.unknown(),
+    decision: z.unknown(),
+    capabilities: EngineCapabilitiesSchema,
+    degraded: EngineDegradedSchema,
+    degradation: EngineDegradationSchema,
+    authority: z.unknown().nullable(),
   })
   .strict();
+
+export const ScanFallbackResponseSchema = z
+  .object({
+    error: ScanErrorSchema,
+    decision: z.null(),
+    capabilities: EngineCapabilitiesSchema,
+    degraded: EngineDegradedSchema,
+    degradation: EngineDegradationSchema,
+    authority: z.unknown().nullable(),
+  })
+  .strict();
+
+export const ScanResponseSchema = z.union([
+  ScanSuccessResponseSchema,
+  ScanFallbackResponseSchema,
+]);
+
+export type ScanSuccessResponse = z.infer<typeof ScanSuccessResponseSchema>;
+export type ScanFallbackResponse = z.infer<typeof ScanFallbackResponseSchema>;
 export type ScanResponse = z.infer<typeof ScanResponseSchema>;
+
+export function isScanSuccessResponse(response: ScanResponse): response is ScanSuccessResponse {
+  return response.decision !== null;
+}
