@@ -10,6 +10,7 @@ import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime
 import type { SimulatedAuthorityDecision } from '../authority/simulateSpendAuthority.js';
 import {
   buildEngineContext,
+  pickTopLegacySurfaceDecision,
   mapSolverDecisionToLegacyDecision,
   type LegacyEngineDecision,
 } from '../engine.js';
@@ -25,6 +26,9 @@ import type { RewardCategory } from '@prisma/client';
 import { deriveOrderToken } from './order-token.js';
 import { assertStableId } from '../identity/hash.js';
 import { AppError, asAppError } from '../errors.js';
+import { deriveEngineDegradation } from '../engine/degradation.js';
+import type { EngineDegradation } from '../engine/degradation.js';
+import { VineDecisionError } from './errors.js';
 
 export async function runRecommendationFromOrderContext(
   world: World,
@@ -36,6 +40,7 @@ export async function runRecommendationFromOrderContext(
   orderToken: string;
   decision: LegacyEngineDecision;
   authority: SimulatedAuthorityDecision;
+  degradation: EngineDegradation;
 }> {
   assertUserId(userId);
 
@@ -64,17 +69,26 @@ export async function runRecommendationFromOrderContext(
     legacyDecisionProvider: runLegacyEngine,
   });
 
-  if (engineResult.ok !== true || engineResult.decisions.length === 0) {
-    throw new Error(engineResult.ok ? 'No viable decisions' : engineResult.message);
+  if (engineResult.ok !== true) {
+    throw new VineDecisionError({
+      code: 'ENGINE_FAILURE',
+      message: engineResult.message,
+      degradation: null,
+    });
+  }
+  const degradation = deriveEngineDegradation(engineResult.exclusions);
+
+  const topDecision = pickTopLegacySurfaceDecision(engineResult.decisions);
+  if (topDecision === undefined) {
+    throw new VineDecisionError({
+      code: 'NO_TRUTHFUL_DECISION',
+      message: degradation?.message ?? 'No truthful decision available after constraint enforcement.',
+      degradation,
+    });
   }
 
-  const topDecision =
-    engineResult.decisions.find(
-      (d) => d.action.type === 'USE_CARD' || d.action.type === 'USE_CARD_WITH_PAYDOWN'
-    ) ?? engineResult.decisions.at(0);
-
   const mappedDecision: LegacyEngineDecision | null = mapSolverDecisionToLegacyDecision({
-    ...(topDecision ? { solverDecision: topDecision } : {}),
+    solverDecision: topDecision,
     state: engineResult.state,
     ctx: engineCtx,
     category: (engineResult.legacyDecision?.category as RewardCategory | undefined) ?? 'OTHER',
@@ -82,7 +96,11 @@ export async function runRecommendationFromOrderContext(
   });
 
   if (mappedDecision === null) {
-    throw new Error('Unable to map solver decision');
+    throw new VineDecisionError({
+      code: 'DECISION_MAPPING_FAILED',
+      message: 'Unable to map solver decision',
+      degradation,
+    });
   }
 
   validateEngineDecision(mappedDecision);
@@ -174,7 +192,13 @@ export async function runRecommendationFromOrderContext(
       select: { id: true },
     });
 
-    return { sessionId: session.id, orderToken, decision, authority: authorityDecision };
+    return {
+      sessionId: session.id,
+      orderToken,
+      decision,
+      authority: authorityDecision,
+      degradation,
+    };
   } catch (err: unknown) {
     const appError = asAppError(err);
     if (isPrismaP2003(err)) {
