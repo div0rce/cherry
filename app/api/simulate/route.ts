@@ -15,6 +15,7 @@ import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
+  pickTopLegacySurfaceDecision,
   type LegacyEngineDecision,
 } from '../../../lib/engine.js';
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
@@ -27,6 +28,7 @@ import { buildSwipeIdempotencyKey } from '../../../lib/ids.js';
 import { parseJsonBody } from '../../../lib/validation.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../../../lib/adapters/runtime/authority.prisma.js';
 import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
+import { deriveEngineDegradation } from '../../../lib/engine/degradation.js';
 import type {
   SimulatedAuthorityDecision,
   SimulateSpendParams,
@@ -175,7 +177,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           simulationId,
           transaction: null,
           decision: null,
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
+          degradation: null,
           authority: authorityDecision,
+          committed: false,
           error: {
             code: engineResult.reason,
             message: engineResult.message,
@@ -185,13 +191,30 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const topDecision =
-      engineResult.decisions.find(
-        (decision) =>
-          decision.action.type === 'USE_CARD' || decision.action.type === 'USE_CARD_WITH_PAYDOWN'
-      ) ?? engineResult.decisions.at(0);
+    const degradation = deriveEngineDegradation(engineResult.exclusions);
+    const topDecision = pickTopLegacySurfaceDecision(engineResult.decisions);
+    if (topDecision === undefined) {
+      return NextResponse.json(
+        {
+          simulationId,
+          transaction: null,
+          decision: null,
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
+          degradation,
+          authority: authorityDecision,
+          committed: false,
+          error: {
+            code: degradation?.code ?? 'NO_TRUTHFUL_RECOMMENDATION',
+            message:
+              degradation?.message ?? 'No truthful recommendation was available for this simulation.',
+          },
+        },
+        { status: 200 }
+      );
+    }
     const mappedDecision = mapSolverDecisionToLegacyDecision({
-      ...(topDecision ? { solverDecision: topDecision } : {}),
+      solverDecision: topDecision,
       state: engineResult.state,
       ctx,
       category: normalizedCategory as RewardCategory,
@@ -213,7 +236,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           simulationId,
           transaction: null,
           decision: null,
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
+          degradation,
           authority: authorityDecision,
+          committed: false,
           error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
         },
         { status: 200 }
@@ -222,6 +249,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const decision: LegacyEngineDecision = mappedDecision;
     validateEngineDecision(decision);
+    const topDecisionIsCard =
+      topDecision.action.type === 'USE_CARD' || topDecision.action.type === 'USE_CARD_WITH_PAYDOWN';
+
+    if (!topDecisionIsCard) {
+      return NextResponse.json(
+        {
+          simulationId,
+          transaction: null,
+          decision,
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
+          degradation,
+          authority: authorityDecision,
+          committed: false,
+        },
+        { status: 200 }
+      );
+    }
 
     if (!isPositiveNumber(decision.amountCents)) {
       logInvariantViolation({
@@ -253,7 +298,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           simulationId,
           transaction: null,
           decision: null,
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
+          degradation,
           authority: authorityDecision,
+          committed: false,
           error: { code: 'INCOMPLETE_DECISION', message: 'No card available for simulation' },
         },
         { status: 200 }
@@ -371,6 +420,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       simulationId,
       transaction: tx,
       decision,
+      capabilities: engineResult.capabilities,
+      degraded: engineResult.degraded,
+      degradation,
       authority: authorityDecision,
       committed: false,
     });
