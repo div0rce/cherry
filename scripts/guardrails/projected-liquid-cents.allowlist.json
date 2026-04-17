@@ -1,0 +1,24 @@
+{
+  "files": [
+    "lib/engine/simulate.ts",
+    "lib/engine/types.ts",
+    "tests/api-scan.user-context.test.js",
+    "tests/api-sessions.user-context.test.js",
+    "tests/api-simulate.user-context.test.js",
+    "tests/engine-accounting-proof.test.ts",
+    "tests/engine-accounting-time-order.test.ts",
+    "tests/engine-autopilot.test.js",
+    "tests/engine-bucket-remaining.test.js",
+    "tests/engine-objective.test.js",
+    "tests/engine-solver.test.js",
+    "tests/next/api-scan.user-context.test.js",
+    "tests/next/api-sessions.user-context.test.js",
+    "tests/next/api-simulate.user-context.test.js",
+    "tests/node/engine-accounting-proof.test.ts",
+    "tests/node/engine-accounting-time-order.test.ts",
+    "tests/node/engine-autopilot.test.js",
+    "tests/node/engine-bucket-remaining.test.js",
+    "tests/node/engine-objective.test.js",
+    "tests/node/engine-solver.test.js"
+  ]
+}
