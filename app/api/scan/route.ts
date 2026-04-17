@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
+  pickTopLegacySurfaceDecision,
   type LegacyEngineDecision,
 } from '../../../lib/engine.js';
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
@@ -20,6 +21,7 @@ import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js'
 import type { SimulatedAuthorityDecision } from '../../../lib/authority/simulateSpendAuthority.js';
 import { resolveScanCategory } from '../../../lib/scan-helpers.js';
 import type { ScanResponseBody } from '../../../lib/scan-types.js';
+import { deriveEngineDegradation } from '../../../lib/engine/degradation.js';
 import { logError } from '../../../lib/logger.js';
 import { asAppError, isUnauthorized } from '../../../lib/errors.js';
 import { ScanRequestSchema } from '../../../lib/schemas/scan.js';
@@ -114,11 +116,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             decision: null,
             capabilities: engineResult.capabilities,
             degraded: engineResult.degraded,
+            degradation: null,
             authority: authorityDecision,
           },
           { status: 200 }
         );
       }
+
+      const degradation = deriveEngineDegradation(engineResult.exclusions);
 
       const engineInput = fromLegacy({
         state,
@@ -162,12 +167,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }
       }
 
-      const topDecision =
-        engineResult.decisions.find(
-          (d) => d.action.type === 'USE_CARD' || d.action.type === 'USE_CARD_WITH_PAYDOWN'
-        ) ?? engineResult.decisions.at(0);
+      const topDecision = pickTopLegacySurfaceDecision(engineResult.decisions);
+      if (topDecision === undefined) {
+        return NextResponse.json(
+          {
+            error: {
+              code:
+                degradation?.code ?? 'NO_TRUTHFUL_RECOMMENDATION',
+              message:
+                degradation?.message ?? 'No truthful recommendation was available for this scan.',
+            },
+            decision: null,
+            capabilities: engineResult.capabilities,
+            degraded: engineResult.degraded,
+            degradation,
+            authority: authorityDecision,
+          },
+          { status: 200 }
+        );
+      }
       const mappedDecision: LegacyEngineDecision | null = mapSolverDecisionToLegacyDecision({
-        ...(topDecision ? { solverDecision: topDecision } : {}),
+        solverDecision: topDecision,
         state: engineResult.state,
         ctx,
         category,
@@ -181,6 +201,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             decision: null,
             capabilities: engineResult.capabilities,
             degraded: engineResult.degraded,
+            degradation,
             authority: authorityDecision,
           },
           { status: 200 }
@@ -221,9 +242,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         cardVerdict: decision.card.verdict,
         overallVerdict: decision.overallVerdict,
         cherryIncentive: decision.cherryIncentive,
-        engineDecision: decision,
+        decision,
         capabilities: engineResult.capabilities,
         degraded: engineResult.degraded,
+        degradation,
         authority: authorityDecision,
       };
 
