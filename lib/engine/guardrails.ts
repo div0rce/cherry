@@ -13,6 +13,7 @@ import {
   hasKnownBucketEssentiality,
   isBucketEssential,
 } from './types.js';
+import { hasUnresolvableCreditLiability } from './credit-liability.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -101,6 +102,10 @@ export function evaluateConstraintsForDecision(
   const breaches: string[] = [];
   const cash = getCashState(state.cash);
   const capabilities = getEngineCapabilities(state);
+
+  if (hasUnresolvableCreditLiability(state, action)) {
+    breaches.push('HARD:UNRESOLVABLE_CREDIT_LIABILITY');
+  }
 
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
