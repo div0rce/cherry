@@ -9,6 +9,7 @@ Last updated: 2026-03-19
 
 - `traceVersion`: `trace_v1`
 - Live solver traces are single-step present-time traces. Purchase effects are pending authorization effects, not posted settlement effects. Immediate paydowns may appear, and the live solver is not a future scheduler.
+- PR8.3 exclusion-driven degradation is currently computed from the surface-filtered generated set before hard filtering and before score sorting. That is intentional temporary coupling to pre-PR9 truncation behavior: it means “credit actions were generated for this surface and excluded because the credit liability was not fully resolvable,” not “credit would have survived final live pre-PR9 slicing.”
 
 ### JSON schema (informal)
 
