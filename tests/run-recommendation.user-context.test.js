@@ -4,6 +4,7 @@ const require = createRequire(import.meta.url);
 const assert = require('node:assert/strict');
 const { PrismaClientKnownRequestError } = require('@prisma/client/runtime/library');
 const { makeTestWorld } = require('./helpers/world');
+const { deriveEngineDegradation } = require('../lib/engine/degradation');
 
 const authorityDecisionStub = {
   version: 'authority_v1',
@@ -54,7 +55,10 @@ function mockEngine() {
   mockModule('../lib/engine', {
     buildEngineContext: (input) => input,
     mapSolverDecisionToLegacyDecision: () => legacyDecision,
-    safeSolveDecisionForUser: async () => ({
+    pickTopLegacySurfaceDecision: (decisions) => decisions[0],
+  });
+  mockModule('../lib/engine/run', {
+    safeSolveDecisionForWorld: async () => ({
       ok: true,
       decisions: [{ action: { type: 'USE_CARD', cardId: 'card-1' } }],
       trace: {
@@ -63,6 +67,10 @@ function mockEngine() {
         stateSummary: { bucketCount: 0, cardCount: 0, debtCount: 0 },
         contextSummary: { surface: 'vine', amountCents: 1000 },
         candidates: [],
+      },
+      exclusions: {
+        creditActionsGeneratedCount: 0,
+        creditUnresolvableLiabilityCount: 0,
       },
       legacyDecision,
       state: engineState,
@@ -81,7 +89,7 @@ async function testNullUserIdThrows() {
   mockModule('../lib/prisma', {
     prisma: {
       recommendationSession: {
-        create: async () => ({ id: 'rec-1' }),
+        upsert: async () => ({ id: 'rec-1' }),
       },
     },
   });
@@ -123,7 +131,7 @@ async function testP2003Logs() {
   mockModule('../lib/prisma', {
     prisma: {
       recommendationSession: {
-        create: async () => {
+        upsert: async () => {
           throw new PrismaClientKnownRequestError('fk', 'P2003', '1.0.0', { model: 'RecommendationSession' });
         },
       },
@@ -158,9 +166,224 @@ async function testP2003Logs() {
   assert.ok(logCalls.length >= 0);
 }
 
+async function testSuccessfulRecommendationCarriesInternalDegradation() {
+  mockModule('../lib/prisma', {
+    prisma: {
+      recommendationSession: {
+        upsert: async () => ({ id: 'rec-1' }),
+      },
+    },
+  });
+  mockModule('../lib/engine', {
+    buildEngineContext: (input) => input,
+    mapSolverDecisionToLegacyDecision: () => legacyDecision,
+    pickTopLegacySurfaceDecision: (decisions) => decisions[0],
+  });
+  mockModule('../lib/engine/run', {
+    safeSolveDecisionForWorld: async () => ({
+      ok: true,
+      decisions: [{ action: { type: 'USE_CARD', cardId: 'card-1' } }],
+      trace: {
+        engineVersion: 'test',
+        weights: {},
+        stateSummary: { bucketCount: 0, cardCount: 0, debtCount: 0 },
+        contextSummary: { surface: 'vine', amountCents: 1000 },
+        candidates: [],
+      },
+      exclusions: {
+        creditActionsGeneratedCount: 1,
+        creditUnresolvableLiabilityCount: 1,
+      },
+      legacyDecision,
+      state: engineState,
+    }),
+  });
+  mockModule('../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => engineState,
+  });
+  mockModule('../lib/engine-invariants', {
+    validateEngineDecision: () => {},
+  });
+  mockModule('../lib/adapters/runtime/authority.prisma', {
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityDecisionStub }),
+    recordDecisionEvent: async () => {},
+  });
+
+  delete require.cache[require.resolve('../lib/vine/run-recommendation')];
+  const { runRecommendationFromOrderContext } = require('../lib/vine/run-recommendation');
+  const now = new Date();
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
+  const result = await runRecommendationFromOrderContext(
+    world,
+    {
+      amountCents: 1000,
+      deviceId: 'dev-1',
+      timestamp: now.getTime(),
+      source: 'VINE_SIM',
+    },
+    'user-1',
+    { now }
+  );
+
+  assert.equal(result.degradation?.code, 'CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY');
+}
+
+async function testFallbackUsesCanonicalDegradationMessage() {
+  mockModule('../lib/prisma', {
+    prisma: {
+      recommendationSession: {
+        upsert: async () => ({ id: 'rec-1' }),
+      },
+    },
+  });
+  mockModule('../lib/engine', {
+    buildEngineContext: (input) => input,
+    mapSolverDecisionToLegacyDecision: () => legacyDecision,
+    pickTopLegacySurfaceDecision: () => undefined,
+  });
+  mockModule('../lib/engine/run', {
+    safeSolveDecisionForWorld: async () => ({
+      ok: true,
+      decisions: [],
+      trace: {
+        engineVersion: 'test',
+        weights: {},
+        stateSummary: { bucketCount: 0, cardCount: 0, debtCount: 0 },
+        contextSummary: { surface: 'vine', amountCents: 1000 },
+        candidates: [],
+      },
+      exclusions: {
+        creditActionsGeneratedCount: 1,
+        creditUnresolvableLiabilityCount: 1,
+      },
+      legacyDecision,
+      state: engineState,
+    }),
+  });
+  mockModule('../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => engineState,
+  });
+  mockModule('../lib/engine-invariants', {
+    validateEngineDecision: () => {},
+  });
+  mockModule('../lib/adapters/runtime/authority.prisma', {
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityDecisionStub }),
+    recordDecisionEvent: async () => {},
+  });
+
+  delete require.cache[require.resolve('../lib/vine/run-recommendation')];
+  const { runRecommendationFromOrderContext } = require('../lib/vine/run-recommendation');
+  const now = new Date();
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
+  const expectedMessage = deriveEngineDegradation({
+    creditActionsGeneratedCount: 1,
+    creditUnresolvableLiabilityCount: 1,
+  })?.message;
+
+  await assert.rejects(
+    runRecommendationFromOrderContext(
+      world,
+      {
+        amountCents: 1000,
+        deviceId: 'dev-1',
+        timestamp: now.getTime(),
+        source: 'VINE_SIM',
+      },
+      'user-1',
+      { now }
+    ),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.code, 'NO_TRUTHFUL_DECISION');
+      assert.equal(error.message, expectedMessage);
+      assert.deepEqual(error.degradation, {
+        code: 'CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY',
+        message: expectedMessage,
+      });
+      return true;
+    }
+  );
+}
+
+async function testMappingFailureUsesStructuredDegradationError() {
+  mockModule('../lib/prisma', {
+    prisma: {
+      recommendationSession: {
+        upsert: async () => ({ id: 'rec-1' }),
+      },
+    },
+  });
+  mockModule('../lib/engine', {
+    buildEngineContext: (input) => input,
+    mapSolverDecisionToLegacyDecision: () => null,
+    pickTopLegacySurfaceDecision: (decisions) => decisions[0],
+  });
+  mockModule('../lib/engine/run', {
+    safeSolveDecisionForWorld: async () => ({
+      ok: true,
+      decisions: [{ action: { type: 'USE_CARD', cardId: 'card-1' } }],
+      trace: {
+        engineVersion: 'test',
+        weights: {},
+        stateSummary: { bucketCount: 0, cardCount: 0, debtCount: 0 },
+        contextSummary: { surface: 'vine', amountCents: 1000 },
+        candidates: [],
+      },
+      exclusions: {
+        creditActionsGeneratedCount: 1,
+        creditUnresolvableLiabilityCount: 1,
+      },
+      legacyDecision,
+      state: engineState,
+    }),
+  });
+  mockModule('../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => engineState,
+  });
+  mockModule('../lib/engine-invariants', {
+    validateEngineDecision: () => {},
+  });
+  mockModule('../lib/adapters/runtime/authority.prisma', {
+    simulateSpendAuthority: async () => ({ ok: true, decision: authorityDecisionStub }),
+    recordDecisionEvent: async () => {},
+  });
+
+  delete require.cache[require.resolve('../lib/vine/run-recommendation')];
+  const { runRecommendationFromOrderContext } = require('../lib/vine/run-recommendation');
+  const now = new Date();
+  const { world } = makeTestWorld({ nowMs: now.getTime() });
+  const expectedDegradation = deriveEngineDegradation({
+    creditActionsGeneratedCount: 1,
+    creditUnresolvableLiabilityCount: 1,
+  });
+
+  await assert.rejects(
+    runRecommendationFromOrderContext(
+      world,
+      {
+        amountCents: 1000,
+        deviceId: 'dev-1',
+        timestamp: now.getTime(),
+        source: 'VINE_SIM',
+      },
+      'user-1',
+      { now }
+    ),
+    (error) => {
+      assert.ok(error instanceof Error);
+      assert.equal(error.code, 'DECISION_MAPPING_FAILED');
+      assert.deepEqual(error.degradation, expectedDegradation);
+      return true;
+    }
+  );
+}
+
 async function run() {
   await testNullUserIdThrows();
   await testP2003Logs();
+  await testSuccessfulRecommendationCarriesInternalDegradation();
+  await testFallbackUsesCanonicalDegradationMessage();
+  await testMappingFailureUsesStructuredDegradationError();
   console.warn('run-recommendation user-context: ok');
 }
 
