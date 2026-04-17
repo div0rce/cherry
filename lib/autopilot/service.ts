@@ -463,6 +463,12 @@ function buildExplanation(
   }
 
   const warnings: string[] = [];
+  const degradationWarning = deriveUnresolvableCreditLiabilityWarningText(
+    evaluation.decision.degradation ?? null
+  );
+  if (degradationWarning != null) {
+    warnings.push(degradationWarning);
+  }
   if (evaluation.status !== 'ok') {
     warnings.push('Autopilot could not produce a safe recommendation.');
   }
