@@ -15,7 +15,7 @@ Last updated: 2026-01-31
 - Engine version gates and fixture pins are enforced (`check:engine-version-gates`, `check:engine-version-bump`).
 - Engine version imports are restricted (`check:engine-version-imports`).
 - AGENTS doctrine deferral is enforced (`check:agents-doctrine-link`).
-- Completion evidence is enforced in agent/CI mode (`check:evidence-present`, `check:evidence-verifies`).
+- Completion evidence is enforced when explicitly requested (`AGENT_MODE=1` or `CHERRY_REQUIRE_EVIDENCE=1`) via `check:evidence-present` and `check:evidence-verifies`.
 - Env contracts, local env bans, and temp root safety are enforced (`check:env-contract`, `check:no-local-env-files`, `check:tmp-root-safety`).
 - Package manager pinning and CI install policy are enforced (`check:package-manager-pin`, `check:ci-uses-npm-ci`, `check:lockfile-integrity`).
 - Vercel parity is enforced (`check:vercel-parity`).

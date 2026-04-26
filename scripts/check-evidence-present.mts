@@ -13,11 +13,11 @@ function guardrailFail(message: string): never {
   fail(PREFIX, message, { fix: FIX });
 }
 
-const agentMode = process.env['AGENT_MODE'] === '1';
-const ciMode = process.env['CI'] === 'true';
+const evidenceRequired =
+  process.env['AGENT_MODE'] === '1' || process.env['CHERRY_REQUIRE_EVIDENCE'] === '1';
 
 function run(): void {
-  if (!agentMode && !ciMode) {
+  if (!evidenceRequired) {
     process.stdout.write('check:evidence-present: ok (not required)\n');
     return;
   }

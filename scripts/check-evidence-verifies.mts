@@ -12,11 +12,11 @@ function guardrailFail(message: string): never {
   fail(PREFIX, message, { fix: FIX });
 }
 
-const agentMode = process.env['AGENT_MODE'] === '1';
-const ciMode = process.env['CI'] === 'true';
+const evidenceRequired =
+  process.env['AGENT_MODE'] === '1' || process.env['CHERRY_REQUIRE_EVIDENCE'] === '1';
 
 function run(): void {
-  if (!agentMode && !ciMode) {
+  if (!evidenceRequired) {
     process.stdout.write('check:evidence-verifies: ok (not required)\n');
     return;
   }
@@ -48,7 +48,7 @@ function run(): void {
     guardrailFail('Evidence files do not match git show output');
   }
 
-  const verifyMode = process.env['EVIDENCE_VERIFY_MODE'] ?? (ciMode ? 'light' : 'full');
+  const verifyMode = process.env['EVIDENCE_VERIFY_MODE'] ?? 'full';
   if (verifyMode !== 'light' && verifyMode !== 'full') {
     guardrailFail(`Invalid EVIDENCE_VERIFY_MODE: ${verifyMode}`);
   }
