@@ -30,6 +30,8 @@ import { validateEngineDecision } from '../../../lib/engine-invariants.js';
 import { resolveUserContext } from '../../../lib/user-context.js';
 import type { RewardCategory } from '@prisma/client';
 import { auth } from '../../../lib/auth.js';
+import { buildTemporalResponseShape } from '../../../lib/engine/temporal-response.js';
+import { evaluateScheduledPaydowns } from '../../../lib/engine/scheduled-paydowns.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -100,9 +102,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
 
       const state = await fromPrismaUserToEngineState(userId, nowMs);
+      const scheduledPaydownEvaluation = evaluateScheduledPaydowns(state, nowMs);
+      const temporalResponse = buildTemporalResponseShape(scheduledPaydownEvaluation, nowMs);
       const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
         maxCandidates: 64,
         stateOverride: state,
+        scheduledPaydownEvaluation,
         legacyDecisionProvider: runLegacyEngine,
       });
 
@@ -118,6 +123,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             degraded: engineResult.degraded,
             degradation: null,
             authority: authorityDecision,
+            ...temporalResponse,
           },
           { status: 200 }
         );
@@ -182,6 +188,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             degraded: engineResult.degraded,
             degradation,
             authority: authorityDecision,
+            ...temporalResponse,
           },
           { status: 200 }
         );
@@ -203,6 +210,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             degraded: engineResult.degraded,
             degradation,
             authority: authorityDecision,
+            ...temporalResponse,
           },
           { status: 200 }
         );
@@ -247,6 +255,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         degraded: engineResult.degraded,
         degradation,
         authority: authorityDecision,
+        ...temporalResponse,
       };
 
       return NextResponse.json(response);
