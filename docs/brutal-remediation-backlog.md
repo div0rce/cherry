@@ -279,15 +279,95 @@
 
 ---
 
-## 10. P1 — Align public advisory explanations with actual engine rationale
+## 10. P1 — Introduce unit-consistent objective and explicit utility semantics
+
+* `Priority`: `P1`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: objective function, reward normalization, penalty semantics, scoring interpretation, explanation alignment
+* `Why now`: Current scoring is a disciplined heuristic but not yet a coherent optimization target. Now that state, constraints, credit validity, degradation, and temporal semantics are stable, Cherry can start making the objective mathematically interpretable.
+* `Dependencies`: issues `1` through `9`
+* `PR Order`: `10`
+* `Acceptance Criteria`:
+
+  * all reward signals map to a canonical unit, such as USD or utility-adjusted USD
+  * `POINTS_PER_DOLLAR` converts through an explicit value mapping
+  * liquidity / affordability pressure is expressed in the same canonical unit or explicitly documented as a bounded non-utility heuristic term
+  * score dimensions are no longer mixed-unit without conversion
+  * every live score component has a defined interpretation
+  * the objective is documented as either:
+
+    * coherent optimization over a stated utility function, or
+    * explicitly bounded heuristic scoring with defined semantics
+  * explanation-layer benefit language reflects the same unit-consistent interpretation
+* `Out of Scope`:
+
+  * multistep planning
+  * stochastic optimization
+  * long-horizon forecasting
+  * new decision families
+
+---
+
+## 11. P2 — Add multi-step / horizon-aware optimization as an optional research track
+
+* `Priority`: `P2`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: action horizons, sequential simulation, multi-step policy evaluation, future-state rollout semantics
+* `Why now`: Once the single-step objective is unit-consistent, Cherry can optionally evaluate whether decisions should optimize over a short explicit horizon rather than only the immediate action.
+* `Dependencies`: issue `10`
+* `PR Order`: `11`
+* `Acceptance Criteria`:
+
+  * horizon length is explicitly defined
+  * future state transitions are modeled separately from present-time recommendation semantics
+  * multi-step evaluation does not allow future events to justify present recommendations unless the policy explicitly permits it
+  * docs distinguish single-step recommendation from horizon-aware planning
+  * any multi-step output is labeled as planning or projection, not present fact
+* `Out of Scope`:
+
+  * full long-horizon financial planning
+  * generic future-obligation planning
+  * stochastic uncertainty modeling
+  * UI redesign
+
+---
+
+## 12. P2 — Add uncertainty modeling for expected-value decisions as an optional research track
+
+* `Priority`: `P2`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: expected value, uncertainty distributions, probabilistic income/expense assumptions, risk-adjusted scoring
+* `Why now`: True financial optimization requires reasoning under uncertainty, but this should only happen after Cherry has a coherent single-step objective and optionally a horizon-aware model.
+* `Dependencies`: issues `10` and optionally `11`
+* `PR Order`: `12`
+* `Acceptance Criteria`:
+
+  * uncertain quantities are represented explicitly rather than hidden inside constants
+  * expected value calculations identify assumptions and distributions
+  * risk-adjusted terms are documented and unit-consistent
+  * deterministic and probabilistic modes are clearly separated
+  * public explanations do not imply certainty where the model only has expectation
+* `Out of Scope`:
+
+  * full actuarial modeling
+  * investment advice
+  * broad macroeconomic forecasting
+  * production rollout unless the model is explainable and bounded
+
+---
+
+## 13. P1 — Align public advisory explanations with actual engine rationale
 
 * `Priority`: `P1`
 * `Owner Domain`: `api`
 * `Owner Role`: `api-owner`
 * `Owner Scope`: public advisory contract, explanation fields, benefit semantics, autopilot explanation language
 * `Why now`: Cherry remains dishonest if the public layer explains recommendations using a rationale different from the one the engine actually used.
-* `Dependencies`: issues `6` through `9`
-* `PR Order`: `10`
+* `Dependencies`: issues `6` through `10`
+* `PR Order`: `13`
 * `Acceptance Criteria`:
 
   * public explanation fields derive from actual decision rationale
@@ -301,15 +381,15 @@
 
 ---
 
-## 11. P1 — Make proof, test, and documentation claims runtime-faithful
+## 14. P1 — Make proof, test, and documentation claims runtime-faithful
 
 * `Priority`: `P1`
 * `Owner Domain`: `simulation`
 * `Owner Role`: `engine-owner`
 * `Owner Scope`: optimality docs, proof language, runtime-faithful tests, synthetic-vs-live claim boundaries
 * `Why now`: The repo currently risks overstating trust by presenting bounded, synthetic, self-consistent proofs in a way that can be over-read as broader validation.
-* `Dependencies`: issues `6` through `10`
-* `PR Order`: `11`
+* `Dependencies`: issues `6` through `13`
+* `PR Order`: `14`
 * `Acceptance Criteria`:
 
   * docs explicitly distinguish bounded exact optimality from global or real-world optimality
@@ -324,15 +404,15 @@
 
 ---
 
-## 12. P1 — Define the canonical simulation response contract from solver output
+## 15. P1 — Define the canonical simulation response contract from solver output
 
 * `Priority`: `P1`
 * `Owner Domain`: `simulation`
 * `Owner Role`: `engine-owner`
 * `Owner Scope`: canonical solver-derived advisory and simulation contract
 * `Why now`: Convergence is impossible while public simulation semantics remain ambiguous, but that convergence must occur only after live engine semantics are truthful enough to standardize.
-* `Dependencies`: issues `1` through `11`
-* `PR Order`: `12`
+* `Dependencies`: issues `1` through `14`
+* `PR Order`: `15`
 * `Acceptance Criteria`:
 
   * one documented response contract exists
@@ -348,15 +428,15 @@
 
 ---
 
-## 13. P1 — Decide verification automation truthfully before route convergence
+## 16. P1 — Decide verification automation truthfully before route convergence
 
 * `Priority`: `P1`
 * `Owner Domain`: `sessions`
 * `Owner Role`: `sessions-owner`
 * `Owner Scope`: verification automation semantics, lifecycle truth, session state machine, docs and product claims
 * `Why now`: The lifecycle cannot converge until Cherry explicitly decides whether verification is automated now, confirmation-only now, or partially manual now.
-* `Dependencies`: issues `1` through `12`
-* `PR Order`: `13`
+* `Dependencies`: issues `1` through `15`
+* `PR Order`: `16`
 * `Acceptance Criteria`:
 
   * the lifecycle explicitly chooses whether verification is automated now or not
@@ -371,15 +451,15 @@
 
 ---
 
-## 14. P1 — Converge `/api/scan`, `/api/simulate`, and autopilot preview on the canonical simulation contract
+## 17. P1 — Converge `/api/scan`, `/api/simulate`, and autopilot preview on the canonical simulation contract
 
 * `Priority`: `P1`
 * `Owner Domain`: `api`
 * `Owner Role`: `api-owner`
 * `Owner Scope`: public advisory and simulation endpoints and shared response semantics
 * `Why now`: Route-level divergence will keep recreating parallel systems unless convergence happens at the API boundary.
-* `Dependencies`: issues `12` and `13`
-* `PR Order`: `14`
+* `Dependencies`: issues `15` and `16`
+* `PR Order`: `17`
 * `Acceptance Criteria`:
 
   * these routes stop diverging in output shape
@@ -393,15 +473,15 @@
 
 ---
 
-## 15. P1 — Quarantine or delete the legacy simulation engine
+## 18. P1 — Quarantine or delete the legacy simulation engine
 
 * `Priority`: `P1`
 * `Owner Domain`: `simulation`
 * `Owner Role`: `engine-owner`
 * `Owner Scope`: `lib/simulation.ts` and any runtime references
 * `Why now`: Keeping archived simulation semantics in runtime truth invites reintroduction of parallel logic.
-* `Dependencies`: issue `12`
-* `PR Order`: `15`
+* `Dependencies`: issue `15`
+* `PR Order`: `18`
 * `Acceptance Criteria`:
 
   * archived simulation is removed from runtime truth or deleted
@@ -413,15 +493,15 @@
 
 ---
 
-## 16. P1 — Remove wrapper-only simulation indirection that adds no boundary semantics
+## 19. P1 — Remove wrapper-only simulation indirection that adds no boundary semantics
 
 * `Priority`: `P1`
 * `Owner Domain`: `simulation`
 * `Owner Role`: `engine-owner`
 * `Owner Scope`: simulation and advisory wrappers that only relay or reshape legacy-compatible output
 * `Why now`: Wrapper sprawl makes the architecture look deeper than it is and blocks convergence.
-* `Dependencies`: issues `12`, `14`, and `15`
-* `PR Order`: `16`
+* `Dependencies`: issues `15`, `17`, and `18`
+* `PR Order`: `19`
 * `Acceptance Criteria`:
 
   * each remaining adapter has a real boundary purpose
@@ -434,21 +514,21 @@
 
 ---
 
-## 17. P2 — Complete the canonical advisory lifecycle slice
+## 20. P2 — Complete the canonical advisory lifecycle slice
 
 * `Priority`: `P2`
 * `Owner Domain`: `sessions`
 * `Owner Role`: `sessions-owner`
 * `Owner Scope`: the exact lifecycle defined in this document
 * `Why now`: This is the first real product milestone and the first proof that Cherry is more than a convincing prototype.
-* `Dependencies`: issues `1` through `16` as applicable
-* `PR Order`: `17`
+* `Dependencies`: issues `1` through `19` as applicable
+* `PR Order`: `20`
 * `Acceptance Criteria`:
 
   * `/api/scan` produces the canonical engine decision
   * that decision creates an advisory session
   * the session reaches terminal state as defined in this document
-  * confirmation or verification completes according to issue `13`
+  * confirmation or verification completes according to issue `16`
   * ledger mutation occurs deterministically
   * the resulting state is visible in the home shell
   * no legacy mapping is required in the canonical lifecycle path
@@ -461,15 +541,15 @@
 
 ---
 
-## 18. P2 — Rebuild the home shell from live state only
+## 21. P2 — Rebuild the home shell from live state only
 
 * `Priority`: `P2`
 * `Owner Domain`: `ui`
 * `Owner Role`: `frontend-owner`
 * `Owner Scope`: home and dashboard read model
 * `Why now`: The home shell must stop lying once the lifecycle slice is real.
-* `Dependencies`: issue `17`
-* `PR Order`: `18`
+* `Dependencies`: issue `20`
+* `PR Order`: `21`
 * `Acceptance Criteria`:
 
   * no UI component reads from static fixtures
@@ -484,15 +564,15 @@
 
 ---
 
-## 19. P2 — Fix degraded-vs-empty semantics on user-facing routes
+## 22. P2 — Fix degraded-vs-empty semantics on user-facing routes
 
 * `Priority`: `P2`
 * `Owner Domain`: `api`
 * `Owner Role`: `api-owner`
 * `Owner Scope`: user-facing read endpoints that currently mask failures as empty state
 * `Why now`: Broken state and empty state must be distinguishable if the home shell is going to be trustworthy.
-* `Dependencies`: issues `17` and `18`
-* `PR Order`: `19`
+* `Dependencies`: issues `20` and `21`
+* `PR Order`: `22`
 * `Acceptance Criteria`:
 
   * broken state and empty state are distinguishable
@@ -504,15 +584,15 @@
 
 ---
 
-## 20. P3 — Re-run dependency and API analysis with a parser that can generate a credible full import graph
+## 23. P3 — Re-run dependency and API analysis with a parser that can generate a credible full import graph
 
 * `Priority`: `P3`
 * `Owner Domain`: `infra`
 * `Owner Role`: `infra-owner`
 * `Owner Scope`: audit and tooling only
 * `Why now`: Current dead-code numbers are too weak to justify cleanup.
-* `Dependencies`: issues `1` through `19`
-* `PR Order`: `20`
+* `Dependencies`: issues `1` through `22`
+* `PR Order`: `23`
 * `Acceptance Criteria`:
 
   * graph edge counts are credible for repo size
@@ -526,15 +606,15 @@
 
 ---
 
-## 21. P3 — Perform targeted dead-code cleanup only after the stronger analysis lands
+## 24. P3 — Perform targeted dead-code cleanup only after the stronger analysis lands
 
 * `Priority`: `P3`
 * `Owner Domain`: `api`
 * `Owner Role`: `api-owner`
 * `Owner Scope`: orphaned and legacy modules proven by improved analysis
 * `Why now`: Cleanup is only safe after the import graph is trustworthy.
-* `Dependencies`: issue `20`
-* `PR Order`: `21`
+* `Dependencies`: issue `23`
+* `PR Order`: `24`
 * `Acceptance Criteria`:
 
   * deletions are evidence-backed
