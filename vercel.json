@@ -1,5 +1,5 @@
 {
   "framework": "nextjs",
   "installCommand": "npm ci",
-  "buildCommand": "mkdir -p /tmp/cherry-tmp && npm run build"
+  "buildCommand": "mkdir -p /tmp/cherry-tmp && CHERRY_TMP_ROOT=/tmp/cherry-tmp CHERRY_VINE_SIGNATURE_MODE=enforce npm run build"
 }
