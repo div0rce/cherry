@@ -30,6 +30,8 @@ import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 import { auth } from '../../../lib/auth.js';
+import { buildTemporalResponseShape } from '../../../lib/engine/temporal-response.js';
+import { evaluateScheduledPaydowns } from '../../../lib/engine/scheduled-paydowns.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -90,9 +92,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const state = await fromPrismaUserToEngineState(userId, requestNowMs);
+    const scheduledPaydownEvaluation = evaluateScheduledPaydowns(state, requestNowMs);
+    const temporalResponse = buildTemporalResponseShape(scheduledPaydownEvaluation, requestNowMs);
     const engineResult = await safeSolveDecisionForWorld(world, userId, ctxForEngine, {
       maxCandidates: 64,
       stateOverride: state,
+      scheduledPaydownEvaluation,
       legacyDecisionProvider: runLegacyEngine,
     });
 
@@ -110,6 +115,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           capabilities: engineResult.capabilities,
           degraded: engineResult.degraded,
           degradation: null,
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -132,6 +138,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           capabilities: engineResult.capabilities,
           degraded: engineResult.degraded,
           degradation,
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -155,6 +162,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           capabilities: engineResult.capabilities,
           degraded: engineResult.degraded,
           degradation,
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -213,6 +221,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       capabilities: engineResult.capabilities,
       degraded: engineResult.degraded,
       degradation,
+      ...temporalResponse,
     });
   } catch (error: unknown) {
     const appError = asAppError(error);
