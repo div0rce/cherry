@@ -34,6 +34,8 @@ import type {
   SimulateSpendParams,
 } from '../../../lib/authority/simulateSpendAuthority.js';
 import { auth } from '../../../lib/auth.js';
+import { buildTemporalResponseShape } from '../../../lib/engine/temporal-response.js';
+import { evaluateScheduledPaydowns } from '../../../lib/engine/scheduled-paydowns.js';
 
 const validCategories = Object.values(RewardCategory) as string[];
 
@@ -157,9 +159,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const state = await fromPrismaUserToEngineState(userId, requestNowMs);
+    const scheduledPaydownEvaluation = evaluateScheduledPaydowns(state, requestNowMs);
+    const temporalResponse = buildTemporalResponseShape(scheduledPaydownEvaluation, requestNowMs);
     const engineResult = await safeSolveDecisionForWorld(world, userId, ctx, {
       maxCandidates: 64,
       stateOverride: state,
+      scheduledPaydownEvaluation,
       legacyDecisionProvider: runLegacyEngine,
     });
     if (engineResult.ok !== true) {
@@ -186,6 +191,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             code: engineResult.reason,
             message: engineResult.message,
           },
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -209,6 +215,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             message:
               degradation?.message ?? 'No truthful recommendation was available for this simulation.',
           },
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -242,6 +249,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           authority: authorityDecision,
           committed: false,
           error: { code: 'ENGINE_MAPPING', message: 'Unable to build decision' },
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -263,6 +271,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           degradation,
           authority: authorityDecision,
           committed: false,
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -304,6 +313,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           authority: authorityDecision,
           committed: false,
           error: { code: 'INCOMPLETE_DECISION', message: 'No card available for simulation' },
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -425,6 +435,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       degradation,
       authority: authorityDecision,
       committed: false,
+      ...temporalResponse,
     });
   } catch (caught: unknown) {
     const appError = asAppError(caught);
