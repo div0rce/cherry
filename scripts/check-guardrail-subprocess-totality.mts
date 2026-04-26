@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
@@ -13,6 +14,9 @@ const RUN_TOOL_PATH = path.normalize(
 );
 const SELF_PATH = path.normalize(
   path.resolve(ROOT, 'scripts', 'check-guardrail-subprocess-totality.mts')
+);
+const FULL_CHECKOUT_AUDIT_PATH = path.normalize(
+  path.resolve(ROOT, 'scripts', 'audit', 'full-checkout-audit.mts')
 );
 
 type Violation = {
@@ -68,6 +72,40 @@ function runRg(pattern: string): string[] {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 }
+
+function assertFullCheckoutAuditUsesRunTool(): void {
+  if (!fs.existsSync(FULL_CHECKOUT_AUDIT_PATH)) {
+    fail(PREFIX, 'Missing full checkout audit script', {
+      details: [path.relative(ROOT, FULL_CHECKOUT_AUDIT_PATH)],
+      fix: FIX,
+    });
+  }
+  const content = fs.readFileSync(FULL_CHECKOUT_AUDIT_PATH, 'utf8');
+  const directSubprocessPatterns = [
+    { regex: /from\s+['"]node:child_process['"]/, illegal: 'node:child_process import' },
+    { regex: /from\s+['"]child_process['"]/, illegal: 'child_process import' },
+    { regex: /require\s*\(\s*['"]child_process['"]\s*\)/, illegal: 'child_process require' },
+    { regex: /\bspawn(?:Sync)?\s*\(/, illegal: 'spawn/spawnSync' },
+    { regex: /\bexec(?:Sync|File|FileSync)?\s*\(/, illegal: 'exec/execSync/execFile' },
+  ];
+
+  const violations = directSubprocessPatterns
+    .filter((pattern) => pattern.regex.test(content))
+    .map((pattern) => ({
+      file: path.relative(ROOT, FULL_CHECKOUT_AUDIT_PATH),
+      illegal: pattern.illegal,
+      fix: FIX,
+    }));
+
+  if (violations.length > 0) {
+    reportViolations(violations);
+    fail(PREFIX, 'full-checkout-audit.mts must route subprocess work through run-tool.mts', {
+      fix: FIX,
+    });
+  }
+}
+
+assertFullCheckoutAuditUsesRunTool();
 
 const violations: Violation[] = [];
 
