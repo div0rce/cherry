@@ -15,11 +15,28 @@ import type {
   UserConstraints,
   UserLiquidityState,
   WorldParams,
+  ScheduledPaydown,
 } from '../../engine/types.js';
 import { DEFAULT_ENGINE_USER_PREFERENCES, getObjectiveProfileById } from '../../engine/objective.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from '../../engine/runtime.js';
 import { asAppError } from '../../errors.js';
-import { createUnavailableEngineCapabilities, unavailable } from '../../engine/types.js';
+import { available, createUnavailableEngineCapabilities, unavailable } from '../../engine/types.js';
+
+type ScheduledPaydownRow = {
+  id: string;
+  debtId: string | null;
+  amountCents: number;
+  effectiveAt: Date;
+  status: ScheduledPaydown['status'];
+  source: ScheduledPaydown['source'];
+};
+
+type ScheduledPaydownModel = {
+  findMany: (args: {
+    where: { userId: string };
+    orderBy: Array<{ effectiveAt: 'asc' } | { createdAt: 'asc' } | { id: 'asc' }>;
+  }) => Promise<ScheduledPaydownRow[]>;
+};
 
 export async function fromPrismaUserToEngineState(
   userId: string,
@@ -44,12 +61,17 @@ export async function fromPrismaUserToEngineState(
   const cash: EngineState['cash'] = await loadCashSnapshot(userId).catch((_error: unknown) =>
     unavailable<UserLiquidityState>()
   );
+  const scheduledPaydowns: EngineState['scheduledPaydowns'] =
+    await loadScheduledPaydowns(userId).catch((_error: unknown) =>
+      unavailable<ScheduledPaydown[]>()
+    );
 
   return {
     userId,
     cards,
     buckets,
     debts,
+    scheduledPaydowns,
     constraints,
     world,
     cash,
@@ -177,6 +199,30 @@ async function loadWorldParams(): Promise<WorldParams> {
 
 async function loadCashSnapshot(_userId: string): Promise<EngineState['cash']> {
   return unavailable();
+}
+
+async function loadScheduledPaydowns(userId: string): Promise<EngineState['scheduledPaydowns']> {
+  const model = (prisma as unknown as { scheduledPaydown?: ScheduledPaydownModel })
+    .scheduledPaydown;
+  if (model === undefined || typeof model.findMany !== 'function') {
+    return unavailable<ScheduledPaydown[]>();
+  }
+
+  const rows = await model.findMany({
+    where: { userId },
+    orderBy: [{ effectiveAt: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+  });
+
+  return available(
+    rows.map<ScheduledPaydown>((row) => ({
+      id: row.id,
+      debtId: row.debtId,
+      amountCents: row.amountCents,
+      effectiveAtMs: row.effectiveAt.getTime(),
+      status: row.status,
+      source: row.source,
+    }))
+  );
 }
 
 function logPreferencesWarning(runtime: EngineRuntime, message: string, meta?: unknown) {
