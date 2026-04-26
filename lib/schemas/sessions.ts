@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { CentsSchema } from './common.js';
+import {
+  applyTemporalSchemaRefinements,
+  ContingentRecommendationSchema,
+  FutureRiskContextSchema,
+  TemporalContextSchema,
+} from './recommendation-temporal.js';
 
 export const CreateSessionSchema = z
   .object({
@@ -52,6 +58,7 @@ const EngineDegradationSchema = z
     code: z.literal('CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY'),
     message: z.string(),
   })
+  .strict()
   .nullable();
 
 const SessionErrorSchema = z
@@ -71,6 +78,9 @@ export const CreateSessionSuccessResponseSchema = z
     capabilities: EngineCapabilitiesSchema,
     degraded: EngineDegradedSchema,
     degradation: EngineDegradationSchema,
+    temporalContext: TemporalContextSchema,
+    contingentRecommendation: ContingentRecommendationSchema,
+    futureRiskContext: FutureRiskContextSchema,
   })
   .strict();
 
@@ -84,12 +94,15 @@ export const CreateSessionFallbackResponseSchema = z
     capabilities: EngineCapabilitiesSchema,
     degraded: EngineDegradedSchema,
     degradation: EngineDegradationSchema,
+    temporalContext: TemporalContextSchema,
+    contingentRecommendation: ContingentRecommendationSchema,
+    futureRiskContext: FutureRiskContextSchema,
   })
   .strict();
 
 export const CreateSessionResponseSchema = z.union([
   CreateSessionSuccessResponseSchema,
   CreateSessionFallbackResponseSchema,
-]);
+]).superRefine(applyTemporalSchemaRefinements);
 
 export type CreateSessionResponse = z.infer<typeof CreateSessionResponseSchema>;
