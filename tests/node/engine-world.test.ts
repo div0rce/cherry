@@ -9,6 +9,7 @@ function buildStubState(): EngineState {
     userId: 'user-1',
     buckets: [],
     debts: available([]),
+    scheduledPaydowns: available([]),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
