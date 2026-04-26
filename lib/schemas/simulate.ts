@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import { CentsSchema, RewardCategorySchema } from './common.js';
+import {
+  applyTemporalSchemaRefinements,
+  ContingentRecommendationSchema,
+  FutureRiskContextSchema,
+  TemporalContextSchema,
+} from './recommendation-temporal.js';
 
 export const SimulateRequestSchema = z
   .object({
@@ -35,6 +41,7 @@ const EngineDegradationSchema = z
     code: z.literal('CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY'),
     message: z.string(),
   })
+  .strict()
   .nullable();
 
 const SimulationErrorSchema = z
@@ -54,6 +61,9 @@ const SimulateResponseBaseSchema = z
     degradation: EngineDegradationSchema,
     authority: z.unknown().nullable(),
     committed: z.boolean(),
+    temporalContext: TemporalContextSchema,
+    contingentRecommendation: ContingentRecommendationSchema,
+    futureRiskContext: FutureRiskContextSchema,
   })
   .strict();
 
@@ -78,6 +88,7 @@ export const SimulateResponseSchema = z.union([
   SimulateNonCardSuccessResponseSchema,
   SimulateFallbackResponseSchema,
 ]).superRefine((value, ctx) => {
+  applyTemporalSchemaRefinements(value, ctx);
   const decisionCardId = extractNestedString(value.decision, ['card', 'cardId']);
   const transactionChosenCardId = extractNestedString(value.transaction, ['chosenCardId']);
 
