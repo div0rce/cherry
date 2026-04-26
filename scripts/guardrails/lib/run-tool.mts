@@ -16,6 +16,7 @@ export type RunToolOptions = {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   input?: string;
+  maxBuffer?: number;
   allowMissingTool?: boolean;
 };
 
@@ -70,6 +71,7 @@ export function runTool(tool: string, args: string[], options: RunToolOptions = 
     cwd: options.cwd,
     env: options.env,
     input: options.input,
+    maxBuffer: options.maxBuffer,
   });
   let stdout = normalizeOutput(result.stdout);
   let stderr = normalizeOutput(result.stderr);
@@ -87,6 +89,7 @@ export function runTool(tool: string, args: string[], options: RunToolOptions = 
           cwd: options.cwd,
           env: options.env,
           input: options.input,
+          maxBuffer: options.maxBuffer,
         });
         stdout = normalizeOutput(result.stdout);
         stderr = normalizeOutput(result.stderr);

@@ -32,6 +32,12 @@ function computeCherryIncentive(amountCents: number, budgetVerdict: BudgetVerdic
   return { pointsIfFollowed: base * multiplier, expiryMinutes: 15 };
 }
 
+export function pickTopLegacySurfaceDecision(
+  decisions: EngineDecision[]
+): EngineDecision | undefined {
+  return decisions.at(0);
+}
+
 export function mapSolverDecisionToLegacyDecision(input: {
   solverDecision?: EngineDecision;
   state: EngineState;
@@ -47,17 +53,6 @@ export function mapSolverDecisionToLegacyDecision(input: {
     ctx.amountCents === undefined
   ) {
     return fallback == null ? null : fallback;
-  }
-
-  let isCardAction = false;
-  if (solverDecision.action.type === 'USE_CARD') {
-    isCardAction = true;
-  } else if (solverDecision.action.type === 'USE_CARD_WITH_PAYDOWN') {
-    isCardAction = true;
-  }
-
-  if (!isCardAction && fallback !== undefined) {
-    return fallback;
   }
 
   const amountCents = ctx.amountCents;

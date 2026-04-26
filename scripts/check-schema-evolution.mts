@@ -58,6 +58,55 @@ function diffFiles(range: string, extra: string[] = []): string[] {
     .filter((line) => line.length > 0);
 }
 
+function collectChangedFiles(range: string): string[] {
+  const changed = new Set<string>();
+  for (const filePath of diffFiles(range)) {
+    changed.add(filePath);
+  }
+  for (const args of [
+    ['diff', '--name-only'],
+    ['diff', '--name-only', '--cached'],
+  ]) {
+    const result = runTool('git', args);
+    if (result.exitCode !== 0) {
+      guardrailFail('Unable to compute working tree diff', [
+        result.stderr.trim(),
+        result.stdout.trim(),
+      ].filter(Boolean));
+    }
+    for (const filePath of result.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)) {
+      changed.add(filePath);
+    }
+  }
+  return [...changed].sort();
+}
+
+function diffNameStatusWithWorktree(range: string, extra: string[] = []): string[] {
+  const entries = new Set(diffNameStatus(range, extra));
+  for (const args of [
+    ['diff', '--name-status', ...extra],
+    ['diff', '--name-status', '--cached', ...extra],
+  ]) {
+    const result = runTool('git', args);
+    if (result.exitCode !== 0) {
+      guardrailFail('Unable to compute working tree migration diff', [
+        result.stderr.trim(),
+        result.stdout.trim(),
+      ].filter(Boolean));
+    }
+    for (const line of result.stdout
+      .split('\n')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)) {
+      entries.add(line);
+    }
+  }
+  return [...entries].sort();
+}
+
 function diffNameStatus(range: string, extra: string[] = []): string[] {
   const args = ['diff', '--name-status', range, ...extra];
   const result = runTool('git', args);
@@ -117,7 +166,7 @@ function assertMigrationNames(dirs: string[]): void {
 }
 
 function enforceNoOldMigrationEdits(range: string, base: string): void {
-  const entries = diffNameStatus(range, ['--', 'prisma/migrations']);
+  const entries = diffNameStatusWithWorktree(range, ['--', 'prisma/migrations']);
   const violations: string[] = [];
   for (const line of entries) {
     const parts = line.split(/\\s+/);
@@ -153,7 +202,7 @@ function assertEnvChecks(): void {
 function main(): void {
   const base = resolveBaseRef();
   const range = `${base}...HEAD`;
-  const changed = diffFiles(range);
+  const changed = collectChangedFiles(range);
   const schemaTouched = changed.some((filePath) =>
     filePath === 'prisma/schema.prisma' || filePath.startsWith('prisma/migrations/'),
   );

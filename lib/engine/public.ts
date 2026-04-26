@@ -9,6 +9,11 @@ import type { EngineDecision, EngineState } from './types.js';
 import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types.js';
 import type { World } from '../adapters/world.js';
 import { getRewardSemanticsForCardSpend } from './reward-semantics.js';
+import {
+  deriveEngineDegradation,
+  deriveUnresolvableCreditLiabilityWarningText,
+  type EngineDegradation,
+} from './degradation.js';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];
 
@@ -156,27 +161,45 @@ function formatCentsAsDollars(cents: number): string {
   return (cents / centsPerDollar).toFixed(2);
 }
 
-function fallbackDecision(reasonCode: string): AutopilotDecision {
+function fallbackDecision(
+  reasonCode: string,
+  degradation: EngineDegradation = null,
+  userFacingMessage: string | null = null
+): AutopilotDecision {
+  const resolvedMessage =
+    userFacingMessage !== null
+      ? userFacingMessage
+      : 'We could not compute a safe recommendation. Use your usual card.';
   return {
     kind: 'FALLBACK',
     cardId: null,
     reasonCode,
-    userFacingMessage: 'We could not compute a safe recommendation. Use your usual card.',
+    userFacingMessage: resolvedMessage,
     expectedMonetaryBenefitCents: null,
     expectedPointsDelta: null,
     bucketDelta: null,
+    degradation,
   };
 }
 
-function blockedDecision(reasonCode: string): AutopilotDecision {
+function blockedDecision(
+  reasonCode: string,
+  degradation: EngineDegradation = null,
+  userFacingMessage: string | null = null
+): AutopilotDecision {
+  const resolvedMessage =
+    userFacingMessage !== null
+      ? userFacingMessage
+      : 'This purchase would break your guardrails. We recommend skipping it.';
   return {
     kind: 'BLOCKED',
     cardId: null,
     reasonCode,
-    userFacingMessage: 'This purchase would break your guardrails. We recommend skipping it.',
+    userFacingMessage: resolvedMessage,
     expectedMonetaryBenefitCents: null,
     expectedPointsDelta: null,
     bucketDelta: null,
+    degradation,
   };
 }
 
@@ -240,14 +263,28 @@ export async function getAutopilotDecisionForUserSwipe(
     maxCandidates: 64,
     stateOverride: filteredState,
     includeLegacyDecision: false,
+    candidateFilter: (action) =>
+      SUPPORTED_ACTIONS.includes(action.type) &&
+      (action.cardId == null ? false : cardUniverseIds.includes(action.cardId)),
   });
 
   if (engineResult.ok !== true) {
     return fallbackDecision('FALLBACK_SAFE');
   }
+  const degradation = deriveEngineDegradation(engineResult.exclusions);
 
   const sortedCardDecisions = selectCardDecisions(engineResult.decisions, cardUniverseIds);
   if (sortedCardDecisions.length === 0) {
+    const warning = deriveUnresolvableCreditLiabilityWarningText(degradation);
+    if (warning != null) {
+      const reasonCode =
+        degradation !== null ? degradation.code : 'NO_ELIGIBLE_DECISION';
+      return fallbackDecision(
+        reasonCode,
+        degradation,
+        warning
+      );
+    }
     return blockedDecision('NO_ELIGIBLE_DECISION');
   }
 
@@ -317,5 +354,6 @@ export async function getAutopilotDecisionForUserSwipe(
     expectedMonetaryBenefitCents,
     expectedPointsDelta,
     bucketDelta,
+    degradation,
   };
 }

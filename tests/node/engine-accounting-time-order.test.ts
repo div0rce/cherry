@@ -36,6 +36,7 @@ function buildState(
     cards: [],
     buckets: [],
     debts: available([]),
+    scheduledPaydowns: available([]),
     constraints: { hard: {}, soft: {} },
     world: {},
     cash: available({ liquidCents: 20_000, nextPaycheckDateMs: null, nextPaycheckNetCents: null }),

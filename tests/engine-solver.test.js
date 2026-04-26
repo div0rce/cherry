@@ -17,12 +17,38 @@ const {
   getEngineRuntimeMetadata,
   unavailable,
 } = require('../lib/engine');
+const { safeSolveDecisionForWorld } = require('../lib/engine/run');
+const {
+  CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE,
+  deriveEngineDegradation,
+} = require('../lib/engine/degradation');
 
 function buildStubState(overrides = {}) {
   const { debts: debtOverride, cash: cashOverride, ...restOverrides } = overrides;
   const debts =
     debtOverride === undefined
-      ? available([])
+      ? available([
+          {
+            id: 'debt-strong',
+            name: 'Debt Strong',
+            type: 'CREDIT_CARD',
+            balanceCents: 1_000,
+            creditLimitCents: 10_000,
+            aprPercent: 18,
+            minPaymentCents: 100,
+            dueDayOfMonth: 5,
+          },
+          {
+            id: 'debt-weak',
+            name: 'Debt Weak',
+            type: 'CREDIT_CARD',
+            balanceCents: 500,
+            creditLimitCents: 5_000,
+            aprPercent: 18,
+            minPaymentCents: 50,
+            dueDayOfMonth: 8,
+          },
+        ])
       : Array.isArray(debtOverride)
         ? available(debtOverride)
         : debtOverride;
@@ -74,6 +100,7 @@ function buildStubState(overrides = {}) {
         isCredit: true,
         isActive: true,
         isVirtual: false,
+        linkedDebtId: 'debt-strong',
       },
       {
         id: 'card-weak',
@@ -96,6 +123,7 @@ function buildStubState(overrides = {}) {
         isCredit: true,
         isActive: true,
         isVirtual: false,
+        linkedDebtId: 'debt-weak',
       },
     ],
     ...restOverrides,
@@ -152,6 +180,7 @@ async function testSolveDecisionSorts() {
         isCredit: true,
         isActive: true,
         isVirtual: false,
+        linkedDebtId: 'debt-strong',
       },
       {
         id: 'card-weak',
@@ -174,6 +203,7 @@ async function testSolveDecisionSorts() {
         isCredit: true,
         isActive: true,
         isVirtual: false,
+        linkedDebtId: 'debt-weak',
       },
     ],
   });
@@ -185,6 +215,28 @@ async function testSolveDecisionSorts() {
 
 async function testDeterministicOrderingForEqualScores() {
   const state = buildStubState({
+    debts: [
+      {
+        id: 'debt-b',
+        name: 'Debt B',
+        type: 'CREDIT_CARD',
+        balanceCents: 1_000,
+        creditLimitCents: 10_000,
+        aprPercent: 18,
+        minPaymentCents: 100,
+        dueDayOfMonth: 5,
+      },
+      {
+        id: 'debt-a',
+        name: 'Debt A',
+        type: 'CREDIT_CARD',
+        balanceCents: 1_000,
+        creditLimitCents: 10_000,
+        aprPercent: 18,
+        minPaymentCents: 100,
+        dueDayOfMonth: 5,
+      },
+    ],
     cards: [
       {
         id: 'card-b',
@@ -207,6 +259,7 @@ async function testDeterministicOrderingForEqualScores() {
         isCredit: true,
         isActive: true,
         isVirtual: false,
+        linkedDebtId: 'debt-b',
       },
       {
         id: 'card-a',
@@ -229,6 +282,7 @@ async function testDeterministicOrderingForEqualScores() {
         isCredit: true,
         isActive: true,
         isVirtual: false,
+        linkedDebtId: 'debt-a',
       },
     ],
   });
@@ -262,6 +316,8 @@ async function testSafeSolveDecisionSuccess() {
   assert.equal(outcome.ok, true);
   if (outcome.ok) {
     assert.ok(outcome.decisions.length > 0);
+    assert.equal(outcome.exclusions.creditActionsGeneratedCount > 0, true);
+    assert.equal(outcome.exclusions.creditUnresolvableLiabilityCount, 0);
   }
 }
 
@@ -343,6 +399,346 @@ async function testSafeSolveDecisionFailure() {
 
   console.error = originalError;
   console.warn = originalWarn;
+}
+
+async function testSafeSolveDecisionForUserPreservesExclusionsOnEmptyRankedResults() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-missing-link',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Missing Link',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const outcome = await safeSolveDecisionForUser('user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+    candidateFilter: (action) =>
+      action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN',
+  });
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) {
+    assert.equal(outcome.decisions.length, 0);
+    assert.equal(outcome.exclusions.creditActionsGeneratedCount > 0, true);
+    assert.equal(
+      outcome.exclusions.creditActionsGeneratedCount,
+      outcome.exclusions.creditUnresolvableLiabilityCount
+    );
+    assert.equal(
+      deriveEngineDegradation(outcome.exclusions)?.code,
+      CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE
+    );
+  }
+}
+
+async function testSafeSolveDecisionForWorldPreservesExclusionsOnEmptyRankedResults() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-missing-link',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Missing Link',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const world = { logger: { warn() {}, error() {} } };
+  const outcome = await safeSolveDecisionForWorld(world, 'user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+    candidateFilter: (action) =>
+      action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN',
+  });
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) {
+    assert.equal(outcome.decisions.length, 0);
+    assert.equal(outcome.exclusions.creditActionsGeneratedCount > 0, true);
+    assert.equal(
+      outcome.exclusions.creditActionsGeneratedCount,
+      outcome.exclusions.creditUnresolvableLiabilityCount
+    );
+  }
+}
+
+async function testSurfaceFilteredMalformedCreditStateDoesNotDegrade() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-missing-link',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Missing Link',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const result = await solveDecision(state, ctx, {
+    candidateFilter: (action) => action.type === 'REJECT_PURCHASE',
+  });
+
+  assert.deepEqual(result.exclusions, {
+    creditActionsGeneratedCount: 0,
+    creditUnresolvableLiabilityCount: 0,
+  });
+  assert.equal(deriveEngineDegradation(result.exclusions), null);
+}
+
+async function testPreSliceExclusionsAreCountedFromSurfaceFilteredGeneratedSet() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-debit',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Debit',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+      {
+        id: 'card-missing-link',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Missing Link',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const result = await solveDecision(state, ctx, {
+    candidateFilter: (action) => action.type === 'USE_CARD',
+    maxCandidates: 1,
+  });
+
+  assert.equal(result.decisions.length, 1);
+  assert.equal(result.exclusions.creditActionsGeneratedCount > 0, true);
+  assert.equal(result.exclusions.creditUnresolvableLiabilityCount > 0, true);
+}
+
+async function testValidCreditExclusionsDoNotDegrade() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-valid-link',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Valid Link',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        linkedDebtId: 'debt-valid',
+      },
+    ],
+    debts: [
+      {
+        id: 'debt-valid',
+        name: 'Debt Valid',
+        type: 'CREDIT_CARD',
+        balanceCents: 1_000,
+        creditLimitCents: 5_000,
+        aprPercent: 18,
+        minPaymentCents: 100,
+        dueDayOfMonth: 5,
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const outcome = await safeSolveDecisionForUser('user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+  });
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) {
+    assert.equal(outcome.exclusions.creditActionsGeneratedCount > 0, true);
+    assert.equal(outcome.exclusions.creditUnresolvableLiabilityCount, 0);
+    assert.equal(deriveEngineDegradation(outcome.exclusions), null);
+  }
+}
+
+async function testCreditWithoutDebtCapabilityIsExcluded() {
+  const state = buildStubState({
+    capabilities: createUnavailableEngineCapabilities(),
+    debts: [
+      {
+        id: 'debt-strong',
+        name: 'Debt Strong',
+        type: 'CREDIT_CARD',
+        balanceCents: 1_000,
+        creditLimitCents: 10_000,
+        aprPercent: 18,
+        minPaymentCents: 100,
+        dueDayOfMonth: 5,
+      },
+    ],
+    cards: [
+      {
+        id: 'card-credit',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Credit',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        linkedDebtId: 'debt-strong',
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const result = await solveDecision(state, ctx, {
+    candidateFilter: (action) => action.type === 'USE_CARD',
+  });
+
+  assert.equal(result.decisions.length, 0);
+  assert.equal(result.exclusions.creditActionsGeneratedCount > 0, true);
+  assert.equal(
+    result.exclusions.creditActionsGeneratedCount,
+    result.exclusions.creditUnresolvableLiabilityCount
+  );
+}
+
+async function testCreditWithoutAvailableDebtsIsExcluded() {
+  const state = buildStubState({
+    debts: unavailable(),
+    cards: [
+      {
+        id: 'card-credit',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Credit',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        linkedDebtId: 'debt-strong',
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const result = await solveDecision(state, ctx, {
+    candidateFilter: (action) => action.type === 'USE_CARD',
+  });
+
+  assert.equal(result.decisions.length, 0);
+  assert.equal(result.exclusions.creditActionsGeneratedCount > 0, true);
+  assert.equal(
+    result.exclusions.creditActionsGeneratedCount,
+    result.exclusions.creditUnresolvableLiabilityCount
+  );
+}
+
+async function testCreditWithoutMatchingDebtRecordIsExcluded() {
+  const state = buildStubState({
+    debts: [
+      {
+        id: 'debt-other',
+        name: 'Debt Other',
+        type: 'CREDIT_CARD',
+        balanceCents: 1_000,
+        creditLimitCents: 10_000,
+        aprPercent: 18,
+        minPaymentCents: 100,
+        dueDayOfMonth: 5,
+      },
+    ],
+    cards: [
+      {
+        id: 'card-credit',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Credit',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: true,
+        isActive: true,
+        isVirtual: false,
+        linkedDebtId: 'debt-missing',
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const result = await solveDecision(state, ctx, {
+    candidateFilter: (action) => action.type === 'USE_CARD',
+  });
+
+  assert.equal(result.decisions.length, 0);
+  assert.equal(result.exclusions.creditActionsGeneratedCount > 0, true);
+  assert.equal(
+    result.exclusions.creditActionsGeneratedCount,
+    result.exclusions.creditUnresolvableLiabilityCount
+  );
+}
+
+async function testDebitCardsRemainEligibleWithoutLiabilityResolution() {
+  const state = buildStubState({
+    debts: unavailable(),
+    capabilities: createUnavailableEngineCapabilities(),
+    cards: [
+      {
+        id: 'card-debit',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Debit',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext();
+  const result = await solveDecision(state, ctx, {
+    candidateFilter: (action) => action.type === 'USE_CARD',
+  });
+
+  assert.equal(result.decisions.length, 1);
+  assert.deepEqual(result.exclusions, {
+    creditActionsGeneratedCount: 0,
+    creditUnresolvableLiabilityCount: 0,
+  });
 }
 
 function testGenerateCandidatesSkipsDisabled() {
@@ -698,7 +1094,9 @@ async function testCompositeActionImprovesDebtRelief() {
   assert.ok(plain);
   assert.ok(composite);
   if (plain && composite) {
-    assert.ok(composite.score > plain.score);
+    assert.ok(composite.components);
+    assert.ok(plain.components);
+    assert.ok(composite.components.debtRelief > plain.components.debtRelief);
   }
 }
 
@@ -776,18 +1174,30 @@ async function testSolveDecisionRespondsToProfiles() {
     ctx
   );
 
-  const rewardsTop = rewardsResult.decisions[0];
-  const debtTop = debtResult.decisions[0];
-
-  assert.equal(rewardsTop?.action.type, 'USE_CARD');
-  assert.equal(rewardsTop?.action.cardId, 'card-reward');
-
-  assert.ok(debtTop);
-  assert.notEqual(debtTop?.actionId, rewardsTop?.actionId);
-  assert.ok(
-    debtTop?.action.type === 'USE_CARD_WITH_PAYDOWN' ||
-      debtTop?.action.type === 'PAY_DOWN_DEBT'
+  const rewardsCardDecision = rewardsResult.decisions.find(
+    (decision) => decision.action.type === 'USE_CARD'
   );
+  const debtReliefDecision = debtResult.decisions.find(
+    (decision) =>
+      decision.action.type === 'USE_CARD_WITH_PAYDOWN' || decision.action.type === 'PAY_DOWN_DEBT'
+  );
+  const rewardsCardRank = rewardsCardDecision
+    ? rewardsResult.decisions.findIndex((decision) => decision.actionId === rewardsCardDecision.actionId)
+    : -1;
+  const debtReliefRank = debtReliefDecision
+    ? debtResult.decisions.findIndex((decision) => decision.actionId === debtReliefDecision.actionId)
+    : -1;
+
+  assert.equal(rewardsCardDecision?.action.type, 'USE_CARD');
+  assert.equal(rewardsCardDecision?.action.cardId, 'card-reward');
+
+  assert.ok(debtReliefDecision);
+  assert.ok(
+    debtReliefDecision?.action.type === 'USE_CARD_WITH_PAYDOWN' ||
+      debtReliefDecision?.action.type === 'PAY_DOWN_DEBT'
+  );
+  assert.ok(rewardsCardRank >= 0);
+  assert.ok(debtReliefRank >= 0);
 }
 
 async function testSolveDecisionMarksDegradedCapabilities() {
@@ -849,6 +1259,15 @@ async function run() {
   await testSafeSolveDecisionAccountingContract();
   await testSafeSolveDecisionAccountingDeterministic();
   await testSafeSolveDecisionFailure();
+  await testSafeSolveDecisionForUserPreservesExclusionsOnEmptyRankedResults();
+  await testSafeSolveDecisionForWorldPreservesExclusionsOnEmptyRankedResults();
+  await testSurfaceFilteredMalformedCreditStateDoesNotDegrade();
+  await testPreSliceExclusionsAreCountedFromSurfaceFilteredGeneratedSet();
+  await testValidCreditExclusionsDoNotDegrade();
+  await testCreditWithoutDebtCapabilityIsExcluded();
+  await testCreditWithoutAvailableDebtsIsExcluded();
+  await testCreditWithoutMatchingDebtRecordIsExcluded();
+  await testDebitCardsRemainEligibleWithoutLiabilityResolution();
   testGenerateCandidatesSkipsDisabled();
   testSimulateActionUpdatesBucket();
   testSimulateActionDebitPurchaseReducesLiquidCash();

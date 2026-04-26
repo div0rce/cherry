@@ -216,6 +216,7 @@ async function runDevNoAuth() {
     headers,
   });
   assert.equal(res.status, 200);
+  await res.json();
   restoreDate();
   restoreEnv('NODE_ENV', prevEnv);
 }

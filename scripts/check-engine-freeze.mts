@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
 import { fail } from './guardrails/lib/fail.mjs';
+import { assertEngineFreezeFixtureSemantics } from './lib/engine-freeze-fixtures.mjs';
 import { readJsonFile } from './guardrails/lib/read-json.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
 
@@ -64,7 +65,15 @@ function loadPolicy(): z.infer<typeof PolicySchema> {
   return parsed.data;
 }
 
-loadPolicy();
+const policy = loadPolicy();
+for (const fixturePath of policy.engineFixtures.files) {
+  assertEngineFreezeFixtureSemantics({
+    root: ROOT,
+    fixturePath,
+    prefix: PREFIX,
+    fix: FIX,
+  });
+}
 const baseRef = resolveBaseRef();
 const diffResult = runTool('git', ['diff', '--name-only', `${baseRef}...HEAD`]);
 if (diffResult.exitCode !== 0) {
@@ -74,10 +83,31 @@ if (diffResult.exitCode !== 0) {
   });
 }
 
-const changedFiles = diffResult.stdout
+const changedFilesSet = new Set(diffResult.stdout
   .split('\n')
   .map((line) => line.trim())
-  .filter(Boolean);
+  .filter(Boolean));
+
+for (const args of [
+  ['diff', '--name-only'],
+  ['diff', '--name-only', '--cached'],
+]) {
+  const worktreeDiff = runTool('git', args);
+  if (worktreeDiff.exitCode !== 0) {
+    fail(PREFIX, 'Unable to compute working tree diff', {
+      details: [worktreeDiff.stderr.trim(), worktreeDiff.stdout.trim()].filter(Boolean),
+      fix: FIX,
+    });
+  }
+  for (const filePath of worktreeDiff.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)) {
+    changedFilesSet.add(filePath);
+  }
+}
+
+const changedFiles = [...changedFilesSet].sort();
 
 const engineSensitivePrefixes = [
   'lib/engine/',

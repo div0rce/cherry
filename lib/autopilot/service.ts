@@ -13,6 +13,7 @@ import {
 import type { RewardCategory } from '@prisma/client';
 import type { AutopilotDecision } from '../engine/public-types.js';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public.js';
+import { deriveUnresolvableCreditLiabilityWarningText } from '../engine/degradation.js';
 import { logInvariantViolation } from '../log.js';
 import { prisma } from '../prisma.js';
 import { recordDecisionEvent, simulateSpendAuthority } from '../adapters/runtime/authority.prisma.js';
@@ -462,6 +463,12 @@ function buildExplanation(
   }
 
   const warnings: string[] = [];
+  const degradationWarning = deriveUnresolvableCreditLiabilityWarningText(
+    evaluation.decision.degradation ?? null
+  );
+  if (degradationWarning != null) {
+    warnings.push(degradationWarning);
+  }
   if (evaluation.status !== 'ok') {
     warnings.push('Autopilot could not produce a safe recommendation.');
   }

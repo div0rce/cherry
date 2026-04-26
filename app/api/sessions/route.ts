@@ -11,12 +11,14 @@ import { prisma } from '../../../lib/prisma.js';
 import {
   buildEngineContext,
   mapSolverDecisionToLegacyDecision,
+  pickTopLegacySurfaceDecision,
   type LegacyEngineDecision,
 } from '../../../lib/engine.js';
 import { safeSolveDecisionForWorld } from '../../../lib/engine/run.js';
 import { fromPrismaUserToEngineState } from '../../../lib/engine-state.js';
 import { runEngine as runLegacyEngine } from '../../../lib/legacy-engine.js';
 import { buildPrismaWorld } from '../../../lib/adapters/runtime/world.prisma.js';
+import { deriveEngineDegradation } from '../../../lib/engine/degradation.js';
 import { logError } from '../../../lib/logger.js';
 import { CreateSessionSchema } from '../../../lib/schemas/sessions.js';
 import { parseJsonBody } from '../../../lib/validation.js';
@@ -28,6 +30,8 @@ import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 import { auth } from '../../../lib/auth.js';
+import { buildTemporalResponseShape } from '../../../lib/engine/temporal-response.js';
+import { evaluateScheduledPaydowns } from '../../../lib/engine/scheduled-paydowns.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
@@ -88,9 +92,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const state = await fromPrismaUserToEngineState(userId, requestNowMs);
+    const scheduledPaydownEvaluation = evaluateScheduledPaydowns(state, requestNowMs);
+    const temporalResponse = buildTemporalResponseShape(scheduledPaydownEvaluation, requestNowMs);
     const engineResult = await safeSolveDecisionForWorld(world, userId, ctxForEngine, {
       maxCandidates: 64,
       stateOverride: state,
+      scheduledPaydownEvaluation,
       legacyDecisionProvider: runLegacyEngine,
     });
 
@@ -107,17 +114,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           },
           capabilities: engineResult.capabilities,
           degraded: engineResult.degraded,
+          degradation: null,
+          ...temporalResponse,
         },
         { status: 200 }
       );
     }
 
-    const topDecision =
-      engineResult.decisions.find(
-        (d) => d.action.type === 'USE_CARD' || d.action.type === 'USE_CARD_WITH_PAYDOWN'
-      ) ?? engineResult.decisions.at(0);
+    const degradation = deriveEngineDegradation(engineResult.exclusions);
+    const topDecision = pickTopLegacySurfaceDecision(engineResult.decisions);
+    if (topDecision === undefined) {
+      return NextResponse.json(
+        {
+          sessionId: null,
+          orderToken: null,
+          expiresAt: null,
+          source: RecommendationSource.APP_SCAN,
+          error: {
+            code: degradation?.code ?? 'NO_TRUTHFUL_RECOMMENDATION',
+            message:
+              degradation?.message ?? 'No truthful recommendation was available for this session.',
+          },
+          capabilities: engineResult.capabilities,
+          degraded: engineResult.degraded,
+          degradation,
+          ...temporalResponse,
+        },
+        { status: 200 }
+      );
+    }
     const mappedDecision: LegacyEngineDecision | null = mapSolverDecisionToLegacyDecision({
-      ...(topDecision ? { solverDecision: topDecision } : {}),
+      solverDecision: topDecision,
       state: engineResult.state,
       ctx: ctxForEngine,
       category: (categoryHint as RewardCategory | null) ?? 'OTHER',
@@ -134,6 +161,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           source: RecommendationSource.APP_SCAN,
           capabilities: engineResult.capabilities,
           degraded: engineResult.degraded,
+          degradation,
+          ...temporalResponse,
         },
         { status: 200 }
       );
@@ -191,6 +220,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       decision,
       capabilities: engineResult.capabilities,
       degraded: engineResult.degraded,
+      degradation,
+      ...temporalResponse,
     });
   } catch (error: unknown) {
     const appError = asAppError(error);

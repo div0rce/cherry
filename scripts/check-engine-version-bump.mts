@@ -102,6 +102,32 @@ function diffFiles(range: string): string[] {
     .filter((line) => line.length > 0);
 }
 
+function collectChangedFiles(baseRange: string): string[] {
+  const changed = new Set<string>();
+  for (const filePath of diffFiles(baseRange)) {
+    changed.add(filePath);
+  }
+  for (const args of [
+    ['diff', '--name-only'],
+    ['diff', '--name-only', '--cached'],
+  ]) {
+    const result = runTool('git', args);
+    if (result.exitCode !== 0) {
+      guardrailFail('Unable to compute working tree diff', [
+        result.stderr.trim(),
+        result.stdout.trim(),
+      ].filter(Boolean));
+    }
+    for (const filePath of result.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)) {
+      changed.add(filePath);
+    }
+  }
+  return [...changed].sort();
+}
+
 function isEngineSensitive(filePath: string): boolean {
   if (filePath === VERSION_PATH) return false;
   return ENGINE_SENSITIVE_PREFIXES.some((prefix) => filePath === prefix || filePath.startsWith(prefix));
@@ -113,7 +139,7 @@ function main(): void {
 
   const baseRef = resolveBaseRef();
   const baseRange = `${baseRef}...HEAD`;
-  const baseChanged = diffFiles(baseRange);
+  const baseChanged = collectChangedFiles(baseRange);
 
   const engineChanges = baseChanged.filter(isEngineSensitive);
   if (engineChanges.length === 0) {

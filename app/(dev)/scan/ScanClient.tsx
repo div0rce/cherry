@@ -17,6 +17,12 @@ import { ErrorBanner } from '../../../components/ErrorBanner.js';
 import { hasText } from '../../../lib/text.js';
 import { isNonNegativeNumber, isPositiveNumber } from '../../../lib/numbers.js';
 import { logGuardrailEvent, logInvariantViolation } from '../../../lib/log.js';
+import {
+  createScanFailureUiState,
+  createScanSubmitStartUiState,
+  resolveScanResponseUiState,
+} from '../../../lib/scan-client-state.js';
+import { isScanSuccessResponse, type ScanSuccessResponse } from '../../../lib/schemas/scan.js';
 
 type ScanPreview = {
   category: string | null;
@@ -45,7 +51,10 @@ type SessionState = {
 const inputClass =
   'w-full rounded-lg border border-[rgba(27,38,69,0.6)] bg-[#0b1021] px-3 py-2 text-sm text-[#f8fafc] placeholder:text-[#a5b0d0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff6b8a]';
 
-function mapScanResponseToPreview(api: ScanResponse, request: { merchantName: string | null }): ScanPreview {
+function mapScanResponseToPreview(
+  api: ScanSuccessResponse,
+  request: { merchantName: string | null }
+): ScanPreview {
   const bucket = api.bucket ?? null;
   const isSnapshot = api.amountCents === 0;
   return {
@@ -67,7 +76,7 @@ function mapScanResponseToPreview(api: ScanResponse, request: { merchantName: st
           : null,
     advisoryPoints: api.cherryIncentive.pointsIfFollowed ?? 0,
     isSnapshot,
-    decision: api.engineDecision as LegacyEngineDecision,
+    decision: api.decision as LegacyEngineDecision,
   };
 }
 
@@ -146,8 +155,9 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
-    setScanPreview(null);
+    const submitStartUiState = createScanSubmitStartUiState<ScanPreview>();
+    setError(submitStartUiState.error);
+    setScanPreview(submitStartUiState.scanPreview);
     setSessionState(null);
     setCountdownSeconds(null);
 
@@ -198,7 +208,9 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
     );
 
     if (result.ok !== true) {
-      setError(result.message);
+      const failureUiState = createScanFailureUiState<ScanPreview>(result.message);
+      setScanPreview(failureUiState.scanPreview);
+      setError(failureUiState.error);
       logGuardrailEvent({
         userId: null,
         surface: 'scan',
@@ -211,8 +223,28 @@ export default function ScanClient({ nowMs }: { nowMs?: number }): JSX.Element {
       return;
     }
 
+    if (!isScanSuccessResponse(result.data)) {
+      const fallbackUiState = createScanFailureUiState<ScanPreview>(result.data.error.message);
+      setScanPreview(fallbackUiState.scanPreview);
+      setError(fallbackUiState.error);
+      logGuardrailEvent({
+        userId: null,
+        surface: 'scan',
+        outcome: 'FALLBACK',
+        reason: result.data.error.code,
+        detail: {
+          message: result.data.error.message,
+        },
+        timestamp: new Date(currentMs()).toISOString(),
+        timestampSource: 'client',
+      });
+      return;
+    }
+
     const preview = mapScanResponseToPreview(result.data, payload);
-    setScanPreview(preview);
+    const responseUiState = resolveScanResponseUiState(result.data, preview);
+    setScanPreview(responseUiState.scanPreview);
+    setError(responseUiState.error);
   }
 
   async function startSession() {

@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-29
+Last updated: 2026-04-26
 
 # Schema Evolution Rules
 
@@ -7,6 +7,12 @@ Last updated: 2026-01-29
 - prisma/schema.prisma changes
 - prisma/migrations/** additions or edits
 - DB truth scripts/tests under scripts/db-check-* or tests/db/**
+
+## Current schema manifest
+- `schemaVersion`: `schema_v2`
+- `lastMigration`: `20260426090000_add_scheduled_paydowns`
+- `invariantsVersion`: `db_invariants_v1`
+- `schema_v2` adds persisted raw scheduled paydown rows for engine loading. The runtime loader treats these rows as source data only; temporal classification remains in engine evaluation.
 
 ## Required steps per schema change
 1. Create or update a migration under prisma/migrations/**.

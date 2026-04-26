@@ -17,6 +17,10 @@ process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
   paths: { '@/*': ['./*'] },
 });
 const Module = require('module');
+const { ScanResponseSchema } = require('../lib/schemas/scan');
+const {
+  CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE,
+} = require('../lib/engine/degradation');
 const originalResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (request.startsWith('@/')) {
@@ -108,7 +112,16 @@ function mockNextServer() {
   }
 }
 
-function setupScanMocks({ engineOk = true } = {}) {
+function setupScanMocks({
+  engineOk = true,
+  nonCardTop = false,
+  noDecision = false,
+  mappingNull = false,
+  exclusions = {
+    creditActionsGeneratedCount: 1,
+    creditUnresolvableLiabilityCount: 0,
+  },
+} = {}) {
   const engineState = {
     userId: 'lab-user-1',
     cards: [
@@ -137,7 +150,25 @@ function setupScanMocks({ engineOk = true } = {}) {
     preferences: { profileId: 'BALANCED', customWeights: null },
   };
 
-  const legacyDecision = {
+  const legacyDecision = nonCardTop
+    ? {
+        category: 'DINING',
+        amountCents: 1000,
+        budget: {
+          verdict: 'UNCONFIGURED',
+          coverageMode: 'UNCONFIGURED',
+          hasBucket: false,
+          strictMode: false,
+          wouldExceed: false,
+        },
+        card: {
+          verdict: 'NO_CARD_DATA',
+          hasCardData: false,
+        },
+        overallVerdict: 'UNKNOWN',
+        cherryIncentive: { pointsIfFollowed: 0, expiryMinutes: 0 },
+      }
+    : {
     category: 'DINING',
     amountCents: 1000,
     budget: {
@@ -158,14 +189,43 @@ function setupScanMocks({ engineOk = true } = {}) {
   mockModule('../lib/engine', {
     buildEngineContext: (input) => input,
     resolveCategory: async ({ category }) => category ?? 'OTHER',
-    mapSolverDecisionToLegacyDecision: () => legacyDecision,
+    mapSolverDecisionToLegacyDecision: () => (mappingNull ? null : legacyDecision),
+    pickTopLegacySurfaceDecision: (decisions) => decisions[0],
   });
   mockModule('../lib/engine/run', {
     safeSolveDecisionForWorld: async () =>
       engineOk
         ? {
             ok: true,
-            decisions: [],
+            decisions: noDecision
+              ? []
+              : [
+                  nonCardTop
+                    ? {
+                        actionId: 'reject_purchase',
+                        action: { type: 'REJECT_PURCHASE' },
+                        score: 2,
+                        reasons: [],
+                        projections: {
+                          buckets: [],
+                          debt: [],
+                          cash: { projectedLiquidCents: null, projectedOverdraftRisk: null },
+                        },
+                        constraintsBreached: [],
+                      }
+                    : {
+                        actionId: 'use_card:card-1',
+                        action: { type: 'USE_CARD', cardId: 'card-1' },
+                        score: 1,
+                        reasons: [],
+                        projections: {
+                          buckets: [],
+                          debt: [],
+                          cash: { projectedLiquidCents: null, projectedOverdraftRisk: null },
+                        },
+                        constraintsBreached: [],
+                      },
+                ],
             trace: {
               engineVersion: 'test',
               weights: {},
@@ -173,6 +233,7 @@ function setupScanMocks({ engineOk = true } = {}) {
               contextSummary: { surface: 'web', amountCents: 0 },
               candidates: [],
             },
+            exclusions,
             legacyDecision,
             state: engineState,
             capabilities: loadedMetadata.capabilities,
@@ -222,8 +283,13 @@ async function runScanOk() {
   });
   assert.equal(res.status, 200);
   const body = await res.json();
+  const parsed = ScanResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
   assert.deepEqual(body.capabilities, loadedMetadata.capabilities);
   assert.deepEqual(body.degraded, loadedMetadata.degraded);
+  assert.equal(body.degradation, null);
+  assert.ok('decision' in body);
+  assert.ok(!('engineDecision' in body));
 }
 
 async function runScanEngineFailure() {
@@ -243,13 +309,102 @@ async function runScanEngineFailure() {
   });
   assert.equal(res.status, 200);
   const body = await res.json();
+  const parsed = ScanResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
   assert.deepEqual(body.capabilities, unavailableMetadata.capabilities);
   assert.deepEqual(body.degraded, unavailableMetadata.degraded);
+  assert.equal(body.degradation, null);
+  assert.ok('decision' in body);
+  assert.equal(body.decision, null);
+  assert.equal(body.error.code, 'ENGINE_ERROR');
+}
+
+async function runScanNonCardNeutral() {
+  process.env.NODE_ENV = 'development';
+  mockNextServer();
+  setupScanMocks({ engineOk: true, nonCardTop: true });
+  resetRouteCache();
+  const { POST } = require('../app/api/scan/route');
+  const res = await POST({
+    json: async () => ({
+      merchantName: 'Test',
+      expectedAmountCents: 1000,
+      category: 'DINING',
+      mccCode: 5812,
+    }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  const parsed = ScanResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
+  assert.equal(body.cardRecommendation.cardId, null);
+  assert.equal(body.cardRecommendation.cardNickname, null);
+  assert.equal(body.cardRecommendation.rewardUnit, null);
+  assert.equal(body.cardVerdict, 'NO_CARD_DATA');
+  assert.equal(body.overallVerdict, 'UNKNOWN');
+  assert.equal(body.degradation, null);
+  assert.ok('decision' in body);
+}
+
+async function runScanDegradedFallback() {
+  process.env.NODE_ENV = 'development';
+  mockNextServer();
+  setupScanMocks({
+    engineOk: true,
+    noDecision: true,
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 1,
+    },
+  });
+  resetRouteCache();
+  const { POST } = require('../app/api/scan/route');
+  const res = await POST({
+    json: async () => ({
+      merchantName: 'Test',
+      expectedAmountCents: 1000,
+      category: 'DINING',
+      mccCode: 5812,
+    }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  const parsed = ScanResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
+  assert.equal(body.decision, null);
+  assert.equal(body.error.code, CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE);
+  assert.equal(body.degradation?.code, CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE);
+}
+
+async function runScanMappingFallback() {
+  process.env.NODE_ENV = 'development';
+  mockNextServer();
+  setupScanMocks({ engineOk: true, mappingNull: true });
+  resetRouteCache();
+  const { POST } = require('../app/api/scan/route');
+  const res = await POST({
+    json: async () => ({
+      merchantName: 'Test',
+      expectedAmountCents: 1000,
+      category: 'DINING',
+      mccCode: 5812,
+    }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  const parsed = ScanResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
+  assert.equal(body.decision, null);
+  assert.equal(body.error.code, 'ENGINE_MAPPING');
+  assert.equal(body.degradation, null);
 }
 
 async function run() {
   await runScanOk();
   await runScanEngineFailure();
+  await runScanNonCardNeutral();
+  await runScanDegradedFallback();
+  await runScanMappingFallback();
   console.warn('api-scan user-context: ok');
 }
 

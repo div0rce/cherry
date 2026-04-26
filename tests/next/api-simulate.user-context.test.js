@@ -7,6 +7,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const assert = require('node:assert/strict');
 
+globalThis.__CHERRY_TEST_MODE__ = true;
+
 process.env.NODE_OPTIONS = '--experimental-specifier-resolution=node';
 process.env.NODE_PATH = [__dirname + '/__mocks__', process.env.NODE_PATH || ''].filter(Boolean).join(':');
 require('module').Module._initPaths();
@@ -19,6 +21,12 @@ process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
 const Module = require('module');
 const originalResolve = Module._resolveFilename;
 const { getServerConfig, resetServerConfigForTests } = require('../../lib/config/store');
+const { assertServerConfig } = require('../../lib/config/server');
+const { AppError } = require('../../lib/errors');
+const { SimulateResponseSchema } = require('../../lib/schemas/simulate');
+const {
+  CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE,
+} = require('../../lib/engine/degradation');
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (request.startsWith('@/')) {
     const mapped = path.join(__dirname, '..', '..', request.slice(2));
@@ -104,12 +112,37 @@ function mockNextServer() {
   }
 }
 
-function setupSimulationMocks() {
+function setupSimulationMocks({
+  nonCardTop = false,
+  noDecision = false,
+  exclusions = {
+    creditActionsGeneratedCount: 1,
+    creditUnresolvableLiabilityCount: 0,
+  },
+} = {}) {
   const tracker = {
     bucketUpdateManyCalls: 0,
     createdTransactions: [],
   };
-  const legacyDecision = {
+  const legacyDecision = nonCardTop
+    ? {
+        budget: {
+          wouldExceed: false,
+          strictMode: false,
+          coverageMode: 'UNCONFIGURED',
+          verdict: 'UNCONFIGURED',
+          hasBucket: false,
+        },
+        card: {
+          verdict: 'NO_CARD_DATA',
+          hasCardData: false,
+        },
+        category: 'DINING',
+        amountCents: 1000,
+        overallVerdict: 'UNKNOWN',
+        cherryIncentive: { pointsIfFollowed: 0, expiryMinutes: 0 },
+      }
+    : {
     budget: {
       wouldExceed: false,
       strictMode: false,
@@ -172,21 +205,37 @@ function setupSimulationMocks() {
   mockModule('../../lib/engine', {
     buildEngineContext: (input) => input,
     mapSolverDecisionToLegacyDecision: ({ fallback }) => fallback ?? legacyDecision,
+    pickTopLegacySurfaceDecision: (decisions) => decisions[0],
     validateEngineDecision: () => {},
   });
   mockModule('../../lib/engine/run', {
     safeSolveDecisionForWorld: async () => ({
       ok: true,
-      decisions: [
-        {
-          actionId: 'use_card:card-1',
-          action: { type: 'USE_CARD', cardId: 'card-1' },
-          score: 1,
-          reasons: [],
-          projections: { buckets: [], debt: [], cash: { projectedLiquidCents: null, projectedOverdraftRisk: null } },
-          constraintsBreached: [],
-        },
-      ],
+      decisions: noDecision
+        ? []
+        : [
+            nonCardTop
+              ? {
+                  actionId: 'reject_purchase',
+                  action: { type: 'REJECT_PURCHASE' },
+                  score: 2,
+                  reasons: [],
+                  projections: {
+                    buckets: [],
+                    debt: [],
+                    cash: { projectedLiquidCents: null, projectedOverdraftRisk: null },
+                  },
+                  constraintsBreached: [],
+                }
+              : {
+                  actionId: 'use_card:card-1',
+                  action: { type: 'USE_CARD', cardId: 'card-1' },
+                  score: 1,
+                  reasons: [],
+                  projections: { buckets: [], debt: [], cash: { projectedLiquidCents: null, projectedOverdraftRisk: null } },
+                  constraintsBreached: [],
+                },
+          ],
       trace: {
         engineVersion: 'test',
         weights: {},
@@ -194,6 +243,7 @@ function setupSimulationMocks() {
         contextSummary: { surface: 'web', amountCents: 0 },
         candidates: [],
       },
+      exclusions,
       legacyDecision,
       state: engineState,
       capabilities: loadedMetadata.capabilities,
@@ -207,6 +257,13 @@ function setupSimulationMocks() {
 
   mockModule('../../lib/engine-state', {
     fromPrismaUserToEngineState: async () => engineState,
+  });
+
+  mockModule('../../lib/user-context', {
+    resolveUserContext: async () => ({ userId: 'lab-user-1', mode: 'DEV' }),
+    assertUserId: (value) => value,
+    logInvariant: () => {},
+    isPrismaP2003: () => false,
   });
 
   mockModule('../../lib/adapters/runtime/authority.prisma', {
@@ -293,9 +350,75 @@ async function runSimulateDev() {
   });
   assert.equal(res.status, 200);
   const json = await res.json();
+  const parsed = SimulateResponseSchema.safeParse(json);
+  assert.equal(parsed.success, true);
   assert.equal(json.committed, false);
+  assert.equal(json.degradation, null);
   assert.equal(tracker.bucketUpdateManyCalls, 0);
   assert.equal(tracker.createdTransactions.length, 1);
+}
+
+async function runSimulateNonCardNeutral() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
+  const tracker = setupSimulationMocks({ nonCardTop: true });
+  resetRouteCache();
+  const { POST } = require('../../app/api/simulate/route');
+  const res = await POST({
+    json: async () => ({
+      amountCents: 1000,
+      category: 'DINING',
+      merchantName: 'Test',
+      mccCode: 5812,
+    }),
+  });
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  const parsed = SimulateResponseSchema.safeParse(json);
+  assert.equal(parsed.success, true);
+  assert.equal(json.transaction, null);
+  assert.equal(json.committed, false);
+  assert.equal(json.decision.card.cardId ?? null, null);
+  assert.equal(json.decision.card.cardNickname ?? null, null);
+  assert.equal(json.decision.card.rewardUnit ?? null, null);
+  assert.equal(json.decision.card.verdict, 'NO_CARD_DATA');
+  assert.equal(json.decision.overallVerdict, 'UNKNOWN');
+  assert.equal(tracker.createdTransactions.length, 0);
+}
+
+async function runSimulateDegradedFallback() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
+  setupSimulationMocks({
+    noDecision: true,
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 1,
+    },
+  });
+  resetRouteCache();
+  const { POST } = require('../../app/api/simulate/route');
+  const res = await POST({
+    json: async () => ({
+      amountCents: 1000,
+      category: 'DINING',
+      merchantName: 'Test',
+      mccCode: 5812,
+    }),
+  });
+  assert.equal(res.status, 200);
+  const json = await res.json();
+  const parsed = SimulateResponseSchema.safeParse(json);
+  assert.equal(parsed.success, true);
+  assert.equal(json.transaction, null);
+  assert.equal(json.decision, null);
+  assert.equal(json.committed, false);
+  assert.equal(json.error.code, CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE);
+  assert.equal(json.degradation?.code, CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE);
 }
 
 async function runSimulateInvalidAmount() {
@@ -337,7 +460,22 @@ async function runSimulateMissingMerchant() {
 function setServerEnvironment(env) {
   const priorNodeEnv = process.env.NODE_ENV;
   process.env.NODE_ENV = 'test';
-  const current = getServerConfig();
+  let current;
+  try {
+    current = getServerConfig();
+  } catch {
+    current = assertServerConfig({
+      appBaseUrl: 'https://app.example.test',
+      databaseUrl: 'file:./tmp/test.db',
+      environment: 'test',
+      enableDevTools: true,
+      engineVersion: 'engine-test',
+      wallet: { enabled: false },
+      vineSignatureMode: 'warn',
+      offlineEvaluatorEnabled: true,
+      bankIngest: {},
+    });
+  }
   resetServerConfigForTests({ ...current, environment: env });
   process.env.NODE_ENV = priorNodeEnv;
 }
@@ -349,6 +487,14 @@ async function runSimulateProdUnauthorized() {
   mockNextServer();
   mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
+  mockModule('../../lib/user-context', {
+    resolveUserContext: async () => {
+      throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
+    },
+    assertUserId: (value) => value,
+    logInvariant: () => {},
+    isPrismaP2003: () => false,
+  });
   resetRouteCache();
   const { POST } = require('../../app/api/simulate/route');
   const payload = {
@@ -396,6 +542,14 @@ async function runSimulationsGetProdUnauthorized() {
   mockNextServer();
   mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
   setupSimulationMocks();
+  mockModule('../../lib/user-context', {
+    resolveUserContext: async () => {
+      throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
+    },
+    assertUserId: (value) => value,
+    logInvariant: () => {},
+    isPrismaP2003: () => false,
+  });
   resetRouteCache();
   const { GET } = require('../../app/api/simulations/route');
   const res = await GET({ url: 'http://localhost/api/simulations' });
@@ -405,6 +559,8 @@ async function runSimulationsGetProdUnauthorized() {
 async function run() {
   const originalEnv = process.env.NODE_ENV;
   await runSimulateDev();
+  await runSimulateNonCardNeutral();
+  await runSimulateDegradedFallback();
   await runSimulateInvalidAmount();
   await runSimulateMissingMerchant();
   await runSimulateProdUnauthorized();

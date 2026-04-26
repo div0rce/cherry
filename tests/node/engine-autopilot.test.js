@@ -187,6 +187,10 @@ async function runOkDecision() {
       candidates: [],
     },
     state,
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 0,
+    },
     capabilities: state.capabilities,
     degraded: {
       essentialProtection: false,
@@ -215,6 +219,7 @@ async function runOkDecision() {
   assert.ok(result.userFacingMessage.length > 0);
   assert.ok(result.bucketDelta);
   assert.equal(result.bucketDelta.bucketId, 'bucket-1');
+  assert.equal(result.degradation ?? null, null);
 }
 
 async function runBlockedDecision() {
@@ -230,6 +235,10 @@ async function runBlockedDecision() {
       candidates: [],
     },
     state,
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 1,
+    },
     capabilities: state.capabilities,
     degraded: {
       essentialProtection: false,
@@ -252,9 +261,10 @@ async function runBlockedDecision() {
     nowMs: fixedNowMs,
   });
 
-  assert.equal(result.kind, 'BLOCKED');
+  assert.equal(result.kind, 'FALLBACK');
   assert.equal(result.cardId, null);
   assert.equal(result.bucketDelta, null);
+  assert.equal(result.degradation?.code, 'CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY');
 }
 
 async function runFallbackDecision() {
@@ -270,6 +280,10 @@ async function runFallbackDecision() {
       candidates: [],
     },
     state,
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 0,
+    },
     capabilities: state.capabilities,
     degraded: {
       essentialProtection: false,
@@ -296,12 +310,74 @@ async function runFallbackDecision() {
   assert.equal(result.cardId, null);
   assert.equal(result.expectedMonetaryBenefitCents, null);
   assert.equal(result.expectedPointsDelta, null);
+  assert.equal(result.degradation ?? null, null);
+}
+
+async function runOkDecisionWithDegradation() {
+  const state = buildEngineState({
+    cards: [
+      {
+        id: 'card-debit',
+        userId: 'user-1',
+        issuer: 'Test Bank',
+        productSlug: null,
+        label: 'Debit Card',
+        last4: '3333',
+        network: 'VISA',
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+        rewardRules: [],
+        creditLimitCents: null,
+        currentBalanceCents: null,
+      },
+    ],
+  });
+  const engineResult = {
+    ok: true,
+    decisions: [buildDecision({ cardId: 'card-debit', score: 12, committedAfter: 3_000, remainingAfter: 7_000 })],
+    trace: {
+      engineVersion: 'test',
+      weights: { rewards: 1, runway: 1, debtRelief: 1 },
+      stateSummary: { bucketCount: 1, cardCount: 1, debtCount: 0 },
+      contextSummary: { surface: 'web', merchantCategoryKey: 'DINING', amountCents: 4_000 },
+      candidates: [],
+    },
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 1,
+    },
+    state,
+    capabilities: state.capabilities,
+    degraded: {
+      essentialProtection: false,
+      debtPressure: false,
+      liquidity: false,
+      utilization: false,
+    },
+  };
+
+  resetModules();
+  setupMocks({ state, engineResult });
+  const { getAutopilotDecisionForUserSwipe } = requireModule('../../lib/engine/public');
+  const result = await getAutopilotDecisionForUserSwipe(world, {
+    userId: 'user-1',
+    merchant: 'Debit Cafe',
+    amountCents: 4_000,
+    cardUniverseIds: ['card-debit'],
+    nowMs: fixedNowMs,
+  });
+
+  assert.equal(result.kind, 'OK');
+  assert.equal(result.cardId, 'card-debit');
+  assert.equal(result.degradation?.code, 'CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY');
 }
 
 async function run() {
   await runOkDecision();
   await runBlockedDecision();
   await runFallbackDecision();
+  await runOkDecisionWithDegradation();
   process.stdout.write('engine-autopilot: ok\n');
 }
 

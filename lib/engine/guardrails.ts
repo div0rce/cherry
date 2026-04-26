@@ -13,9 +13,22 @@ import {
   hasKnownBucketEssentiality,
   isBucketEssential,
 } from './types.js';
+import { hasUnresolvableCreditLiability } from './credit-liability.js';
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
+}
+
+function isFuturePaydownAction(action: EngineAction, decisionTimeMs: number): boolean {
+  if (action.type !== 'PAY_DOWN_DEBT' && action.type !== 'USE_CARD_WITH_PAYDOWN') {
+    return false;
+  }
+  return (
+    action.paydownScheduledDateMs !== null &&
+    action.paydownScheduledDateMs !== undefined &&
+    Number.isFinite(action.paydownScheduledDateMs) &&
+    action.paydownScheduledDateMs > decisionTimeMs
+  );
 }
 
 export class EngineError extends Error {
@@ -102,6 +115,10 @@ export function evaluateConstraintsForDecision(
   const cash = getCashState(state.cash);
   const capabilities = getEngineCapabilities(state);
 
+  if (hasUnresolvableCreditLiability(state, action)) {
+    breaches.push('HARD:UNRESOLVABLE_CREDIT_LIABILITY');
+  }
+
   for (const proj of projections.buckets) {
     const bucket = state.buckets.find((b) => b.id === proj.bucketId);
     if (bucket === undefined) continue;
@@ -150,6 +167,10 @@ export function evaluateConstraintsForDecision(
     if (liquid != null && liquid < action.paydownAmountCents) {
       breaches.push('HARD:PAYDOWN_EXCEEDS_LIQUID');
     }
+  }
+
+  if (isFuturePaydownAction(action, ctx.nowMs)) {
+    breaches.push('HARD:FUTURE_PAYDOWN_NOT_PRESENT_EFFECTIVE');
   }
 
   if (

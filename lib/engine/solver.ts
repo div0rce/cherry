@@ -21,6 +21,7 @@ import type {
   EngineContext,
   EngineDecision,
   EngineDecisionTrace,
+  EngineExclusions,
   EngineRuntimeMetadata,
   EngineState,
   ObjectiveWeights,
@@ -32,12 +33,22 @@ import {
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
 import type { EngineDecision as LegacyEngineDecision, LegacyEngineInput } from '../legacy-engine-types.js';
 import { asAppError } from '../errors.js';
+import { createEmptyEngineExclusions } from './degradation.js';
+import {
+  actionRequiresResolvableCreditLiability,
+  findActionCard,
+  hasUnresolvableCreditLiability,
+} from './credit-liability.js';
 import {
   attachAccountingProof,
   buildAccountingSnapshot,
   filterAccountingSafeDecisions,
   type EngineDecisionWithAccounting,
 } from '../accounting/engine-proof.js';
+import {
+  evaluateScheduledPaydowns,
+  type ScheduledPaydownEvaluation,
+} from './scheduled-paydowns.js';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
@@ -46,11 +57,15 @@ export type SolveDecisionOptions = {
   legacyDecisionProvider?: (input: LegacyEngineInput) => Promise<LegacyEngineDecision>;
   stateOverride?: EngineState;
   runtime?: EngineRuntime;
+  candidateFilter?: (action: EngineAction) => boolean;
+  candidateActionsOverride?: EngineAction[];
+  scheduledPaydownEvaluation?: ScheduledPaydownEvaluation;
 };
 
 export type SolveDecisionResult = {
   decisions: EngineDecision[];
   trace: EngineDecisionTrace;
+  exclusions: EngineExclusions;
   capabilities: EngineRuntimeMetadata['capabilities'];
   degraded: EngineRuntimeMetadata['degraded'];
   legacyDecision?: LegacyEngineDecision;
@@ -102,7 +117,34 @@ export async function solveDecision(
       : DEFAULT_OBJECTIVE_WEIGHTS;
   }
 
-  const candidateActions = generateCandidateActions(state, ctx);
+  const candidateActions =
+    options.candidateActionsOverride === undefined
+      ? generateCandidateActions(state, ctx)
+      : options.candidateActionsOverride;
+  const scheduledPaydownEvaluation =
+    options.scheduledPaydownEvaluation === undefined
+      ? evaluateScheduledPaydowns(state, ctx.nowMs)
+      : options.scheduledPaydownEvaluation;
+  const surfaceFilteredCandidates =
+    options.candidateFilter != null
+      ? candidateActions.filter((action) => options.candidateFilter?.(action) === true)
+      : candidateActions;
+  // PR8.3 intentionally counts exclusions from the surface-filtered generated set before
+  // hard filtering and before score sorting. This is a temporary coupling to pre-PR9
+  // truncation behavior; PR9 may revise evaluation-order semantics.
+  const exclusions = surfaceFilteredCandidates.reduce<EngineExclusions>((acc, action) => {
+    if (!actionRequiresResolvableCreditLiability(action)) {
+      return acc;
+    }
+    const card = findActionCard(state, action);
+    if (card?.isCredit === true) {
+      acc.creditActionsGeneratedCount += 1;
+      if (hasUnresolvableCreditLiability(state, action)) {
+        acc.creditUnresolvableLiabilityCount += 1;
+      }
+    }
+    return acc;
+  }, createEmptyEngineExclusions());
   const maxCandidates: number | null =
     options.maxCandidates !== null &&
     options.maxCandidates !== undefined &&
@@ -110,15 +152,15 @@ export async function solveDecision(
       ? options.maxCandidates
       : null;
   const constrainedCandidates =
-    maxCandidates !== null && candidateActions.length > maxCandidates
-      ? candidateActions.slice(0, maxCandidates)
-      : candidateActions;
+    maxCandidates !== null && surfaceFilteredCandidates.length > maxCandidates
+      ? surfaceFilteredCandidates.slice(0, maxCandidates)
+      : surfaceFilteredCandidates;
 
   const decisions: EngineDecision[] = [];
   const hardConstraints = getHardConstraints(state);
 
   for (const action of constrainedCandidates) {
-    const projections = simulateAction(state, ctx, action);
+    const projections = simulateAction(state, ctx, action, { scheduledPaydownEvaluation });
     const { score, reasons, components } = scoreDecision(state, ctx, action, projections, weights);
     const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
 
@@ -162,6 +204,7 @@ export async function solveDecision(
       constraintsBreached: d.constraintsBreached,
       ...(d.components ? { components: d.components } : {}),
     })),
+    diagnostics: scheduledPaydownEvaluation.diagnostics,
   };
   const { capabilities, degraded } = getEngineRuntimeMetadata(state);
 
@@ -188,6 +231,7 @@ export async function solveDecision(
   const result: SolveDecisionResult = {
     decisions: filtered,
     trace,
+    exclusions,
     capabilities,
     degraded,
   };
@@ -203,6 +247,7 @@ export type SafeDecisionOutcome =
       ok: true;
       decisions: EngineDecisionWithAccounting[];
       trace: EngineDecisionTrace;
+      exclusions: EngineExclusions;
       capabilities: EngineRuntimeMetadata['capabilities'];
       degraded: EngineRuntimeMetadata['degraded'];
       legacyDecision?: LegacyEngineDecision;
@@ -228,7 +273,7 @@ export async function safeSolveDecisionForUser(
     if (state === undefined) {
       throw new EngineError('safeSolveDecisionForUser requires a stateOverride');
     }
-    const { decisions, trace, capabilities, degraded, legacyDecision } = await solveDecision(
+    const { decisions, trace, exclusions, capabilities, degraded, legacyDecision } = await solveDecision(
       state,
       ctx,
       {
@@ -245,6 +290,7 @@ export async function safeSolveDecisionForUser(
       ok: true,
       decisions: safeDecisions,
       trace,
+      exclusions,
       capabilities,
       degraded,
       state,

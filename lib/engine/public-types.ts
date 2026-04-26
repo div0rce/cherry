@@ -1,3 +1,5 @@
+import type { EngineDegradation } from './degradation.js';
+
 export type AutopilotDecisionKind = 'OK' | 'BLOCKED' | 'FALLBACK';
 
 export interface AutopilotDecision {
@@ -12,6 +14,7 @@ export interface AutopilotDecision {
     newSpentCents: number;
     newRemainingCents: number;
   } | null;
+  degradation?: EngineDegradation;
 }
 
 export interface SwipeInput {

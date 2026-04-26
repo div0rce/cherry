@@ -35,7 +35,17 @@ const ROOT = ROOT_ENV !== undefined && ROOT_ENV !== ''
   ? path.resolve(ROOT_ENV)
   : process.cwd();
 const SCRIPT_TOKEN = /(^|\s|['"])\.?(\/|\\)?scripts[\/\\]/;
-const ALLOWED_PREFIXES = ['check:', 'ingest:', 'audit:', 'backfill:', 'cleanup:', 'report:', 'tmp:'];
+const ALLOWED_PREFIXES = [
+  'check:',
+  'ingest:',
+  'audit:',
+  'backfill:',
+  'cleanup:',
+  'report:',
+  'tmp:',
+  'generate:',
+  'verify:',
+];
 
 const ExecutionRegistrySchema = z
   .object({

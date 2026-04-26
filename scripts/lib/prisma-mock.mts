@@ -232,6 +232,7 @@ class MockPrismaClient {
   historicalBucketTemplate = createCollection('historicalBucketTemplate');
   recommendationSession = createCollection('recommendationSession');
   cherryPointLedger = createCollection('cherryPointLedger');
+  scheduledPaydown = createCollection('scheduledPaydown');
   simulation = createCollection('simulation');
   vineDevice = createCollection('vineDevice');
   decisionEvent = createCollection('decisionEvent');

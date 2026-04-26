@@ -11,9 +11,7 @@ const ROOT = process.cwd();
 const PREFIX = 'check:config-snapshot';
 const SNAPSHOT_PATH = path.join(ROOT, 'docs', 'config-snapshot.md');
 const FIX =
-  'Update docs/config-snapshot.md (or run npm run check:config-snapshot -- --fix) and align tsconfig policy enforcement.';
-const args = process.argv.slice(2);
-const shouldFix = args.includes('--fix') || args.includes('--autofix');
+  'Update docs/config-snapshot.md and align tsconfig policy enforcement.';
 
 const STRICTNESS_KEYS = new Set([
   'strict',
@@ -184,34 +182,14 @@ function parseSnapshotBlocks(snapshotText: string): Map<string, string> {
 
 function checkSnapshot(configFiles: Set<string>): void {
   if (!fs.existsSync(SNAPSHOT_PATH)) {
-    if (!shouldFix) {
-      fail(PREFIX, 'docs/config-snapshot.md is missing', { fix: FIX });
-    }
+    fail(PREFIX, 'docs/config-snapshot.md is missing', { fix: FIX });
   }
   const snapshotText = fs.existsSync(SNAPSHOT_PATH)
     ? fs.readFileSync(SNAPSHOT_PATH, 'utf8')
     : '';
-  const snapshotBlocks = snapshotText.length > 0 ? parseSnapshotBlocks(snapshotText) : new Map();
+  const snapshotBlocks =
+    snapshotText.length > 0 ? parseSnapshotBlocks(snapshotText) : new Map<string, string>();
   const snapshotPaths = new Set(snapshotBlocks.keys());
-  if (shouldFix) {
-    const fixturePaths = [...snapshotPaths].filter((entry) => isFixturePath(entry));
-    const nextPaths = new Set<string>([...configFiles, ...fixturePaths]);
-    const sorted = [...nextPaths].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    for (const filePath of sorted) {
-      const absolute = path.join(ROOT, filePath);
-      if (!fs.existsSync(absolute)) {
-        fail(PREFIX, `Config listed in snapshot does not exist: ${filePath}`, { fix: FIX });
-      }
-    }
-    const blocks = sorted.map((filePath) => {
-      const body = normalizeText(fs.readFileSync(path.join(ROOT, filePath), 'utf8'));
-      return ['```ts', `// ${filePath}`, body, '```'].join('\n');
-    });
-    const output = `${blocks.join('\n\n')}\n`;
-    fs.writeFileSync(SNAPSHOT_PATH, output, 'utf8');
-    process.stdout.write('check:config-snapshot: fixed\n');
-    return;
-  }
 
   for (const configFile of configFiles) {
     ensure(snapshotPaths.has(configFile), `Missing ${configFile} in docs/config-snapshot.md.`);

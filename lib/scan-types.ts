@@ -2,11 +2,17 @@ import type { RewardCategory } from '@prisma/client';
 import type {
   EngineCapabilityMap,
   EngineDegradedDimensions,
+  EngineDegradation,
   LegacyEngineDecision,
   RewardSemantics,
 } from './engine.js';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
 import type { SimulatedAuthorityDecision } from './authority/simulateSpendAuthority.js';
+import type {
+  ContingentRecommendation,
+  FutureRiskContext,
+  TemporalContext,
+} from './engine/temporal-response.js';
 
 export type ScanRequestBody = {
   merchantName: string;
@@ -15,7 +21,7 @@ export type ScanRequestBody = {
   mccCode?: number | null;
 };
 
-export type ScanResponseBody = {
+export type ScanSuccessResponseBody = {
   merchantName: string;
   category: RewardCategory;
   amountCents: number;
@@ -51,8 +57,29 @@ export type ScanResponseBody = {
     expiryMinutes: number;
   };
 
-  engineDecision: LegacyEngineDecision;
+  decision: LegacyEngineDecision;
   capabilities: EngineCapabilityMap;
   degraded: EngineDegradedDimensions;
-  authority: SimulatedAuthorityDecision;
+  degradation: EngineDegradation;
+  authority: SimulatedAuthorityDecision | null;
+  temporalContext: TemporalContext;
+  contingentRecommendation: ContingentRecommendation;
+  futureRiskContext: FutureRiskContext;
 };
+
+export type ScanFallbackResponseBody = {
+  error: {
+    code: string;
+    message: string;
+  };
+  decision: null;
+  capabilities: EngineCapabilityMap;
+  degraded: EngineDegradedDimensions;
+  degradation: EngineDegradation;
+  authority: SimulatedAuthorityDecision | null;
+  temporalContext: TemporalContext;
+  contingentRecommendation: ContingentRecommendation;
+  futureRiskContext: FutureRiskContext;
+};
+
+export type ScanResponseBody = ScanSuccessResponseBody | ScanFallbackResponseBody;

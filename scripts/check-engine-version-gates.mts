@@ -5,6 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
 import { fail } from './guardrails/lib/fail.mjs';
+import { assertEngineFreezeFixtureSemantics } from './lib/engine-freeze-fixtures.mjs';
 import { readJsonFile } from './guardrails/lib/read-json.mjs';
 
 const ROOT = process.cwd();
@@ -150,7 +151,6 @@ function main(): void {
   }
 
   const behaviorVersion = policy.engineVersions.behavior;
-  // TODO: Replace placeholder engine fixtures with real replay traces.
   if (!behaviorVersion.endsWith('_v1') && policy.engineFixtures.files.length === 0) {
     fail(PREFIX, 'Engine fixtures required for behavior versions beyond v1', {
       details: [`behavior=${behaviorVersion}`],
@@ -166,6 +166,15 @@ function main(): void {
 
   if (policy.engineFixtures.files.length === 0) {
     fail(PREFIX, 'engineFixtures.files must not be empty', { fix: FIX });
+  }
+
+  for (const fixturePath of policy.engineFixtures.files) {
+    assertEngineFreezeFixtureSemantics({
+      root: ROOT,
+      fixturePath,
+      prefix: PREFIX,
+      fix: FIX,
+    });
   }
 
   const actualHash = hashFixtures(policy.engineFixtures.files);

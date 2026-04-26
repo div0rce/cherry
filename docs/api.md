@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-03-19
+Last updated: 2026-04-26
 
 # Cherry API Reference (App Router)
 
@@ -57,7 +57,7 @@ This file documents the server routes under `app/api/*` and how they align with 
   - Validates JSON with `lib/schemas/scan.ts` and `parseJsonBody` (`lib/validation.ts`).
   - Resolves category via `resolveScanCategory` (MCC-aware).
   - Calls engine solver via `safeSolveDecisionForUser` (legacy fallback allowed for mapping) and `validateEngineDecision`; logs a `DecisionEvent` row per request (no session/bucket/ledger writes).
-- Response: bucket/card verdicts + Cherry incentive + raw `engineDecision` echo for debugging + top-level runtime truth metadata:
+- Response: bucket/card verdicts + Cherry incentive + raw `decision` echo for debugging + top-level runtime truth metadata:
   - `capabilities`: which financial primitives were actually available to the runtime engine state
   - `degraded`: which reasoning dimensions are degraded because those primitives were unavailable
   - `authority` (authority_v1: verdict, severity, reasons[], counterfactuals[], explanation, inputsVersion)
@@ -153,7 +153,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/cards/[cardId]/rewards` — CRUD for reward rules on a card (includes PATCH for updates).
 - `/api/buckets` — Create/list/delete buckets; sets period windows on create (weekly starts Monday).
 - `/api/buckets/[bucketId]` — Update or delete a specific bucket (PATCH/DELETE).
-- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Live simulation is single-step and present-time: purchase projections are pending authorization effects, not posted settlement, and the simulator is not a future scheduler. Paydowns are immediate-only. `USE_CARD_WITH_PAYDOWN` applies purchase authorization first and immediate paydown second in the same preview step. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent` when authority returns `ok: true`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
+- `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Live simulation is single-step and present-time: purchase projections are authorization effects, not posted settlement, and the simulator is not a generic future scheduler. Scheduled paydowns are kept as raw source data but only scheduled paydowns with `effectiveAtMs <= decisionTimeMs` mutate present preview state. Future scheduled paydowns are future-only and may surface only through `contingentRecommendation` and `futureRiskContext`. `USE_CARD_WITH_PAYDOWN` applies purchase first and immediate paydown second in the same preview step. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent` when authority returns `ok: true`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
@@ -179,7 +179,24 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 - Errors must cross boundaries only via `AppError` (API) or `ApiResult<T>` (UI); do not throw or inspect raw errors across layers.
 - `/api/scan` is a hard stateless boundary; all persistence must occur via `/api/sessions` and ledger flows only.
 - Engine solver traces multiple action types internally; public APIs still expose card-centric recommendations for compatibility.
-- `/api/scan` and `/api/sessions` now expose top-level `capabilities` + `degraded` metadata so missing runtime primitives are machine-readable instead of silently collapsed into normal-looking advice.
+- `/api/scan`, `POST /api/sessions`, and `/api/simulate` now expose top-level `capabilities` + `degraded` metadata so missing runtime primitives are machine-readable instead of silently collapsed into normal-looking advice.
+- Recommendation-attempt responses from `/api/scan`, `POST /api/sessions`, and `/api/simulate` always include additive timing truth fields:
+  - `temporalContext`
+  - `contingentRecommendation`
+  - `futureRiskContext`
+- Recommendation-attempt responses include those timing truth fields on success, fallback, and no-decision responses.
+- `scheduledPaydownSourceStatus` meanings:
+  - `UNAVAILABLE`: the raw scheduled-paydown source could not be loaded.
+  - `AVAILABLE_EMPTY`: the raw scheduled-paydown source loaded and had no rows.
+  - `AVAILABLE_NO_ACTIVE`: the raw source loaded, but no future-eligible scheduled paydowns remain after engine evaluation.
+  - `AVAILABLE_ACTIVE`: the raw source loaded and at least one future-eligible scheduled paydown exists.
+- Mechanical coupling: `includesScheduledPaydowns = true` if and only if `scheduledPaydownSourceStatus = AVAILABLE_ACTIVE`.
+- `modelMode = PRESENT_ONLY` requires `horizonEndMs = null`, `includesScheduledPaydowns = false`, `contingency = NONE`, `contingentRecommendation = null`, and `futureRiskContext = null`.
+- `modelMode = PRESENT_PLUS_FUTURE_EVENTS` is allowed only for `scheduledPaydownSourceStatus = AVAILABLE_ACTIVE`.
+- `horizonEndMs` is non-null only when `scheduledPaydownSourceStatus = AVAILABLE_ACTIVE`; otherwise it is null.
+- `contingency = NONE` requires both contingent fields to be null.
+- `contingency = REQUIRES_FUTURE_EVENTS` requires at least one contingent field to be non-null.
+- `projectedLiquidCents` remains a present-only projection. Future scheduled paydowns must not be silently baked into it.
 - Monetary values are integer cents in APIs and DB.
 - Bank ingest must be idempotent on `(userId, externalId)` only; provider data must never supply `BankTransaction.id`.
 - Do not store card PAN/CVV/track data; Vine payloads are context-only.

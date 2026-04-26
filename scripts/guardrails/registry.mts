@@ -17,6 +17,7 @@ const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const LOCKFILE_SYNC_PATH = `${CHECK_PATH_BASE}lockfile-sync.mts` as const;
 const LOCKFILE_INTEGRITY_PATH = `${CHECK_PATH_BASE}lockfile-integrity.mts` as const;
 const PACKAGE_MANAGER_PIN_PATH = `${CHECK_PATH_BASE}package-manager-pin.mts` as const;
+const PROJECTED_LIQUID_CENTS_PATH = `${CHECK_PATH_BASE}projected-liquid-cents.mts` as const;
 const CI_USES_NPM_CI_PATH = `${CHECK_PATH_BASE}ci-uses-npm-ci.mts` as const;
 const FUNCTION_SIZE_BUDGET_PATH = `${CHECK_PATH_BASE}function-size-budget.mts` as const;
 const NO_VENDOR_SHIMS_PATH = `${CHECK_PATH_BASE}no-vendor-shims.mts` as const;
@@ -99,6 +100,7 @@ export const GUARDRAILS = Object.freeze({
   'check:lockfile-sync': LOCKFILE_SYNC_PATH,
   'check:lockfile-integrity': LOCKFILE_INTEGRITY_PATH,
   'check:package-manager-pin': PACKAGE_MANAGER_PIN_PATH,
+  'check:projected-liquid-cents': PROJECTED_LIQUID_CENTS_PATH,
   'check:ci-uses-npm-ci': CI_USES_NPM_CI_PATH,
   'check:function-size-budget': FUNCTION_SIZE_BUDGET_PATH,
   'check:no-vendor-shims': NO_VENDOR_SHIMS_PATH,

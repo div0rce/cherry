@@ -9,6 +9,7 @@ import {
   getHardConstraints,
   simulateAction,
   solveDecision,
+  unavailable,
 } from '../../../../lib/engine.js';
 import type { EngineDecision, EngineState } from '../../../../lib/engine/types.js';
 import {
@@ -82,6 +83,7 @@ function buildBaseState(): EngineState {
         dueDayOfMonth: 15,
       },
     ]),
+    scheduledPaydowns: unavailable(),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,

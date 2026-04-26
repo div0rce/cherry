@@ -4,6 +4,7 @@ export const EXECUTION_DB_RUNNER = 'scripts/execution/run-db.mts' as const;
 export const EXECUTION = {
   'check:aggregate': 'scripts/guardrails-aggregate.mts',
   'check:clean': 'scripts/assert-clean-tree.mts',
+  'audit:full-checkout': 'scripts/audit/full-checkout-audit.mts',
   'check:db-ready': 'scripts/db-ready.mts',
   'check:dev-login': 'scripts/dev-login.mts',
   'check:db:optional': 'scripts/db-check-optional.mts',
@@ -30,6 +31,10 @@ export const EXECUTION = {
   'tmp:gc': 'scripts/tmp/gc.mts',
   'report:authority': 'scripts/authority-coverage.mts',
   'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
+  'generate:cherry-diff': 'scripts/generate-cherry-diff.mts',
+  'verify:8.3-closure-artifact': 'scripts/verify-8-3-closure-artifact.mts',
+  'verify:cherry-diff-artifact': 'scripts/verify-cherry-diff-artifact.mts',
+  'verify:repo-closure': 'scripts/verify-repo-closure.mts',
 } as const;
 
 export type ExecutionName = keyof typeof EXECUTION;

@@ -17,6 +17,10 @@ process.env.TS_NODE_COMPILER_OPTIONS = JSON.stringify({
   paths: { '@/*': ['./*'] },
 });
 const Module = require('module');
+const { CreateSessionResponseSchema } = require('../lib/schemas/sessions');
+const {
+  CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE,
+} = require('../lib/engine/degradation');
 const originalResolve = Module._resolveFilename;
 Module._resolveFilename = function (request, parent, isMain, options) {
   if (request.startsWith('@/')) {
@@ -97,7 +101,15 @@ const unavailableMetadata = {
   },
 };
 
-function setupSessionMocks({ engineOk = true } = {}) {
+function setupSessionMocks({
+  engineOk = true,
+  nonCardTop = false,
+  noDecision = false,
+  exclusions = {
+    creditActionsGeneratedCount: 1,
+    creditUnresolvableLiabilityCount: 0,
+  },
+} = {}) {
   const engineState = {
     userId: 'lab-user-1',
     cards: [
@@ -140,29 +152,60 @@ function setupSessionMocks({ engineOk = true } = {}) {
     preferences: { profileId: 'BALANCED', customWeights: null },
   };
 
-  const solverDecision = {
-    actionId: 'use_card:card-1',
-    action: { type: 'USE_CARD', cardId: 'card-1' },
-    score: 1,
-    reasons: [],
-    projections: {
-      buckets: [
-        {
-          bucketId: 'bucket-1',
-          projectedPostedSpendCents: 3000,
-          projectedPendingSpendCents: 0,
-          projectedCommittedCents: 3000,
-          projectedRemainingCents: 7000,
-          projectedOverLimit: false,
+  const solverDecision = nonCardTop
+    ? {
+        actionId: 'reject_purchase',
+        action: { type: 'REJECT_PURCHASE' },
+        score: 2,
+        reasons: [],
+        projections: {
+          buckets: [],
+          debt: [],
+          cash: { projectedLiquidCents: null, projectedOverdraftRisk: null },
         },
-      ],
-      debt: [],
-      cash: { projectedLiquidCents: null, projectedOverdraftRisk: null },
-    },
-    constraintsBreached: [],
-  };
+        constraintsBreached: [],
+      }
+    : {
+        actionId: 'use_card:card-1',
+        action: { type: 'USE_CARD', cardId: 'card-1' },
+        score: 1,
+        reasons: [],
+        projections: {
+          buckets: [
+            {
+              bucketId: 'bucket-1',
+              projectedPostedSpendCents: 3000,
+              projectedPendingSpendCents: 0,
+              projectedCommittedCents: 3000,
+              projectedRemainingCents: 7000,
+              projectedOverLimit: false,
+            },
+          ],
+          debt: [],
+          cash: { projectedLiquidCents: null, projectedOverdraftRisk: null },
+        },
+        constraintsBreached: [],
+      };
 
-  const legacyDecision = {
+  const legacyDecision = nonCardTop
+    ? {
+        category: 'DINING',
+        amountCents: 2000,
+        budget: {
+          verdict: 'UNCONFIGURED',
+          coverageMode: 'UNCONFIGURED',
+          hasBucket: false,
+          strictMode: false,
+          wouldExceed: false,
+        },
+        card: {
+          verdict: 'NO_CARD_DATA',
+          hasCardData: false,
+        },
+        overallVerdict: 'UNKNOWN',
+        cherryIncentive: { pointsIfFollowed: 0, expiryMinutes: 0 },
+      }
+    : {
     category: 'DINING',
     amountCents: 2000,
     budget: {
@@ -195,13 +238,14 @@ function setupSessionMocks({ engineOk = true } = {}) {
   mockModule('../lib/engine', {
     buildEngineContext: (input) => input,
     mapSolverDecisionToLegacyDecision: () => legacyDecision,
+    pickTopLegacySurfaceDecision: (decisions) => decisions[0],
   });
   mockModule('../lib/engine/run', {
     safeSolveDecisionForWorld: async () =>
       engineOk
         ? {
             ok: true,
-            decisions: [solverDecision],
+            decisions: noDecision ? [] : [solverDecision],
             trace: {
               engineVersion: 'test',
               weights: {},
@@ -209,6 +253,7 @@ function setupSessionMocks({ engineOk = true } = {}) {
               contextSummary: { surface: 'web', amountCents: 2000 },
               candidates: [],
             },
+            exclusions,
             legacyDecision,
             state: engineState,
             capabilities: loadedMetadata.capabilities,
@@ -272,8 +317,11 @@ async function runSessionsOk() {
   });
   assert.equal(res.status, 200);
   const body = await res.json();
+  const parsed = CreateSessionResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
   assert.deepEqual(body.capabilities, loadedMetadata.capabilities);
   assert.deepEqual(body.degraded, loadedMetadata.degraded);
+  assert.equal(body.degradation, null);
 }
 
 async function runSessionsEngineFail() {
@@ -293,13 +341,77 @@ async function runSessionsEngineFail() {
   });
   assert.equal(res.status, 200);
   const body = await res.json();
+  const parsed = CreateSessionResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
   assert.deepEqual(body.capabilities, unavailableMetadata.capabilities);
   assert.deepEqual(body.degraded, unavailableMetadata.degraded);
+  assert.equal(body.degradation, null);
+}
+
+async function runSessionsNonCardNeutral() {
+  process.env.NODE_ENV = 'development';
+  mockNextServer();
+  setupSessionMocks({ engineOk: true, nonCardTop: true });
+  resetRouteCache();
+  const { POST } = require('../app/api/sessions/route');
+  const res = await POST({
+    json: async () => ({
+      merchantName: 'Test',
+      amountCents: 2000,
+      category: 'DINING',
+      currency: 'USD',
+    }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  const parsed = CreateSessionResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
+  assert.ok(body.decision);
+  assert.equal(body.decision.card.cardId ?? null, null);
+  assert.equal(body.decision.card.cardNickname ?? null, null);
+  assert.equal(body.decision.card.rewardUnit ?? null, null);
+  assert.equal(body.decision.card.verdict, 'NO_CARD_DATA');
+  assert.equal(body.decision.overallVerdict, 'UNKNOWN');
+  assert.equal(body.degradation, null);
+}
+
+async function runSessionsDegradedFallback() {
+  process.env.NODE_ENV = 'development';
+  mockNextServer();
+  setupSessionMocks({
+    engineOk: true,
+    noDecision: true,
+    exclusions: {
+      creditActionsGeneratedCount: 1,
+      creditUnresolvableLiabilityCount: 1,
+    },
+  });
+  resetRouteCache();
+  const { POST } = require('../app/api/sessions/route');
+  const res = await POST({
+    json: async () => ({
+      merchantName: 'Test',
+      amountCents: 2000,
+      category: 'DINING',
+      currency: 'USD',
+    }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  const parsed = CreateSessionResponseSchema.safeParse(body);
+  assert.equal(parsed.success, true);
+  assert.equal(body.sessionId, null);
+  assert.equal(body.orderToken, null);
+  assert.equal(body.expiresAt, null);
+  assert.equal(body.error.code, CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE);
+  assert.equal(body.degradation?.code, CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY_CODE);
 }
 
 async function run() {
   await runSessionsOk();
   await runSessionsEngineFail();
+  await runSessionsNonCardNeutral();
+  await runSessionsDegradedFallback();
   console.warn('api-sessions user-context: ok');
 }
 

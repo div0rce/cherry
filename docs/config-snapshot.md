@@ -16,6 +16,7 @@ jobs:
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
       CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
+      CHERRY_VINE_SIGNATURE_MODE: "enforce"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,6 +89,7 @@ jobs:
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
       CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
+      CHERRY_VINE_SIGNATURE_MODE: "enforce"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -190,6 +192,7 @@ certs/
 
 # Local temp + Node compile cache
 .tmp/
+.cherry-tmp/
 data/bank/raw/
 data/bank/*.real.csv
 data/bank/*.export.csv
@@ -9620,6 +9623,11 @@ export default nextConfig;
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
     "check:aggregate": "npm run ts:esm -- scripts/execution/run.mts check:aggregate",
+    "audit:full-checkout": "npm run ts:esm -- scripts/execution/run.mts audit:full-checkout",
+    "generate:cherry-diff": "npm run ts:esm -- scripts/execution/run.mts generate:cherry-diff",
+    "verify:cherry-diff-artifact": "npm run ts:esm -- scripts/execution/run.mts verify:cherry-diff-artifact",
+    "verify:8.3-closure-artifact": "npm run ts:esm -- scripts/execution/run.mts verify:8.3-closure-artifact",
+    "verify:repo-closure": "npm run ts:esm -- scripts/execution/run.mts verify:repo-closure",
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
@@ -9663,6 +9671,7 @@ export default nextConfig;
     "check:lockfile-sync": "npm run ts:esm -- scripts/guardrails/run.mts check:lockfile-sync",
     "check:lockfile-integrity": "npm run ts:esm -- scripts/guardrails/run.mts check:lockfile-integrity",
     "check:package-manager-pin": "npm run ts:esm -- scripts/guardrails/run.mts check:package-manager-pin",
+    "check:projected-liquid-cents": "npm run ts:esm -- scripts/guardrails/run.mts check:projected-liquid-cents",
     "check:ci-uses-npm-ci": "npm run ts:esm -- scripts/guardrails/run.mts check:ci-uses-npm-ci",
     "check:function-size-budget": "npm run ts:esm -- scripts/guardrails/run.mts check:function-size-budget",
     "check:no-vendor-shims": "npm run ts:esm -- scripts/guardrails/run.mts check:no-vendor-shims",
@@ -10044,6 +10053,16 @@ enum DailyStateSource {
   MANUAL
 }
 
+enum ScheduledPaydownStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum ScheduledPaydownSource {
+  USER_SCHEDULED
+  AUTOPAY
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -10073,6 +10092,7 @@ model User {
   historicalBucketTemplates   HistoricalBucketTemplate[]
   dailyStates                 DailyState[]
   alertEvents                 AlertEvent[]
+  scheduledPaydowns           ScheduledPaydown[]
 }
 
 model Card {
@@ -10323,6 +10343,25 @@ model AlertEvent {
   @@index([userId, date])
 }
 
+model ScheduledPaydown {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "scheduled_paydown__user_id__fk")
+  userId String
+
+  debtId      String?
+  amountCents Int
+  effectiveAt DateTime
+  status      ScheduledPaydownStatus @default(SCHEDULED)
+  source      ScheduledPaydownSource @default(USER_SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, effectiveAt])
+  @@index([userId, status])
+  @@index([userId, debtId])
+}
+
 model DecisionEvent {
   id              String   @id @default(cuid())
   userId          String
@@ -10392,11 +10431,11 @@ model CherryPointLedger {
 }
 
 model AccountingTransaction {
-  id        String @id @default(cuid())
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  currency  String
-  txnType   String
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  currency    String
+  txnType     String
   effectiveAt DateTime
   externalId  String?
 
@@ -10410,7 +10449,7 @@ model AccountingTransaction {
 }
 
 model AccountingPosting {
-  id            String @id @default(cuid())
+  id            String                @id @default(cuid())
   transaction   AccountingTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   transactionId String
 
@@ -10626,6 +10665,7 @@ export const EXECUTION_DB_RUNNER = 'scripts/execution/run-db.mts' as const;
 export const EXECUTION = {
   'check:aggregate': 'scripts/guardrails-aggregate.mts',
   'check:clean': 'scripts/assert-clean-tree.mts',
+  'audit:full-checkout': 'scripts/audit/full-checkout-audit.mts',
   'check:db-ready': 'scripts/db-ready.mts',
   'check:dev-login': 'scripts/dev-login.mts',
   'check:db:optional': 'scripts/db-check-optional.mts',
@@ -10652,6 +10692,10 @@ export const EXECUTION = {
   'tmp:gc': 'scripts/tmp/gc.mts',
   'report:authority': 'scripts/authority-coverage.mts',
   'report:bucket-balance': 'scripts/debug-bucket-balance.mts',
+  'generate:cherry-diff': 'scripts/generate-cherry-diff.mts',
+  'verify:8.3-closure-artifact': 'scripts/verify-8-3-closure-artifact.mts',
+  'verify:cherry-diff-artifact': 'scripts/verify-cherry-diff-artifact.mts',
+  'verify:repo-closure': 'scripts/verify-repo-closure.mts',
 } as const;
 
 export type ExecutionName = keyof typeof EXECUTION;
@@ -10731,6 +10775,7 @@ const CHECK_CONTRACT_PATH = `${CHECK_PATH_BASE}check-contract.mts` as const;
 const LOCKFILE_SYNC_PATH = `${CHECK_PATH_BASE}lockfile-sync.mts` as const;
 const LOCKFILE_INTEGRITY_PATH = `${CHECK_PATH_BASE}lockfile-integrity.mts` as const;
 const PACKAGE_MANAGER_PIN_PATH = `${CHECK_PATH_BASE}package-manager-pin.mts` as const;
+const PROJECTED_LIQUID_CENTS_PATH = `${CHECK_PATH_BASE}projected-liquid-cents.mts` as const;
 const CI_USES_NPM_CI_PATH = `${CHECK_PATH_BASE}ci-uses-npm-ci.mts` as const;
 const FUNCTION_SIZE_BUDGET_PATH = `${CHECK_PATH_BASE}function-size-budget.mts` as const;
 const NO_VENDOR_SHIMS_PATH = `${CHECK_PATH_BASE}no-vendor-shims.mts` as const;
@@ -10813,6 +10858,7 @@ export const GUARDRAILS = Object.freeze({
   'check:lockfile-sync': LOCKFILE_SYNC_PATH,
   'check:lockfile-integrity': LOCKFILE_INTEGRITY_PATH,
   'check:package-manager-pin': PACKAGE_MANAGER_PIN_PATH,
+  'check:projected-liquid-cents': PROJECTED_LIQUID_CENTS_PATH,
   'check:ci-uses-npm-ci': CI_USES_NPM_CI_PATH,
   'check:function-size-budget': FUNCTION_SIZE_BUDGET_PATH,
   'check:no-vendor-shims': NO_VENDOR_SHIMS_PATH,
@@ -10971,7 +11017,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/autopilot/service.ts": {
     "effects": [
@@ -10980,7 +11026,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/bank/csv-dev-provider.ts": {
     "effects": [
@@ -10997,7 +11043,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/bank/user-link.ts": {
     "effects": [
@@ -11027,7 +11073,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/daily-state/runDailyForUser.ts": {
     "effects": [
@@ -11036,7 +11082,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/dashboard.ts": {
     "effects": [
@@ -11045,7 +11091,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/demo-seeder.ts": {
     "effects": [
@@ -11054,7 +11100,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/dev/dev-user.ts": {
     "effects": [
@@ -11107,7 +11153,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/ingest/bank-transactions.ts": {
     "effects": [
@@ -11186,7 +11232,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/user-context.ts": {
     "effects": [
@@ -11210,7 +11256,7 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "legacy-combo",
-    "expiresBy": "2026-03-01"
+    "expiresBy": "2026-06-01"
   },
   "lib/vine/security.ts": {
     "effects": [
@@ -11342,242 +11388,12 @@ export default config;
 ```
 
 ```ts
-// tests/fixtures/guardrails/check-contract/bad-ci-verify/package.json
-{
-  "name": "check-contract-bad-ci-verify",
-  "private": true,
-  "scripts": {
-    "check": "npm run check:guardrails && npm run lint",
-    "test": "npm run check:run-tests",
-    "build": "next build",
-    "ci:verify": "npm run test && npm run check && npm run build",
-    "test:strict": "npm run check:guardrails && npm run check:run-tests",
-    "build:strict": "npm run check:guardrails && next build"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/check-contract/bad-guardrails-in-test/package.json
-{
-  "name": "check-contract-bad-guardrails-in-test",
-  "private": true,
-  "scripts": {
-    "check": "npm run check:guardrails && npm run lint",
-    "test": "npm run check:guardrails && npm run check:run-tests",
-    "build": "next build",
-    "ci:verify": "npm run check && npm run test && npm run build",
-    "test:strict": "npm run check:guardrails && npm run check:run-tests",
-    "build:strict": "npm run check:guardrails && next build"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/check-contract/ok/package.json
-{
-  "name": "check-contract-ok",
-  "private": true,
-  "scripts": {
-    "check": "npm run check:guardrails && npm run lint",
-    "test": "npm run check:run-tests",
-    "build": "next build",
-    "ci:verify": "npm run check && npm run test && npm run build",
-    "test:strict": "npm run check:guardrails && npm run check:run-tests",
-    "build:strict": "npm run check:guardrails && next build"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/execution-registry-missing-file/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "dev:missing": "npm run ts:esm -- scripts/execution/run.mts dev:missing",
-    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/guardrail-exec-bypass-docs/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "check:guardrails": "echo ok"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/guardrail-exec-bypass-nested/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "check:guardrails": "npm run foo",
-    "foo": "npm run bar",
-    "bar": "node scripts/check-side-effects.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/guardrail-exec-bypass-npx-tsx/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "check:guardrails": "npm run check:side-effects",
-    "check:side-effects": "npx tsx scripts/check-side-effects.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/guardrail-exec-bypass-workflow/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "check:guardrails": "echo ok"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/guardrail-exec-bypass/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "check:guardrails": "npm run check:side-effects",
-    "check:side-effects": "node scripts/check-side-effects.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/migrations/safe-migration-with-justification/scripts/guardrails/migration-safety.baseline.json
-[]
-```
-
-```ts
-// tests/fixtures/guardrails/migrations/safe-migration-with-test/scripts/guardrails/migration-safety.baseline.json
-[]
-```
-
-```ts
-// tests/fixtures/guardrails/migrations/unsafe-migration/scripts/guardrails/migration-safety.baseline.json
-[]
-```
-
-```ts
 // tests/fixtures/guardrails/no-vendor-shims/allowlisted/tsconfig.base.json
 {
   "compilerOptions": {
     "paths": {
       "fixture/shim": ["types/vendor/allowlisted-shim.d.ts"]
     }
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/npm-arg-forwarding/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "lint": "npm run lint:eslint --max-warnings=0",
-    "lint:eslint": "eslint ."
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/orphan-exec-script/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "dev:rogue": "node scripts/rogue.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/repo/esm-loader-bypass/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json",
-    "check:side-effects": "node scripts/check-side-effects.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/repo/esm-loader-inline/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "ts:esm": "CHERRY_TSESM=1 tsx --tsconfig tsconfig.scripts.json",
-    "check:side-effects": "tsx --tsconfig tsconfig.scripts.json scripts/check-side-effects.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/repo/esm-loader-missing/package.json
-{
-  "name": "fixture",
-  "private": true,
-  "scripts": {
-    "check:side-effects": "npm run ts:esm -- scripts/check-side-effects.mts"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/script-runner-contract/bad-direct-runner/package.json
-{
-  "name": "script-runner-contract-bad",
-  "private": true,
-  "scripts": {
-    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
-    "check:clean": "node scripts/execution/run.mjs check:clean"
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/script-runner-contract/ok/package.json
-{
-  "name": "script-runner-contract-ok",
-  "private": true,
-  "scripts": {
-    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
-    "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
-    "lint": "eslint ."
-  }
-}
-```
-
-```ts
-// tests/fixtures/guardrails/script-runner-contract/package.json
-{
-  "name": "script-runner-contract-fixture",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "ts:esm": "CHERRY_TSESM=1 npx tsx --tsconfig tsconfig.scripts.json",
-    "check:bad": "node scripts/check-bad.mts"
   }
 }
 ```

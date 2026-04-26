@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "schema_v1",
-  "lastMigration": "20260117120000_accounting_ledger",
+  "schemaVersion": "schema_v2",
+  "lastMigration": "20260426090000_add_scheduled_paydowns",
   "invariantsVersion": "db_invariants_v1",
   "allowlistedDestructiveMigrations": []
 }
