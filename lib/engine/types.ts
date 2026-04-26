@@ -43,7 +43,10 @@ export function unavailable<T>(): Maybe<T> {
   return { kind: 'unavailable' };
 }
 
-export function hasAvailableValue<T>(value: Maybe<T>): value is { kind: 'available'; value: T } {
+export function hasAvailableValue<T>(
+  value: Maybe<T> | null | undefined
+): value is { kind: 'available'; value: T } {
+  if (value == null) return false;
   return value.kind === 'available';
 }
 
@@ -155,6 +158,15 @@ export type DebtAccount = {
   dueDayOfMonth: number | null;
 };
 
+export type ScheduledPaydown = {
+  id: string;
+  debtId: DebtAccountId | null;
+  amountCents: number;
+  effectiveAtMs: number;
+  status: 'SCHEDULED' | 'CANCELLED';
+  source: 'USER_SCHEDULED' | 'AUTOPAY';
+};
+
 export type UserConstraints = {
   hard: {
     minEssentialCoverageDays?: number;
@@ -176,6 +188,7 @@ export type EngineState = {
   cards: NormalizedCard[];
   buckets: Bucket[];
   debts: Maybe<DebtAccount[]>;
+  scheduledPaydowns: Maybe<ScheduledPaydown[]>;
   constraints: UserConstraints;
   world: WorldParams;
   cash: Maybe<UserLiquidityState>;
@@ -211,6 +224,13 @@ export type EngineActionType =
   | 'SWITCH_MERCHANT'
   | 'PAY_DOWN_DEBT'
   | 'USE_CARD_WITH_PAYDOWN';
+
+export type EngineActionTimingMode = 'IMMEDIATE' | 'SCHEDULED';
+
+export type EngineActionTiming = {
+  mode: EngineActionTimingMode;
+  effectiveAtMs: number;
+};
 
 export type EngineAction = {
   type: EngineActionType;
@@ -295,6 +315,11 @@ export type EngineValidationIssue = {
   message: string;
 };
 
+export type EngineTraceDiagnostic = {
+  code: 'SCHEDULED_PAYDOWN_MISSING_DEBT_ID';
+  count: number;
+};
+
 export type EngineDecisionTrace = {
   engineVersion: string;
   weights: ObjectiveWeights;
@@ -314,6 +339,7 @@ export type EngineDecisionTrace = {
     constraintsBreached: string[];
     components?: ObjectiveComponentScores;
   }[];
+  diagnostics?: EngineTraceDiagnostic[];
 };
 
 export type EngineRuntimeMetadata = {
@@ -322,15 +348,17 @@ export type EngineRuntimeMetadata = {
 };
 
 export function getDebtAccounts(
-  debts: EngineState['debts']
+  debts: EngineState['debts'] | DebtAccount[] | null | undefined
 ): DebtAccount[] {
-  return hasAvailableValue(debts) ? debts.value : [];
+  const normalized = toMaybe<DebtAccount[]>(debts);
+  return hasAvailableValue(normalized) ? normalized.value : [];
 }
 
 export function getCashState(
-  cash: EngineState['cash']
+  cash: EngineState['cash'] | UserLiquidityState | null | undefined
 ): UserLiquidityState | null {
-  return hasAvailableValue(cash) ? cash.value : null;
+  const normalized = toMaybe<UserLiquidityState>(cash);
+  return hasAvailableValue(normalized) ? normalized.value : null;
 }
 
 export function hasKnownBucketEssentiality(bucket: Bucket): boolean {
