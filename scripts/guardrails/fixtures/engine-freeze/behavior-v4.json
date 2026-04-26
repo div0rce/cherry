@@ -1,0 +1,314 @@
+{
+  "fixtureVersion": "engine_behavior_v4",
+  "fixtures": [
+    {
+      "id": "source-unavailable",
+      "projection": {
+        "rawScheduledPaydownCount": null,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 0.95 },
+          { "actionId": "switch_merchant:DINING", "score": -0.09999999999999998 },
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "delay_purchase:3", "score": -10 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "UNAVAILABLE"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "source-empty",
+      "projection": {
+        "rawScheduledPaydownCount": 0,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 0.95 },
+          { "actionId": "switch_merchant:DINING", "score": -0.09999999999999998 },
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "delay_purchase:3", "score": -10 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "AVAILABLE_EMPTY"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "cancelled-only",
+      "projection": {
+        "rawScheduledPaydownCount": 1,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 0.95 },
+          { "actionId": "switch_merchant:DINING", "score": -0.09999999999999998 },
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "delay_purchase:3", "score": -10 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "AVAILABLE_NO_ACTIVE"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "present-effective-before-now",
+      "projection": {
+        "rawScheduledPaydownCount": 1,
+        "presentEffectiveCount": 1,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.2 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.2 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 1.1 },
+          { "actionId": "switch_merchant:DINING", "score": 0.04999999999999999 },
+          { "actionId": "use_card:card-1", "score": 0.04999999999999999 },
+          { "actionId": "delay_purchase:3", "score": -9.85 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "AVAILABLE_NO_ACTIVE"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "present-effective-at-now",
+      "projection": {
+        "rawScheduledPaydownCount": 1,
+        "presentEffectiveCount": 1,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.2 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.2 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 1.1 },
+          { "actionId": "switch_merchant:DINING", "score": 0.04999999999999999 },
+          { "actionId": "use_card:card-1", "score": 0.04999999999999999 },
+          { "actionId": "delay_purchase:3", "score": -9.85 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "AVAILABLE_NO_ACTIVE"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "future-only",
+      "projection": {
+        "rawScheduledPaydownCount": 1,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 1,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 0.95 },
+          { "actionId": "switch_merchant:DINING", "score": -0.09999999999999998 },
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "delay_purchase:3", "score": -10 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_PLUS_FUTURE_EVENTS",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": 1704067260000,
+          "includesScheduledPaydowns": true,
+          "contingency": "REQUIRES_FUTURE_EVENTS",
+          "scheduledPaydownSourceStatus": "AVAILABLE_ACTIVE"
+        },
+        "contingentRecommendation": {
+          "action": { "kind": "SCHEDULED_PAYDOWN", "debtId": "debt-1", "amountCents": 1500, "effectiveAtMs": 1704067260000 },
+          "status": "NOT_EFFECTIVE_YET"
+        },
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "present-plus-future",
+      "projection": {
+        "rawScheduledPaydownCount": 2,
+        "presentEffectiveCount": 1,
+        "futureEligibleCount": 1,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.2 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.2 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 1.1 },
+          { "actionId": "switch_merchant:DINING", "score": 0.04999999999999999 },
+          { "actionId": "use_card:card-1", "score": 0.04999999999999999 },
+          { "actionId": "delay_purchase:3", "score": -9.85 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_PLUS_FUTURE_EVENTS",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": 1704067260000,
+          "includesScheduledPaydowns": true,
+          "contingency": "REQUIRES_FUTURE_EVENTS",
+          "scheduledPaydownSourceStatus": "AVAILABLE_ACTIVE"
+        },
+        "contingentRecommendation": {
+          "action": { "kind": "SCHEDULED_PAYDOWN", "debtId": "debt-1", "amountCents": 1500, "effectiveAtMs": 1704067260000 },
+          "status": "NOT_EFFECTIVE_YET"
+        },
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "missing-debt",
+      "projection": {
+        "rawScheduledPaydownCount": 1,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 0.95 },
+          { "actionId": "switch_merchant:DINING", "score": -0.09999999999999998 },
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "delay_purchase:3", "score": -10 }
+        ],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "AVAILABLE_NO_ACTIVE"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": [{ "code": "SCHEDULED_PAYDOWN_MISSING_DEBT_ID", "count": 1 }]
+      }
+    },
+    {
+      "id": "future-candidate-paydown-excluded",
+      "projection": {
+        "rawScheduledPaydownCount": 0,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 0,
+        "winner": { "actionType": "USE_CARD", "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+        "topCandidateIds": ["use_card:card-1", "reject_purchase"],
+        "topCandidateScores": [
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "reject_purchase", "score": -50 }
+        ],
+        "hardExcludedCandidateTypes": ["PAY_DOWN_DEBT", "USE_CARD_WITH_PAYDOWN"],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_ONLY",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": null,
+          "includesScheduledPaydowns": false,
+          "contingency": "NONE",
+          "scheduledPaydownSourceStatus": "AVAILABLE_EMPTY"
+        },
+        "contingentRecommendation": null,
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    },
+    {
+      "id": "future-only-credit-degradation-stable",
+      "projection": {
+        "rawScheduledPaydownCount": 1,
+        "presentEffectiveCount": 0,
+        "futureEligibleCount": 1,
+        "winner": { "actionType": "PAY_DOWN_DEBT", "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+        "topCandidateIds": ["pay_down_debt:debt-1", "use_card_with_paydown:card-1:debt-1", "switch_merchant:DINING", "use_card:card-1", "delay_purchase:3"],
+        "topCandidateScores": [
+          { "actionId": "pay_down_debt:debt-1", "score": 1.05 },
+          { "actionId": "use_card_with_paydown:card-1:debt-1", "score": 0.95 },
+          { "actionId": "switch_merchant:DINING", "score": -0.09999999999999998 },
+          { "actionId": "use_card:card-1", "score": -0.09999999999999998 },
+          { "actionId": "delay_purchase:3", "score": -10 }
+        ],
+        "stableAgainstCaseId": "source-empty",
+        "allowedDifferences": ["temporalContext", "contingentRecommendation", "futureRiskContext"],
+        "exclusions": { "creditActionsGeneratedCount": 2, "creditUnresolvableLiabilityCount": 0 },
+        "degradation": null,
+        "temporalContext": {
+          "modelMode": "PRESENT_PLUS_FUTURE_EVENTS",
+          "decisionTimeMs": 1704067200000,
+          "horizonEndMs": 1704067260000,
+          "includesScheduledPaydowns": true,
+          "contingency": "REQUIRES_FUTURE_EVENTS",
+          "scheduledPaydownSourceStatus": "AVAILABLE_ACTIVE"
+        },
+        "contingentRecommendation": {
+          "action": { "kind": "SCHEDULED_PAYDOWN", "debtId": "debt-1", "amountCents": 1500, "effectiveAtMs": 1704067260000 },
+          "status": "NOT_EFFECTIVE_YET"
+        },
+        "futureRiskContext": null,
+        "traceDiagnostics": []
+      }
+    }
+  ]
+}
