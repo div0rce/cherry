@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { CentsSchema } from './common.js';
 import { mccSchema } from './mcc.js';
+import {
+  applyTemporalSchemaRefinements,
+  ContingentRecommendationSchema,
+  FutureRiskContextSchema,
+  TemporalContextSchema,
+} from './recommendation-temporal.js';
 
 export const ScanRequestSchema = z
   .object({
@@ -34,6 +40,7 @@ const EngineDegradationSchema = z
     code: z.literal('CREDIT_ACTIONS_EXCLUDED_UNRESOLVABLE_CREDIT_LIABILITY'),
     message: z.string(),
   })
+  .strict()
   .nullable();
 
 const ScanErrorSchema = z
@@ -87,6 +94,9 @@ export const ScanSuccessResponseSchema = z
     degraded: EngineDegradedSchema,
     degradation: EngineDegradationSchema,
     authority: z.unknown().nullable(),
+    temporalContext: TemporalContextSchema,
+    contingentRecommendation: ContingentRecommendationSchema,
+    futureRiskContext: FutureRiskContextSchema,
   })
   .strict();
 
@@ -98,13 +108,16 @@ export const ScanFallbackResponseSchema = z
     degraded: EngineDegradedSchema,
     degradation: EngineDegradationSchema,
     authority: z.unknown().nullable(),
+    temporalContext: TemporalContextSchema,
+    contingentRecommendation: ContingentRecommendationSchema,
+    futureRiskContext: FutureRiskContextSchema,
   })
   .strict();
 
 export const ScanResponseSchema = z.union([
   ScanSuccessResponseSchema,
   ScanFallbackResponseSchema,
-]);
+]).superRefine(applyTemporalSchemaRefinements);
 
 export type ScanSuccessResponse = z.infer<typeof ScanSuccessResponseSchema>;
 export type ScanFallbackResponse = z.infer<typeof ScanFallbackResponseSchema>;
