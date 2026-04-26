@@ -8,6 +8,11 @@ import type {
 } from './engine.js';
 import type { BudgetVerdict, CardVerdict, OverallVerdict } from './enums.js';
 import type { SimulatedAuthorityDecision } from './authority/simulateSpendAuthority.js';
+import type {
+  ContingentRecommendation,
+  FutureRiskContext,
+  TemporalContext,
+} from './engine/temporal-response.js';
 
 export type ScanRequestBody = {
   merchantName: string;
@@ -57,6 +62,9 @@ export type ScanSuccessResponseBody = {
   degraded: EngineDegradedDimensions;
   degradation: EngineDegradation;
   authority: SimulatedAuthorityDecision | null;
+  temporalContext: TemporalContext;
+  contingentRecommendation: ContingentRecommendation;
+  futureRiskContext: FutureRiskContext;
 };
 
 export type ScanFallbackResponseBody = {
@@ -69,6 +77,9 @@ export type ScanFallbackResponseBody = {
   degraded: EngineDegradedDimensions;
   degradation: EngineDegradation;
   authority: SimulatedAuthorityDecision | null;
+  temporalContext: TemporalContext;
+  contingentRecommendation: ContingentRecommendation;
+  futureRiskContext: FutureRiskContext;
 };
 
 export type ScanResponseBody = ScanSuccessResponseBody | ScanFallbackResponseBody;
