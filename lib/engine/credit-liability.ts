@@ -6,7 +6,9 @@ function hasNonEmptyString(value?: string | null): value is string {
 }
 
 export function actionRequiresResolvableCreditLiability(action: EngineAction): boolean {
-  return action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN';
+  if (action.type === 'USE_CARD') return true;
+  if (action.type === 'USE_CARD_WITH_PAYDOWN') return true;
+  return false;
 }
 
 export function findActionCard(
