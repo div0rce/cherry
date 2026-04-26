@@ -1,6 +1,7 @@
 import {
   available,
   createLoadedEngineCapabilities,
+  unavailable,
   type DebtAccount,
   type EngineContext,
   type EngineState,
@@ -178,6 +179,7 @@ export function buildEngineStateFromInput(params: {
       };
     }),
     debts: available(toDebts(input.debts, linkLabels.byDebtId)),
+    scheduledPaydowns: unavailable(),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
