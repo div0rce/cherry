@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-02-01
+Last updated: 2026-04-26
 
 # CI and guardrails
 
@@ -32,6 +32,27 @@ Last updated: 2026-02-01
 - CI: workflows must set `CHERRY_TMP_ROOT` and create the directory before installs.
 - Vercel: set `CHERRY_TMP_ROOT=/tmp/cherry-tmp` and ensure the build command creates the directory.
 - Enforcement: `check:temp-quota`, `check:tmp-root-shape`, `check:artifact-size-budgets`.
+
+### Vine production-signature env
+- Production build verification requires `CHERRY_VINE_SIGNATURE_MODE=enforce`.
+- CI sets `CHERRY_VINE_SIGNATURE_MODE=enforce` explicitly in workflow env.
+- Vercel/deploy env must set `CHERRY_VINE_SIGNATURE_MODE=enforce`; no wrapper-only default or fallback may stand in for the deployment env.
+- The exact policy is enforced by `lib/config/server.ts`: production config fails unless Vine signature mode is `enforce`.
+- Local repo closure:
+  ```bash
+  export CHERRY_TMP_ROOT="$HOME/.cherry-tmp"
+  mkdir -p "$CHERRY_TMP_ROOT"
+  chmod 700 "$CHERRY_TMP_ROOT"
+  export CHERRY_VINE_SIGNATURE_MODE=enforce
+  npm run verify:repo-closure
+  ```
+
+### `verify:repo-closure` contract
+- `npm run verify:repo-closure` asserts `CHERRY_TMP_ROOT` exists, is writable, and is empty, a dedicated Cherry system-temp directory, or already contains only the repo temp buckets `npm`, `next`, `prisma`, and `guardrails`.
+- It asserts `CHERRY_VINE_SIGNATURE_MODE=enforce` from the config code contract with no defaults, fallback values, or weakening of enforcement.
+- It prints exact local export commands on failure.
+- It does not mutate env in a way production would not.
+- It runs the Issue 8 proof slice, then `npm run lint`, `npm run check`, `npm run typecheck`, `npm test`, and `npm run build`.
 
 > If CI ever runs individual guardrail scripts directly, the system is broken.
 
