@@ -4,6 +4,7 @@ import {
   buildEngineContext,
   createLoadedEngineCapabilities,
   solveDecision,
+  unavailable,
 } from '../../../../lib/engine.js';
 import type { EngineDecision, EngineState } from '../../../../lib/engine/types.js';
 import {
@@ -130,6 +131,7 @@ function buildBaseState(): EngineState {
         dueDayOfMonth: 15,
       },
     ]),
+    scheduledPaydowns: unavailable(),
     constraints: {
       hard: {
         minEssentialCoverageDays: 0,
@@ -215,12 +217,12 @@ function buildBounds(): Bounds {
       cardIds: ['card-1', 'card-2'],
       debtIds: ['debt-2', 'debt-1'],
       paydownAmountCents: [5_000],
-      paydownScheduledDateMs: [NEXT_PAYCHECK_MS],
+      paydownScheduledDateMs: [null, NEXT_PAYCHECK_MS],
     },
     payDownDebt: {
       debtIds: ['debt-2', 'debt-1'],
       paydownAmountCents: [5_000],
-      paydownScheduledDateMs: [NEXT_PAYCHECK_MS],
+      paydownScheduledDateMs: [null, NEXT_PAYCHECK_MS],
     },
     delayPurchase: {
       delayDays: [3, 7],
