@@ -105,6 +105,7 @@ Last updated: 2026-01-31
 - Fixture tsconfigs may diverge semantically and are excluded from enforcement.
 - NodeNext usage is quarantined to script configs only.
 - `docs/config-snapshot.md` must list every config file and match on-disk contents.
+- `check:config-snapshot` is read-only. Guardrails may verify the snapshot, but they must not rewrite it at runtime.
 - `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
 - `next.config.ts` must exclude `.next/export-detail.json`, `.next/lock`, and `.next/server/proxy.js` from output tracing to avoid non-export build failures.
 - Enforcement: `check:config-snapshot`.
