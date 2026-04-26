@@ -202,6 +202,16 @@ enum DailyStateSource {
   MANUAL
 }
 
+enum ScheduledPaydownStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum ScheduledPaydownSource {
+  USER_SCHEDULED
+  AUTOPAY
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -231,6 +241,7 @@ model User {
   historicalBucketTemplates   HistoricalBucketTemplate[]
   dailyStates                 DailyState[]
   alertEvents                 AlertEvent[]
+  scheduledPaydowns           ScheduledPaydown[]
 }
 
 model Card {
@@ -481,6 +492,25 @@ model AlertEvent {
   @@index([userId, date])
 }
 
+model ScheduledPaydown {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "scheduled_paydown__user_id__fk")
+  userId String
+
+  debtId      String?
+  amountCents Int
+  effectiveAt DateTime
+  status      ScheduledPaydownStatus @default(SCHEDULED)
+  source      ScheduledPaydownSource @default(USER_SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, effectiveAt])
+  @@index([userId, status])
+  @@index([userId, debtId])
+}
+
 model DecisionEvent {
   id              String   @id @default(cuid())
   userId          String
@@ -550,11 +580,11 @@ model CherryPointLedger {
 }
 
 model AccountingTransaction {
-  id        String @id @default(cuid())
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  currency  String
-  txnType   String
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  currency    String
+  txnType     String
   effectiveAt DateTime
   externalId  String?
 
@@ -568,7 +598,7 @@ model AccountingTransaction {
 }
 
 model AccountingPosting {
-  id            String @id @default(cuid())
+  id            String                @id @default(cuid())
   transaction   AccountingTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   transactionId String
 
