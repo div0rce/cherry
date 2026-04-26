@@ -76,6 +76,7 @@ async function run() {
   assert.equal(state.cards.length, 1);
   assert.equal(state.cards[0].linkedDebtId, null);
   assert.equal(state.debts.kind, 'unavailable');
+  assert.equal(state.scheduledPaydowns.kind, 'unavailable');
   assert.notEqual(state.capabilities.debt.available, true);
 
   console.warn('engine-state prisma: ok');
