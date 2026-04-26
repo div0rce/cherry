@@ -45,6 +45,10 @@ import {
   filterAccountingSafeDecisions,
   type EngineDecisionWithAccounting,
 } from '../accounting/engine-proof.js';
+import {
+  evaluateScheduledPaydowns,
+  type ScheduledPaydownEvaluation,
+} from './scheduled-paydowns.js';
 
 export type SolveDecisionOptions = {
   weights?: Partial<ObjectiveWeights>;
@@ -54,6 +58,8 @@ export type SolveDecisionOptions = {
   stateOverride?: EngineState;
   runtime?: EngineRuntime;
   candidateFilter?: (action: EngineAction) => boolean;
+  candidateActionsOverride?: EngineAction[];
+  scheduledPaydownEvaluation?: ScheduledPaydownEvaluation;
 };
 
 export type SolveDecisionResult = {
@@ -111,7 +117,14 @@ export async function solveDecision(
       : DEFAULT_OBJECTIVE_WEIGHTS;
   }
 
-  const candidateActions = generateCandidateActions(state, ctx);
+  const candidateActions =
+    options.candidateActionsOverride === undefined
+      ? generateCandidateActions(state, ctx)
+      : options.candidateActionsOverride;
+  const scheduledPaydownEvaluation =
+    options.scheduledPaydownEvaluation === undefined
+      ? evaluateScheduledPaydowns(state, ctx.nowMs)
+      : options.scheduledPaydownEvaluation;
   const surfaceFilteredCandidates =
     options.candidateFilter != null
       ? candidateActions.filter((action) => options.candidateFilter?.(action) === true)
@@ -147,7 +160,7 @@ export async function solveDecision(
   const hardConstraints = getHardConstraints(state);
 
   for (const action of constrainedCandidates) {
-    const projections = simulateAction(state, ctx, action);
+    const projections = simulateAction(state, ctx, action, { scheduledPaydownEvaluation });
     const { score, reasons, components } = scoreDecision(state, ctx, action, projections, weights);
     const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
 
@@ -191,6 +204,7 @@ export async function solveDecision(
       constraintsBreached: d.constraintsBreached,
       ...(d.components ? { components: d.components } : {}),
     })),
+    diagnostics: scheduledPaydownEvaluation.diagnostics,
   };
   const { capabilities, degraded } = getEngineRuntimeMetadata(state);
 
