@@ -59,7 +59,7 @@ async function insertScheduledPaydown(
   row: Record<ScheduledPaydownColumn, unknown>
 ): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'INSERT INTO "ScheduledPaydown" ("id", "userId", "amountCents", "effectiveAt", "status", "source", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5::"ScheduledPaydownStatus", $6, $7, $8)',
+    'INSERT INTO "ScheduledPaydown" ("id", "userId", "amountCents", "effectiveAt", "status", "source", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5::"ScheduledPaydownStatus", $6::"ScheduledPaydownSource", $7, $8)',
     row.id,
     row.userId,
     row.amountCents,
