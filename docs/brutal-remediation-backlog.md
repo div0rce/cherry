@@ -151,7 +151,7 @@
 
 ---
 
-## (WORKING) 8. P1 — Repair rail-faithful simulation and temporal honesty
+## (FIXED) 8. P1 — Repair rail-faithful simulation and temporal honesty
 
 * `Priority`: P1
 * `Owner Domain`: simulation
@@ -164,12 +164,15 @@
     * debit/cash spends reduce projected liquid correctly
     * credit spends mutate the correct liability via stable identity rather than label equivalence
     * purchase-state transitions document and enforce pending vs posted semantics
-    * scheduled paydowns are either modeled truthfully in time or removed from the live action space
+    * scheduled paydowns are retained with explicit `effectiveAtMs` / `decisionTimeMs` semantics
+    * scheduled paydowns with `effectiveAtMs > decisionTimeMs` do not mutate present state or justify present recommendations
+    * only already-effective paydowns may affect present simulation or ranking
     * live time semantics are documented explicitly rather than implied by field names alone
 * `Out of Scope`:
     * multistep planning
     * future merchant optimization research
     * full long-horizon forecasting
+    * generic future-obligation planning
 
 ---
 
