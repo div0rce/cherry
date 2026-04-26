@@ -19,6 +19,18 @@ function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
+function isFuturePaydownAction(action: EngineAction, decisionTimeMs: number): boolean {
+  if (action.type !== 'PAY_DOWN_DEBT' && action.type !== 'USE_CARD_WITH_PAYDOWN') {
+    return false;
+  }
+  return (
+    action.paydownScheduledDateMs !== null &&
+    action.paydownScheduledDateMs !== undefined &&
+    Number.isFinite(action.paydownScheduledDateMs) &&
+    action.paydownScheduledDateMs > decisionTimeMs
+  );
+}
+
 export class EngineError extends Error {
   constructor(message: string, public override readonly cause?: unknown) {
     super(message);
@@ -155,6 +167,10 @@ export function evaluateConstraintsForDecision(
     if (liquid != null && liquid < action.paydownAmountCents) {
       breaches.push('HARD:PAYDOWN_EXCEEDS_LIQUID');
     }
+  }
+
+  if (isFuturePaydownAction(action, ctx.nowMs)) {
+    breaches.push('HARD:FUTURE_PAYDOWN_NOT_PRESENT_EFFECTIVE');
   }
 
   if (
