@@ -27,22 +27,33 @@ function runDiff(args: string[]): string[] | null {
 }
 
 function resolveDiff(): string[] {
+  const workingTree = new Set<string>();
+  for (const entry of [runDiff([]), runDiff(['--cached'])]) {
+    if (entry !== null) {
+      for (const file of entry) workingTree.add(file);
+    }
+  }
+
   if (OVERRIDE_BASE !== undefined && OVERRIDE_BASE !== '') {
     const diff = runDiff([OVERRIDE_BASE]);
     if (diff === null) {
       guardrailFail(`Unable to compute git diff for base ${OVERRIDE_BASE}`);
     }
-    return diff;
+    return [...new Set([...diff, ...workingTree])];
   }
 
   const originDiff = runDiff(['origin/main...HEAD']);
   if (originDiff !== null) {
-    return originDiff;
+    return [...new Set([...originDiff, ...workingTree])];
   }
 
   const headDiff = runDiff(['HEAD~1']);
   if (headDiff !== null) {
-    return headDiff;
+    return [...new Set([...headDiff, ...workingTree])];
+  }
+
+  if (workingTree.size > 0) {
+    return [...workingTree];
   }
 
   guardrailFail('Unable to compute git diff for guardrail doc sync');
