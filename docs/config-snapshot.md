@@ -1,4 +1,4 @@
-```ts
+```yaml
 // .github/workflows/ci.yml
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: ci
@@ -15,7 +15,7 @@ jobs:
     env:
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
+      CHERRY_TMP_ROOT: "/tmp/cherry-tmp"
       CHERRY_VINE_SIGNATURE_MODE: "enforce"
     steps:
       - name: Checkout
@@ -55,7 +55,7 @@ jobs:
         run: npm run ci:verify
 ```
 
-```ts
+```yaml
 // .github/workflows/env-checks.yml
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: env-checks
@@ -88,7 +88,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
+      CHERRY_TMP_ROOT: "/tmp/cherry-tmp"
       CHERRY_VINE_SIGNATURE_MODE: "enforce"
     steps:
       - name: Checkout
@@ -793,7 +793,7 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-```ts
+```json
 // package-lock.json
 {
   "name": "cherry",
@@ -834,7 +834,6 @@ export default nextConfig;
         "@types/react-dom": "^19",
         "@typescript-eslint/eslint-plugin": "^8.0.0",
         "@typescript-eslint/parser": "^8.0.0",
-        "@vscode/ripgrep": "1.17.0",
         "babel-plugin-react-compiler": "1.0.0",
         "baseline-browser-mapping": "^2.8.32",
         "eslint": "^9",
@@ -3977,19 +3976,6 @@ export default nextConfig;
         "win32"
       ]
     },
-    "node_modules/@vscode/ripgrep": {
-      "version": "1.17.0",
-      "resolved": "https://registry.npmjs.org/@vscode/ripgrep/-/ripgrep-1.17.0.tgz",
-      "integrity": "sha512-mBRKm+ASPkUcw4o9aAgfbusIu6H4Sdhw09bjeP1YOBFTJEZAnrnk6WZwzv8NEjgC82f7ILvhmb1WIElSugea6g==",
-      "dev": true,
-      "hasInstallScript": true,
-      "license": "MIT",
-      "dependencies": {
-        "https-proxy-agent": "^7.0.2",
-        "proxy-from-env": "^1.1.0",
-        "yauzl": "^2.9.2"
-      }
-    },
     "node_modules/@yarnpkg/lockfile": {
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/@yarnpkg/lockfile/-/lockfile-1.1.0.tgz",
@@ -4031,16 +4017,6 @@ export default nextConfig;
       },
       "engines": {
         "node": ">=0.4.0"
-      }
-    },
-    "node_modules/agent-base": {
-      "version": "7.1.4",
-      "resolved": "https://registry.npmjs.org/agent-base/-/agent-base-7.1.4.tgz",
-      "integrity": "sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==",
-      "dev": true,
-      "license": "MIT",
-      "engines": {
-        "node": ">= 14"
       }
     },
     "node_modules/ajv": {
@@ -4409,16 +4385,6 @@ export default nextConfig;
       },
       "engines": {
         "node": "^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7"
-      }
-    },
-    "node_modules/buffer-crc32": {
-      "version": "0.2.13",
-      "resolved": "https://registry.npmjs.org/buffer-crc32/-/buffer-crc32-0.2.13.tgz",
-      "integrity": "sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==",
-      "dev": true,
-      "license": "MIT",
-      "engines": {
-        "node": "*"
       }
     },
     "node_modules/c12": {
@@ -5922,16 +5888,6 @@ export default nextConfig;
         "reusify": "^1.0.4"
       }
     },
-    "node_modules/fd-slicer": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/fd-slicer/-/fd-slicer-1.1.0.tgz",
-      "integrity": "sha512-cE1qsB/VwyQozZ+q1dGxR8LBYNZeofhEdUNGSMbQD3Gw2lAzX9Zb3uIU6Ebc/Fmyjo9AWWfnn0AUCHqtevs/8g==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "pend": "~1.2.0"
-      }
-    },
     "node_modules/file-entry-cache": {
       "version": "8.0.0",
       "resolved": "https://registry.npmjs.org/file-entry-cache/-/file-entry-cache-8.0.0.tgz",
@@ -6373,20 +6329,6 @@ export default nextConfig;
       "license": "MIT",
       "dependencies": {
         "hermes-estree": "0.25.1"
-      }
-    },
-    "node_modules/https-proxy-agent": {
-      "version": "7.0.6",
-      "resolved": "https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-7.0.6.tgz",
-      "integrity": "sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "agent-base": "^7.1.2",
-        "debug": "4"
-      },
-      "engines": {
-        "node": ">= 14"
       }
     },
     "node_modules/ignore": {
@@ -8028,13 +7970,6 @@ export default nextConfig;
         "@napi-rs/canvas": "^0.1.80"
       }
     },
-    "node_modules/pend": {
-      "version": "1.2.0",
-      "resolved": "https://registry.npmjs.org/pend/-/pend-1.2.0.tgz",
-      "integrity": "sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==",
-      "dev": true,
-      "license": "MIT"
-    },
     "node_modules/perfect-debounce": {
       "version": "1.0.0",
       "resolved": "https://registry.npmjs.org/perfect-debounce/-/perfect-debounce-1.0.0.tgz",
@@ -8178,13 +8113,6 @@ export default nextConfig;
         "object-assign": "^4.1.1",
         "react-is": "^16.13.1"
       }
-    },
-    "node_modules/proxy-from-env": {
-      "version": "1.1.0",
-      "resolved": "https://registry.npmjs.org/proxy-from-env/-/proxy-from-env-1.1.0.tgz",
-      "integrity": "sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==",
-      "dev": true,
-      "license": "MIT"
     },
     "node_modules/punycode": {
       "version": "2.3.1",
@@ -9540,17 +9468,6 @@ export default nextConfig;
         "url": "https://github.com/sponsors/eemeli"
       }
     },
-    "node_modules/yauzl": {
-      "version": "2.10.0",
-      "resolved": "https://registry.npmjs.org/yauzl/-/yauzl-2.10.0.tgz",
-      "integrity": "sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "buffer-crc32": "~0.2.3",
-        "fd-slicer": "~1.1.0"
-      }
-    },
     "node_modules/yn": {
       "version": "3.1.1",
       "resolved": "https://registry.npmjs.org/yn/-/yn-3.1.1.tgz",
@@ -9600,7 +9517,7 @@ export default nextConfig;
 }
 ```
 
-```ts
+```json
 // package.json
 {
   "name": "cherry",
@@ -9811,7 +9728,6 @@ export default nextConfig;
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@vscode/ripgrep": "1.17.0",
     "babel-plugin-react-compiler": "1.0.0",
     "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9",

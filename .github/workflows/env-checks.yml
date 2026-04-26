@@ -29,7 +29,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cherry_test?schema=public
       NODE_OPTIONS: "--conditions=development"
       PATH: "/usr/bin:/bin:/usr/local/bin"
-      CHERRY_TMP_ROOT: "${RUNNER_TEMP}/cherry-tmp"
+      CHERRY_TMP_ROOT: "/tmp/cherry-tmp"
       CHERRY_VINE_SIGNATURE_MODE: "enforce"
     steps:
       - name: Checkout

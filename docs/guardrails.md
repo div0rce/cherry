@@ -75,7 +75,7 @@ Last updated: 2026-01-31
 
 ### Guardrail 46d — Workflow Expressions Quoted
 
-- `RUNNER_TEMP` usage for `CHERRY_TMP_ROOT` must be quoted to avoid YAML tooling errors.
+- GitHub workflows must set `CHERRY_TMP_ROOT` to a quoted absolute temp path, for example `/tmp/cherry-tmp`, so temp artifacts stay outside the checkout.
 - Enforcement: `check:workflow-expressions-quoted`.
 
 ### Guardrail 46e — Workflow Force Delete Requires Tag
