@@ -25,6 +25,16 @@ function makeBase() {
     },
     authority: null,
     committed: false,
+    temporalContext: {
+      modelMode: 'PRESENT_ONLY',
+      decisionTimeMs: 1_700_000_000_000,
+      horizonEndMs: null,
+      includesScheduledPaydowns: false,
+      contingency: 'NONE',
+      scheduledPaydownSourceStatus: 'UNAVAILABLE',
+    },
+    contingentRecommendation: null,
+    futureRiskContext: null,
   };
 }
 
