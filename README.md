@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-04-27
 
 ## What Cherry Is
 Cherry is a **real-time spending copilot**. It observes context (merchant, amount, user budgets/cards), runs an engine, recommends the right card and budget impact, and offers Cherry Points for following advice. Cherry:
@@ -43,7 +43,7 @@ npm install
 npm run dev
 ```
 
-Guardrail tooling requires Node 22.x and a stable PATH (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
+The repo runtime is Node 24.15.0. Use `.nvmrc` / `engines.node` as the source of truth, and keep PATH stable (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
 
 ## Health Gates (must pass before pushing)
 ```bash
