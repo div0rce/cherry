@@ -27,13 +27,16 @@ if (!isVercel) {
     guardrailFail('package.json engines.node is required');
   }
 
-  const versionMatch = /^v(\d+)\./.exec(process.version);
+  const versionMatch = /^v(\d+)\.(\d+)\.(\d+)/.exec(process.version);
   const major = versionMatch ? Number(versionMatch[1]) : NaN;
-  if (!Number.isFinite(major)) {
+  const minor = versionMatch ? Number(versionMatch[2]) : NaN;
+  const patch = versionMatch ? Number(versionMatch[3]) : NaN;
+  if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) {
     guardrailFail('Unable to parse Node version', [process.version]);
   }
-  if (!(major >= 22 && major < 23)) {
-    guardrailFail('Node version must satisfy engines.node >=22 <23', [process.version]);
+  const satisfiesNodeEngine = major === 24 && (minor > 15 || (minor === 15 && patch >= 0));
+  if (!satisfiesNodeEngine) {
+    guardrailFail('Node version must satisfy engines.node >=24.15.0 <25', [process.version]);
   }
 
   const tmpRoot = process.env['CHERRY_TMP_ROOT'];

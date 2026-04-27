@@ -6,7 +6,7 @@ import { readJsonFile } from './guardrails/lib/read-json.mjs';
 ensureTsEsm();
 
 const PREFIX = 'check:package-manager-pin';
-const FIX = 'Add an exact npm packageManager version to package.json (e.g. "npm@10.9.4").';
+const FIX = 'Add an exact npm packageManager version to package.json (e.g. "npm@11.12.1").';
 
 function guardrailFail(message: string, details: string[] = []): never {
   fail(PREFIX, message, { details, fix: FIX });

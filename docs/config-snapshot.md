@@ -26,7 +26,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.15.0'
           cache: 'npm'
 
       - name: Install toolchain
@@ -99,7 +99,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24.15.0'
           cache: 'npm'
 
       - name: Install toolchain
@@ -207,9 +207,9 @@ workspace_audit.md
 repo_index.json
 ```
 
-```ts
+```text
 // .nvmrc
-22
+24.15.0
 ```
 
 ```ts
@@ -828,7 +828,7 @@ export default nextConfig;
         "@tailwindcss/language-server": "^0.14.29",
         "@tailwindcss/postcss": "^4",
         "@types/cookie": "^0.6.0",
-        "@types/node": "^22",
+        "@types/node": "^24.12.2",
         "@types/nodemailer": "^7.0.4",
         "@types/react": "^19",
         "@types/react-dom": "^19",
@@ -849,7 +849,7 @@ export default nextConfig;
         "typescript": "^5"
       },
       "engines": {
-        "node": ">=22 <23"
+        "node": ">=24.15.0 <25"
       }
     },
     "node_modules/@alloc/quick-lru": {
@@ -1194,6 +1194,7 @@ export default nextConfig;
       "version": "1.8.1",
       "resolved": "https://registry.npmjs.org/@emnapi/core/-/core-1.8.1.tgz",
       "integrity": "sha512-AvT9QFpxK0Zd8J0jopedNm+w/2fIzvtPKPjqyw9jwvBaReTTqPBk9Hixaz7KbjimP+QNz605/XnjFcDAL2pqBg==",
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "dependencies": {
@@ -1215,6 +1216,7 @@ export default nextConfig;
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/@emnapi/wasi-threads/-/wasi-threads-1.1.0.tgz",
       "integrity": "sha512-WI0DdZ8xFSbgMjR1sFsKABJ/C5OnRrjT06JXbZKexJGrDuPTzZdDYfFlsgcCXCyf+suG5QU2e/y1Wo2V/OapLQ==",
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "dependencies": {
@@ -2603,6 +2605,7 @@ export default nextConfig;
       "version": "0.2.12",
       "resolved": "https://registry.npmjs.org/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.12.tgz",
       "integrity": "sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==",
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "dependencies": {
@@ -3322,6 +3325,60 @@ export default nextConfig;
         "node": ">=14.0.0"
       }
     },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/core": {
+      "version": "1.7.1",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "@emnapi/wasi-threads": "1.1.0",
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/runtime": {
+      "version": "1.7.1",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@emnapi/wasi-threads": {
+      "version": "1.1.0",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@napi-rs/wasm-runtime": {
+      "version": "1.1.0",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "@emnapi/core": "^1.7.1",
+        "@emnapi/runtime": "^1.7.1",
+        "@tybys/wasm-util": "^0.10.1"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/@tybys/wasm-util": {
+      "version": "0.10.1",
+      "inBundle": true,
+      "license": "MIT",
+      "optional": true,
+      "dependencies": {
+        "tslib": "^2.4.0"
+      }
+    },
+    "node_modules/@tailwindcss/oxide-wasm32-wasi/node_modules/tslib": {
+      "version": "2.8.1",
+      "inBundle": true,
+      "license": "0BSD",
+      "optional": true
+    },
     "node_modules/@tailwindcss/oxide-win32-arm64-msvc": {
       "version": "4.1.18",
       "resolved": "https://registry.npmjs.org/@tailwindcss/oxide-win32-arm64-msvc/-/oxide-win32-arm64-msvc-4.1.18.tgz",
@@ -3400,6 +3457,7 @@ export default nextConfig;
       "version": "0.10.1",
       "resolved": "https://registry.npmjs.org/@tybys/wasm-util/-/wasm-util-0.10.1.tgz",
       "integrity": "sha512-9tTaPJLSiejZKx+Bmog4uSubteqTvFrVrURwkmHixBo0G4seD0zUxp98E1DzUBJxLQ3NPwXrGKDiVjwx/DpPsg==",
+      "dev": true,
       "license": "MIT",
       "optional": true,
       "dependencies": {
@@ -3435,13 +3493,13 @@ export default nextConfig;
       "license": "MIT"
     },
     "node_modules/@types/node": {
-      "version": "22.19.7",
-      "resolved": "https://registry.npmjs.org/@types/node/-/node-22.19.7.tgz",
-      "integrity": "sha512-MciR4AKGHWl7xwxkBa6xUGxQJ4VBOmPTF7sL+iGzuahOFaO0jHCsuEfS80pan1ef4gWId1oWOweIhrDEYLuaOw==",
+      "version": "24.12.2",
+      "resolved": "https://registry.npmjs.org/@types/node/-/node-24.12.2.tgz",
+      "integrity": "sha512-A1sre26ke7HDIuY/M23nd9gfB+nrmhtYyMINbjI1zHJxYteKR6qSMX56FsmjMcDb3SMcjJg5BiRRgOCC/yBD0g==",
       "dev": true,
       "license": "MIT",
       "dependencies": {
-        "undici-types": "~6.21.0"
+        "undici-types": "~7.16.0"
       }
     },
     "node_modules/@types/nodemailer": {
@@ -9213,9 +9271,9 @@ export default nextConfig;
       }
     },
     "node_modules/undici-types": {
-      "version": "6.21.0",
-      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz",
-      "integrity": "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==",
+      "version": "7.16.0",
+      "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.16.0.tgz",
+      "integrity": "sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==",
       "dev": true,
       "license": "MIT"
     },
@@ -9525,10 +9583,10 @@ export default nextConfig;
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=24.15.0 <25"
   },
   "engineStrict": true,
-  "packageManager": "npm@10.9.4",
+  "packageManager": "npm@11.12.1",
   "scripts": {
     "predev": "npm run check:db-ready",
     "dev": "next dev --webpack",
@@ -9722,7 +9780,7 @@ export default nextConfig;
     "@tailwindcss/language-server": "^0.14.29",
     "@tailwindcss/postcss": "^4",
     "@types/cookie": "^0.6.0",
-    "@types/node": "^22",
+    "@types/node": "^24.12.2",
     "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
