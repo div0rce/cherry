@@ -1,0 +1,31 @@
+name: Notify n8n
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+jobs:
+  notify-n8n:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send workflow result to n8n
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          N8N_WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
+        run: |
+          curl -X POST "$N8N_WEBHOOK_URL" \
+            -H "Authorization: Bearer $N8N_WEBHOOK_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "github.workflow.completed",
+              "repo": "${{ github.repository }}",
+              "workflow": "${{ github.event.workflow_run.name }}",
+              "status": "${{ github.event.workflow_run.conclusion }}",
+              "branch": "${{ github.event.workflow_run.head_branch }}",
+              "sha": "${{ github.event.workflow_run.head_sha }}",
+              "url": "${{ github.event.workflow_run.html_url }}"
+            }'
