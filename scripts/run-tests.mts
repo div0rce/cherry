@@ -1,10 +1,18 @@
 import * as path from 'node:path';
 import * as process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import fg from 'fast-glob';
+import { buildDeterministicEnv } from './lib/deterministic-env.mjs';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
+import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
-import { runTool } from './guardrails/lib/run-tool.mjs';
+import { spawnTool } from './guardrails/lib/run-tool.mjs';
+import { runTsEsm } from './lib/run-ts-esm.mjs';
+import {
+  EXCLUDED,
+  ROOT_GLOBS,
+  resolveFiles,
+  resolveUnexpectedRootFiles,
+} from './lib/test-runner-scope.mjs';
 
 ensureTsEsm();
 
@@ -23,49 +31,75 @@ const tsNodeCompilerOptions = JSON.stringify({
   jsx: 'react-jsx',
 });
 
-const env = process.env as NodeJS.ProcessEnv;
-env['TS_NODE_PROJECT'] = path.join(repoRoot, 'tsconfig.eslint.json');
-env['TS_NODE_COMPILER_OPTIONS'] = tsNodeCompilerOptions;
-const nodeEnv = env['NODE_ENV'] ?? 'test';
-
-const testFiles = fg
-  .sync(['tests/**/*.test.{js,ts,tsx}'], {
+async function runLane(scriptName: 'check:run-tests:node' | 'check:run-tests:next'): Promise<void> {
+  let errorMessage: string | null = null;
+  const child = spawnTool('npm', ['run', scriptName], {
     cwd: repoRoot,
-    absolute: true,
-    ignore: ['**/__mocks__/**', 'tests/fixtures/**', 'tests/db/**'],
-  })
-  .sort();
+    env: process.env,
+    stdio: 'inherit',
+  });
+
+  const exitCode = await new Promise<number>((resolve) => {
+    child.on('error', (error: unknown) => {
+      errorMessage = asMessage(error);
+      resolve(127);
+    });
+    child.on('close', (code) => {
+      resolve(code ?? 1);
+    });
+  });
+
+  if (exitCode !== 0) {
+    const details = [`exit=${exitCode}`];
+    if (errorMessage !== null) {
+      details.push(`error=${errorMessage}`);
+    }
+    fail(PREFIX, `${scriptName} failed`, {
+      details,
+      fix: 'Fix the failing test lane and rerun.',
+    });
+  }
+}
+
+const baseEnv = buildDeterministicEnv();
+const nodeEnv = baseEnv['NODE_ENV'] ?? 'test';
+const runEnv: NodeJS.ProcessEnv = {
+  ...baseEnv,
+  NODE_ENV: nodeEnv,
+  TS_NODE_PROJECT: path.join(repoRoot, 'tsconfig.eslint.json'),
+  TS_NODE_COMPILER_OPTIONS: tsNodeCompilerOptions,
+};
+
+const testFiles = await resolveFiles(ROOT_GLOBS, EXCLUDED, repoRoot);
 
 if (testFiles.length === 0) {
   fail(PREFIX, 'No tests found under tests/**/*.test.{js,ts,tsx}', { fix: FIX });
 }
 
+const unexpectedRootFiles = await resolveUnexpectedRootFiles(testFiles, repoRoot);
+if (unexpectedRootFiles.length > 0) {
+  fail(PREFIX, 'Root runner owns tests outside the explicit root allowlist', {
+    details: unexpectedRootFiles,
+    fix:
+      'Move the tests into tests/node or tests/next, or explicitly add the root-owned path to ROOT_ALLOWED_GLOBS.',
+  });
+}
+
 process.stdout.write(`TS_NODE_COMPILER_OPTIONS=${tsNodeCompilerOptions}\n`);
 
 for (const file of testFiles) {
-  process.stdout.write(`RUN ${path.relative(repoRoot, file)}\n`);
-  const result = runTool(
-    'npm',
+  process.stdout.write(`RUN ${file}\n`);
+  const result = runTsEsm(
+    file,
     [
-      'run',
-      'ts:esm',
-      '--',
       '--import',
       './scripts/lib/loaders/config.loader.mjs',
       '--import',
       './scripts/lib/loaders/prisma-mock.register.mjs',
       '-r',
       'tsconfig-paths/register',
-      file,
     ],
-    {
-      cwd: repoRoot,
-      env: {
-        ...process.env,
-        NODE_ENV: nodeEnv,
-        TS_NODE_COMPILER_OPTIONS: tsNodeCompilerOptions,
-      },
-    }
+    runEnv
   );
 
   if (result.stdout.length > 0) {
@@ -77,13 +111,15 @@ for (const file of testFiles) {
 
   if (result.exitCode !== 0) {
     const details = [`exit=${result.exitCode}`];
-    const relPath = path.relative(repoRoot, file);
     if (result.stdout.trim().length > 0) {
       details.push(`stdout=${result.stdout.trim()}`);
     }
     if (result.stderr.trim().length > 0) {
       details.push(`stderr=${result.stderr.trim()}`);
     }
-    fail(PREFIX, `FAILED ${relPath}`, { details, fix: 'Fix the failing test(s) and rerun.' });
+    fail(PREFIX, `FAILED ${file}`, { details, fix: 'Fix the failing test(s) and rerun.' });
   }
 }
+
+await runLane('check:run-tests:node');
+await runLane('check:run-tests:next');
