@@ -45,12 +45,16 @@ npm run dev
 
 The repo runtime is Node 24.15.0. Use `.nvmrc` / `engines.node` as the source of truth, and keep PATH stable (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
 
-## Health Gates (must pass before pushing)
+## Health Gates
 ```bash
-npm run check
-npm test
-npm run build
+CHERRY_TMP_ROOT="$HOME/.cherry-tmp" CHERRY_VINE_SIGNATURE_MODE=enforce npm run verify:repo-closure
 ```
+
+For day-to-day development, use the narrowest proof that covers the changed surface.
+`npm test` is the partitioned full runtime runner: root legacy tests, `tests/node`,
+then `tests/next`. Runtime ownership is enforced by
+`tests/node/guardrails/test-runner-ownership.test.ts`. DB tests remain separate under
+`npm run test:db`.
 
 ---
 
