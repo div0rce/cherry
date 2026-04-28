@@ -1,0 +1,389 @@
+{
+  "name": "Cherry - OpenClaw Issue Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cherry/github/issue-labeled",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-issue-labeled",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst output = {\n  event: 'github.issue_labeled',\n  source: 'github',\n  repo: body.repository?.full_name ?? body.repo ?? 'div0rce/cherry',\n  timestamp: body.timestamp ?? body.workflow_run?.updated_at ?? body.pull_request?.updated_at ?? body.issue?.updated_at ?? new Date().toISOString(),\n  payload: body,\n  workflow: '02_openclaw_issue_router',\n  ok: true,\n  status: 'accepted',\n  summary: 'Normalized github.issue_labeled.',\n  actions: []\n};\nreturn [{ json: output }];"
+      },
+      "id": "normalize-issue-event",
+      "name": "Normalize Issue Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst fields = [\"payload.issue.number\",\"payload.issue.title\"];\nconst missing = fields.filter((field) => field.split('.').reduce((value, key) => value?.[key], event) === undefined);\nconst output = { ...event, valid: missing.length === 0, validationErrors: missing, status: missing.length === 0 ? event.status : 'failed', summary: missing.length === 0 ? event.summary : 'Payload missing required fields: ' + missing.join(', ') };\nreturn [{ json: output }];"
+      },
+      "id": "validate-payload",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-openclaw-label-condition",
+              "leftValue": "={{ (($json.payload.label?.name ?? '') === 'openclaw') || (($json.payload.issue?.labels ?? []).some((label) => label.name === 'openclaw')) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-openclaw-label",
+      "name": "IF: Has openclaw Label?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst issue = event.payload?.issue ?? {};\nconst body = String(issue.body ?? '');\nconst forbiddenPatterns = ['.env', '.env.local', 'secrets', 'production db config', '/api/session', '/api/ledger', '/api/bucket', '/api/payment', '/api/card'];\nconst forbiddenMatches = forbiddenPatterns.filter((pattern) => body.toLowerCase().includes(pattern.toLowerCase()));\nconst task = { source: 'github_issue_openclaw', repo: event.repo, issueNumber: issue.number, title: issue.title, url: issue.html_url, body, constraints: { advisoryOnly: true, forbiddenFiles: ['.env', '.env.local'], forbiddenEndpointPatterns: ['/api/session*', '/api/ledger*', '/api/bucket*', '/api/payment*', '/api/card*', '/api/debt*/mutate'], requiredReviewLabels: ['needs-human-review'] }, forbiddenMatches };\nconst output = { ...event, openclawTask: task, commentBody: { body: 'OpenClaw task prepared.\\n\\nIssue: #' + issue.number + '\\nForbidden hints: ' + (forbiddenMatches.join(', ') || 'none') + '\\nHuman review remains required before merge.' }, status: forbiddenMatches.length > 0 ? 'failed' : 'accepted', summary: forbiddenMatches.length > 0 ? 'OpenClaw issue contains forbidden-change hints.' : 'OpenClaw task routed for issue #' + issue.number + '.', actions: forbiddenMatches.length > 0 ? ['block_openclaw_task', 'comment_issue', 'archive_event'] : ['send_openclaw_task', 'comment_issue', 'archive_event'] };\nreturn [{ json: output }];"
+      },
+      "id": "build-openclaw-task",
+      "name": "Build OpenClaw Task",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENCLAW_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.openclawTask }}"
+      },
+      "id": "send-to-openclaw",
+      "name": "Send To OpenClaw",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues/' + $node[\"Build OpenClaw Task\"].json.openclawTask.issueNumber + '/comments' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $node[\"Build OpenClaw Task\"].json.commentBody }}"
+      },
+      "id": "comment-on-issue",
+      "name": "Comment On Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1560,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ...event, workflow: event.workflow ?? '02_openclaw_issue_router', sinkRouting: {\n  discord: '{{ $env.DISCORD_WEBHOOK_URL }}', slack: '{{ $env.SLACK_WEBHOOK_URL }}', email: '{{ $env.EMAIL_WEBHOOK_URL }}', notion: '{{ $env.NOTION_WEBHOOK_URL }}', googleSheets: '{{ $env.GOOGLE_SHEETS_WEBHOOK_URL }}', linearJira: '{{ $env.LINEAR_JIRA_WEBHOOK_URL }}', githubProjects: '{{ $env.GITHUB_PROJECTS_WEBHOOK_URL }}', archive: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/events', incidentTimeline: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/incident-timeline' } };\nreturn [{ json: output }];"
+      },
+      "id": "route-shared-sinks",
+      "name": "Route Shared Sinks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/events' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo ?? 'div0rce/cherry',\n  ...(($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) ? { sha: ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) } : {}),\n  event: $json.event ?? '02_openclaw_issue_router.event',\n  source: $json.source ?? 'cherry',\n  workflow: $json.workflow ?? '02_openclaw_issue_router',\n  status: $json.status ?? 'accepted',\n  idempotencyKey: (($json.workflow ?? '02_openclaw_issue_router') + ':' + ($json.repo ?? 'div0rce/cherry') + ':' + ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha ?? $json.payload?.issue?.number ?? $now.toISO())),\n  classifierVersion: 'workflow-advisory@1',\n  rawPayload: $json.payload ?? $json,\n  normalizedEvent: {\n    event: $json.event ?? '02_openclaw_issue_router.event',\n    source: $json.source ?? 'cherry',\n    repo: $json.repo ?? 'div0rce/cherry',\n    timestamp: $json.timestamp ?? $now.toISO(),\n    payload: $json.payload ?? $json\n  },\n  classifierOutput: $json,\n  ...(($json.payload?.pull_request?.number ?? $json.prNumber) ? { prNumber: ($json.payload?.pull_request?.number ?? $json.prNumber) } : {}),\n  ...(($json.payload?.issue?.number ?? $json.issueNumber) ? { issueNumber: ($json.payload?.issue?.number ?? $json.issueNumber) } : {})\n} }}"
+      },
+      "id": "archive-event",
+      "name": "Archive Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2080,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'OpenClaw issue routed.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: 'ignored', summary: event.summary ?? 'Issue was not labeled openclaw; no action taken.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-ignored-response",
+      "name": "Build Ignored Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Issue Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Issue Event": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "IF: Has openclaw Label?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has openclaw Label?": {
+      "main": [
+        [
+          {
+            "node": "Build OpenClaw Task",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Ignored Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenClaw Task": {
+      "main": [
+        [
+          {
+            "node": "Send To OpenClaw",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send To OpenClaw": {
+      "main": [
+        [
+          {
+            "node": "Comment On Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comment On Issue": {
+      "main": [
+        [
+          {
+            "node": "Route Shared Sinks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Shared Sinks": {
+      "main": [
+        [
+          {
+            "node": "Archive Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Event": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Ignored Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

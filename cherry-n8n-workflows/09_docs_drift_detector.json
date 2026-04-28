@@ -1,0 +1,628 @@
+{
+  "name": "Cherry - Docs Drift Detector",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cherry/github/pull-request-docs-drift",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-docs-drift",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const raw = $input.first()?.json ?? {};\nconst input = raw.body ?? raw.payload ?? raw;\n\nconst item = Array.isArray(input.items) ? input.items[0] : undefined;\n\nconst pr =\n  input.pull_request ??\n  input.pr ??\n  item ??\n  input;\n\nconst prNumber =\n  pr.number ??\n  input.number ??\n  input.pull_number ??\n  input.pr_number;\n\nconst sha =\n  pr.head?.sha ??\n  input.head?.sha ??\n  input.after ??\n  input.sha;\n\nconst repoFullName =\n  input.repository?.full_name ??\n  input.repo ??\n  input.full_name ??\n  'div0rce/cherry';\n\nconst [owner, repo] = String(repoFullName).split('/');\n\nif (!prNumber) {\n  return [{\n    json: {\n      ok: false,\n      status: 'failed',\n      workflow: '09_docs_drift_detector',\n      error: 'missing_pr_number',\n      reason: 'Normalize PR could not derive a PR number from webhook, search, or flat payload',\n      receivedKeys: Object.keys(input),\n      totalCount: input.total_count,\n      searchType: input.search_type,\n      repoFullName,\n      actions: ['do_not_classify_pr']\n    },\n  }];\n}\n\nconst labels = Array.isArray(pr.labels)\n  ? pr.labels.map((label) => typeof label === 'string' ? label : label.name).filter(Boolean)\n  : [];\n\nreturn [{\n  json: {\n    ...input,\n    event: 'github.pull_request_docs_drift',\n    source: 'github',\n    owner: owner || input.repository?.owner?.login || 'div0rce',\n    repo: repoFullName,\n    repoName: repo || input.repository?.name || 'cherry',\n    repoFullName,\n    prNumber,\n    sha,\n    title: pr.title ?? input.title ?? '',\n    body: pr.body ?? input.body ?? '',\n    labels,\n    timestamp: raw.timestamp ?? input.workflow_run?.updated_at ?? pr.updated_at ?? input.issue?.updated_at ?? new Date().toISOString(),\n    workflow: '09_docs_drift_detector',\n    ok: true,\n    status: 'accepted',\n    summary: 'Normalized github.pull_request_docs_drift.',\n    actions: [],\n    pull_request: {\n      number: prNumber,\n      title: pr.title ?? input.title ?? '',\n      body: pr.body ?? input.body ?? '',\n      head: { sha },\n      labels: Array.isArray(pr.labels) ? pr.labels : [],\n    },\n    payload: {\n      ...input,\n      repository: input.repository ?? { full_name: repoFullName, name: repo || input.repository?.name || 'cherry', owner: { login: owner || input.repository?.owner?.login || 'div0rce' } },\n      pull_request: {\n        number: prNumber,\n        title: pr.title ?? input.title ?? '',\n        body: pr.body ?? input.body ?? '',\n        head: { sha },\n        labels: Array.isArray(pr.labels) ? pr.labels : [],\n      }\n    }\n  },\n}];"
+      },
+      "id": "normalize-pr",
+      "name": "Normalize PR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst missing = [];\nif (!event.prNumber) missing.push('prNumber');\nif (!event.sha) missing.push('sha');\nconst output = {\n  ...event,\n  valid: missing.length === 0,\n  validationErrors: missing,\n  status: missing.length === 0 ? event.status : 'failed',\n  summary: missing.length === 0 ? event.summary : 'Payload missing required fields: ' + missing.join(', '),\n  actions: missing.length === 0 ? event.actions : [...(event.actions ?? []), 'do_not_classify_pr']\n};\nreturn [{ json: output }];"
+      },
+      "id": "validate-payload",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/pulls/' + $json.prNumber + '/files?per_page=100' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-changed-files",
+      "name": "Fetch Changed Files",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        780,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const prEvent = $node['Normalize PR'].json;\nconst classification = $input.first()?.json ?? {};\nconst classifierOutput = classification.classifierOutput ?? {};\nconst docsDrift = classifierOutput.docsDrift ?? {};\nconst statusRequests = Array.isArray(classifierOutput.statusRequests) ? classifierOutput.statusRequests : [];\nconst statusRequest = statusRequests.find((request) => request.context === 'cherry/docs-drift');\nconst sha = prEvent.sha;\nconst domains = Array.isArray(docsDrift.domains) ? docsDrift.domains : [];\nconst labels = Array.isArray(docsDrift.labels) ? docsDrift.labels : [];\nconst drift = docsDrift.drift === true;\nconst output = {\n  ...prEvent,\n  sha,\n  automationEventId: classification.automationEventId,\n  outputHash: classification.outputHash,\n  cherryClassifierOutput: classifierOutput,\n  docsDrift,\n  statusRequest,\n  labelBody: { labels },\n  commentBody: { body: 'Cherry docs drift detector.\\n\\n' + (drift ? 'Docs update required for changed domains: ' + domains.join(', ') : 'Cherry found no docs drift.') + '\\n\\nDocs must match code reality unless legal constraints require a code fix.' },\n  status: drift ? 'accepted' : 'ignored',\n  summary: drift ? 'Cherry detected docs drift for ' + domains.join(', ') + '.' : 'Cherry found no docs drift.',\n  actions: drift ? ['classify_pr_in_cherry', 'post_docs_status', 'label_docs_drift', 'comment_required_docs_update'] : ['classify_pr_in_cherry', 'post_docs_status']\n};\nreturn [{ json: output }];"
+      },
+      "id": "build-cherry-docs-routing",
+      "name": "Build Cherry Docs Routing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst missing = [];\n\nif (!event.statusRequest) missing.push('statusRequest');\nif (!event.repo) missing.push('repo');\nif (!event.sha) missing.push('sha');\nif (!event.outputHash) missing.push('outputHash');\nif (!event.cherryClassifierOutput?.classifierVersion) missing.push('classifierVersion');\n\nif (missing.length > 0) {\n  return [{\n    json: {\n      ok: false,\n      workflow: event.workflow,\n      status: 'failed',\n      summary: 'Cherry status payload missing required fields. Refusing to post status.',\n      actions: ['do_not_post_status'],\n      missing\n    }\n  }];\n}\n\nreturn [{ json: event }];"
+      },
+      "id": "require-docs-status-request",
+      "name": "Require Status Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-docs-status-request",
+              "leftValue": "={{ $json.statusRequest !== undefined && $json.statusRequest !== null && $json.repo !== undefined && $json.repo !== null && $json.sha !== undefined && $json.sha !== null && $json.outputHash !== undefined && $json.outputHash !== null && $json.cherryClassifierOutput?.classifierVersion !== undefined && $json.cherryClassifierOutput?.classifierVersion !== null }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-docs-status-request",
+      "name": "IF: Has Status Payload?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1170,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-docs-drift-condition",
+              "leftValue": "={{ $json.docsDrift?.drift === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-docs-drift",
+      "name": "IF: Docs Drift?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues/' + $json.prNumber + '/labels' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.labelBody }}"
+      },
+      "id": "label-docs-drift",
+      "name": "Label Docs Drift",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1560,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues/' + $node[\"Build Cherry Docs Routing\"].json.prNumber + '/comments' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $node[\"Build Cherry Docs Routing\"].json.commentBody }}"
+      },
+      "id": "comment-docs-drift",
+      "name": "Comment Required Docs Update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1820,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ...event, workflow: event.workflow ?? '09_docs_drift_detector', sinkRouting: {\n  discord: '{{ $env.DISCORD_WEBHOOK_URL }}', slack: '{{ $env.SLACK_WEBHOOK_URL }}', email: '{{ $env.EMAIL_WEBHOOK_URL }}', notion: '{{ $env.NOTION_WEBHOOK_URL }}', googleSheets: '{{ $env.GOOGLE_SHEETS_WEBHOOK_URL }}', linearJira: '{{ $env.LINEAR_JIRA_WEBHOOK_URL }}', githubProjects: '{{ $env.GITHUB_PROJECTS_WEBHOOK_URL }}', archive: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/events', incidentTimeline: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/incident-timeline' } };\nreturn [{ json: output }];"
+      },
+      "id": "route-shared-sinks",
+      "name": "Route Shared Sinks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/events' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo ?? 'div0rce/cherry',\n  ...(($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) ? { sha: ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) } : {}),\n  event: $json.event ?? '09_docs_drift_detector.event',\n  source: $json.source ?? 'cherry',\n  workflow: $json.workflow ?? '09_docs_drift_detector',\n  status: $json.status ?? 'accepted',\n  idempotencyKey: (($json.workflow ?? '09_docs_drift_detector') + ':' + ($json.repo ?? 'div0rce/cherry') + ':' + ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha ?? $json.payload?.issue?.number ?? 'no-sha') + ':' + ($json.outputHash ?? $now.toISO())),\n  classifierVersion: $json.cherryClassifierOutput?.classifierVersion ?? 'pr-automation@1(pr-risk@1,forbidden-change@1,docs-drift@1)',\n  rawPayload: $json.payload ?? $json,\n  normalizedEvent: {\n    event: $json.event ?? '09_docs_drift_detector.event',\n    source: $json.source ?? 'cherry',\n    repo: $json.repo ?? 'div0rce/cherry',\n    timestamp: $json.timestamp ?? $now.toISO(),\n    payload: $json.payload ?? $json\n  },\n  classifierOutput: $json.cherryClassifierOutput ?? $json,\n  ...(($json.payload?.pull_request?.number ?? $json.prNumber) ? { prNumber: ($json.payload?.pull_request?.number ?? $json.prNumber) } : {}),\n  ...(($json.payload?.issue?.number ?? $json.issueNumber) ? { issueNumber: ($json.payload?.issue?.number ?? $json.issueNumber) } : {})\n} }}"
+      },
+      "id": "archive-event",
+      "name": "Archive Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2340,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'Docs drift handled.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: 'ignored', summary: event.summary ?? 'No docs drift detected.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-no-drift-response",
+      "name": "Build No Drift Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/statuses/github' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo,\n  sha: $json.sha,\n  context: $json.statusRequest.context,\n  state: $json.statusRequest.state,\n  description: $json.statusRequest.description,\n  targetUrl: $json.statusRequest.targetUrl,\n  sourceWorkflow: $json.workflow,\n  automationEventId: $json.automationEventId,\n  classifierVersion: $json.cherryClassifierOutput.classifierVersion,\n  outputHash: $json.outputHash\n} }}"
+      },
+      "id": "post-docs-status",
+      "name": "Post Docs Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nlet files = [];\n\nfor (const item of items) {\n  const json = item.json;\n\n  if (Array.isArray(json)) {\n    files.push(...json);\n  } else if (Array.isArray(json.files)) {\n    files.push(...json.files);\n  } else if (Array.isArray(json.data)) {\n    files.push(...json.data);\n  } else if (json && json.filename) {\n    files.push(json);\n  }\n}\n\nfiles = files.map((file) => ({\n  filename: file.filename ?? file.path ?? file.name ?? '',\n  status: file.status ?? 'modified',\n  additions: Number(file.additions ?? 0),\n  deletions: Number(file.deletions ?? 0),\n  changes: Number(file.changes ?? 0),\n  patch: String(file.patch ?? '')\n})).filter((file) => file.filename.length > 0);\n\nreturn [{\n  json: {\n    ...($items('Normalize PR')[0]?.json ?? {}),\n    files\n  }\n}];"
+      },
+      "id": "normalize-changed-files",
+      "name": "Normalize Changed Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        910,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/classify/pr' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo,\n  sha: $json.sha,\n  prNumber: $json.prNumber,\n  title: $json.title,\n  body: $json.body ?? '',\n  labels: $json.labels ?? [],\n  files: $json.files,\n  sourceWorkflow: $json.workflow ?? '09_docs_drift_detector'\n} }}"
+      },
+      "id": "classify-pr-in-cherry-docs",
+      "name": "Classify PR In Cherry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        0
+      ],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize PR": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Fetch Changed Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Changed Files": {
+      "main": [
+        [
+          {
+            "node": "Normalize Changed Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Docs Drift?": {
+      "main": [
+        [
+          {
+            "node": "Label Docs Drift",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build No Drift Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Docs Drift": {
+      "main": [
+        [
+          {
+            "node": "Comment Required Docs Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comment Required Docs Update": {
+      "main": [
+        [
+          {
+            "node": "Route Shared Sinks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Shared Sinks": {
+      "main": [
+        [
+          {
+            "node": "Archive Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Event": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build No Drift Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Docs Status": {
+      "main": [
+        [
+          {
+            "node": "IF: Docs Drift?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cherry Docs Routing": {
+      "main": [
+        [
+          {
+            "node": "Require Status Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify PR In Cherry": {
+      "main": [
+        [
+          {
+            "node": "Build Cherry Docs Routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Changed Files": {
+      "main": [
+        [
+          {
+            "node": "Classify PR In Cherry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Require Status Payload": {
+      "main": [
+        [
+          {
+            "node": "IF: Has Status Payload?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Has Status Payload?": {
+      "main": [
+        [
+          {
+            "node": "Post Docs Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

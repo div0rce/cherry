@@ -102,7 +102,8 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
 - `npm run build` → Next.js build passes.
 - `npm run ci:verify` → mirrors CI entrypoint.
 - `npm run test:db` → DB/env tests only; not part of standard mocked runtime proof.
-- `npm run check:fast` → local guardrails + script typecheck + partitioned runtime suite.
+- `npm run check:fast` → local guardrails + script typecheck only.
+- `npm run check:local` → `check:fast` plus partitioned runtime suite.
 - Full repo proof → `CHERRY_TMP_ROOT="$HOME/.cherry-tmp" CHERRY_VINE_SIGNATURE_MODE=enforce npm run verify:repo-closure`.
 - Agents must not run both `npm test` and `verify:repo-closure` unless explicitly required.
 - If schema changed: migrations apply and Prisma client is regenerated.

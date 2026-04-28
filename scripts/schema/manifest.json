@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "schema_v2",
-  "lastMigration": "20260426090000_add_scheduled_paydowns",
+  "schemaVersion": "schema_v3",
+  "lastMigration": "20260427153000_automation_backend",
   "invariantsVersion": "db_invariants_v1",
   "allowlistedDestructiveMigrations": []
 }

@@ -148,3 +148,4 @@ Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in
 - Third-party typing gaps must be patched via `types/compat/**` with a documented audit boundary.
 - Tailwind tokens live in `app/globals.css`; prefer semantic utilities.
 - Keep lint/typecheck green; add focused tests when touching engine/sessions/ledger logic.
+test

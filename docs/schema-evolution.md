@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-04-26
+Last updated: 2026-04-27
 
 # Schema Evolution Rules
 
@@ -9,10 +9,10 @@ Last updated: 2026-04-26
 - DB truth scripts/tests under scripts/db-check-* or tests/db/**
 
 ## Current schema manifest
-- `schemaVersion`: `schema_v2`
-- `lastMigration`: `20260426090000_add_scheduled_paydowns`
+- `schemaVersion`: `schema_v3`
+- `lastMigration`: `20260427153000_automation_backend`
 - `invariantsVersion`: `db_invariants_v1`
-- `schema_v2` adds persisted raw scheduled paydown rows for engine loading. The runtime loader treats these rows as source data only; temporal classification remains in engine evaluation.
+- `schema_v3` adds advisory automation audit tables for n8n V2: `AutomationEvent`, `SimulationAutomationSnapshot`, and `AutomationStatusCheck`. These records support replay, classifier output hashes, and GitHub status auditability; they do not mutate finance truth.
 
 ## Required steps per schema change
 1. Create or update a migration under prisma/migrations/**.

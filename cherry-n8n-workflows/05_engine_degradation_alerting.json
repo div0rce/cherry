@@ -1,0 +1,389 @@
+{
+  "name": "Cherry - Engine Degradation Alerting",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cherry/runtime/degradation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-runtime-degradation",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst output = {\n  event: 'cherry.runtime_degradation',\n  source: 'cherry',\n  repo: body.repository?.full_name ?? body.repo ?? 'div0rce/cherry',\n  timestamp: body.timestamp ?? body.workflow_run?.updated_at ?? body.pull_request?.updated_at ?? body.issue?.updated_at ?? new Date().toISOString(),\n  payload: body,\n  workflow: '05_engine_degradation_alerting',\n  ok: true,\n  status: 'accepted',\n  summary: 'Normalized cherry.runtime_degradation.',\n  actions: []\n};\nreturn [{ json: output }];"
+      },
+      "id": "normalize-degradation-event",
+      "name": "Normalize Degradation Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst fields = [\"payload.type\"];\nconst missing = fields.filter((field) => field.split('.').reduce((value, key) => value?.[key], event) === undefined);\nconst output = { ...event, valid: missing.length === 0, validationErrors: missing, status: missing.length === 0 ? event.status : 'failed', summary: missing.length === 0 ? event.summary : 'Payload missing required fields: ' + missing.join(', ') };\nreturn [{ json: output }];"
+      },
+      "id": "validate-payload",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst type = event.payload?.type ?? 'unknown';\nconst severityMap = { missing_debt_truth: 'high', solver_divergence: 'critical', temporal_inconsistency: 'critical', candidate_exclusion: 'medium', advisory_degraded: 'medium', impossible_state: 'critical', route_response_mismatch: 'high', score_drift: 'medium' };\nconst severity = event.payload?.severity ?? severityMap[type] ?? 'low'; const createIssue = severity === 'high' || severity === 'critical';\nconst output = { ...event, degradationType: type, severity, createIssue, issueBody: { title: '[engine:' + severity + '] ' + type, labels: ['engine-degradation', 'automation', 'needs-human-review', severity], body: 'Cherry engine degradation event.\\n\\nType: ' + type + '\\nSeverity: ' + severity + '\\nTimestamp: ' + event.timestamp + '\\n\\nPayload JSON:\\n' + JSON.stringify(event.payload, null, 2) + '\\n\\nAdvisory alert only.' }, notification: { type, severity, repo: event.repo, payload: event.payload }, status: createIssue ? 'accepted' : 'ignored', summary: createIssue ? 'High-severity engine degradation alert for ' + type + '.' : 'Archived medium/low degradation event for ' + type + '.', actions: createIssue ? ['create_github_issue', 'notify_discord', 'archive_event'] : ['notify_discord', 'archive_event'] };\nreturn [{ json: output }];"
+      },
+      "id": "classify-severity",
+      "name": "Classify Severity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-high-severity-condition",
+              "leftValue": "={{ $json.createIssue === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-high-severity",
+      "name": "IF: Severity >= high?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.issueBody }}"
+      },
+      "id": "create-github-issue",
+      "name": "Create GitHub Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ...event, workflow: event.workflow ?? '05_engine_degradation_alerting', sinkRouting: {\n  discord: '{{ $env.DISCORD_WEBHOOK_URL }}', slack: '{{ $env.SLACK_WEBHOOK_URL }}', email: '{{ $env.EMAIL_WEBHOOK_URL }}', notion: '{{ $env.NOTION_WEBHOOK_URL }}', googleSheets: '{{ $env.GOOGLE_SHEETS_WEBHOOK_URL }}', linearJira: '{{ $env.LINEAR_JIRA_WEBHOOK_URL }}', githubProjects: '{{ $env.GITHUB_PROJECTS_WEBHOOK_URL }}', archive: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/events', incidentTimeline: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/incident-timeline' } };\nreturn [{ json: output }];"
+      },
+      "id": "route-shared-sinks",
+      "name": "Route Shared Sinks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: '[' + ($json.workflow ?? 'Cherry automation') + '] ' + ($json.summary ?? 'Automation event') } }}"
+      },
+      "id": "notify-discord",
+      "name": "Notify Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1820,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/events' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo ?? 'div0rce/cherry',\n  ...(($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) ? { sha: ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) } : {}),\n  event: $json.event ?? '05_engine_degradation_alerting.event',\n  source: $json.source ?? 'cherry',\n  workflow: $json.workflow ?? '05_engine_degradation_alerting',\n  status: $json.status ?? 'accepted',\n  idempotencyKey: (($json.workflow ?? '05_engine_degradation_alerting') + ':' + ($json.repo ?? 'div0rce/cherry') + ':' + ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha ?? $json.payload?.issue?.number ?? $now.toISO())),\n  classifierVersion: 'workflow-advisory@1',\n  rawPayload: $json.payload ?? $json,\n  normalizedEvent: {\n    event: $json.event ?? '05_engine_degradation_alerting.event',\n    source: $json.source ?? 'cherry',\n    repo: $json.repo ?? 'div0rce/cherry',\n    timestamp: $json.timestamp ?? $now.toISO(),\n    payload: $json.payload ?? $json\n  },\n  classifierOutput: $json,\n  ...(($json.payload?.pull_request?.number ?? $json.prNumber) ? { prNumber: ($json.payload?.pull_request?.number ?? $json.prNumber) } : {}),\n  ...(($json.payload?.issue?.number ?? $json.issueNumber) ? { issueNumber: ($json.payload?.issue?.number ?? $json.issueNumber) } : {})\n} }}"
+      },
+      "id": "archive-event",
+      "name": "Archive Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2080,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'Engine degradation handled.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'Engine degradation archived.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-archived-response",
+      "name": "Build Archived Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Degradation Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Degradation Event": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Classify Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Severity": {
+      "main": [
+        [
+          {
+            "node": "IF: Severity >= high?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Severity >= high?": {
+      "main": [
+        [
+          {
+            "node": "Create GitHub Issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Archived Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create GitHub Issue": {
+      "main": [
+        [
+          {
+            "node": "Route Shared Sinks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Shared Sinks": {
+      "main": [
+        [
+          {
+            "node": "Notify Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Discord": {
+      "main": [
+        [
+          {
+            "node": "Archive Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Event": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Archived Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

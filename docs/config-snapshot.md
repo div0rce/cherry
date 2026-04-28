@@ -45,14 +45,43 @@ jobs:
       - name: Guardrails
         run: npm run check:guardrails
 
-      - name: Node runtime tests
-        run: npm run check:tests:node
-
-      - name: Next runtime tests
-        run: npm run check:tests:next
-
       - name: Verify CI truth
         run: npm run ci:verify
+```
+
+```yaml
+// .github/workflows/n8n-notify.yml
+name: Notify n8n
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+jobs:
+  notify-n8n:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send workflow result to n8n
+        env:
+          N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          N8N_WEBHOOK_TOKEN: ${{ secrets.N8N_WEBHOOK_TOKEN }}
+        run: |
+          curl -X POST "$N8N_WEBHOOK_URL" \
+            -H "Authorization: Bearer $N8N_WEBHOOK_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event": "github.workflow.completed",
+              "repo": "${{ github.repository }}",
+              "workflow": "${{ github.event.workflow_run.name }}",
+              "status": "${{ github.event.workflow_run.conclusion }}",
+              "branch": "${{ github.event.workflow_run.head_branch }}",
+              "sha": "${{ github.event.workflow_run.head_sha }}",
+              "url": "${{ github.event.workflow_run.html_url }}"
+            }'
 ```
 
 ```yaml
@@ -9588,12 +9617,16 @@ export default nextConfig;
   "engineStrict": true,
   "packageManager": "npm@11.12.1",
   "scripts": {
-    "predev": "npm run check:db-ready",
+    "predev": "CHERRY_TMP_ROOT=${CHERRY_TMP_ROOT:-$HOME/.cherry-tmp} npm run check:db-ready",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "build:strict": "npm run check:guardrails && next build --webpack",
     "start": "next start",
     "ci:verify": "npm run check && npm run test && npm run build",
+    "check:static": "npm run check:guardrails && npm run lint:scripts && npm run typecheck:scripts && npm run lint && npm run typecheck",
+    "check:runtime": "npm test",
+    "check:fast": "npm run check:guardrails && npm run typecheck:scripts",
+    "check:local": "npm run check:fast && npm run check:runtime",
     "check:clean": "npm run ts:esm -- scripts/execution/run.mts check:clean",
     "check:db-ready": "npm run ts:esm -- scripts/execution/run-db.mts check:db-ready",
     "check:dev-login": "npm run ts:esm -- scripts/execution/run.mts check:dev-login",
@@ -10351,6 +10384,75 @@ model DecisionEvent {
   createdAt       DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+model AutomationEvent {
+  id                String   @id @default(cuid())
+  repo              String
+  sha               String?
+  event             String
+  source            String
+  workflow          String
+  status            String
+  idempotencyKey    String   @unique(map: "automation_event__idempotency_key__unique")
+  classifierVersion String
+  outputHash        String
+  rawPayload        Json
+  normalizedEvent   Json
+  classifierOutput  Json
+  prNumber          Int?
+  issueNumber       Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  statusChecks AutomationStatusCheck[]
+
+  @@index([repo, sha])
+  @@index([repo, prNumber])
+  @@index([repo, issueNumber])
+  @@index([workflow, createdAt])
+  @@index([classifierVersion])
+}
+
+model SimulationAutomationSnapshot {
+  id                 String   @id @default(cuid())
+  repo               String
+  scopeKey           String
+  runId              String
+  classifierVersion  String
+  snapshot           Json
+  comparisonOutput   Json
+  outputHash         String
+  previousSnapshotId String?
+  createdAt          DateTime @default(now())
+
+  @@unique([scopeKey, runId, classifierVersion], map: "simulation_automation_snapshot__scope_run_version__unique")
+  @@index([repo, scopeKey])
+  @@index([scopeKey, createdAt])
+  @@index([classifierVersion])
+}
+
+model AutomationStatusCheck {
+  id                   String           @id @default(cuid())
+  repo                 String
+  sha                  String
+  context              String
+  state                String
+  description          String
+  targetUrl            String?
+  sourceWorkflow       String
+  automationEvent      AutomationEvent? @relation(fields: [automationEventId], references: [id], onDelete: SetNull, map: "automation_status_check__automation_event_id__fk")
+  automationEventId    String?
+  classifierVersion    String
+  outputHash           String
+  statusIdempotencyKey String           @unique(map: "automation_status_check__status_idempotency_key__unique")
+  githubResponse       Json?
+  createdAt            DateTime         @default(now())
+
+  @@index([repo, sha])
+  @@index([repo, sha, context])
+  @@index([automationEventId])
+  @@index([classifierVersion])
 }
 
 model IdempotencyKey {

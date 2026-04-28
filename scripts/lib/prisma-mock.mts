@@ -72,6 +72,24 @@ function matchesWhere(record: RecordShape, where?: Where): boolean {
         record['externalId'] === composite.externalId
       );
     }
+    if (
+      val !== null &&
+      typeof val === 'object' &&
+      'scopeKey' in (val as Record<string, unknown>) &&
+      'runId' in (val as Record<string, unknown>) &&
+      'classifierVersion' in (val as Record<string, unknown>)
+    ) {
+      const composite = val as {
+        scopeKey: string;
+        runId: string;
+        classifierVersion: string;
+      };
+      return (
+        record['scopeKey'] === composite.scopeKey &&
+        record['runId'] === composite.runId &&
+        record['classifierVersion'] === composite.classifierVersion
+      );
+    }
     return record[key] === val;
   });
 }
@@ -89,6 +107,14 @@ function createCollection(name: string) {
     if ('userId_externalId' in where) {
       const composite = where['userId_externalId'] as { userId: string; externalId: string };
       return `${composite.userId}:${composite.externalId}`;
+    }
+    if ('scopeKey_runId_classifierVersion' in where) {
+      const composite = where['scopeKey_runId_classifierVersion'] as {
+        scopeKey: string;
+        runId: string;
+        classifierVersion: string;
+      };
+      return `${composite.scopeKey}:${composite.runId}:${composite.classifierVersion}`;
     }
     if (
       'userId' in where &&
@@ -115,8 +141,17 @@ function createCollection(name: string) {
         typeof data['userId'] === 'string' && typeof data['key'] === 'string'
           ? `${data['userId']}:${data['key']}`
           : null;
+      const simulationKey =
+        typeof data['scopeKey'] === 'string' &&
+        typeof data['runId'] === 'string' &&
+        typeof data['classifierVersion'] === 'string'
+          ? `${data['scopeKey']}:${data['runId']}:${data['classifierVersion']}`
+          : null;
       const key =
-        (data['id'] as string | undefined) ?? compositeKey ?? `${name}-${counter++}`;
+        (data['id'] as string | undefined) ??
+        compositeKey ??
+        simulationKey ??
+        `${name}-${counter++}`;
       if (store.has(key)) {
         const err = Error(
           `Unique constraint failed on the fields: (${name}.id)`
@@ -236,6 +271,9 @@ class MockPrismaClient {
   simulation = createCollection('simulation');
   vineDevice = createCollection('vineDevice');
   decisionEvent = createCollection('decisionEvent');
+  automationEvent = createCollection('automationEvent');
+  simulationAutomationSnapshot = createCollection('simulationAutomationSnapshot');
+  automationStatusCheck = createCollection('automationStatusCheck');
   idempotencyKey = createCollection('idempotencyKey');
 
   async $disconnect(): Promise<void> {

@@ -1,0 +1,376 @@
+{
+  "name": "Cherry - Backlog Grooming",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "weekly-backlog-grooming",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst output = { event: 'cherry.backlog_grooming', source: 'manual', repo: 'div0rce/cherry', timestamp: input.timestamp ?? new Date().toISOString(), payload: input, workflow: '10_backlog_grooming', ok: true, status: 'accepted', summary: 'Scheduled cherry.backlog_grooming started.', actions: [] };\nreturn [{ json: output }];"
+      },
+      "id": "normalize-schedule",
+      "name": "Normalize Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst fields = [\"repo\"];\nconst missing = fields.filter((field) => field.split('.').reduce((value, key) => value?.[key], event) === undefined);\nconst output = { ...event, valid: missing.length === 0, validationErrors: missing, status: missing.length === 0 ? event.status : 'failed', summary: missing.length === 0 ? event.summary : 'Payload missing required fields: ' + missing.join(', ') };\nreturn [{ json: output }];"
+      },
+      "id": "validate-payload",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues?state=open&per_page=100' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-open-issues",
+      "name": "Fetch Open Issues",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        780,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const issues = Array.isArray($json) ? $json.filter((issue) => !issue.pull_request) : []; const now = Date.now(); const stale = issues.filter((issue) => now - new Date(issue.updated_at ?? issue.created_at ?? now).getTime() > 30 * 24 * 60 * 60 * 1000); const unlabeled = issues.filter((issue) => (issue.labels ?? []).length === 0); const blocked = issues.filter((issue) => /blocked|waiting|depends on/i.test((issue.title ?? '') + ' ' + (issue.body ?? ''))); const noAcceptance = issues.filter((issue) => !/acceptance criteria|done when|definition of done/i.test(issue.body ?? '')); const seen = new Map(); const duplicateHints = []; for (const issue of issues) { const key = String(issue.title ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (seen.has(key)) duplicateHints.push([seen.get(key), issue.number]); else seen.set(key, issue.number); } const body = '# Cherry Backlog Grooming Summary\\n\\n- Open issues: ' + issues.length + '\\n- Stale issues: ' + stale.length + '\\n- Unlabeled issues: ' + unlabeled.length + '\\n- Blocked hints: ' + blocked.length + '\\n- Missing acceptance criteria: ' + noAcceptance.length + '\\n- Duplicate title hints: ' + duplicateHints.length + '\\n\\nSuggested actions are advisory.'; const metrics = { openIssues: issues.length, stale: stale.length, unlabeled: unlabeled.length, blocked: blocked.length, missingAcceptanceCriteria: noAcceptance.length, duplicateHints: duplicateHints.length }; const output = { ...$node['Normalize Schedule'].json, backlogMetrics: metrics, summaryIssueBody: { title: 'Cherry weekly backlog grooming summary', labels: ['backlog-grooming', 'automation'], body }, projectUpdatePayload: { source: 'cherry_backlog_grooming', metrics }, status: 'accepted', summary: 'Backlog grooming summary built for ' + issues.length + ' open issues.', actions: ['find_stale_issues', 'find_duplicates', 'find_unlabeled', 'find_missing_acceptance_criteria', 'archive_event'] }; return [{ json: output }];"
+      },
+      "id": "analyze-backlog",
+      "name": "Analyze Backlog",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.summaryIssueBody }}"
+      },
+      "id": "create-grooming-summary-issue",
+      "name": "Create Grooming Summary Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GITHUB_PROJECTS_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $node[\"Analyze Backlog\"].json.projectUpdatePayload }}"
+      },
+      "id": "update-github-project",
+      "name": "Update GitHub Project",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1560,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ...event, workflow: event.workflow ?? '10_backlog_grooming', sinkRouting: {\n  discord: '{{ $env.DISCORD_WEBHOOK_URL }}', slack: '{{ $env.SLACK_WEBHOOK_URL }}', email: '{{ $env.EMAIL_WEBHOOK_URL }}', notion: '{{ $env.NOTION_WEBHOOK_URL }}', googleSheets: '{{ $env.GOOGLE_SHEETS_WEBHOOK_URL }}', linearJira: '{{ $env.LINEAR_JIRA_WEBHOOK_URL }}', githubProjects: '{{ $env.GITHUB_PROJECTS_WEBHOOK_URL }}', archive: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/events', incidentTimeline: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/incident-timeline' } };\nreturn [{ json: output }];"
+      },
+      "id": "route-shared-sinks",
+      "name": "Route Shared Sinks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/events' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo ?? 'div0rce/cherry',\n  ...(($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) ? { sha: ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) } : {}),\n  event: $json.event ?? '10_backlog_grooming.event',\n  source: $json.source ?? 'cherry',\n  workflow: $json.workflow ?? '10_backlog_grooming',\n  status: $json.status ?? 'accepted',\n  idempotencyKey: (($json.workflow ?? '10_backlog_grooming') + ':' + ($json.repo ?? 'div0rce/cherry') + ':' + ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha ?? $json.payload?.issue?.number ?? $now.toISO())),\n  classifierVersion: 'workflow-advisory@1',\n  rawPayload: $json.payload ?? $json,\n  normalizedEvent: {\n    event: $json.event ?? '10_backlog_grooming.event',\n    source: $json.source ?? 'cherry',\n    repo: $json.repo ?? 'div0rce/cherry',\n    timestamp: $json.timestamp ?? $now.toISO(),\n    payload: $json.payload ?? $json\n  },\n  classifierOutput: $json,\n  ...(($json.payload?.pull_request?.number ?? $json.prNumber) ? { prNumber: ($json.payload?.pull_request?.number ?? $json.prNumber) } : {}),\n  ...(($json.payload?.issue?.number ?? $json.issueNumber) ? { issueNumber: ($json.payload?.issue?.number ?? $json.issueNumber) } : {})\n} }}"
+      },
+      "id": "archive-event",
+      "name": "Archive Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2080,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: '[' + ($json.workflow ?? 'Cherry automation') + '] ' + ($json.summary ?? 'Automation event') } }}"
+      },
+      "id": "notify-discord",
+      "name": "Notify Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2340,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'Backlog grooming completed.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "log-grooming-result",
+      "name": "Log Grooming Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Schedule": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Fetch Open Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Open Issues": {
+      "main": [
+        [
+          {
+            "node": "Analyze Backlog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Backlog": {
+      "main": [
+        [
+          {
+            "node": "Create Grooming Summary Issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Grooming Summary Issue": {
+      "main": [
+        [
+          {
+            "node": "Update GitHub Project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update GitHub Project": {
+      "main": [
+        [
+          {
+            "node": "Route Shared Sinks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Shared Sinks": {
+      "main": [
+        [
+          {
+            "node": "Archive Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Event": {
+      "main": [
+        [
+          {
+            "node": "Notify Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Discord": {
+      "main": [
+        [
+          {
+            "node": "Log Grooming Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

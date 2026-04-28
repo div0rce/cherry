@@ -1,0 +1,432 @@
+{
+  "name": "Cherry - Simulation Drift Detector",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cherry/simulation/result",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-simulation-result",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const input = $input.first()?.json ?? {};\nconst body = input.body ?? input;\nconst output = {\n  event: 'cherry.simulation_result',\n  source: 'cherry',\n  repo: body.repository?.full_name ?? body.repo ?? 'div0rce/cherry',\n  timestamp: body.timestamp ?? body.workflow_run?.updated_at ?? body.pull_request?.updated_at ?? body.issue?.updated_at ?? new Date().toISOString(),\n  payload: body,\n  workflow: '06_simulation_drift_detector',\n  ok: true,\n  status: 'accepted',\n  summary: 'Normalized cherry.simulation_result.',\n  actions: []\n};\nreturn [{ json: output }];"
+      },
+      "id": "normalize-simulation-result",
+      "name": "Normalize Simulation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst fields = [\"payload.runId\"];\nconst missing = fields.filter((field) => field.split('.').reduce((value, key) => value?.[key], event) === undefined);\nconst output = { ...event, valid: missing.length === 0, validationErrors: missing, status: missing.length === 0 ? event.status : 'failed', summary: missing.length === 0 ? event.summary : 'Payload missing required fields: ' + missing.join(', ') };\nreturn [{ json: output }];"
+      },
+      "id": "validate-payload",
+      "name": "Validate Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const result = $input.first()?.json ?? {};\nconst event = $node['Normalize Simulation Result'].json;\nconst comparison = result.comparisonOutput ?? {};\nconst drift = comparison.drift === true;\nconst reasons = comparison.reasons ?? [];\nconst output = {\n  ...event,\n  automationSnapshotId: result.snapshotId,\n  outputHash: result.outputHash,\n  drift,\n  driftReasons: reasons,\n  issueBody: {\n    title: '[simulation-drift] ' + (event.payload?.scenarioId ?? event.payload?.profileId ?? 'default'),\n    labels: ['simulation-drift', 'automation', 'needs-human-review'],\n    body: 'Cherry simulation drift detected.\\n\\n' + reasons.map((reason) => '- ' + reason).join('\\n') + '\\n\\nSnapshot comparison is stored by Cherry automation, not n8n static data.'\n  },\n  status: drift ? 'accepted' : 'ignored',\n  summary: drift ? 'Simulation drift detected: ' + reasons.join(', ') : 'Simulation snapshot stored with no material drift.',\n  actions: drift ? ['compare_snapshot_in_cherry', 'create_issue', 'archive_event'] : ['compare_snapshot_in_cherry', 'archive_event']\n};\nreturn [{ json: output }];"
+      },
+      "id": "compare-snapshot",
+      "name": "Compare Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "if-drift-condition",
+              "leftValue": "={{ $json.drift === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-drift",
+      "name": "IF: Drift?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.github.com/repos/' + $env.GITHUB_OWNER + '/' + $env.GITHUB_REPO + '/issues' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GITHUB_TOKEN }}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.issueBody }}"
+      },
+      "id": "create-drift-issue",
+      "name": "Create Drift Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ...event, workflow: event.workflow ?? '06_simulation_drift_detector', sinkRouting: {\n  discord: '{{ $env.DISCORD_WEBHOOK_URL }}', slack: '{{ $env.SLACK_WEBHOOK_URL }}', email: '{{ $env.EMAIL_WEBHOOK_URL }}', notion: '{{ $env.NOTION_WEBHOOK_URL }}', googleSheets: '{{ $env.GOOGLE_SHEETS_WEBHOOK_URL }}', linearJira: '{{ $env.LINEAR_JIRA_WEBHOOK_URL }}', githubProjects: '{{ $env.GITHUB_PROJECTS_WEBHOOK_URL }}', archive: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/events', incidentTimeline: '{{ $env.CHERRY_API_BASE_URL }}/api/automation/incident-timeline' } };\nreturn [{ json: output }];"
+      },
+      "id": "route-shared-sinks",
+      "name": "Route Shared Sinks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: '[' + ($json.workflow ?? 'Cherry automation') + '] ' + ($json.summary ?? 'Automation event') } }}"
+      },
+      "id": "notify-discord",
+      "name": "Notify Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1820,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/events' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo ?? 'div0rce/cherry',\n  ...(($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) ? { sha: ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha) } : {}),\n  event: $json.event ?? '06_simulation_drift_detector.event',\n  source: $json.source ?? 'cherry',\n  workflow: $json.workflow ?? '06_simulation_drift_detector',\n  status: $json.status ?? 'accepted',\n  idempotencyKey: (($json.workflow ?? '06_simulation_drift_detector') + ':' + ($json.repo ?? 'div0rce/cherry') + ':' + ($json.sha ?? $json.payload?.pull_request?.head?.sha ?? $json.payload?.workflow_run?.head_sha ?? $json.payload?.issue?.number ?? $now.toISO())),\n  classifierVersion: 'simulation-drift@1',\n  rawPayload: $json.payload ?? $json,\n  normalizedEvent: {\n    event: $json.event ?? '06_simulation_drift_detector.event',\n    source: $json.source ?? 'cherry',\n    repo: $json.repo ?? 'div0rce/cherry',\n    timestamp: $json.timestamp ?? $now.toISO(),\n    payload: $json.payload ?? $json\n  },\n  classifierOutput: $json,\n  ...(($json.payload?.pull_request?.number ?? $json.prNumber) ? { prNumber: ($json.payload?.pull_request?.number ?? $json.prNumber) } : {}),\n  ...(($json.payload?.issue?.number ?? $json.issueNumber) ? { issueNumber: ($json.payload?.issue?.number ?? $json.issueNumber) } : {})\n} }}"
+      },
+      "id": "archive-event",
+      "name": "Archive Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2080,
+        -160
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'Simulation drift handled.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const event = $input.first()?.json ?? {};\nconst output = { ok: event.ok !== false, workflow: event.workflow, status: event.status ?? 'accepted', summary: event.summary ?? 'Simulation snapshot stored.', actions: event.actions ?? [] };\nreturn [{ json: output }];"
+      },
+      "id": "build-no-drift-response",
+      "name": "Build No Drift Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CHERRY_API_BASE_URL + '/api/automation/simulation-snapshots/compare' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.CHERRY_AUTOMATION_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  repo: $json.repo ?? 'div0rce/cherry',\n  scopeKey: $json.payload.scenarioId ?? $json.payload.profileId ?? 'default',\n  runId: $json.payload.runId,\n  snapshot: $json.payload,\n  sourceWorkflow: $json.workflow ?? '06_simulation_drift_detector'\n} }}"
+      },
+      "id": "compare-simulation-in-cherry",
+      "name": "Compare Simulation In Cherry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        780,
+        160
+      ],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Simulation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Simulation Result": {
+      "main": [
+        [
+          {
+            "node": "Validate Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Payload": {
+      "main": [
+        [
+          {
+            "node": "Compare Simulation In Cherry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Snapshot": {
+      "main": [
+        [
+          {
+            "node": "IF: Drift?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Drift?": {
+      "main": [
+        [
+          {
+            "node": "Create Drift Issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build No Drift Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Drift Issue": {
+      "main": [
+        [
+          {
+            "node": "Route Shared Sinks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Shared Sinks": {
+      "main": [
+        [
+          {
+            "node": "Notify Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Discord": {
+      "main": [
+        [
+          {
+            "node": "Archive Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Event": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build No Drift Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare Simulation In Cherry": {
+      "main": [
+        [
+          {
+            "node": "Compare Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

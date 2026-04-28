@@ -21,7 +21,6 @@ const FIX =
 const REQUIRED_GUARDRAILS = ['check:guardrails'];
 const DIRECT_RUNTIME_SCRIPTS = new Set([
   'check',
-  'check:fast',
   'check:runtime',
   'check:node',
   'check:next',

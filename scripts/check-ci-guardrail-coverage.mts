@@ -28,7 +28,6 @@ const CI_ENTRYPOINT = 'ci:verify';
 const GUARDRAIL_ENTRYPOINT_NAME = GUARDRAIL_ENTRYPOINT;
 const DIRECT_RUNTIME_SCRIPTS = new Set([
   'check',
-  'check:fast',
   'check:runtime',
   'check:node',
   'check:next',

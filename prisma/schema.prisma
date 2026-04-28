@@ -528,6 +528,75 @@ model DecisionEvent {
   @@index([userId, createdAt])
 }
 
+model AutomationEvent {
+  id                String   @id @default(cuid())
+  repo              String
+  sha               String?
+  event             String
+  source            String
+  workflow          String
+  status            String
+  idempotencyKey    String   @unique(map: "automation_event__idempotency_key__unique")
+  classifierVersion String
+  outputHash        String
+  rawPayload        Json
+  normalizedEvent   Json
+  classifierOutput  Json
+  prNumber          Int?
+  issueNumber       Int?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  statusChecks AutomationStatusCheck[]
+
+  @@index([repo, sha])
+  @@index([repo, prNumber])
+  @@index([repo, issueNumber])
+  @@index([workflow, createdAt])
+  @@index([classifierVersion])
+}
+
+model SimulationAutomationSnapshot {
+  id                 String   @id @default(cuid())
+  repo               String
+  scopeKey           String
+  runId              String
+  classifierVersion  String
+  snapshot           Json
+  comparisonOutput   Json
+  outputHash         String
+  previousSnapshotId String?
+  createdAt          DateTime @default(now())
+
+  @@unique([scopeKey, runId, classifierVersion], map: "simulation_automation_snapshot__scope_run_version__unique")
+  @@index([repo, scopeKey])
+  @@index([scopeKey, createdAt])
+  @@index([classifierVersion])
+}
+
+model AutomationStatusCheck {
+  id                   String           @id @default(cuid())
+  repo                 String
+  sha                  String
+  context              String
+  state                String
+  description          String
+  targetUrl            String?
+  sourceWorkflow       String
+  automationEvent      AutomationEvent? @relation(fields: [automationEventId], references: [id], onDelete: SetNull, map: "automation_status_check__automation_event_id__fk")
+  automationEventId    String?
+  classifierVersion    String
+  outputHash           String
+  statusIdempotencyKey String           @unique(map: "automation_status_check__status_idempotency_key__unique")
+  githubResponse       Json?
+  createdAt            DateTime         @default(now())
+
+  @@index([repo, sha])
+  @@index([repo, sha, context])
+  @@index([automationEventId])
+  @@index([classifierVersion])
+}
+
 model IdempotencyKey {
   userId    String
   key       String

@@ -37,6 +37,19 @@ function matchesWhere(record, where) {
     ) {
       return record.userId === val.userId && record.externalId === val.externalId;
     }
+    if (
+      val !== null &&
+      typeof val === 'object' &&
+      'scopeKey' in val &&
+      'runId' in val &&
+      'classifierVersion' in val
+    ) {
+      return (
+        record.scopeKey === val.scopeKey &&
+        record.runId === val.runId &&
+        record.classifierVersion === val.classifierVersion
+      );
+    }
     return record[key] === val;
   });
 }
@@ -54,6 +67,10 @@ function createCollection(name) {
     if ('userId_externalId' in where) {
       const composite = where.userId_externalId;
       return `${composite.userId}:${composite.externalId}`;
+    }
+    if ('scopeKey_runId_classifierVersion' in where) {
+      const composite = where.scopeKey_runId_classifierVersion;
+      return `${composite.scopeKey}:${composite.runId}:${composite.classifierVersion}`;
     }
     if (
       'userId' in where &&
@@ -80,7 +97,13 @@ function createCollection(name) {
         typeof data.userId === 'string' && typeof data.key === 'string'
           ? `${data.userId}:${data.key}`
           : null;
-      const key = data.id ?? compositeKey ?? `${name}-${counter++}`;
+      const simulationKey =
+        typeof data.scopeKey === 'string' &&
+        typeof data.runId === 'string' &&
+        typeof data.classifierVersion === 'string'
+          ? `${data.scopeKey}:${data.runId}:${data.classifierVersion}`
+          : null;
+      const key = data.id ?? compositeKey ?? simulationKey ?? `${name}-${counter++}`;
       if (store.has(key)) {
         const err = new Error(`Unique constraint failed on the fields: (${name}.id)`);
         err.code = 'P2002';
@@ -194,6 +217,9 @@ class MockPrismaClient {
   simulation = createCollection('simulation');
   vineDevice = createCollection('vineDevice');
   decisionEvent = createCollection('decisionEvent');
+  automationEvent = createCollection('automationEvent');
+  simulationAutomationSnapshot = createCollection('simulationAutomationSnapshot');
+  automationStatusCheck = createCollection('automationStatusCheck');
   idempotencyKey = createCollection('idempotencyKey');
 
   async $disconnect() {

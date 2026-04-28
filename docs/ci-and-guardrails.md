@@ -88,8 +88,9 @@ Last updated: 2026-04-28
 
 Use the narrowest proof that fully covers the changed surface:
 - `npm run check:static` for guardrails, lint, and typecheck.
+- `npm run check:fast` for local guardrails + script typecheck.
 - `npm run check:runtime` or `npm test` for the partitioned runtime suite.
-- `npm run check:fast` for local guardrails + script typecheck + runtime suite.
+- `npm run check:local` for `check:fast` plus the partitioned runtime suite.
 - `CHERRY_TMP_ROOT="$HOME/.cherry-tmp" CHERRY_VINE_SIGNATURE_MODE=enforce npm run verify:repo-closure` for canonical full proof.
 
 Agents must not blindly stack `npm run check`, `npm test`, `npm run build`, and `verify:repo-closure`; do not run both `npm test` and `verify:repo-closure` unless explicitly required.
