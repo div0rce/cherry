@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-04-26
+Last updated: 2026-04-28
 
 # CI and guardrails
 
@@ -9,7 +9,8 @@ Last updated: 2026-04-26
 - Runs on every push to `main` and all PRs via `.github/workflows/ci.yml`.
 - Steps (fail-fast):
   1) `npm ci` (postinstall runs `prisma generate`)
-  2) `npm run ci:verify` (composite truth gate: check + build)
+  2) `npm run check:guardrails`
+  3) `npm run ci:verify` (composite truth gate: check + test + build)
 - Optional env lane (`.github/workflows/env-checks.yml`) provisions Postgres and runs:
   - `npx prisma generate`
   - `npx prisma migrate deploy`
@@ -25,6 +26,8 @@ Last updated: 2026-04-26
 - `check:guardrails` guarantees registry completeness, execution exclusivity, CI coverage, and ordering stability.
 - `check` is the aggregate of guardrails + node correctness + UI correctness; env checks live in `check:env`.
 - The last non-empty command in the CI job must be `npm run ci:verify`.
+- There must be exactly one canonical runtime execution per CI run: `ci:verify` reaches `npm test`, and `npm test` runs root legacy tests, `tests/node`, then `tests/next`.
+- CI must not directly run node/next runtime test steps outside `ci:verify`.
 
 ### Temp root requirement
 - `CHERRY_TMP_ROOT` is required for all guardrails and scripts that allocate temp.
@@ -54,12 +57,13 @@ Last updated: 2026-04-26
 - It does not mutate env in a way production would not.
 - It runs the Issue 8 proof slice, then `npm run lint`, `npm run check`, `npm run typecheck`, `npm test`, and `npm run build`.
 
-> If CI ever runs individual guardrail scripts directly, the system is broken.
+> If CI directly runs node/next runtime tests outside `ci:verify`, the system is broken.
 
 ### Ordering invariant
 - Guardrails execute before env-specific correctness and build.
 - `check:guardrails` runs core (env-free) guardrails; `check:env` runs env-dependent guardrails plus DB requirements.
 - Inside `check:node` and `check:next`, lint runs before typecheck and typecheck runs before tests.
+- `npm test` is the partitioned full runtime runner, and ownership is enforced by `tests/node/guardrails/test-runner-ownership.test.ts`.
 - Build executes after `check` completes.
 
 ### Guardrails enforced
@@ -71,7 +75,8 @@ Last updated: 2026-04-26
 - Guardrail 5 (implicit config): `process.env` access is confined to `app/api/**` and `scripts/**`; load env into typed config via `initConfigFromEnv` and thread it explicitly. `check:config` must pass without allowlists.
 - Guardrail 6 (config immutability): server config is deep-frozen and locked after boundary load; `setServerConfig` rejects writes post-lock and loader registration fails once locked. `check:config-lock` must pass.
 - `check:check-contract` enforces the `ci:verify` contract and keeps `check` pure.
-- `check:ci-must-run-check` enforces the single CI entrypoint (`ci:verify`).
+- `check:ci-must-run-check` enforces fail-fast guardrails before the final CI entrypoint (`ci:verify`) and forbids direct runtime test execution in CI.
+- `check:ci-guardrail-coverage` enforces the transitive proof chain from CI to `ci:verify`, `npm test`, and `check:run-tests`.
 - `check:guardrails-core` exits non-zero on any deviation; CI treats that as a hard failure.
 
 ### Guardrail scope invariant
@@ -81,7 +86,13 @@ Last updated: 2026-04-26
 
 ### How to run locally
 
-Run the npm scripts: `check:aggregate` (guardrails only), `check` (aggregate + node + next), `test` (tests only), `build`, or the full gate `ci:verify`.
+Use the narrowest proof that fully covers the changed surface:
+- `npm run check:static` for guardrails, lint, and typecheck.
+- `npm run check:runtime` or `npm test` for the partitioned runtime suite.
+- `npm run check:fast` for local guardrails + script typecheck + runtime suite.
+- `CHERRY_TMP_ROOT="$HOME/.cherry-tmp" CHERRY_VINE_SIGNATURE_MODE=enforce npm run verify:repo-closure` for canonical full proof.
+
+Agents must not blindly stack `npm run check`, `npm test`, `npm run build`, and `verify:repo-closure`; do not run both `npm test` and `verify:repo-closure` unless explicitly required.
 
 ### What CI green means (DB posture)
 - Standard CI (`ci:verify`) does not exercise a live database; tests run with Prisma mocked.
