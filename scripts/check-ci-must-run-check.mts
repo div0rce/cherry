@@ -16,11 +16,23 @@ const WORKFLOWS_DIR = path.join(ROOT, '.github', 'workflows');
 const CI_WORKFLOW = path.join(WORKFLOWS_DIR, 'ci.yml');
 
 const FIX =
-  'Run guardrails and runtime separation tests before a final `npm run ci:verify` in ci.yml.';
+  'Run `npm run check:guardrails` before one final `npm run ci:verify`; do not run runtime tests directly in ci.yml.';
 
 const REQUIRED_GUARDRAILS = ['check:guardrails'];
-const SEPARATE_RUNTIME_TESTS = ['check:tests:node', 'check:tests:next'];
-const COMBINED_RUNTIME_TESTS = ['check:tests'];
+const DIRECT_RUNTIME_SCRIPTS = new Set([
+  'check',
+  'check:fast',
+  'check:runtime',
+  'check:node',
+  'check:next',
+  'check:tests',
+  'check:tests:node',
+  'check:tests:next',
+  'check:run-tests',
+  'check:run-tests:node',
+  'check:run-tests:next',
+  'test',
+]);
 
 type RunStep = {
   commands: string[];
@@ -169,40 +181,29 @@ function main(): void {
   const steps = parseRunSteps(content.split(/\r?\n/));
   const commands = collectCommands(steps);
   const calls = collectNpmRunCalls(commands);
-  const allowed = new Set([
-    'ci:verify',
-    ...REQUIRED_GUARDRAILS,
-    ...SEPARATE_RUNTIME_TESTS,
-    ...COMBINED_RUNTIME_TESTS,
-  ]);
-  const forbidden = calls.filter((name) => !allowed.has(name));
-  if (forbidden.length > 0) {
-    fail(PREFIX, 'CI must run only guardrails, runtime tests, and ci:verify via npm run', {
+  const ciVerifyCalls = calls.filter((name) => name === 'ci:verify');
+  if (ciVerifyCalls.length !== 1) {
+    fail(PREFIX, 'CI must run exactly one ci:verify entrypoint', {
       details: [
         path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
-          `:1:1: forbidden npm scripts: ${forbidden.join(', ')}`,
+          `:1:1: found ${ciVerifyCalls.length} ci:verify calls`,
       ],
       fix: FIX,
     });
   }
 
-  const hasCombined = COMBINED_RUNTIME_TESTS.some((name) => calls.includes(name));
-  const hasSeparate = SEPARATE_RUNTIME_TESTS.some((name) => calls.includes(name));
-  if (hasCombined && hasSeparate) {
-    fail(PREFIX, 'CI must choose either combined or separate runtime tests', {
+  const directRuntime = calls.filter((name) => DIRECT_RUNTIME_SCRIPTS.has(name));
+  if (directRuntime.length > 0) {
+    fail(PREFIX, 'CI must not run runtime tests directly outside ci:verify', {
       details: [
         path.normalize(path.relative(ROOT, CI_WORKFLOW)) +
-          ':1:1: do not mix check:tests with check:tests:node/check:tests:next',
+          `:1:1: direct runtime scripts: ${directRuntime.join(', ')}`,
       ],
       fix: FIX,
     });
   }
 
-  if (hasCombined) {
-    ensureOrdering(calls, [...REQUIRED_GUARDRAILS, ...COMBINED_RUNTIME_TESTS], 'guardrails and runtime tests');
-  } else {
-    ensureOrdering(calls, [...REQUIRED_GUARDRAILS, ...SEPARATE_RUNTIME_TESTS], 'guardrails and runtime tests');
-  }
+  ensureOrdering(calls, [...REQUIRED_GUARDRAILS, 'ci:verify'], 'guardrails before ci:verify');
 
   process.stdout.write('ci-must-run-check: ok\n');
 }
