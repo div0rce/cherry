@@ -13,30 +13,49 @@ const fixtureRoot = path.join(
   'ci-must-run-check'
 );
 
-const result = spawnSync(
-  'npm',
-  ['run', 'ts:esm', '--', 'scripts/check-ci-must-run-check.mts'],
-  {
+function runFixture(name: string): ReturnType<typeof spawnSync> {
+  return spawnSync('npm', ['run', 'ts:esm', '--', 'scripts/check-ci-must-run-check.mts'], {
     cwd: repoRoot,
     encoding: 'utf8',
     env: {
       ...process.env,
-      CHERRY_CI_MUST_RUN_CHECK_ROOT: fixtureRoot,
+      CHERRY_CI_MUST_RUN_CHECK_ROOT: path.join(fixtureRoot, name),
     },
-  }
+  });
+}
+
+const okResult = runFixture('ok');
+assert.equal(
+  okResult.status,
+  0,
+  `expected ok fixture to pass, got stderr=${okResult.stderr ?? ''}`
 );
 
-const stderr = result.stderr ?? '';
+const missingResult = runFixture('missing-ci-verify');
+const missingStderr = missingResult.stderr ?? '';
 
 assert.notEqual(
-  result.status,
+  missingResult.status,
   0,
-  `expected ci-must-run-check to fail, got status=${result.status ?? 'null'}`
+  `expected missing-ci-verify to fail, got status=${missingResult.status ?? 'null'}`
 );
 assert.equal(
-  stderr.includes('check:ci-must-run-check'),
+  missingStderr.includes('check:ci-must-run-check'),
   true,
-  `expected check:ci-must-run-check output, got: ${stderr}`
+  `expected check:ci-must-run-check output, got: ${missingStderr}`
+);
+
+const directRuntimeResult = runFixture('direct-runtime');
+const directRuntimeStderr = directRuntimeResult.stderr ?? '';
+assert.notEqual(
+  directRuntimeResult.status,
+  0,
+  `expected direct-runtime to fail, got status=${directRuntimeResult.status ?? 'null'}`
+);
+assert.equal(
+  directRuntimeStderr.includes('direct runtime scripts'),
+  true,
+  `expected direct runtime failure, got: ${directRuntimeStderr}`
 );
 
 process.stdout.write('ci-must-run-check: ok\n');
