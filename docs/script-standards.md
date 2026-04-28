@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-04-28
 
 # Script Standards
 
@@ -7,7 +7,8 @@ Last updated: 2026-01-02
 - Scripts are ESM by extension; `.mts` only lives under `scripts/`, runtime code stays `.ts`.
 - Guardrail entrypoints are registered in `scripts/guardrails/registry.mts` and must be reachable from `npm run check`.
 - Execution entrypoints are registered in `scripts/execution/registry.mts` and run via `npm run ts:esm -- scripts/execution/run.mts <name>`.
-- CI must run `npm run ci:verify` and it must be the final non-empty command in the job.
+- CI may run `npm run check:guardrails` for fail-fast coverage, then must run one final `npm run ci:verify`.
+- Direct CI runtime test scripts are forbidden; `ci:verify` reaches `npm test`, and `npm test` reaches `check:run-tests`.
 - JSON inputs must be parsed via `scripts/guardrails/lib/read-json.mts`; raw `JSON.parse` is forbidden outside that helper.
 - NPM script args must be forwarded with `--` (use `npm run <script> -- <args>`).
 - `any` is forbidden in scripts; use `unknown` plus explicit schema/type guards.
