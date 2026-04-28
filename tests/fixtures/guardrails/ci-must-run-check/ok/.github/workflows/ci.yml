@@ -1,0 +1,13 @@
+name: ci
+
+on:
+  push:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check guardrails
+        run: npm run check:guardrails
+      - name: Verify CI truth
+        run: npm run ci:verify
