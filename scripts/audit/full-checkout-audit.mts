@@ -1407,7 +1407,7 @@ ${apiTable}
 
 ## Deployment and CI
 - Workflows present: ${workflowFiles.map((item) => item.entry.path).join(', ')}
-- \`ci.yml\` runs \`npm ci\`, guardrails, node tests, next tests, and \`npm run ci:verify\`.
+- \`ci.yml\` runs \`npm ci\`, fail-fast guardrails, and final \`npm run ci:verify\`; runtime tests are reached transitively through \`npm test\`.
 - \`env-checks.yml\` provisions Postgres, applies Prisma migrations, runs env checks, and executes DB tests.
 - No Dockerfile or container deployment manifest was found at the repo root.
 - \`vercel.json\` exists, so the deployment story is Vercel-oriented rather than container-first.
@@ -1612,7 +1612,7 @@ ${markdownFindings(llmSmellFindings)}
 
 ## 3 Copy-Paste Clusters
 - Admin clear routes share near-identical scaffolding with small differences.
-- Node/next duplicate test directories mirror many of the same scenarios.
+- Runtime tests are partitioned across root legacy, node, and next lanes; ownership is enforced by the test-runner ownership guardrail.
 
 ## 4 Semantic Disconnects
 - Home shell copy promises live month-state depth while \`getHomeUiBundle()\` is stubbed.
