@@ -6,7 +6,7 @@
     ]
   },
   "engineVersions": {
-    "behavior": "engine_behavior_v4",
+    "behavior": "engine_behavior_v5",
     "input": "engine_input_v1",
     "candidateSpace": "engine_candidate_space_v1",
     "accounting": "engine_accounting_v1"

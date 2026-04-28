@@ -1,9 +1,11 @@
 Status: Active
-Last updated: 2026-01-18
+Last updated: 2026-04-28
 
 # Engine Optimality Status
 
 ## Current behavior
+
+Cherry evaluates a bounded generated candidate set with deterministic heuristic ranking. It does not prove global optimality over all possible financial actions.
 
 ### Proven (bounded)
 
@@ -17,6 +19,11 @@ Last updated: 2026-01-18
 - Global optimality outside the bounded candidate space.
 - Real-world preference correctness or reward accuracy.
 - Completeness outside the tested bounds **B**.
+
+### Live solver surface cap
+
+- `maxCandidates`, when provided, caps the surfaced ranked candidates in returned decisions and trace output.
+- `maxCandidates` does not cap the evaluated candidate set before scoring.
 
 ### Trace schema
 

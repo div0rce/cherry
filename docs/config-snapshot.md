@@ -849,7 +849,7 @@ export default nextConfig;
         "typescript": "^5"
       },
       "engines": {
-        "node": ">=24.15.0 <25"
+        "node": ">=24.14.1 <25"
       }
     },
     "node_modules/@alloc/quick-lru": {
@@ -9583,7 +9583,7 @@ export default nextConfig;
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24.15.0 <25"
+    "node": ">=24.14.1 <25"
   },
   "engineStrict": true,
   "packageManager": "npm@11.12.1",

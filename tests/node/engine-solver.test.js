@@ -213,6 +213,74 @@ async function testSolveDecisionSorts() {
   assert.equal(bestCardDecision?.action.cardId, 'card-strong');
 }
 
+async function testMaxCandidatesCapsRankedOutputNotEvaluationOrder() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-bad',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Bad Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-bad',
+            cardId: 'card-bad',
+            categoryKey: 'DINING',
+            rateType: 'CASHBACK',
+            rateValue: 0.01,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+      {
+        id: 'card-good',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Good Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-good',
+            cardId: 'card-good',
+            categoryKey: 'DINING',
+            rateType: 'CASHBACK',
+            rateValue: 0.03,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext({ amountCents: 1_000 });
+  const bad = { type: 'USE_CARD', cardId: 'card-bad' };
+  const good = { type: 'USE_CARD', cardId: 'card-good' };
+
+  async function topCardIdFor(candidateActionsOverride) {
+    const result = await solveDecision(state, ctx, {
+      candidateActionsOverride,
+      maxCandidates: 1,
+    });
+
+    assert.equal(result.decisions.length, 1);
+    assert.equal(result.trace.candidates.length, 1);
+    return result.decisions[0]?.action.cardId;
+  }
+
+  assert.equal(await topCardIdFor([bad, good]), 'card-good');
+  assert.equal(await topCardIdFor([good, bad]), 'card-good');
+}
+
 async function testDeterministicOrderingForEqualScores() {
   const state = buildStubState({
     debts: [
@@ -1257,6 +1325,7 @@ function testGetEngineCapabilitiesDefaultsToUnavailable() {
 
 async function run() {
   await testSolveDecisionSorts();
+  await testMaxCandidatesCapsRankedOutputNotEvaluationOrder();
   await testDeterministicOrderingForEqualScores();
   await testSolveDecisionValidation();
   await testSafeSolveDecisionSuccess();

@@ -624,3 +624,576 @@
 
   * opportunistic mass deletion
   * cleanup justified by impression rather than evidence
+
+---
+
+## Verdict
+
+Your backlog gets Cherry to:
+
+> truthful advisory + canonical lifecycle + live-state UI
+
+It does **not yet** get Cherry to:
+
+> closed-loop financial controller with execution authority, durable trust, and market-grade reliability
+
+You need backlog items for **data ingestion, consent, execution, reversibility, auditability, liability, and controlled rollout**.
+
+---
+
+# Add These Issues
+
+## 25. P0 — Define user consent, permissions, and action authority boundary
+
+* `Priority`: `P0`
+* `Owner Domain`: `security`
+* `Owner Role`: `security-owner`
+* `Owner Scope`: user authorization, consent records, execution permissions, revocation semantics
+* `Why now`: Cherry cannot execute financial actions unless it has an explicit, auditable authority model.
+* `Dependencies`: issues `1` through `22`
+* `PR Order`: `25`
+* `Acceptance Criteria`:
+
+  * every action class has an explicit permission requirement
+  * user consent is persisted with timestamp, scope, actor, and revocation state
+  * read-only, advisory, confirmation-required, and autonomous modes are distinct
+  * no execution-capable path can run under advisory-only consent
+  * docs define exactly what Cherry is allowed to do
+* `Out of Scope`:
+
+  * payment rail integration
+  * bank/provider onboarding
+
+---
+
+## 26. P0 — Add immutable audit ledger for recommendations, decisions, confirmations, and mutations
+
+* `Priority`: `P0`
+* `Owner Domain`: `ledger`
+* `Owner Role`: `ledger-owner`
+* `Owner Scope`: audit events, decision records, state transition trace, actor attribution
+* `Why now`: A finance controller without an immutable audit trail is unserious.
+* `Dependencies`: issues `15`, `16`, `20`, `25`
+* `PR Order`: `26`
+* `Acceptance Criteria`:
+
+  * every recommendation has a persisted decision record
+  * every user confirmation is linked to the decision it approved
+  * every ledger mutation references the originating decision/session
+  * every execution attempt records request, response, status, error, and idempotency key
+  * audit records are append-only
+  * no mutation exists without provenance
+* `Out of Scope`:
+
+  * analytics dashboards
+  * external compliance export
+
+---
+
+## 27. P0 — Establish idempotent financial action execution semantics
+
+* `Priority`: `P0`
+* `Owner Domain`: `execution`
+* `Owner Role`: `execution-owner`
+* `Owner Scope`: idempotency keys, execution attempts, retries, duplicate prevention, terminal execution states
+* `Why now`: Retrying money movement without hard idempotency is how toy systems become financial shrapnel.
+* `Dependencies`: issues `25` and `26`
+* `PR Order`: `27`
+* `Acceptance Criteria`:
+
+  * every executable financial action has a stable idempotency key
+  * retry behavior is explicitly defined
+  * duplicate execution is prevented by storage-level constraints
+  * execution states include at least:
+
+    * `PENDING`
+    * `SUBMITTED`
+    * `SUCCEEDED`
+    * `FAILED`
+    * `CANCELED`
+    * `REVERSED`
+    * `UNKNOWN`
+  * unknown execution state is never treated as success
+  * docs define recovery behavior for partial failure
+* `Out of Scope`:
+
+  * real payment providers
+  * autonomous execution policy
+
+---
+
+## 28. P1 — Build provider-agnostic financial account connection model
+
+* `Priority`: `P1`
+* `Owner Domain`: `integrations`
+* `Owner Role`: `integrations-owner`
+* `Owner Scope`: connected accounts, provider tokens, account identity, account capabilities
+* `Why now`: Cherry needs real state, but provider details must not leak into engine truth.
+* `Dependencies`: issues `25` through `27`
+* `PR Order`: `28`
+* `Acceptance Criteria`:
+
+  * connected accounts are represented behind a provider-agnostic model
+  * provider account IDs are mapped to stable internal account IDs
+  * account capabilities are explicit:
+
+    * balance readable
+    * transactions readable
+    * payments executable
+    * transfers executable
+    * credit liability readable
+  * unavailable capabilities degrade explicitly
+  * engine state uses internal canonical identities, not provider-native IDs
+* `Out of Scope`:
+
+  * supporting many providers
+  * payment execution
+
+---
+
+## 29. P1 — Add transaction ingestion, normalization, and reconciliation pipeline
+
+* `Priority`: `P1`
+* `Owner Domain`: `ingest`
+* `Owner Role`: `ingest-owner`
+* `Owner Scope`: transactions, balances, pending/posted reconciliation, account snapshots
+* `Why now`: Closed-loop finance requires durable observed state, not one-off request snapshots.
+* `Dependencies`: issue `28`
+* `PR Order`: `29`
+* `Acceptance Criteria`:
+
+  * transactions ingest into canonical normalized records
+  * pending and posted transactions are distinct
+  * duplicate provider transactions are deduplicated
+  * balance snapshots are timestamped
+  * stale balances are marked degraded
+  * reconciliation detects mismatch between projected and observed state
+  * reconciliation mismatch blocks autonomous execution until resolved
+* `Out of Scope`:
+
+  * merchant intelligence
+  * category ML
+  * forecasting
+
+---
+
+## 30. P1 — Implement stable liability linkage for cards, debts, and repayment targets
+
+* `Priority`: `P1`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: credit cards, linked liabilities, repayment targets, account identity graph
+* `Why now`: Earlier degradation tells the truth about missing liability truth. This issue actually fixes the missing truth.
+* `Dependencies`: issues `28` and `29`
+* `PR Order`: `30`
+* `Acceptance Criteria`:
+
+  * credit cards link to canonical liabilities through stable identity
+  * repayment targets are explicit
+  * liability balances are loaded from live state where available
+  * unlinked credit accounts remain degraded
+  * label/name matching is not used as a truth source
+  * runtime tests prove valid card actions survive hard-constraint filtering when linkage exists
+* `Out of Scope`:
+
+  * interest optimization
+  * balance transfer products
+  * synthetic linkage
+
+---
+
+## 31. P1 — Add reversible execution and compensation semantics
+
+* `Priority`: `P1`
+* `Owner Domain`: `execution`
+* `Owner Role`: `execution-owner`
+* `Owner Scope`: cancellation, reversal, compensating actions, failed execution recovery
+* `Why now`: Finance systems need a plan for being wrong.
+* `Dependencies`: issues `27` through `30`
+* `PR Order`: `31`
+* `Acceptance Criteria`:
+
+  * each executable action declares whether it is reversible
+  * reversible actions define cancellation window
+  * irreversible actions require stricter confirmation policy
+  * failed partial execution creates a recovery task
+  * compensation actions are represented separately from original actions
+  * UI/API never implies reversibility where none exists
+* `Out of Scope`:
+
+  * legal dispute handling
+  * customer support tooling
+
+---
+
+## 32. P1 — Add execution-safe policy modes
+
+* `Priority`: `P1`
+* `Owner Domain`: `execution`
+* `Owner Role`: `execution-owner`
+* `Owner Scope`: advisory mode, confirmation mode, supervised automation, autonomous automation
+* `Why now`: Cherry needs staged authority. Jumping from recommendations to autonomy is how systems die.
+* `Dependencies`: issues `25` through `31`
+* `PR Order`: `32`
+* `Acceptance Criteria`:
+
+  * modes are explicit:
+
+    * `ADVISORY_ONLY`
+    * `CONFIRM_EACH_ACTION`
+    * `SUPERVISED_AUTOPILOT`
+    * `AUTONOMOUS_LIMITED`
+  * each mode has allowed action classes
+  * each mode has max dollar limits
+  * each mode has degradation behavior
+  * autonomous modes are disabled unless all required primitives are available
+  * mode escalation requires explicit user consent
+* `Out of Scope`:
+
+  * growth onboarding
+  * marketing surfaces
+
+---
+
+## 33. P1 — Define safety envelopes and hard financial guardrails
+
+* `Priority`: `P1`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: minimum cash floor, overdraft prevention, debt-payment limits, execution blockers
+* `Why now`: Optimization without hard guardrails is just elegant negligence.
+* `Dependencies`: issues `30` through `32`
+* `PR Order`: `33`
+* `Acceptance Criteria`:
+
+  * minimum liquidity floor is explicit
+  * overdraft-risk actions are blocked
+  * debt paydowns cannot consume protected cash
+  * execution is blocked on stale balances
+  * execution is blocked on unresolved reconciliation mismatch
+  * guardrails are enforced below the UI/API layer
+  * guardrail breaches are auditable
+* `Out of Scope`:
+
+  * personalized financial advice regulation strategy
+  * investment risk modeling
+
+---
+
+## 34. P2 — Add billing-cycle, interest, due-date, and minimum-payment semantics
+
+* `Priority`: `P2`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: credit cycles, APR, due dates, statement balances, minimum payments
+* `Why now`: Debt optimization is fake without credit-cycle mechanics.
+* `Dependencies`: issues `30` and `33`
+* `PR Order`: `34`
+* `Acceptance Criteria`:
+
+  * credit accounts include APR where available
+  * statement balance and current balance are distinct
+  * due dates are represented explicitly
+  * minimum payment obligations are modeled
+  * late-payment risk is a hard constraint or explicit penalty
+  * payoff recommendations distinguish interest savings from liquidity pressure
+* `Out of Scope`:
+
+  * balance transfers
+  * credit-score prediction
+  * loan refinancing
+
+---
+
+## 35. P2 — Add recurring obligations and cashflow calendar
+
+* `Priority`: `P2`
+* `Owner Domain`: `planning`
+* `Owner Role`: `planning-owner`
+* `Owner Scope`: income, rent, subscriptions, recurring bills, expected obligations
+* `Why now`: Present-time decisions are incomplete if near-future mandatory cashflows are invisible.
+* `Dependencies`: issues `29`, `33`, and optionally `34`
+* `PR Order`: `35`
+* `Acceptance Criteria`:
+
+  * recurring income is represented explicitly
+  * recurring obligations are represented explicitly
+  * obligation confidence is tracked
+  * near-future obligations affect liquidity guardrails
+  * uncertain obligations are not treated as guaranteed truth
+  * docs distinguish observed recurring patterns from user-confirmed obligations
+* `Out of Scope`:
+
+  * full forecasting engine
+  * tax planning
+  * investment planning
+
+---
+
+## 36. P2 — Add policy evaluation harness with counterfactual replay
+
+* `Priority`: `P2`
+* `Owner Domain`: `simulation`
+* `Owner Role`: `engine-owner`
+* `Owner Scope`: replay, counterfactual comparison, historical decision evaluation
+* `Why now`: You need evidence that Cherry improves outcomes, not just tests that it behaves as written.
+* `Dependencies`: issues `26`, `29`, `33`, and `35`
+* `PR Order`: `36`
+* `Acceptance Criteria`:
+
+  * historical account state can be replayed safely
+  * Cherry decisions can be compared against baseline policies
+  * baseline policies are documented
+  * metrics include:
+
+    * avoided overdraft risk
+    * interest reduction
+    * preserved liquidity
+    * debt reduction
+    * failed/degraded decision rate
+  * replay never mutates live state
+* `Out of Scope`:
+
+  * public benchmark claims
+  * marketing statistics
+
+---
+
+## 37. P2 — Add decision quality metrics and production observability
+
+* `Priority`: `P2`
+* `Owner Domain`: `observability`
+* `Owner Role`: `infra-owner`
+* `Owner Scope`: metrics, traces, decision outcomes, degradation rates, execution outcomes
+* `Why now`: Without observability, Cherry cannot distinguish correctness from luck.
+* `Dependencies`: issues `26`, `27`, `32`, and `36`
+* `PR Order`: `37`
+* `Acceptance Criteria`:
+
+  * degradation rate is measured
+  * recommendation acceptance rate is measured
+  * execution success/failure rate is measured
+  * stale-state blocks are measured
+  * reconciliation mismatch rate is measured
+  * decision outcome metrics are tied to audit ledger records
+  * sensitive financial values are redacted from logs
+* `Out of Scope`:
+
+  * growth analytics
+  * ad tracking
+  * behavioral manipulation
+
+---
+
+## 38. P1 — Add privacy, retention, and data deletion policy enforcement
+
+* `Priority`: `P1`
+* `Owner Domain`: `security`
+* `Owner Role`: `security-owner`
+* `Owner Scope`: financial data retention, deletion, export, redaction, logs
+* `Why now`: Real financial data changes the threat model. The repo-cleanup issues are not enough.
+* `Dependencies`: issues `28`, `29`, and `37`
+* `PR Order`: `38`
+* `Acceptance Criteria`:
+
+  * financial data classes have retention rules
+  * user deletion deletes or anonymizes covered records
+  * logs cannot contain raw account numbers, tokens, or transaction payloads
+  * exported audit data redacts secrets
+  * deletion behavior is tested
+  * docs define what is retained and why
+* `Out of Scope`:
+
+  * formal compliance certification
+  * enterprise governance features
+
+---
+
+## 39. P1 — Threat-model connected-account and execution surfaces
+
+* `Priority`: `P1`
+* `Owner Domain`: `security`
+* `Owner Role`: `security-owner`
+* `Owner Scope`: provider tokens, execution APIs, account linking, webhook trust, replay protection
+* `Why now`: Once Cherry connects to financial providers, normal app security is insufficient.
+* `Dependencies`: issues `25`, `28`, `29`, `32`, and `38`
+* `PR Order`: `39`
+* `Acceptance Criteria`:
+
+  * threat model document exists
+  * token storage boundary is defined
+  * webhook authenticity is verified
+  * replay attacks are blocked
+  * privilege escalation between users/accounts is tested
+  * execution endpoints require strongest authorization boundary
+  * high-risk actions are rate-limited
+* `Out of Scope`:
+
+  * external pentest
+  * SOC2 theater
+
+---
+
+## 40. P2 — Build provider sandbox integration before live execution
+
+* `Priority`: `P2`
+* `Owner Domain`: `integrations`
+* `Owner Role`: `integrations-owner`
+* `Owner Scope`: sandbox provider connection, sandbox balances, sandbox transactions, sandbox execution
+* `Why now`: Real execution must be rehearsed somewhere that cannot hurt anyone.
+* `Dependencies`: issues `27` through `39`
+* `PR Order`: `40`
+* `Acceptance Criteria`:
+
+  * sandbox account connection works
+  * sandbox transaction ingestion works
+  * sandbox balance refresh works
+  * sandbox execution attempt works
+  * sandbox webhooks update execution state
+  * reconciliation works against sandbox-observed state
+  * no live provider credentials are required for tests
+* `Out of Scope`:
+
+  * live provider rollout
+  * production autonomy
+
+---
+
+## 41. P1 — Add live execution behind confirmation-only gate
+
+* `Priority`: `P1`
+* `Owner Domain`: `execution`
+* `Owner Role`: `execution-owner`
+* `Owner Scope`: live confirmed payments/transfers, confirmation UX/API, execution audit
+* `Why now`: The first real execution milestone should require human confirmation.
+* `Dependencies`: issue `40`
+* `PR Order`: `41`
+* `Acceptance Criteria`:
+
+  * live execution is impossible without explicit confirmation
+  * confirmed action payload is shown before execution
+  * action payload cannot mutate after confirmation
+  * execution result is persisted
+  * unknown result is surfaced as unknown, not failed or succeeded
+  * audit ledger links recommendation → confirmation → execution → observed reconciliation
+* `Out of Scope`:
+
+  * autonomous execution
+  * multi-provider support
+
+---
+
+## 42. P1 — Add autonomous limited execution with strict caps
+
+* `Priority`: `P1`
+* `Owner Domain`: `execution`
+* `Owner Role`: `execution-owner`
+* `Owner Scope`: limited autopilot, action caps, kill switch, escalation policy
+* `Why now`: Autonomy should only exist after confirmation-only execution has proven safe.
+* `Dependencies`: issues `41`, `37`, and `39`
+* `PR Order`: `42`
+* `Acceptance Criteria`:
+
+  * autonomous execution is disabled by default
+  * user must opt in explicitly
+  * dollar caps are enforced
+  * action-class caps are enforced
+  * stale/degraded/reconciled-unknown state blocks autonomy
+  * global kill switch exists
+  * user-level kill switch exists
+  * autonomous decisions are auditable
+* `Out of Scope`:
+
+  * broad autonomy
+  * investments
+  * loans/refinancing
+
+---
+
+## 43. P2 — Define narrow product vertical and success metric
+
+* `Priority`: `P2`
+* `Owner Domain`: `product`
+* `Owner Role`: `product-owner`
+* `Owner Scope`: initial market slice, primary user, primary decision class, success metric
+* `Why now`: “Personal finance AI” is too broad. Broad systems die beautifully.
+* `Dependencies`: issues `20` through `24`
+* `PR Order`: `43`
+* `Acceptance Criteria`:
+
+  * one initial vertical is chosen
+  * one primary user problem is chosen
+  * one measurable success metric is chosen
+  * unsupported product claims are removed
+  * roadmap explicitly excludes unrelated finance domains
+* `Recommended vertical`:
+
+  * credit-card payoff and liquidity-safe purchase routing
+* `Out of Scope`:
+
+  * wealth management
+  * investing
+  * tax
+  * full budgeting suite
+
+---
+
+## 44. P2 — Infer user preferences from transaction history
+
+* `Priority`: `P2`
+* `Owner Domain`: `intelligence`
+* `Owner Role`: `intelligence-owner`
+* `Owner Scope`: transaction classification, merchant memory, preference inference, discretionary pattern detection
+* `Why now`: Cherry needs to distinguish financially unsafe spending from spending that is safe but misaligned with the user’s actual habits and priorities.
+* `Dependencies`: issues `29`, `35`, `38`, and `39`
+* `PR Order`: `44`
+* `Acceptance Criteria`:
+
+  * recurring merchants are detected from transaction history
+  * discretionary categories are inferred from observed spending
+  * user preference weights are derived from behavior, not manually assumed
+  * inferred preferences are confidence-scored
+  * low-confidence preferences cannot drive hard rejection
+  * users can correct inferred preferences
+  * corrected preferences override model inference
+  * preference inference never overrides hard liquidity, debt, or safety constraints
+  * explanations distinguish:
+
+    * unsafe
+    * safe but expensive
+    * safe but preference-misaligned
+    * safe and preference-aligned
+* `Out of Scope`:
+
+  * manipulative spending nudges
+  * advertising
+  * selling transaction data
+  * moral judgment about purchases
+
+---
+
+# Current Backlog Gap Map
+
+| Required Capability          |          Covered Now? | Add        |
+| ---------------------------- | --------------------: | ---------- |
+| truthful solver              |                mostly | 9–14       |
+| canonical advisory lifecycle |                   yes | 15–22      |
+| live-state UI                |                   yes | 21–22      |
+| account connection           |                    no | 28         |
+| transaction ingestion        |                    no | 29         |
+| stable liability truth       | partial/degraded only | 30         |
+| user consent                 |                    no | 25         |
+| execution authority          |                    no | 27, 41, 42 |
+| auditability                 |                  weak | 26         |
+| reversibility/recovery       |                    no | 31         |
+| safety guardrails            |               partial | 33         |
+| credit-cycle realism         |                    no | 34         |
+| recurring cashflow           |                    no | 35         |
+| empirical quality proof      |                    no | 36–37      |
+| privacy/retention            |                  weak | 38         |
+| threat model                 |                  weak | 39         |
+| sandbox rollout              |                    no | 40         |
+| product focus                |                    no | 43         |
+
+---
+
