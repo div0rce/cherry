@@ -28,6 +28,7 @@ Last updated: 2026-01-31
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
 - Engine optimality versions are frozen by `check:engine-optimality-version`.
+- Objective semantics are enforced for live objective paths via `check:objective-semantics`.
 - Guardrail runner supports `--aggregate` shadow execution; it accepts guardrail names only (no per-guardrail args) and reports in registry order by default (`--sort=name` for alphabetical).
 - Workflow presence, quoted expressions, runner-context, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:workflow-runner-context`, `check:no-workflow-force-delete`).
 
@@ -350,6 +351,12 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - EngineInput imports must use the canonical module path.
 - Boundary files (`lib/engine/input/**`, `check:engine-freeze`) may not use array element access (`arr[i]`).
 - Enforcement: `check:engine-input-boundary`.
+
+### Guardrail 57 — Objective Semantics
+
+- Live objective math under `lib/engine/objective.ts`, `lib/engine/objective/**`, and `lib/simulation/**` must not use raw issuer points or legacy `POINTS_PER_DOLLAR` values as objective value.
+- Reward points must convert through `rewardPointsToUtilityCents`.
+- Enforcement: `check:objective-semantics`.
 
 ### Guardrail 58 — Replay Staging Hygiene
 

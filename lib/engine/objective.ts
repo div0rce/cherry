@@ -19,6 +19,35 @@ import {
 } from './types.js';
 import { getRewardSemanticsForCardSpend } from './reward-semantics.js';
 import { DEFAULT_ENGINE_RUNTIME, type EngineRuntime } from './runtime.js';
+import {
+  OBJECTIVE_SCORE_UNIT,
+  centsToUtilityCents,
+  rewardPointsToUtilityCents,
+  sumObjectiveUtility,
+  utilityCents,
+  type ObjectiveComponent,
+  type UtilityCents,
+} from './objective/utility.js';
+
+export {
+  OBJECTIVE_SCORE_UNIT,
+  POINTS_PER_DOLLAR,
+  REWARD_POINT_VALUE_CENTS,
+  centsToUtilityCents,
+  dollarsToUtilityCents,
+  pointsToUtilityCents,
+  rewardPointsToUtilityCents,
+  sumObjectiveUtility,
+  utilityCents,
+  type ObjectiveComponent,
+  type ObjectiveComponentKind,
+  type ObjectiveScoreUnit,
+  type UtilityCents,
+} from './objective/utility.js';
+
+export const UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT = 0.0001;
+export const DEBT_BALANCE_RELIEF_UTILITY_CENTS_PER_DEBT_CENT = 0.0001;
+export const PAYDOWN_ACTION_BONUS_UTILITY_CENTS = 1;
 
 function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
@@ -156,7 +185,45 @@ export function getObjectiveWeightsForState(
   return getObjectiveWeightsForPreferences(state.preferences, runtime);
 }
 
-function scoreComponents(
+type ObjectiveBuildResult = {
+  objectiveUtilityCents: UtilityCents;
+  scoreComponents: readonly ObjectiveComponent[];
+  components: ObjectiveComponentScores;
+  weights: ObjectiveWeights;
+};
+
+function weightedUtilityCents(value: UtilityCents, weight: number): UtilityCents {
+  return utilityCents(Number(value) * weight);
+}
+
+function pushWeightedComponent(
+  components: ObjectiveComponent[],
+  params: {
+    key: string;
+    kind: ObjectiveComponent['kind'];
+    rawUtilityCents: UtilityCents;
+    weight: number;
+    interpretation: string;
+    boundedHeuristic?: boolean;
+  }
+): UtilityCents {
+  const utilityCentsValue = weightedUtilityCents(params.rawUtilityCents, params.weight);
+  if (utilityCentsValue === 0) return utilityCentsValue;
+  components.push({
+    key: params.key,
+    kind: params.kind,
+    utilityCents: utilityCentsValue,
+    interpretation: params.interpretation,
+    ...(params.boundedHeuristic === true ? { boundedHeuristic: true } : {}),
+  });
+  return utilityCentsValue;
+}
+
+function basisPoints(delta: number): number {
+  return delta * 10_000;
+}
+
+function buildObjective(
   state: EngineState,
   ctx: EngineContext,
   action: EngineAction,
@@ -164,10 +231,18 @@ function scoreComponents(
     buckets: BucketProjection[];
     debt: DebtProjection[];
     cash: CashProjection;
-  }
-): ObjectiveComponentScores {
-  // 1) Rewards estimate.
-  let rewards = 0;
+  },
+  weights: ObjectiveWeights
+): ObjectiveBuildResult {
+  const normalizedWeights = normalizeObjectiveWeights(weights);
+  const scoreComponents: ObjectiveComponent[] = [];
+  const components: ObjectiveComponentScores = {
+    rewards: 0,
+    runway: 0,
+    debtRelief: 0,
+  };
+
+  // 1) Reward estimate. Points are explicitly valued before entering the objective.
   if (
     (action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
     hasNonEmptyString(action.cardId) &&
@@ -180,12 +255,36 @@ function scoreComponents(
         amountCents: ctx.amountCents,
         merchantCategoryKey: ctx.merchantCategoryKey,
       });
-      rewards = centsOrZero(rewardSemantics?.rewardValueCents);
+      if (rewardSemantics?.rewardUnit === 'cashback_cents') {
+        const rewardValueCents = centsToUtilityCents(centsOrZero(rewardSemantics.rewardValueCents));
+        components.rewards = Number(rewardValueCents);
+        pushWeightedComponent(scoreComponents, {
+          key: 'reward_value',
+          kind: 'reward_value',
+          rawUtilityCents: rewardValueCents,
+          weight: normalizedWeights.rewards,
+          interpretation:
+            'Cashback reward value converted at face value into objectiveUtilityCents and multiplied by the rewards preference weight.',
+        });
+      } else if (rewardSemantics?.rewardUnit === 'issuer_points') {
+        const rewardPoints =
+          rewardSemantics.rewardPoints == null ? 0 : rewardSemantics.rewardPoints;
+        const rewardValueCents = rewardPointsToUtilityCents(rewardPoints);
+        components.rewards = Number(rewardValueCents);
+        pushWeightedComponent(scoreComponents, {
+          key: 'reward_point_value',
+          kind: 'reward_value',
+          rawUtilityCents: rewardValueCents,
+          weight: normalizedWeights.rewards,
+          interpretation:
+            'Issuer points converted through REWARD_POINT_VALUE_CENTS into objectiveUtilityCents and multiplied by the rewards preference weight.',
+        });
+      }
     }
   }
 
-  // 2) Runway: prefer leaving room in essential buckets.
-  let runway = 0;
+  // 2) Runway: bounded heuristic pressure for essential liquidity margin.
+  let essentialMarginUtilityCents = 0;
   const capabilities = getEngineCapabilities(state);
   if (capabilities.essentiality.available === true) {
     for (const proj of projections.buckets) {
@@ -196,16 +295,27 @@ function scoreComponents(
         isBucketEssential(bucket) &&
         bucket.limitCents != null
       ) {
-        runway += proj.projectedRemainingCents;
+        essentialMarginUtilityCents += proj.projectedRemainingCents;
       }
     }
   }
+  if (essentialMarginUtilityCents !== 0) {
+    components.runway += essentialMarginUtilityCents;
+    pushWeightedComponent(scoreComponents, {
+      key: 'essential_margin_runway',
+      kind: 'liquidity_pressure',
+      rawUtilityCents: utilityCents(essentialMarginUtilityCents),
+      weight: normalizedWeights.runway,
+      interpretation:
+        'Bounded non-utility heuristic for projected essential bucket margin, multiplied by the runway preference weight.',
+      boundedHeuristic: true,
+    });
+  }
 
-  // 3) Debt relief: reward lower utilization or balances, plus explicit paydowns.
-  // This remains a bounded heuristic, but the subterms are now explicit.
-  let utilizationImprovementScore = 0;
-  let balanceReductionScore = 0;
-  let paydownActionBonus = 0;
+  // 3) Debt relief: bounded utility-adjusted contribution with explicit constants.
+  let utilizationReliefUtilityCents = 0;
+  let balanceReliefUtilityCents = 0;
+  let paydownActionUtilityCents = 0;
   const debts = getDebtAccounts(state.debts);
   if (capabilities.debt.available === true) {
     for (const proj of projections.debt) {
@@ -223,10 +333,13 @@ function scoreComponents(
         proj.projectedUtilization != null &&
         currentUtil != null
       ) {
-        utilizationImprovementScore += currentUtil - proj.projectedUtilization;
+        utilizationReliefUtilityCents +=
+          basisPoints(currentUtil - proj.projectedUtilization) *
+          UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT;
       } else {
         const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
-        balanceReductionScore += balanceDelta / 100_00;
+        balanceReliefUtilityCents +=
+          balanceDelta * DEBT_BALANCE_RELIEF_UTILITY_CENTS_PER_DEBT_CENT;
       }
     }
   }
@@ -238,34 +351,58 @@ function scoreComponents(
     !Number.isNaN(action.paydownAmountCents) &&
     action.paydownAmountCents !== 0
   ) {
-    paydownActionBonus += 1;
+    paydownActionUtilityCents += PAYDOWN_ACTION_BONUS_UTILITY_CENTS;
   }
   const debtRelief =
-    utilizationImprovementScore + balanceReductionScore + paydownActionBonus;
+    utilizationReliefUtilityCents + balanceReliefUtilityCents + paydownActionUtilityCents;
+  if (debtRelief !== 0) {
+    components.debtRelief = Number(utilityCents(debtRelief));
+    pushWeightedComponent(scoreComponents, {
+      key: 'debt_relief',
+      kind: 'debt_relief',
+      rawUtilityCents: utilityCents(debtRelief),
+      weight: normalizedWeights.debtRelief,
+      interpretation:
+        'Debt relief converted through explicit utilization and balance-relief utility constants, then multiplied by the debt-relief preference weight.',
+      boundedHeuristic: true,
+    });
+  }
 
   if (action.type === 'DELAY_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
-    runway -= 0.01 * ctx.amountCents;
+    const delayPenalty = -0.01 * ctx.amountCents;
+    components.runway += delayPenalty;
+    pushWeightedComponent(scoreComponents, {
+      key: 'delay_purchase_liquidity_pressure',
+      kind: 'liquidity_pressure',
+      rawUtilityCents: utilityCents(delayPenalty),
+      weight: normalizedWeights.runway,
+      interpretation:
+        'Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.',
+      boundedHeuristic: true,
+    });
   }
 
   if (action.type === 'REJECT_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
-    runway -= 0.05 * ctx.amountCents;
+    const rejectPenalty = -0.05 * ctx.amountCents;
+    components.runway += rejectPenalty;
+    pushWeightedComponent(scoreComponents, {
+      key: 'reject_purchase_liquidity_pressure',
+      kind: 'liquidity_pressure',
+      rawUtilityCents: utilityCents(rejectPenalty),
+      weight: normalizedWeights.runway,
+      interpretation:
+        'Bounded non-utility penalty used to represent the friction of rejecting the purchase while protecting constraints.',
+      boundedHeuristic: true,
+    });
   }
 
+  const objectiveUtilityCents = sumObjectiveUtility(scoreComponents);
   return {
-    rewards,
-    runway,
-    debtRelief,
+    objectiveUtilityCents,
+    scoreComponents,
+    components,
+    weights: normalizedWeights,
   };
-}
-
-function combineScores(components: ObjectiveComponentScores, weights: ObjectiveWeights): number {
-  const w = normalizeObjectiveWeights(weights);
-
-  return (
-    components.rewards * w.rewards +
-    components.runway * w.runway +
-    components.debtRelief * w.debtRelief
-  );
 }
 
 // Main scoring function that returns a scalar + human-readable reasons.
@@ -279,11 +416,17 @@ export function scoreDecision(
     cash: CashProjection;
   },
   weights?: ObjectiveWeights
-): { score: number; reasons: string[]; components: ObjectiveComponentScores; weights: ObjectiveWeights } {
-  const components = scoreComponents(state, ctx, action, projections);
+): {
+  score: number;
+  objectiveUtilityCents: UtilityCents;
+  scoreUnit: typeof OBJECTIVE_SCORE_UNIT;
+  scoreComponents: readonly ObjectiveComponent[];
+  reasons: string[];
+  components: ObjectiveComponentScores;
+  weights: ObjectiveWeights;
+} {
   const resolvedWeights = weights == null ? getObjectiveWeightsForState(state) : weights;
-  const normalizedWeights = normalizeObjectiveWeights(resolvedWeights);
-  const score = combineScores(components, normalizedWeights);
+  const objective = buildObjective(state, ctx, action, projections, resolvedWeights);
 
   const reasons: string[] = [];
   const rewardSemantics =
@@ -301,18 +444,25 @@ export function scoreDecision(
 
   if (rewardValueCents > 0) {
     reasons.push(
-      `Estimated cashback value: $${formatCentsAsDollars(rewardValueCents)}.`
+      `Estimated cashback objective value: $${formatCentsAsDollars(rewardValueCents)} before preference weighting.`
     );
   } else if (rewardPoints > 0) {
-    reasons.push(`Estimated issuer points: ${rewardPoints}.`);
+    const pointUtilityCents = rewardPointsToUtilityCents(rewardPoints);
+    reasons.push(
+      `Estimated issuer point objective value: $${formatCentsAsDollars(pointUtilityCents)} using REWARD_POINT_VALUE_CENTS.`
+    );
   }
 
-  if (components.runway !== 0) {
-    reasons.push('Heuristic essential-margin runway adjusted.');
+  if (objective.components.runway !== 0) {
+    reasons.push(
+      'Applied bounded liquidity-pressure heuristic in objectiveUtilityCents.'
+    );
   }
 
-  if (components.debtRelief !== 0) {
-    reasons.push('Debt-pressure relief adjusted heuristically.');
+  if (objective.components.debtRelief !== 0) {
+    reasons.push(
+      'Applied bounded debt-relief contribution through documented utility constants.'
+    );
   }
 
   if (
@@ -339,7 +489,15 @@ export function scoreDecision(
     reasons.push('Recommends skipping this purchase to protect constraints.');
   }
 
-  return { score, reasons, components, weights: normalizedWeights };
+  return {
+    score: objective.objectiveUtilityCents,
+    objectiveUtilityCents: objective.objectiveUtilityCents,
+    scoreUnit: OBJECTIVE_SCORE_UNIT,
+    scoreComponents: objective.scoreComponents,
+    reasons,
+    components: objective.components,
+    weights: objective.weights,
+  };
 }
 
 export function scoreAction(
@@ -352,8 +510,19 @@ export function scoreAction(
     cash: CashProjection;
   },
   weights: ObjectiveWeights
-): { score: number; components: ObjectiveComponentScores } {
-  const components = scoreComponents(state, ctx, action, projections);
-  const score = combineScores(components, weights);
-  return { score, components };
+): {
+  score: number;
+  objectiveUtilityCents: UtilityCents;
+  scoreUnit: typeof OBJECTIVE_SCORE_UNIT;
+  scoreComponents: readonly ObjectiveComponent[];
+  components: ObjectiveComponentScores;
+} {
+  const objective = buildObjective(state, ctx, action, projections, weights);
+  return {
+    score: objective.objectiveUtilityCents,
+    objectiveUtilityCents: objective.objectiveUtilityCents,
+    scoreUnit: OBJECTIVE_SCORE_UNIT,
+    scoreComponents: objective.scoreComponents,
+    components: objective.components,
+  };
 }

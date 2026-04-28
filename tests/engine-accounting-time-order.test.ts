@@ -21,6 +21,7 @@ import {
   type EngineDecision,
   type EngineState,
 } from '../lib/engine/types.js';
+import { OBJECTIVE_SCORE_UNIT } from '../lib/engine/objective/utility.js';
 import {
   attachAccountingProof,
   buildAccountingSnapshot,
@@ -50,6 +51,9 @@ function buildDecision(actionType: EngineActionType): EngineDecision {
   return {
     actionId: `decision-${actionType}`,
     action: { type: actionType },
+    objectiveUtilityCents: 1,
+    scoreUnit: OBJECTIVE_SCORE_UNIT,
+    scoreComponents: [],
     score: 1,
     reasons: [],
     projections: { buckets: [], debt: [], cash: { projectedLiquidCents: null, projectedOverdraftRisk: null } },

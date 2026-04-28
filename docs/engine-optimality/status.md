@@ -7,6 +7,10 @@ Last updated: 2026-04-28
 
 Cherry evaluates a bounded generated candidate set with deterministic heuristic ranking. It does not prove global optimality over all possible financial actions.
 
+Live candidate ranking uses `objectiveUtilityCents` with serialized unit label
+`utility_usd_cents`. This is a bounded heuristic objective expressed in one
+canonical unit, not a true global utility function.
+
 ### Proven (bounded)
 
 - Bounded exact optimality is proven for `(objective_v1, candidates_v1)` under
@@ -38,3 +42,4 @@ Cherry evaluates a bounded generated candidate set with deterministic heuristic 
 - `docs/engine-optimality/objective.md`
 - `docs/engine-optimality/candidate-space.md`
 - `docs/engine-optimality/trace.md`
+- `docs/simulation/objective-semantics.md`

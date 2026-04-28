@@ -19,6 +19,7 @@ import {
   createLoadedEngineCapabilities,
   type EngineState,
 } from '../lib/engine/types.js';
+import { OBJECTIVE_SCORE_UNIT } from '../lib/engine/objective/utility.js';
 import {
   buildAccountingSnapshot,
   filterAccountingSafeDecisions,
@@ -152,6 +153,9 @@ async function testFiltersUnsafeDecisions(): Promise<void> {
   const safeDecision: EngineDecisionWithAccounting = {
     actionId: 'safe',
     action: { type: 'REJECT_PURCHASE' },
+    objectiveUtilityCents: 1,
+    scoreUnit: OBJECTIVE_SCORE_UNIT,
+    scoreComponents: [],
     score: 1,
     reasons: [],
     projections: { buckets: [], debt: [], cash: { projectedLiquidCents: null, projectedOverdraftRisk: null } },

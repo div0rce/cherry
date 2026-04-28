@@ -1,0 +1,399 @@
+{
+  "input": {
+    "__version": "engine_input_v1",
+    "balances": {
+      "cash": {
+        "liquidCents": null
+      }
+    },
+    "buckets": [],
+    "cards": [
+      {
+        "id": "card-1",
+        "isActive": true,
+        "isCredit": true,
+        "rewardRules": []
+      }
+    ],
+    "constraints": {
+      "hard": {
+        "maxCardUtilization": null
+      }
+    },
+    "debtCardLinks": [],
+    "debts": [],
+    "preferences": {
+      "customWeights": null,
+      "profileId": "BALANCED"
+    },
+    "request": {
+      "amountCents": 1000,
+      "merchantCategoryKey": "DINING",
+      "surface": "web"
+    },
+    "solver": {
+      "maxCandidates": 64,
+      "weightsOverride": null
+    }
+  },
+  "meta": {
+    "redactionVersion": "replay_redaction_v1",
+    "source": "api/scan",
+    "surface": "web",
+    "timestampMs": 1769878005784,
+    "traceId": "scan-20260131-b08b1416e9ee",
+    "user": "user-e1e1"
+  },
+  "output": {
+    "decisions": [
+      {
+        "accounting": {
+          "proof": [],
+          "proposedTxns": []
+        },
+        "action": {
+          "altMerchantCategoryKey": "DINING",
+          "altMerchantName": "cheaper alternative",
+          "meta": {
+            "reasonHint": "ALT_MERCHANT_SAME_CATEGORY"
+          },
+          "type": "SWITCH_MERCHANT"
+        },
+        "actionId": "switch_merchant:DINING",
+        "components": {
+          "debtRelief": 0,
+          "rewards": 0,
+          "runway": 0
+        },
+        "constraintsBreached": [],
+        "objectiveUtilityCents": 0,
+        "projections": {
+          "buckets": [],
+          "cash": {
+            "projectedLiquidCents": null,
+            "projectedOverdraftRisk": null
+          },
+          "debt": []
+        },
+        "reasons": [
+          "Suggests an alternate merchant in the same category to save cost."
+        ],
+        "score": 0,
+        "scoreComponents": [],
+        "scoreUnit": "utility_usd_cents"
+      },
+      {
+        "accounting": {
+          "proof": [],
+          "proposedTxns": []
+        },
+        "action": {
+          "delayDays": 3,
+          "type": "DELAY_PURCHASE"
+        },
+        "actionId": "delay_purchase:3",
+        "components": {
+          "debtRelief": 0,
+          "rewards": 0,
+          "runway": -10
+        },
+        "constraintsBreached": [],
+        "objectiveUtilityCents": -10,
+        "projections": {
+          "buckets": [],
+          "cash": {
+            "projectedLiquidCents": null,
+            "projectedOverdraftRisk": null
+          },
+          "debt": []
+        },
+        "reasons": [
+          "Applied bounded liquidity-pressure heuristic in objectiveUtilityCents.",
+          "Delays purchase by 3 day(s) to reduce near-term risk."
+        ],
+        "score": -10,
+        "scoreComponents": [
+          {
+            "boundedHeuristic": true,
+            "interpretation": "Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.",
+            "key": "delay_purchase_liquidity_pressure",
+            "kind": "liquidity_pressure",
+            "utilityCents": -10
+          }
+        ],
+        "scoreUnit": "utility_usd_cents"
+      },
+      {
+        "accounting": {
+          "proof": [],
+          "proposedTxns": []
+        },
+        "action": {
+          "delayDays": 7,
+          "type": "DELAY_PURCHASE"
+        },
+        "actionId": "delay_purchase:7",
+        "components": {
+          "debtRelief": 0,
+          "rewards": 0,
+          "runway": -10
+        },
+        "constraintsBreached": [],
+        "objectiveUtilityCents": -10,
+        "projections": {
+          "buckets": [],
+          "cash": {
+            "projectedLiquidCents": null,
+            "projectedOverdraftRisk": null
+          },
+          "debt": []
+        },
+        "reasons": [
+          "Applied bounded liquidity-pressure heuristic in objectiveUtilityCents.",
+          "Delays purchase by 7 day(s) to reduce near-term risk."
+        ],
+        "score": -10,
+        "scoreComponents": [
+          {
+            "boundedHeuristic": true,
+            "interpretation": "Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.",
+            "key": "delay_purchase_liquidity_pressure",
+            "kind": "liquidity_pressure",
+            "utilityCents": -10
+          }
+        ],
+        "scoreUnit": "utility_usd_cents"
+      },
+      {
+        "accounting": {
+          "proof": [],
+          "proposedTxns": []
+        },
+        "action": {
+          "meta": {
+            "reasonHint": "USER_CAN_DECLINE"
+          },
+          "type": "REJECT_PURCHASE"
+        },
+        "actionId": "reject_purchase",
+        "components": {
+          "debtRelief": 0,
+          "rewards": 0,
+          "runway": -50
+        },
+        "constraintsBreached": [],
+        "objectiveUtilityCents": -50,
+        "projections": {
+          "buckets": [],
+          "cash": {
+            "projectedLiquidCents": null,
+            "projectedOverdraftRisk": null
+          },
+          "debt": []
+        },
+        "reasons": [
+          "Applied bounded liquidity-pressure heuristic in objectiveUtilityCents.",
+          "Recommends skipping this purchase to protect constraints."
+        ],
+        "score": -50,
+        "scoreComponents": [
+          {
+            "boundedHeuristic": true,
+            "interpretation": "Bounded non-utility penalty used to represent the friction of rejecting the purchase while protecting constraints.",
+            "key": "reject_purchase_liquidity_pressure",
+            "kind": "liquidity_pressure",
+            "utilityCents": -50
+          }
+        ],
+        "scoreUnit": "utility_usd_cents"
+      }
+    ],
+    "state": {
+      "buckets": [],
+      "capabilities": {
+        "debt": {
+          "available": true,
+          "reason": "loaded"
+        },
+        "essentiality": {
+          "available": true,
+          "reason": "loaded"
+        },
+        "liquidCash": {
+          "available": true,
+          "reason": "loaded"
+        },
+        "utilization": {
+          "available": true,
+          "reason": "loaded"
+        }
+      },
+      "cards": [
+        {
+          "creditLimitCents": 0,
+          "currentBalanceCents": null,
+          "id": "card-1",
+          "isActive": true,
+          "isCredit": true,
+          "isVirtual": false,
+          "issuer": "unknown",
+          "label": "card:card-1",
+          "last4": null,
+          "linkedDebtId": null,
+          "network": "OTHER",
+          "productSlug": null,
+          "rewardRules": [],
+          "userId": "user-e1e1"
+        }
+      ],
+      "cash": {
+        "kind": "available",
+        "value": {
+          "liquidCents": null,
+          "nextPaycheckDateMs": null,
+          "nextPaycheckNetCents": null
+        }
+      },
+      "constraints": {
+        "hard": {
+          "maxCardUtilization": null,
+          "minEssentialCoverageDays": 0
+        },
+        "soft": {
+          "avoidInterest": false,
+          "avoidNewDebt": false
+        }
+      },
+      "debts": {
+        "kind": "available",
+        "value": []
+      },
+      "preferences": {
+        "profileId": "BALANCED"
+      },
+      "scheduledPaydowns": {
+        "kind": "unavailable"
+      },
+      "userId": "user-e1e1",
+      "world": {
+        "baseInterestRate": null,
+        "inflationEstimate": null
+      }
+    },
+    "trace": {
+      "candidates": [
+        {
+          "action": {
+            "altMerchantCategoryKey": "DINING",
+            "altMerchantName": "cheaper alternative",
+            "meta": {
+              "reasonHint": "ALT_MERCHANT_SAME_CATEGORY"
+            },
+            "type": "SWITCH_MERCHANT"
+          },
+          "components": {
+            "debtRelief": 0,
+            "rewards": 0,
+            "runway": 0
+          },
+          "constraintsBreached": [],
+          "objectiveUtilityCents": 0,
+          "score": 0,
+          "scoreComponents": [],
+          "scoreUnit": "utility_usd_cents"
+        },
+        {
+          "action": {
+            "delayDays": 3,
+            "type": "DELAY_PURCHASE"
+          },
+          "components": {
+            "debtRelief": 0,
+            "rewards": 0,
+            "runway": -10
+          },
+          "constraintsBreached": [],
+          "objectiveUtilityCents": -10,
+          "score": -10,
+          "scoreComponents": [
+            {
+              "boundedHeuristic": true,
+              "interpretation": "Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.",
+              "key": "delay_purchase_liquidity_pressure",
+              "kind": "liquidity_pressure",
+              "utilityCents": -10
+            }
+          ],
+          "scoreUnit": "utility_usd_cents"
+        },
+        {
+          "action": {
+            "delayDays": 7,
+            "type": "DELAY_PURCHASE"
+          },
+          "components": {
+            "debtRelief": 0,
+            "rewards": 0,
+            "runway": -10
+          },
+          "constraintsBreached": [],
+          "objectiveUtilityCents": -10,
+          "score": -10,
+          "scoreComponents": [
+            {
+              "boundedHeuristic": true,
+              "interpretation": "Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.",
+              "key": "delay_purchase_liquidity_pressure",
+              "kind": "liquidity_pressure",
+              "utilityCents": -10
+            }
+          ],
+          "scoreUnit": "utility_usd_cents"
+        },
+        {
+          "action": {
+            "meta": {
+              "reasonHint": "USER_CAN_DECLINE"
+            },
+            "type": "REJECT_PURCHASE"
+          },
+          "components": {
+            "debtRelief": 0,
+            "rewards": 0,
+            "runway": -50
+          },
+          "constraintsBreached": [],
+          "objectiveUtilityCents": -50,
+          "score": -50,
+          "scoreComponents": [
+            {
+              "boundedHeuristic": true,
+              "interpretation": "Bounded non-utility penalty used to represent the friction of rejecting the purchase while protecting constraints.",
+              "key": "reject_purchase_liquidity_pressure",
+              "kind": "liquidity_pressure",
+              "utilityCents": -50
+            }
+          ],
+          "scoreUnit": "utility_usd_cents"
+        }
+      ],
+      "contextSummary": {
+        "amountCents": 1000,
+        "merchantCategoryKey": "DINING",
+        "surface": "web"
+      },
+      "diagnostics": [],
+      "engineVersion": "v0.2.0",
+      "stateSummary": {
+        "bucketCount": 0,
+        "cardCount": 1,
+        "debtCount": 0
+      },
+      "weights": {
+        "debtRelief": 1,
+        "rewards": 1,
+        "runway": 1
+      }
+    }
+  }
+}

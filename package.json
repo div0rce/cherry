@@ -120,6 +120,7 @@
     "check:engine-date": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-date",
     "check:engine-optimality": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-optimality",
     "check:engine-optimality-version": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-optimality-version",
+    "check:objective-semantics": "npm run ts:esm -- scripts/guardrails/run.mts check:objective-semantics",
     "check:catch-unknown": "npm run ts:esm -- scripts/guardrails/run.mts check:catch-unknown",
     "check:guardrails-core": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrails-core",
     "check:repo-guardrails": "npm run ts:esm -- scripts/guardrails/run.mts check:repo-guardrails",
