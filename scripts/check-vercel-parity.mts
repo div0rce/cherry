@@ -34,9 +34,10 @@ if (!isVercel) {
   if (!Number.isFinite(major) || !Number.isFinite(minor) || !Number.isFinite(patch)) {
     guardrailFail('Unable to parse Node version', [process.version]);
   }
-  const satisfiesNodeEngine = major === 24 && (minor > 15 || (minor === 15 && patch >= 0));
+  const satisfiesNodeEngine =
+    major === 24 && (minor > 14 || (minor === 14 && patch >= 1));
   if (!satisfiesNodeEngine) {
-    guardrailFail('Node version must satisfy engines.node >=24.15.0 <25', [process.version]);
+    guardrailFail('Node version must satisfy engines.node >=24.14.1 <25', [process.version]);
   }
 
   const tmpRoot = process.env['CHERRY_TMP_ROOT'];
