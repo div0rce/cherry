@@ -6,6 +6,7 @@ import {
 } from '../guardrails.js';
 import { simulateAction } from '../simulate.js';
 import type { EngineContext, EngineDecision, EngineState } from '../types.js';
+import { OBJECTIVE_SCORE_UNIT } from '../objective/utility.js';
 import type { Candidate } from './candidates.js';
 import { candidateKey, normalizeCandidate, normalizeCandidateToAction } from './normalize.js';
 
@@ -27,6 +28,9 @@ export function isAdmissible(
   const decision: EngineDecision = {
     actionId: candidateKey(normalized),
     action,
+    objectiveUtilityCents: 0,
+    scoreUnit: OBJECTIVE_SCORE_UNIT,
+    scoreComponents: [],
     score: 0,
     reasons: [],
     projections,

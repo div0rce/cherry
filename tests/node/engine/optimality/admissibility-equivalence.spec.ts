@@ -7,6 +7,7 @@ import {
   evaluateConstraintsForDecision,
   formatConstraintTag,
   getHardConstraints,
+  OBJECTIVE_SCORE_UNIT,
   simulateAction,
   solveDecision,
   unavailable,
@@ -260,6 +261,9 @@ function engineEvaluate(
   const decision: EngineDecision = {
     actionId: candidateKey(normalized),
     action,
+    objectiveUtilityCents: 0,
+    scoreUnit: OBJECTIVE_SCORE_UNIT,
+    scoreComponents: [],
     score: 0,
     reasons: [],
     projections,

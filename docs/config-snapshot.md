@@ -9699,6 +9699,7 @@ export default nextConfig;
     "check:engine-date": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-date",
     "check:engine-optimality": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-optimality",
     "check:engine-optimality-version": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-optimality-version",
+    "check:objective-semantics": "npm run ts:esm -- scripts/guardrails/run.mts check:objective-semantics",
     "check:catch-unknown": "npm run ts:esm -- scripts/guardrails/run.mts check:catch-unknown",
     "check:guardrails-core": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrails-core",
     "check:repo-guardrails": "npm run ts:esm -- scripts/guardrails/run.mts check:repo-guardrails",
@@ -10774,6 +10775,7 @@ const CONFIG_SNAPSHOT_PATH = `${CHECK_PATH_BASE}config-snapshot.mts` as const;
 const ENGINE_OPTIMALITY_PATH = `${CHECK_PATH_BASE}engine-optimality.mts` as const;
 const ENGINE_OPTIMALITY_VERSION_PATH = `${CHECK_PATH_BASE}engine-optimality-version.mts` as const;
 const ENGINE_INPUT_BOUNDARY_PATH = `${CHECK_PATH_BASE}engine-input-boundary.mts` as const;
+const OBJECTIVE_SEMANTICS_PATH = `${CHECK_PATH_BASE}objective-semantics.mts` as const;
 const REPLAY_STAGING_EMPTY_PATH = `${CHECK_PATH_BASE}replay-staging-empty.mts` as const;
 const REPLAY_OBJECT_STORE_PATH = `${CHECK_PATH_BASE}replay-object-store.mts` as const;
 const ENV_CONTRACT_PATH = `${CHECK_PATH_BASE}env-contract.mts` as const;
@@ -10882,6 +10884,7 @@ export const GUARDRAILS = Object.freeze({
   'check:engine-optimality': ENGINE_OPTIMALITY_PATH,
   'check:engine-optimality-version': ENGINE_OPTIMALITY_VERSION_PATH,
   'check:engine-input-boundary': ENGINE_INPUT_BOUNDARY_PATH,
+  'check:objective-semantics': OBJECTIVE_SEMANTICS_PATH,
   'check:replay-staging-empty': REPLAY_STAGING_EMPTY_PATH,
   'check:replay-object-store': REPLAY_OBJECT_STORE_PATH,
   'check:env-contract': ENV_CONTRACT_PATH,

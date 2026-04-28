@@ -2,6 +2,11 @@
 // These types are intentionally decoupled from Prisma and React so the engine
 // can run in isolation and be reused across surfaces.
 
+import type {
+  ObjectiveComponent,
+  ObjectiveScoreUnit,
+} from './objective/utility.js';
+
 export type EngineSurface =
   | 'web'
   | 'extension'
@@ -274,6 +279,10 @@ export type CashProjection = {
 export type EngineDecision = {
   actionId: string;
   action: EngineAction;
+  objectiveUtilityCents: number;
+  scoreUnit: ObjectiveScoreUnit;
+  scoreComponents: readonly ObjectiveComponent[];
+  // Compatibility alias for objectiveUtilityCents.
   score: number;
   reasons: string[];
   projections: {
@@ -335,6 +344,10 @@ export type EngineDecisionTrace = {
   };
   candidates: {
     action: EngineAction;
+    objectiveUtilityCents: number;
+    scoreUnit: ObjectiveScoreUnit;
+    scoreComponents: readonly ObjectiveComponent[];
+    // Compatibility alias for objectiveUtilityCents.
     score: number;
     constraintsBreached: string[];
     components?: ObjectiveComponentScores;

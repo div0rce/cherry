@@ -24,7 +24,15 @@ Last updated: 2026-01-18
 
 The vector is total for all finite scores and uses only stable strings.
 
-The underlying scalar score that feeds this vector is bounded heuristic scoring, not a claim of economic optimality. Live dimensions are limited to `rewards`, `runway`, and `debtRelief`, and raw issuer points are not treated as monetary value unless runtime truth provides an explicit valuation.
+The underlying scalar score that feeds this vector is `objectiveUtilityCents`
+with serialized unit label `utility_usd_cents`. It is bounded heuristic scoring,
+not a claim of economic optimality. Live dimensions are converted into
+documented utility-adjusted USD cents before ranking. Component `utilityCents`
+values are final objective contributions after configured preference weights and
+should not be interpreted as literal market cash value.
+
+Raw issuer points do not enter objective math directly. They are converted
+through `REWARD_POINT_VALUE_CENTS`.
 
 ### Ordering and tie-break
 
@@ -58,3 +66,4 @@ and injective.
 - `docs/engine-optimality/candidate-space.md`
 - `docs/engine-optimality/status.md`
 - `docs/engine-optimality/trace.md`
+- `docs/simulation/objective-semantics.md`

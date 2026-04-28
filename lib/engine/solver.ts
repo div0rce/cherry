@@ -155,7 +155,14 @@ export async function solveDecision(
 
   for (const action of surfaceFilteredCandidates) {
     const projections = simulateAction(state, ctx, action, { scheduledPaydownEvaluation });
-    const { score, reasons, components } = scoreDecision(state, ctx, action, projections, weights);
+    const {
+      score,
+      objectiveUtilityCents,
+      scoreUnit,
+      scoreComponents,
+      reasons,
+      components,
+    } = scoreDecision(state, ctx, action, projections, weights);
     const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
 
     for (const constraint of hardConstraints) {
@@ -165,6 +172,9 @@ export async function solveDecision(
     decisions.push({
       actionId: buildActionId(action),
       action,
+      objectiveUtilityCents,
+      scoreUnit,
+      scoreComponents,
       score,
       reasons,
       projections,
@@ -198,6 +208,9 @@ export async function solveDecision(
     },
     candidates: surfaced.map((d) => ({
       action: d.action,
+      objectiveUtilityCents: d.objectiveUtilityCents,
+      scoreUnit: d.scoreUnit,
+      scoreComponents: d.scoreComponents,
       score: d.score,
       constraintsBreached: d.constraintsBreached,
       ...(d.components ? { components: d.components } : {}),

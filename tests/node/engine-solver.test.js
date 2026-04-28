@@ -12,6 +12,7 @@ const {
   evaluateConstraintsForDecision,
   enforceHardConstraints,
   EngineError,
+  OBJECTIVE_SCORE_UNIT,
   createLoadedEngineCapabilities,
   createUnavailableEngineCapabilities,
   getEngineRuntimeMetadata,
@@ -279,6 +280,67 @@ async function testMaxCandidatesCapsRankedOutputNotEvaluationOrder() {
 
   assert.equal(await topCardIdFor([bad, good]), 'card-good');
   assert.equal(await topCardIdFor([good, bad]), 'card-good');
+}
+
+async function testLiveObjectiveOutputShapeAndPointConversion() {
+  const state = buildStubState({
+    cards: [
+      {
+        id: 'card-points',
+        userId: 'user-1',
+        issuer: 'Issuer',
+        label: 'Points Card',
+        network: 'VISA',
+        productSlug: null,
+        rewardRules: [
+          {
+            id: 'rule-points',
+            cardId: 'card-points',
+            categoryKey: 'DINING',
+            rateType: 'POINTS_PER_DOLLAR',
+            rateValue: 5,
+            confidence: 1,
+            source: 'STATIC_CONFIG',
+          },
+        ],
+        isCredit: false,
+        isActive: true,
+        isVirtual: false,
+      },
+    ],
+  });
+  const ctx = buildStubContext({ amountCents: 1_000 });
+  const result = await solveDecision(state, ctx, {
+    candidateActionsOverride: [{ type: 'USE_CARD', cardId: 'card-points' }],
+    maxCandidates: 1,
+  });
+  const decision = result.decisions[0];
+
+  assert.ok(decision);
+  assert.equal(decision.scoreUnit, OBJECTIVE_SCORE_UNIT);
+  assert.equal(decision.score, decision.objectiveUtilityCents);
+  assert.ok(Array.isArray(decision.scoreComponents));
+  assert.equal(decision.scoreComponents.length > 0, true);
+  assert.equal(
+    decision.scoreComponents.every(
+      (component) =>
+        typeof component.interpretation === 'string' &&
+        component.interpretation.length > 0
+    ),
+    true
+  );
+  assert.ok(
+    decision.scoreComponents.some(
+      (component) =>
+        component.key === 'reward_point_value' && component.utilityCents === 50
+    )
+  );
+  assert.equal(result.trace.candidates[0]?.scoreUnit, OBJECTIVE_SCORE_UNIT);
+  assert.equal(
+    result.trace.candidates[0]?.objectiveUtilityCents,
+    result.trace.candidates[0]?.score
+  );
+  assert.ok(Array.isArray(result.trace.candidates[0]?.scoreComponents));
 }
 
 async function testDeterministicOrderingForEqualScores() {
@@ -1326,6 +1388,7 @@ function testGetEngineCapabilitiesDefaultsToUnavailable() {
 async function run() {
   await testSolveDecisionSorts();
   await testMaxCandidatesCapsRankedOutputNotEvaluationOrder();
+  await testLiveObjectiveOutputShapeAndPointConversion();
   await testDeterministicOrderingForEqualScores();
   await testSolveDecisionValidation();
   await testSafeSolveDecisionSuccess();
