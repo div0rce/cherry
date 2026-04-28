@@ -1,11 +1,12 @@
 Status: Active
-Last updated: 2026-01-31
+Last updated: 2026-04-28
 
 # Guardrails
 
 ## Current behavior
 - Guardrail and execution script registration is mandatory; registries are the only authority.
-- CI runs `npm run ci:verify` as the sole truth gate; `check` remains pure (guardrails + lint + typecheck), and env checks live in `check:env`.
+- CI runs fail-fast `check:guardrails` before final `npm run ci:verify`; `ci:verify` is the sole runtime truth gate, and env checks live in `check:env`.
+- `npm test` is the partitioned full runtime runner: root legacy tests, `tests/node`, then `tests/next`; ownership is enforced by `tests/node/guardrails/test-runner-ownership.test.ts`.
 - Script conventions (no raw JSON.parse, no any, .mts only under scripts) live in `docs/script-standards.md`.
 - Guardrail checks now enforce JSON.parse bans in scripts and npm arg forwarding (`check:script-json-parse`, `check:npm-arg-forwarding`).
 - Script runtime boundaries are enforced; scripts may not import app/components/lib-client runtime modules (`check:script-runtime-boundary`).
@@ -465,7 +466,8 @@ Any duplication is a hard CI failure.
 
 - CI must include a step that runs `npm run ci:verify`.
 - The last non-empty command in the CI job must be `npm run ci:verify`.
-- CI must not invoke other npm scripts directly; `ci:verify` is the only entrypoint.
+- CI may run `npm run check:guardrails` before `ci:verify` for fail-fast coverage.
+- CI must not invoke direct runtime scripts (`npm test`, `check`, `check:node`, `check:next`, `check:tests:*`, or `check:run-tests:*`) outside `ci:verify`.
 - Guardrail checks: `check:ci-must-run-check`, `check:ci-guardrail-coverage`.
 
 ### Guardrail 23 — Execution Registry Completeness
@@ -534,6 +536,7 @@ Any duplication is a hard CI failure.
 
 - `ci:verify` must run `check`, `test`, and `build` in order.
 - `check` must remain pure (no env-dependent scripts).
+- `test` must reach `check:run-tests`, the partitioned full runtime runner.
 - `test` and `build` must not invoke guardrails; use `test:strict` and `build:strict` when needed.
 - Guardrail: `check:check-contract`.
 
