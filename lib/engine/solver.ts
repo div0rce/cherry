@@ -129,9 +129,8 @@ export async function solveDecision(
     options.candidateFilter != null
       ? candidateActions.filter((action) => options.candidateFilter?.(action) === true)
       : candidateActions;
-  // PR8.3 intentionally counts exclusions from the surface-filtered generated set before
-  // hard filtering and before score sorting. This is a temporary coupling to pre-PR9
-  // truncation behavior; PR9 may revise evaluation-order semantics.
+  // Count exclusions from the full surface-filtered generated set before hard filtering
+  // and ranking. maxCandidates caps surfaced ranked output only, not evaluation.
   const exclusions = surfaceFilteredCandidates.reduce<EngineExclusions>((acc, action) => {
     if (!actionRequiresResolvableCreditLiability(action)) {
       return acc;
@@ -151,15 +150,10 @@ export async function solveDecision(
     !Number.isNaN(options.maxCandidates)
       ? options.maxCandidates
       : null;
-  const constrainedCandidates =
-    maxCandidates !== null && surfaceFilteredCandidates.length > maxCandidates
-      ? surfaceFilteredCandidates.slice(0, maxCandidates)
-      : surfaceFilteredCandidates;
-
   const decisions: EngineDecision[] = [];
   const hardConstraints = getHardConstraints(state);
 
-  for (const action of constrainedCandidates) {
+  for (const action of surfaceFilteredCandidates) {
     const projections = simulateAction(state, ctx, action, { scheduledPaydownEvaluation });
     const { score, reasons, components } = scoreDecision(state, ctx, action, projections, weights);
     const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
@@ -184,6 +178,10 @@ export async function solveDecision(
     if (primary !== 0) return primary;
     return a.actionId.localeCompare(b.actionId);
   });
+  const surfaced =
+    maxCandidates !== null && filtered.length > maxCandidates
+      ? filtered.slice(0, maxCandidates)
+      : filtered;
 
   const trace: EngineDecisionTrace = {
     engineVersion: ENGINE_VERSION,
@@ -198,7 +196,7 @@ export async function solveDecision(
       merchantCategoryKey: ctx.merchantCategoryKey == null ? null : ctx.merchantCategoryKey,
       amountCents: ctx.amountCents == null ? null : ctx.amountCents,
     },
-    candidates: filtered.map((d) => ({
+    candidates: surfaced.map((d) => ({
       action: d.action,
       score: d.score,
       constraintsBreached: d.constraintsBreached,
@@ -229,7 +227,7 @@ export async function solveDecision(
   }
 
   const result: SolveDecisionResult = {
-    decisions: filtered,
+    decisions: surfaced,
     trace,
     exclusions,
     capabilities,

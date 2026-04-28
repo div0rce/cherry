@@ -1,9 +1,11 @@
 Status: Active
-Last updated: 2026-03-19
+Last updated: 2026-04-28
 
 # Engine Optimality Candidate Space
 
 ## Current behavior
+
+Cherry evaluates a bounded generated candidate set with deterministic heuristic ranking. It does not prove global optimality over all possible financial actions.
 
 ### Candidate space R(B) (bounded)
 
@@ -41,6 +43,7 @@ Each action type has explicit parameter axes bounded by `Bounds`:
 - The live solver is not a future scheduler.
 - Live-generated `PAY_DOWN_DEBT` and `USE_CARD_WITH_PAYDOWN` actions are immediate-only and single-step.
 - `USE_CARD_WITH_PAYDOWN` is ordered as: purchase authorization effect, then immediate paydown effect.
+- `maxCandidates`, when provided to the live solver, caps returned and traced ranked candidates only after deterministic filtering and ranking; it does not prune generated candidates before evaluation.
 
 ### Completeness Lemma (Bounded)
 
