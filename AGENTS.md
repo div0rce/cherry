@@ -96,6 +96,67 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
   - Run `npm run check`, `npm test`, and `npm run build`.
 - For docs: add `Status` + `Last updated`, split Current vs Future, add Related docs.
 
+## GitHub / PR Operating Rule
+From now on, the agent must not treat direct commits to `main` as the normal workflow.
+
+The default development flow is:
+
+1. Start from updated `main`.
+2. Create a focused branch.
+3. Implement the requested change on that branch.
+4. Run the relevant verification commands.
+5. Commit the change with a clear conventional commit message.
+6. Push the branch.
+7. Open or prepare a pull request into `main`.
+8. Do not merge unless explicitly instructed.
+
+Canonical command flow:
+
+```bash
+git checkout main
+git pull --ff-only
+git checkout -b <type>/<short-description>
+
+# implement changes
+
+git status --short
+npm run check
+npm test
+npm run build
+
+git add .
+git commit -m "<type>: <summary>"
+git push -u origin <type>/<short-description>
+```
+
+The pull request must include:
+
+```md
+## Summary
+- what changed
+
+## Testing
+- commands run
+- results
+
+## Risk
+- changed domains
+- possible regressions
+```
+
+Hard rules:
+
+- Never commit directly to `main` unless the user explicitly says to.
+- Never merge a PR unless the user explicitly says to.
+- Never skip verification silently.
+- If verification fails, stop and report the failure.
+- If the working tree is dirty before starting, inspect it first and do not overwrite unrelated user changes.
+- If a branch already exists, reuse it only if it matches the requested task; otherwise create a new branch.
+- Each PR should represent one coherent change. Do not bundle unrelated fixes.
+- Prefer `squash and merge` when the user later asks to merge.
+
+This is now the default operating model for all future repo work.
+
 ## PR Checklist (what each command proves)
 - `npm run check` → guardrails + lint + typecheck are green.
 - `npm test` → unit/guardrail tests green (Prisma mocked by loader).
