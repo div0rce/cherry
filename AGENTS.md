@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-29
+Last updated: 2026-04-28
 
 # Cherry Agents — Canonical Operating Guide
 
@@ -93,14 +93,18 @@ Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Che
   - `npx prisma format`
   - `npx prisma migrate dev --name <desc>`
   - `npx prisma generate`
-  - Run `npm run check`, `npm test`, and `npm run build`.
+  - Run the issue's acceptance commands, or the narrowest proof that covers schema, runtime, and build impact.
 - For docs: add `Status` + `Last updated`, split Current vs Future, add Related docs.
 
 ## PR Checklist (what each command proves)
 - `npm run check` → guardrails + lint + typecheck are green.
-- `npm test` → unit/guardrail tests green (Prisma mocked by loader).
+- `npm test` → partitioned full runtime suite: root legacy tests, `tests/node`, then `tests/next` (Prisma mocked by loader).
 - `npm run build` → Next.js build passes.
 - `npm run ci:verify` → mirrors CI entrypoint.
+- `npm run test:db` → DB/env tests only; not part of standard mocked runtime proof.
+- `npm run check:fast` → local guardrails + script typecheck + partitioned runtime suite.
+- Full repo proof → `CHERRY_TMP_ROOT="$HOME/.cherry-tmp" CHERRY_VINE_SIGNATURE_MODE=enforce npm run verify:repo-closure`.
+- Agents must not run both `npm test` and `verify:repo-closure` unless explicitly required.
 - If schema changed: migrations apply and Prisma client is regenerated.
 
 ## Drift Policy
