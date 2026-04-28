@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-04-28
 
 # Pull Request Checklist
 
@@ -13,10 +13,9 @@ Last updated: 2026-01-02
 ## Testing
 
 - [ ] Not run (explain why)
-- [ ] `npm run check`
-- [ ] `npm test`
-- [ ] `npm run build`
-- [ ] `npm run ci:verify`
+- [ ] Targeted proof for changed surface:
+- [ ] `CHERRY_TMP_ROOT="$HOME/.cherry-tmp" CHERRY_VINE_SIGNATURE_MODE=enforce npm run verify:repo-closure`
+- [ ] `npm run test:db` (only for DB/env changes)
 
 ## Engine Impact
 
