@@ -26,6 +26,20 @@ const CI_WORKFLOW = path.join(WORKFLOWS_DIR, 'ci.yml');
 const CHECK_SCRIPT = 'check';
 const CI_ENTRYPOINT = 'ci:verify';
 const GUARDRAIL_ENTRYPOINT_NAME = GUARDRAIL_ENTRYPOINT;
+const DIRECT_RUNTIME_SCRIPTS = new Set([
+  'check',
+  'check:fast',
+  'check:runtime',
+  'check:node',
+  'check:next',
+  'check:tests',
+  'check:tests:node',
+  'check:tests:next',
+  'check:run-tests',
+  'check:run-tests:node',
+  'check:run-tests:next',
+  'test',
+]);
 
 function readPackageScripts(): PackageScripts {
   const packagePath = path.join(ROOT, 'package.json');
@@ -175,6 +189,68 @@ function assertCheckCoverage(errors: Violation[]): void {
       message: `${GUARDRAIL_ENTRYPOINT} must not use --aggregate`,
     });
   }
+
+  assertScriptChain(errors, scripts, 'ci:verify', ['check', 'test', 'build']);
+  assertScriptChain(errors, scripts, 'check', ['check:guardrails', 'check:node', 'check:next']);
+  assertScriptChain(errors, scripts, 'check:node', ['check:run-tests:node']);
+  assertScriptChain(errors, scripts, 'check:next', ['check:run-tests:next']);
+  assertScriptChain(errors, scripts, 'test', ['check:run-tests']);
+  const runTestsCommand = scripts['check:run-tests'];
+  if (
+    runTestsCommand === undefined ||
+    runTestsCommand.includes('scripts/execution/run.mts') === false ||
+    runTestsCommand.includes('check:run-tests') === false
+  ) {
+    errors.push({
+      file: pkgPath,
+      line: 1,
+      col: 1,
+      message: 'npm test must reach check:run-tests through the execution registry',
+    });
+  }
+}
+
+function assertScriptChain(
+  errors: Violation[],
+  scripts: Record<string, string>,
+  scriptName: string,
+  orderedCalls: string[]
+): void {
+  const pkgPath = path.normalize(path.relative(ROOT, 'package.json'));
+  const command = scripts[scriptName];
+  if (command === undefined || command.trim().length === 0) {
+    errors.push({
+      file: pkgPath,
+      line: 1,
+      col: 1,
+      message: `npm script "${scriptName}" is missing`,
+    });
+    return;
+  }
+  const calls = parseGuardrailCalls(command);
+  let lastIndex = -1;
+  for (const expected of orderedCalls) {
+    const index = calls.indexOf(expected);
+    if (index === -1) {
+      errors.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${scriptName} must reach npm run ${expected}`,
+      });
+      continue;
+    }
+    if (index <= lastIndex) {
+      errors.push({
+        file: pkgPath,
+        line: 1,
+        col: 1,
+        message: `${scriptName} must run ${orderedCalls.join(' -> ')} in order`,
+      });
+      return;
+    }
+    lastIndex = index;
+  }
 }
 
 function assertCiRunsCheck(errors: Violation[]): void {
@@ -191,9 +267,7 @@ function assertCiRunsCheck(errors: Violation[]): void {
   const runsCheck = calls.includes(CHECK_SCRIPT);
   const runsEntry = calls.includes(GUARDRAIL_ENTRYPOINT_NAME);
   const runsCiVerify = calls.includes(CI_ENTRYPOINT);
-  const runsCombined = calls.includes('check:tests');
-  const runsNode = calls.includes('check:tests:node');
-  const runsNext = calls.includes('check:tests:next');
+  const directRuntime = calls.filter((name) => DIRECT_RUNTIME_SCRIPTS.has(name));
 
   if (!runsCiVerify) {
     errors.push({
@@ -208,15 +282,15 @@ function assertCiRunsCheck(errors: Violation[]): void {
       file: ciPath,
       line: 1,
       col: 1,
-      message: `CI must run ${GUARDRAIL_ENTRYPOINT_NAME} before runtime tests`,
+      message: `CI must run ${GUARDRAIL_ENTRYPOINT_NAME} before ${CI_ENTRYPOINT}`,
     });
   }
-  if (!runsCombined && !(runsNode && runsNext)) {
+  if (directRuntime.length > 0) {
     errors.push({
       file: ciPath,
       line: 1,
       col: 1,
-      message: 'CI must run check:tests (or both check:tests:node and check:tests:next)',
+      message: `CI must not run runtime tests directly outside ${CI_ENTRYPOINT}: ${directRuntime.join(', ')}`,
     });
   }
   if (runsCheck) {
