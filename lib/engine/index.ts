@@ -13,3 +13,4 @@ export * from './scheduled-paydowns.js';
 export * from './temporal-response.js';
 export * from './public-types.js';
 export * from './public.js';
+export * from './horizon/index.js';
