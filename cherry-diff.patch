@@ -1,20 +1,1308 @@
-diff --git a/README.md b/README.md
-index 6158518673cc78ff3ec5e2ccfc98c774eccc213b..7960d5d784b96ba24c34521d7d952018a2f58470 100644
---- a/README.md
-+++ b/README.md
+diff --git a/docs/horizon-aware-planning.md b/docs/horizon-aware-planning.md
+index 2f45c71876c1f170370faf148146fb6b3089264b..cdbeae380486092a914d9400a604d2f00f92920e 100644
+--- a/docs/horizon-aware-planning.md
++++ b/docs/horizon-aware-planning.md
+@@ -59,8 +59,22 @@ This is not a UI redesign.
+ The horizon subsystem is generic. It accepts injected policy and transition
+ functions and does not import solver internals.
+ 
++## Expected-Value Overlay
++
++PR12 adds a separate expected-value wrapper for horizon rollout. Deterministic
++`runHorizonRollout` remains the base primitive.
++
++Expected-value rollout samples labeled numeric uncertainty before each
++deterministic rollout, then aggregates utility in `utility_usd_cents` through an
++explicit utility extractor. Transition functions still receive concrete state,
++not distributions.
++
++Expected-value output is labeled as expectation. It must not be described as a
++guaranteed future outcome.
++
+ ## Related docs
+ 
+ - `docs/engine-time-semantics.md`
+ - `docs/engine-optimality/trace.md`
+ - `docs/simulation/objective-semantics.md`
++- `docs/simulation/uncertainty-modeling.md`
+diff --git a/docs/simulation/objective-semantics.md b/docs/simulation/objective-semantics.md
+index 22462ed4d62c1b74b697925450ed1b3816841064..48de22bb2edb5b7ef0cdeb15187f9e15e3747924 100644
+--- a/docs/simulation/objective-semantics.md
++++ b/docs/simulation/objective-semantics.md
 @@ -1,5 +1,5 @@
  Status: Active
--Last updated: 2026-01-03
-+Last updated: 2026-04-27
+-Last updated: 2026-04-28
++Last updated: 2026-04-29
  
- ## What Cherry Is
- Cherry is a **real-time spending copilot**. It observes context (merchant, amount, user budgets/cards), runs an engine, recommends the right card and budget impact, and offers Cherry Points for following advice. Cherry:
-@@ -43,7 +43,7 @@ npm install
- npm run dev
- ```
+ # Objective Semantics
  
--Guardrail tooling requires Node 22.x and a stable PATH (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
-+The repo runtime is Node 24.15.0. Use `.nvmrc` / `engines.node` as the source of truth, and keep PATH stable (e.g. `/usr/bin:/bin:/usr/local/bin`) so `rg`, `git`, and `node` resolve deterministically.
+@@ -60,15 +60,29 @@ does not define a true global utility function.
  
- ## Health Gates (must pass before pushing)
- ```bash
+ Cherry does not claim long-horizon global optimality. It ranks the currently generated candidate set under a documented, unit-consistent objective.
+ 
++### Expected-value overlay
++
++Expected-value simulation aggregates sample utility in the same canonical
++`utility_usd_cents` unit. It is an overlay on deterministic scoring, not a
++replacement for the live objective.
++
++Variance stays in utility-space. Risk-adjusted utility, when used, is computed
++from expected utility and variance with an explicit dimensionless risk
++coefficient. Expected-value explanations must label outputs as expectations,
++not guarantees.
++
+ ## Future/Target behavior
+ 
+ - Any new score dimension must either convert into `objectiveUtilityCents` or be
+   explicitly documented as a bounded non-utility heuristic contribution.
+ - Any change to live objective semantics must update this document, tests, and
+   engine behavior versioning.
++- Add uncertainty or risk metrics only when their unit semantics remain explicit
++  and bounded.
+ 
+ ## Related docs
+ 
+ - `docs/engine-optimality/objective.md`
+ - `docs/engine-optimality/status.md`
+ - `docs/engine-optimality/candidate-space.md`
++- `docs/simulation/uncertainty-modeling.md`
+diff --git a/docs/simulation/uncertainty-modeling.md b/docs/simulation/uncertainty-modeling.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..817be7266d909d026b4231861d1b416f4848e25a
+--- /dev/null
++++ b/docs/simulation/uncertainty-modeling.md
+@@ -0,0 +1,132 @@
++Status: Active
++Last updated: 2026-04-29
++
++# Uncertainty Modeling
++
++## Current behavior
++
++Cherry's deterministic engine remains primary. PR12 adds an expected-value
++overlay for simulation and horizon planning; it does not rewrite transition
++functions or present-time recommendation semantics.
++
++Uncertain inputs are numeric only. They must be represented as labeled
++`UncertainNumber` values at leaf fields:
++
++```ts
++{
++  incomeCents: {
++    label: 'monthly_income',
++    distribution: { kind: 'lognormal', mu: 8, sigma: 0.1 },
++  },
++}
++```
++
++Sampling happens before deterministic rollout. Transition functions receive
++realized numeric state, never distributions.
++
++## Supported distributions
++
++The supported numeric distributions are:
++
++- `point(value)`
++- `bernoulli(p)`
++- `normal(mu, sigma)`
++- `lognormal(mu, sigma)`
++- `discrete(values, probs)`
++
++Distribution parameters are validated before use. Discrete probabilities must
++sum to 1. Nonnegative engine domains such as cents, income, expense, balances,
++limits, cash, liquid amounts, rates, and utilization reject distributions that
++can produce negative samples. Use `lognormal`, nonnegative `point`, or
++nonnegative `discrete` values for positive-only financial quantities.
++
++## Expected-value rollout
++
++Expected-value rollout is exposed separately from deterministic rollout.
++
++```txt
++runHorizonRollout(...)                -> deterministic projection
++runExpectedValueHorizonRollout(...)   -> expected-value projection
++```
++
++The EV wrapper realizes uncertain state once per sample, calls deterministic
++rollout, extracts utility through an explicit `utilityOfRollout` callback, and
++aggregates sample utility.
++
++Sample count is bounded:
++
++- minimum: `100`
++- default: `500`
++- maximum: `5000`
++
++Computational cost is:
++
++```txt
++O(samples * horizon * transition cost)
++```
++
++## Reproducibility
++
++EV runs require an explicit seed. The engine uses a deterministic seeded RNG;
++EV engine paths must not call `Math.random`.
++
++Explanations include the seed and sample count so a simulation can be
++reproduced when the same inputs, policy, transition, and utility extractor are
++used.
++
++## Utility and risk units
++
++Expected utility is aggregated in `utility_usd_cents`, the same canonical unit
++as `objectiveUtilityCents`.
++
++Variance remains in utility-space. PR12 implements only variance-based risk
++adjustment:
++
++```txt
++riskAdjustedUtility = expectedUtility - lambda * variance
++```
++
++`lambda` is a dimensionless risk-aversion coefficient and defaults to `0`
++risk-neutral behavior.
++
++The type surface reserves future risk metric names for semivariance and CVaR,
++but those are not implemented in PR12.
++
++## Explanation contract
++
++Expected-value explanations must label scalars as expectations. They include:
++
++- labeled assumptions
++- distribution strings
++- seed
++- sample count
++- expected outcome
++- variance
++- risk inputs
++- `uncertaintyLevel`
++- `results are expectations, not guarantees`
++
++`uncertaintyLevel` is a relative volatility classification using coefficient
++of variation:
++
++```txt
++cv = sqrt(variance) / abs(expectedUtility)
++```
++
++- `low`: `cv < 0.10`
++- `medium`: `0.10 <= cv <= 0.30`
++- `high`: `cv > 0.30`
++- `unknown`: expected utility is zero or variance is missing
++
++## Future/Target behavior
++
++- Add downside-aware risk metrics only when the explanation and unit semantics
++  are equally explicit.
++- Do not use EV output in production recommendation surfaces until the model is
++  bounded, explainable, and runtime-verified.
++
++## Related docs
++
++- `docs/horizon-aware-planning.md`
++- `docs/simulation/objective-semantics.md`
++- `docs/engine-optimality/objective.md`
+diff --git a/lib/engine/explain/uncertainty.ts b/lib/engine/explain/uncertainty.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..739ad13b4b5ffdc5511aa8b28b0b4a182ec8460b
+--- /dev/null
++++ b/lib/engine/explain/uncertainty.ts
+@@ -0,0 +1,115 @@
++import {
++  collectUncertaintyAssumptions,
++  type UncertaintyAssumption,
++} from '../uncertainty/policy.js';
++import type {
++  NumericDistribution,
++  UncertaintyLevel,
++  UncertaintySeed,
++} from '../uncertainty/types.js';
++
++export type ExpectedValueAssumptionExplanation = {
++  label: string;
++  path: string;
++  distribution: string;
++};
++
++export type ExpectedValueUncertaintyExplanation = {
++  type: 'expected_value';
++  assumptions: readonly ExpectedValueAssumptionExplanation[];
++  seed: UncertaintySeed;
++  samples: number;
++  expectedOutcome: unknown;
++  expectedUtility: number;
++  variance?: number;
++  riskLambda: number;
++  riskAdjustedExpectedUtility?: number;
++  uncertaintyLevel: UncertaintyLevel;
++  confidenceNote: 'results are expectations, not guarantees';
++};
++
++export function formatNumericDistribution(d: NumericDistribution): string {
++  switch (d.kind) {
++    case 'point':
++      return `point(value=${d.value})`;
++    case 'bernoulli':
++      return `bernoulli(p=${d.p})`;
++    case 'normal':
++      return `normal(mu=${d.mean}, sigma=${d.std})`;
++    case 'lognormal':
++      return `lognormal(mu=${d.mu}, sigma=${d.sigma})`;
++    case 'discrete':
++      return `discrete(values=[${d.values.join(',')}], probs=[${d.probs.join(',')}])`;
++    default: {
++      const exhaustive: never = d;
++      throw new Error(`Unsupported distribution: ${JSON.stringify(exhaustive)}`);
++    }
++  }
++}
++
++export function classifyRelativeUncertainty(params: {
++  expectedUtility: number;
++  variance?: number;
++}): UncertaintyLevel {
++  if (
++    params.variance === undefined ||
++    params.variance < 0 ||
++    !Number.isFinite(params.variance) ||
++    !Number.isFinite(params.expectedUtility) ||
++    params.expectedUtility === 0
++  ) {
++    return 'unknown';
++  }
++
++  const cv = Math.sqrt(params.variance) / Math.abs(params.expectedUtility);
++  if (cv < 0.1) return 'low';
++  if (cv <= 0.3) return 'medium';
++  return 'high';
++}
++
++function explainAssumption(
++  assumption: UncertaintyAssumption
++): ExpectedValueAssumptionExplanation {
++  return {
++    label: assumption.label,
++    path: assumption.path,
++    distribution: formatNumericDistribution(assumption.distribution),
++  };
++}
++
++export function buildExpectedValueUncertaintyExplanation(params: {
++  state: unknown;
++  seed: UncertaintySeed;
++  samples: number;
++  expectedOutcome: unknown;
++  expectedUtility: number;
++  variance?: number;
++  riskLambda?: number;
++  riskAdjustedExpectedUtility?: number;
++}): ExpectedValueUncertaintyExplanation {
++  const riskLambda = params.riskLambda === undefined ? 0 : params.riskLambda;
++  const explanation: ExpectedValueUncertaintyExplanation = {
++    type: 'expected_value',
++    assumptions: collectUncertaintyAssumptions(params.state).map(explainAssumption),
++    seed: params.seed,
++    samples: params.samples,
++    expectedOutcome: params.expectedOutcome,
++    expectedUtility: params.expectedUtility,
++    riskLambda,
++    uncertaintyLevel: classifyRelativeUncertainty(
++      params.variance === undefined
++        ? { expectedUtility: params.expectedUtility }
++        : { expectedUtility: params.expectedUtility, variance: params.variance }
++    ),
++    confidenceNote: 'results are expectations, not guarantees',
++  };
++
++  if (params.variance !== undefined) {
++    explanation.variance = params.variance;
++  }
++  if (params.riskAdjustedExpectedUtility !== undefined) {
++    explanation.riskAdjustedExpectedUtility = params.riskAdjustedExpectedUtility;
++  }
++
++  return explanation;
++}
+diff --git a/lib/engine/horizon/expected-value.ts b/lib/engine/horizon/expected-value.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9c0fcd4f6
+--- /dev/null
++++ b/lib/engine/horizon/expected-value.ts
+@@ -0,0 +1,100 @@
++import type { HorizonConfig } from './config.js';
++import {
++  runHorizonRollout,
++} from './rollout.js';
++import type {
++  HorizonRollout,
++  SnapshotStateFn,
++} from './types.js';
++import type { PolicyEvaluator } from './policy.js';
++import type { TransitionFn } from './transition.js';
++import { aggregateUtilitySamples } from '../objective/utility.js';
++import {
++  DEFAULT_RISK_LAMBDA,
++  riskAdjustedUtility,
++} from '../objective/risk.js';
++import {
++  DEFAULT_EXPECTED_VALUE_SAMPLES,
++  normalizeExpectedValueSamples,
++  validateUncertaintyState,
++} from '../uncertainty/policy.js';
++import { createSeededRng } from '../uncertainty/rng.js';
++import { realizeState } from '../uncertainty/realize.js';
++import type { UncertaintySeed } from '../uncertainty/types.js';
++
++export type ExpectedValueHorizonRollout<TState, TAction, TObjective> = {
++  type: 'expected_value';
++  seed: UncertaintySeed;
++  samples: number;
++  expectedUtility: number;
++  variance: number;
++  riskLambda: number;
++  riskAdjustedUtility: number;
++  sampleUtilities: readonly number[];
++  representativeRollout: HorizonRollout<TState, TAction, TObjective>;
++};
++
++export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args: {
++  initialState: TState;
++  config: HorizonConfig;
++  evaluatePolicy: PolicyEvaluator<TState, TAction, TObjective>;
++  applyAction: TransitionFn<TState, TAction>;
++  utilityOfRollout: (rollout: HorizonRollout<TState, TAction, TObjective>) => number;
++  samples?: number;
++  seed: UncertaintySeed;
++  riskLambda?: number;
++  snapshotState?: SnapshotStateFn<TState>;
++}): ExpectedValueHorizonRollout<TState, TAction, TObjective> {
++  const samples = normalizeExpectedValueSamples(
++    args.samples === undefined ? DEFAULT_EXPECTED_VALUE_SAMPLES : args.samples
++  );
++  const riskLambda =
++    args.riskLambda === undefined ? DEFAULT_RISK_LAMBDA : args.riskLambda;
++  const rng = createSeededRng(args.seed);
++  const utilities: number[] = [];
++  let representativeRollout: HorizonRollout<TState, TAction, TObjective> | null = null;
++
++  validateUncertaintyState(args.initialState);
++
++  // Expected-value rollout cost is O(samples * horizon * transition cost).
++  for (let sampleIndex = 0; sampleIndex < samples; sampleIndex += 1) {
++    const realizedState = realizeState(args.initialState, rng);
++    const rollout = runHorizonRollout<TState, TAction, TObjective>({
++      initialState: realizedState,
++      config: args.config,
++      evaluatePolicy: args.evaluatePolicy,
++      applyAction: args.applyAction,
++      ...(args.snapshotState === undefined ? {} : { snapshotState: args.snapshotState }),
++    });
++    const utility = args.utilityOfRollout(rollout);
++    if (!Number.isFinite(utility)) {
++      throw new Error('Expected-value rollout utility must be finite');
++    }
++    utilities.push(utility);
++    if (representativeRollout === null) {
++      representativeRollout = rollout;
++    }
++  }
++
++  if (representativeRollout === null) {
++    throw new Error('Expected-value rollout produced no samples');
++  }
++
++  const aggregate = aggregateUtilitySamples(utilities);
++  const variance = aggregate.variance;
++  return {
++    type: 'expected_value',
++    seed: args.seed,
++    samples,
++    expectedUtility: aggregate.expectedUtility,
++    variance,
++    riskLambda,
++    riskAdjustedUtility: riskAdjustedUtility(
++      aggregate.expectedUtility,
++      variance,
++      riskLambda
++    ),
++    sampleUtilities: utilities,
++    representativeRollout,
++  };
++}
+diff --git a/lib/engine/horizon/index.ts b/lib/engine/horizon/index.ts
+index 4631ef148dfba06557869d4824e3ae910e94f406..769ed66818e18b0f0cddd2d334ba5613d86b3abd 100644
+--- a/lib/engine/horizon/index.ts
++++ b/lib/engine/horizon/index.ts
+@@ -3,3 +3,4 @@ export * from './types.js';
+ export * from './policy.js';
+ export * from './transition.js';
+ export * from './rollout.js';
++export * from './expected-value.js';
+diff --git a/lib/engine/index.ts b/lib/engine/index.ts
+index 24f6cb454828e025057a3e4c73491560e5cb2892..f61fdd4a07f898963022a2ae84af9ac31bbbf76b 100644
+--- a/lib/engine/index.ts
++++ b/lib/engine/index.ts
+@@ -14,3 +14,5 @@ export * from './temporal-response.js';
+ export * from './public-types.js';
+ export * from './public.js';
+ export * from './horizon/index.js';
++export * from './uncertainty/index.js';
++export * from './explain/uncertainty.js';
+diff --git a/lib/engine/objective.ts b/lib/engine/objective.ts
+index e41a9cbf87564651162629fe540479ab30becfec..fe9f4a117e6fdaece727393bd8eb0d6ed4c72387 100644
+--- a/lib/engine/objective.ts
++++ b/lib/engine/objective.ts
+@@ -33,6 +33,7 @@ export {
+   OBJECTIVE_SCORE_UNIT,
+   POINTS_PER_DOLLAR,
+   REWARD_POINT_VALUE_CENTS,
++  aggregateUtilitySamples,
+   centsToUtilityCents,
+   dollarsToUtilityCents,
+   pointsToUtilityCents,
+@@ -42,9 +43,15 @@ export {
+   type ObjectiveComponent,
+   type ObjectiveComponentKind,
+   type ObjectiveScoreUnit,
++  type UtilityResult,
+   type UtilityCents,
+ } from './objective/utility.js';
+ 
++export {
++  DEFAULT_RISK_LAMBDA,
++  riskAdjustedUtility,
++} from './objective/risk.js';
++
+ export const UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT = 0.0001;
+ export const DEBT_BALANCE_RELIEF_UTILITY_CENTS_PER_DEBT_CENT = 0.0001;
+ export const PAYDOWN_ACTION_BONUS_UTILITY_CENTS = 1;
+diff --git a/lib/engine/objective/risk.ts b/lib/engine/objective/risk.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d211c9e2ad57e371d4b770efd788a45cc2869830
+--- /dev/null
++++ b/lib/engine/objective/risk.ts
+@@ -0,0 +1,18 @@
++export const DEFAULT_RISK_LAMBDA = 0;
++
++export function riskAdjustedUtility(
++  ev: number,
++  variance: number,
++  lambda: number = DEFAULT_RISK_LAMBDA
++): number {
++  if (!Number.isFinite(ev)) {
++    throw new Error('Expected utility must be finite');
++  }
++  if (!Number.isFinite(variance) || variance < 0) {
++    throw new Error('Variance must be finite and nonnegative');
++  }
++  if (!Number.isFinite(lambda) || lambda < 0) {
++    throw new Error('Risk lambda must be finite and nonnegative');
++  }
++  return ev - lambda * variance;
++}
+diff --git a/lib/engine/objective/utility.ts b/lib/engine/objective/utility.ts
+index 32118866d11445f8c80d83e4dc087ec9682b4d59..bd44caf70de64a5b86b3855d58f6c70cdc949f17 100644
+--- a/lib/engine/objective/utility.ts
++++ b/lib/engine/objective/utility.ts
+@@ -26,6 +26,12 @@ export type ObjectiveComponent = {
+   boundedHeuristic?: boolean;
+ };
+ 
++export type UtilityResult = {
++  expectedUtility: number;
++  variance?: number;
++  samples?: number;
++};
++
+ export function utilityCents(value: number): UtilityCents {
+   if (!Number.isFinite(value)) {
+     throw new Error('Utility cents must be finite');
+@@ -56,3 +62,29 @@ export function sumObjectiveUtility(
+     components.reduce((sum, component) => sum + component.utilityCents, 0)
+   );
+ }
++
++export function aggregateUtilitySamples(samples: readonly number[]): Required<UtilityResult> {
++  if (samples.length === 0) {
++    throw new Error('Utility samples must not be empty');
++  }
++
++  let total = 0;
++  for (const value of samples) {
++    if (!Number.isFinite(value)) {
++      throw new Error('Utility samples must be finite');
++    }
++    total += value;
++  }
++
++  const expectedUtility = total / samples.length;
++  const squaredErrorTotal = samples.reduce((sum, value) => {
++    const delta = value - expectedUtility;
++    return sum + delta * delta;
++  }, 0);
++
++  return {
++    expectedUtility,
++    variance: squaredErrorTotal / samples.length,
++    samples: samples.length,
++  };
++}
+diff --git a/lib/engine/uncertainty/index.ts b/lib/engine/uncertainty/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5028ebff990625ff5a0c9387801e8a74ff36c9ed
+--- /dev/null
++++ b/lib/engine/uncertainty/index.ts
+@@ -0,0 +1,5 @@
++export * from './types.js';
++export * from './sampling.js';
++export * from './rng.js';
++export * from './policy.js';
++export * from './realize.js';
+diff --git a/lib/engine/uncertainty/policy.ts b/lib/engine/uncertainty/policy.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..bcf5d657e259a566aec5375f52cc32e2478edf95
+--- /dev/null
++++ b/lib/engine/uncertainty/policy.ts
+@@ -0,0 +1,132 @@
++import { validateNumericDistribution } from './sampling.js';
++import {
++  isRecord,
++  isUncertainNumber,
++  type NumericDistribution,
++  type UncertainNumber,
++} from './types.js';
++
++export const MIN_EXPECTED_VALUE_SAMPLES = 100;
++export const DEFAULT_EXPECTED_VALUE_SAMPLES = 500;
++export const MAX_EXPECTED_VALUE_SAMPLES = 5000;
++
++const NONNEGATIVE_PATH_PATTERN =
++  /(?:cents|amount|balance|limit|income|expense|spend|cash|liquid|paycheck|rate|utilization)$/i;
++
++export type UncertaintyAssumption = {
++  path: string;
++  label: string;
++  distribution: NumericDistribution;
++};
++
++export function normalizeExpectedValueSamples(samples: number): number {
++  if (!Number.isInteger(samples)) {
++    throw new Error(`Expected-value samples must be an integer: ${samples}`);
++  }
++  const belowMinimum = samples < MIN_EXPECTED_VALUE_SAMPLES;
++  const aboveMaximum = samples > MAX_EXPECTED_VALUE_SAMPLES;
++  if (belowMinimum) {
++    throw new Error(
++      `Expected-value samples must be between ${MIN_EXPECTED_VALUE_SAMPLES} and ${MAX_EXPECTED_VALUE_SAMPLES}: ${samples}`
++    );
++  }
++  if (aboveMaximum) {
++    throw new Error(
++      `Expected-value samples must be between ${MIN_EXPECTED_VALUE_SAMPLES} and ${MAX_EXPECTED_VALUE_SAMPLES}: ${samples}`
++    );
++  }
++  return samples;
++}
++
++function pathString(segments: readonly string[]): string {
++  return segments.length === 0 ? '$' : segments.join('.');
++}
++
++function isPlainObject(value: unknown): value is Record<string, unknown> {
++  if (!isRecord(value)) return false;
++  const prototype: unknown = Object.getPrototypeOf(value);
++  if (prototype === Object.prototype) return true;
++  if (prototype === null) return true;
++  return false;
++}
++
++function isNonnegativeDomain(segments: readonly string[]): boolean {
++  const last = segments[segments.length - 1];
++  return last !== undefined && NONNEGATIVE_PATH_PATTERN.test(last);
++}
++
++function distributionCanProduceNegative(d: NumericDistribution): boolean {
++  switch (d.kind) {
++    case 'point':
++      return d.value < 0;
++    case 'bernoulli':
++    case 'lognormal':
++      return false;
++    case 'normal':
++      if (d.std > 0) return true;
++      return d.mean < 0;
++    case 'discrete':
++      return d.values.some((value) => value < 0);
++    default: {
++      const exhaustive: never = d;
++      throw new Error(`Unsupported distribution: ${JSON.stringify(exhaustive)}`);
++    }
++  }
++}
++
++function validateUncertainNumber(value: UncertainNumber, segments: readonly string[]): void {
++  if (value.label.trim().length === 0) {
++    throw new Error(`Uncertain number at ${pathString(segments)} must have a label`);
++  }
++
++  validateNumericDistribution(value.distribution);
++
++  if (isNonnegativeDomain(segments) && distributionCanProduceNegative(value.distribution)) {
++    throw new Error(
++      `Uncertain number at ${pathString(segments)} uses a distribution that can produce negative values for a nonnegative domain`
++    );
++  }
++}
++
++export function collectUncertaintyAssumptions(value: unknown): UncertaintyAssumption[] {
++  const assumptions: UncertaintyAssumption[] = [];
++
++  function visit(current: unknown, segments: string[]): void {
++    if (isUncertainNumber(current)) {
++      validateUncertainNumber(current, segments);
++      assumptions.push({
++        path: pathString(segments),
++        label: current.label,
++        distribution: current.distribution,
++      });
++      return;
++    }
++
++    if (Array.isArray(current)) {
++      current.forEach((entry, index) => visit(entry, [...segments, String(index)]));
++      return;
++    }
++
++    if (isRecord(current)) {
++      if ('distribution' in current) {
++        throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
++      }
++      if ('label' in current) {
++        throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
++      }
++      if (!isPlainObject(current)) {
++        throw new Error(`Expected JSON-plain object at ${pathString(segments)}`);
++      }
++      for (const [key, entry] of Object.entries(current)) {
++        visit(entry, [...segments, key]);
++      }
++    }
++  }
++
++  visit(value, []);
++  return assumptions;
++}
++
++export function validateUncertaintyState(value: unknown): void {
++  collectUncertaintyAssumptions(value);
++}
+diff --git a/lib/engine/uncertainty/realize.ts b/lib/engine/uncertainty/realize.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..16747be345560a8cea9b4f0f61b0ec64ee895469
+--- /dev/null
++++ b/lib/engine/uncertainty/realize.ts
+@@ -0,0 +1,50 @@
++import { sample } from './sampling.js';
++import {
++  isRecord,
++  isUncertainNumber,
++} from './types.js';
++
++function isPlainObject(value: unknown): value is Record<string, unknown> {
++  if (!isRecord(value)) return false;
++  const prototype: unknown = Object.getPrototypeOf(value);
++  if (prototype === Object.prototype) return true;
++  if (prototype === null) return true;
++  return false;
++}
++
++function realizeValue(value: unknown, rng: () => number, segments: readonly string[]): unknown {
++  if (isUncertainNumber(value)) {
++    return sample(value.distribution, rng);
++  }
++
++  if (Array.isArray(value)) {
++    return value.map((entry, index) => realizeValue(entry, rng, [...segments, String(index)]));
++  }
++
++  if (isRecord(value)) {
++    if ('distribution' in value) {
++      const location = segments.length === 0 ? '$' : segments.join('.');
++      throw new Error(`Invalid uncertain number at ${location}`);
++    }
++    if ('label' in value) {
++      const location = segments.length === 0 ? '$' : segments.join('.');
++      throw new Error(`Invalid uncertain number at ${location}`);
++    }
++    if (!isPlainObject(value)) {
++      const location = segments.length === 0 ? '$' : segments.join('.');
++      throw new Error(`Expected JSON-plain object at ${location}`);
++    }
++
++    const realized: Record<string, unknown> = {};
++    for (const [key, entry] of Object.entries(value)) {
++      realized[key] = realizeValue(entry, rng, [...segments, key]);
++    }
++    return realized;
++  }
++
++  return value;
++}
++
++export function realizeState<T>(state: T, rng: () => number): T {
++  return realizeValue(state, rng, []) as T;
++}
+diff --git a/lib/engine/uncertainty/rng.ts b/lib/engine/uncertainty/rng.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..2d1378c7f7e426cf38e2f57335146b24d1148c08
+--- /dev/null
++++ b/lib/engine/uncertainty/rng.ts
+@@ -0,0 +1,26 @@
++import type { UncertaintySeed } from './types.js';
++
++function hashSeed(seed: UncertaintySeed): number {
++  const text = String(seed);
++  let hash = 2166136261;
++
++  for (let index = 0; index < text.length; index += 1) {
++    const code = text.charCodeAt(index);
++    hash ^= code;
++    hash = Math.imul(hash, 16777619);
++  }
++
++  return hash >>> 0;
++}
++
++export function createSeededRng(seed: UncertaintySeed): () => number {
++  let state = hashSeed(seed);
++
++  return () => {
++    state = (state + 0x6d2b79f5) >>> 0;
++    let value = state;
++    value = Math.imul(value ^ (value >>> 15), value | 1);
++    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
++    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
++  };
++}
+diff --git a/lib/engine/uncertainty/sampling.ts b/lib/engine/uncertainty/sampling.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b79ccc7d9052cc41a46d803eeb00330fc5b43da3
+--- /dev/null
++++ b/lib/engine/uncertainty/sampling.ts
+@@ -0,0 +1,127 @@
++import type { NumericDistribution } from './types.js';
++
++const PROBABILITY_SUM_TOLERANCE = 1e-9;
++
++function assertFiniteNumber(value: number, label: string): void {
++  if (!Number.isFinite(value)) {
++    throw new Error(`${label} must be finite`);
++  }
++}
++
++function assertProbability(value: number, label: string): void {
++  assertFiniteNumber(value, label);
++  if (value < 0 || value > 1) {
++    throw new Error(`${label} must be between 0 and 1`);
++  }
++}
++
++export function validateNumericDistribution(d: NumericDistribution): void {
++  switch (d.kind) {
++    case 'point':
++      assertFiniteNumber(d.value, 'point.value');
++      return;
++    case 'bernoulli':
++      assertProbability(d.p, 'bernoulli.p');
++      return;
++    case 'normal':
++      assertFiniteNumber(d.mean, 'normal.mean');
++      assertFiniteNumber(d.std, 'normal.std');
++      if (d.std < 0) throw new Error('normal.std must be nonnegative');
++      return;
++    case 'lognormal':
++      assertFiniteNumber(d.mu, 'lognormal.mu');
++      assertFiniteNumber(d.sigma, 'lognormal.sigma');
++      if (d.sigma < 0) throw new Error('lognormal.sigma must be nonnegative');
++      return;
++    case 'discrete': {
++      if (d.values.length === 0) throw new Error('discrete.values must not be empty');
++      if (d.values.length !== d.probs.length) {
++        throw new Error('discrete.values and discrete.probs must have the same length');
++      }
++      let total = 0;
++      for (let index = 0; index < d.values.length; index += 1) {
++        const value = d.values[index];
++        const probability = d.probs[index];
++        if (value === undefined || probability === undefined) {
++          throw new Error('discrete entries must be defined');
++        }
++        assertFiniteNumber(value, `discrete.values[${index}]`);
++        assertProbability(probability, `discrete.probs[${index}]`);
++        total += probability;
++      }
++      if (Math.abs(total - 1) > PROBABILITY_SUM_TOLERANCE) {
++        throw new Error('discrete.probs must sum to 1');
++      }
++      return;
++    }
++    default: {
++      const exhaustive: never = d;
++      throw new Error(`Unsupported distribution: ${JSON.stringify(exhaustive)}`);
++    }
++  }
++}
++
++export function expectation(d: NumericDistribution): number {
++  validateNumericDistribution(d);
++
++  switch (d.kind) {
++    case 'point':
++      return d.value;
++    case 'bernoulli':
++      return d.p;
++    case 'normal':
++      return d.mean;
++    case 'lognormal':
++      return Math.exp(d.mu + (d.sigma * d.sigma) / 2);
++    case 'discrete':
++      return d.values.reduce((sum, value, index) => {
++        const probability = d.probs[index];
++        return probability === undefined ? sum : sum + value * probability;
++      }, 0);
++    default: {
++      const exhaustive: never = d;
++      throw new Error(`Unsupported distribution: ${JSON.stringify(exhaustive)}`);
++    }
++  }
++}
++
++function standardNormalSample(rng: () => number): number {
++  const u1 = Math.max(Number.MIN_VALUE, rng());
++  const u2 = rng();
++  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
++}
++
++export function sample(d: NumericDistribution, rng: () => number): number {
++  validateNumericDistribution(d);
++
++  switch (d.kind) {
++    case 'point':
++      return d.value;
++    case 'bernoulli':
++      return rng() < d.p ? 1 : 0;
++    case 'normal':
++      return d.mean + d.std * standardNormalSample(rng);
++    case 'lognormal':
++      return Math.exp(d.mu + d.sigma * standardNormalSample(rng));
++    case 'discrete': {
++      const draw = rng();
++      let cumulative = 0;
++      for (let index = 0; index < d.values.length; index += 1) {
++        const probability = d.probs[index];
++        const value = d.values[index];
++        if (probability === undefined || value === undefined) {
++          throw new Error('discrete entries must be defined');
++        }
++        cumulative += probability;
++        if (draw <= cumulative || index === d.values.length - 1) {
++          return value;
++        }
++      }
++      throw new Error('discrete sample failed');
++    }
++    default: {
++      const exhaustive: never = d;
++      throw new Error(`Unsupported distribution: ${JSON.stringify(exhaustive)}`);
++    }
++  }
++}
+diff --git a/lib/engine/uncertainty/types.ts b/lib/engine/uncertainty/types.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d013b38b0c05b6f7ae58f5962c437b6ced16def6
+--- /dev/null
++++ b/lib/engine/uncertainty/types.ts
+@@ -0,0 +1,57 @@
++export type NumericDistributionKind =
++  | 'point'
++  | 'bernoulli'
++  | 'normal'
++  | 'lognormal'
++  | 'discrete';
++
++export type NumericDistribution =
++  | { kind: 'point'; value: number }
++  | { kind: 'bernoulli'; p: number }
++  | { kind: 'normal'; mean: number; std: number }
++  | { kind: 'lognormal'; mu: number; sigma: number }
++  | { kind: 'discrete'; values: number[]; probs: number[] };
++
++export type UncertainNumber = {
++  distribution: NumericDistribution;
++  label: string;
++};
++
++export type UncertaintySeed = string | number;
++
++export type UncertaintyLevel = 'low' | 'medium' | 'high' | 'unknown';
++
++export type RiskMetricKind = 'variance' | 'semivariance' | 'cvar';
++
++export type ImplementedRiskMetricKind = Extract<RiskMetricKind, 'variance'>;
++
++export function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null && !Array.isArray(value);
++}
++
++export function isNumericDistribution(value: unknown): value is NumericDistribution {
++  if (!isRecord(value) || typeof value['kind'] !== 'string') return false;
++
++  switch (value['kind']) {
++    case 'point':
++      return typeof value['value'] === 'number';
++    case 'bernoulli':
++      return typeof value['p'] === 'number';
++    case 'normal':
++      return typeof value['mean'] === 'number' && typeof value['std'] === 'number';
++    case 'lognormal':
++      return typeof value['mu'] === 'number' && typeof value['sigma'] === 'number';
++    case 'discrete':
++      return Array.isArray(value['values']) && Array.isArray(value['probs']);
++    default:
++      return false;
++  }
++}
++
++export function isUncertainNumber(value: unknown): value is UncertainNumber {
++  return (
++    isRecord(value) &&
++    typeof value['label'] === 'string' &&
++    isNumericDistribution(value['distribution'])
++  );
++}
+diff --git a/lib/engine/version.ts b/lib/engine/version.ts
+index c53fc2876298eedd8752e46238bcf6088fb75af8..1118a68d2ec42e6d0a046f36c828fe4787250b79 100644
+--- a/lib/engine/version.ts
++++ b/lib/engine/version.ts
+@@ -1,4 +1,4 @@
+-export const engineBehaviorVersion = 'engine_behavior_v7' as const;
++export const engineBehaviorVersion = 'engine_behavior_v8' as const;
+ export const engineInputVersion = 'engine_input_v1' as const;
+ export const engineCandidateSpaceVersion = 'engine_candidate_space_v1' as const;
+ export const engineAccountingVersion = 'engine_accounting_v1' as const;
+diff --git a/scripts/guardrails/engine-freeze.policy.json b/scripts/guardrails/engine-freeze.policy.json
+index 94975bdbd3f749969c0d0b58ae43fea3740e63a5..0481808cf441ec6e8ed3ded57483c0c2699644ea 100644
+--- a/scripts/guardrails/engine-freeze.policy.json
++++ b/scripts/guardrails/engine-freeze.policy.json
+@@ -6,7 +6,7 @@
+     ]
+   },
+   "engineVersions": {
+-    "behavior": "engine_behavior_v7",
++    "behavior": "engine_behavior_v8",
+     "input": "engine_input_v1",
+     "candidateSpace": "engine_candidate_space_v1",
+     "accounting": "engine_accounting_v1"
+diff --git a/tests/node/engine/uncertainty.test.ts b/tests/node/engine/uncertainty.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa71bdb5a8
+--- /dev/null
++++ b/tests/node/engine/uncertainty.test.ts
+@@ -0,0 +1,236 @@
++import * as assert from 'node:assert/strict';
++import {
++  buildExpectedValueUncertaintyExplanation,
++  classifyRelativeUncertainty,
++  collectUncertaintyAssumptions,
++  createSeededRng,
++  expectation,
++  normalizeHorizonConfig,
++  realizeState,
++  runExpectedValueHorizonRollout,
++  runHorizonRollout,
++  sample,
++  type HorizonRollout,
++  type UncertainNumber,
++} from '../../../lib/engine.js';
++
++type TestState = {
++  value: number | UncertainNumber;
++  incomeCents?: number | UncertainNumber;
++};
++
++type TestAction = {
++  delta: number;
++};
++
++type TestObjective = {
++  utility: number;
++};
++
++function assertRealizedNumber(value: number | UncertainNumber): number {
++  if (typeof value !== 'number') {
++    throw new Error('transition received an unrealized uncertain value');
++  }
++  return value;
++}
++
++function runDeterministicTestRollout(initialState: { value: number }) {
++  return runHorizonRollout<{ value: number }, TestAction, TestObjective>({
++    initialState,
++    config: normalizeHorizonConfig({ steps: 2 }),
++    evaluatePolicy: ({ state }) => ({
++      action: { delta: 1 },
++      objective: { utility: state.value },
++    }),
++    applyAction: ({ state, action }) => ({
++      value: state.value + action.delta,
++    }),
++  });
++}
++
++function utilityOfRollout(
++  rollout: HorizonRollout<TestState, TestAction, TestObjective>
++): number {
++  const last = rollout.steps[rollout.steps.length - 1];
++  assert.ok(last !== undefined);
++  return assertRealizedNumber(last.stateAfter.value);
++}
++
++function testExpectationCorrectness(): void {
++  assert.equal(expectation({ kind: 'point', value: 7 }), 7);
++  assert.equal(expectation({ kind: 'bernoulli', p: 0.25 }), 0.25);
++  assert.equal(expectation({ kind: 'normal', mean: 10, std: 2 }), 10);
++  assert.equal(expectation({ kind: 'lognormal', mu: 1, sigma: 0 }), Math.exp(1));
++  assert.equal(
++    expectation({ kind: 'discrete', values: [1, 5, 10], probs: [0.2, 0.3, 0.5] }),
++    6.7
++  );
++  assert.throws(
++    () => expectation({ kind: 'discrete', values: [1, 2], probs: [0.4, 0.4] }),
++    { message: 'discrete.probs must sum to 1' }
++  );
++}
++
++function testSeededRngReproducibility(): void {
++  const first = createSeededRng('seed-1');
++  const second = createSeededRng('seed-1');
++  const third = createSeededRng('seed-2');
++
++  const firstValues = [first(), first(), first()];
++  const secondValues = [second(), second(), second()];
++  const thirdValues = [third(), third(), third()];
++
++  assert.deepEqual(firstValues, secondValues);
++  assert.notDeepEqual(firstValues, thirdValues);
++}
++
++function testSamplingMeanConvergence(): void {
++  const rng = createSeededRng('sampling-mean');
++  const draws = Array.from({ length: 10_000 }, () =>
++    sample({ kind: 'normal', mean: 10, std: 2 }, rng)
++  );
++  const mean = draws.reduce((sum, value) => sum + value, 0) / draws.length;
++
++  assert.ok(Math.abs(mean - 10) < 0.1, `mean ${mean} should converge near 10`);
++}
++
++function testRealizationIsNonMutatingAndNumericOnly(): void {
++  const uncertain: UncertainNumber = {
++    label: 'monthly_income',
++    distribution: { kind: 'point', value: 4000 },
++  };
++  const state = {
++    value: uncertain,
++    nested: [{ value: uncertain }],
++  };
++  const realized = realizeState(state, createSeededRng('realize'));
++
++  assert.deepEqual(realized, {
++    value: 4000,
++    nested: [{ value: 4000 }],
++  });
++  assert.deepEqual(state.value, uncertain);
++
++  assert.throws(
++    () =>
++      collectUncertaintyAssumptions({
++        incomeCents: {
++          label: 'bad_income',
++          distribution: { kind: 'normal', mean: 1000, std: 10 },
++        },
++      }),
++    /can produce negative values/
++  );
++  assert.throws(
++    () =>
++      collectUncertaintyAssumptions({
++        value: {
++          label: 'bad_object',
++          distribution: { kind: 'point', value: { nested: true } },
++        },
++      }),
++    { message: 'Invalid uncertain number at value' }
++  );
++}
++
++function testExpectedValuePointMatchesDeterministic(): void {
++  const deterministic = runDeterministicTestRollout({ value: 2 });
++  const deterministicUtility = deterministic.steps[deterministic.steps.length - 1]?.stateAfter.value;
++  assert.equal(deterministicUtility, 4);
++
++  const result = runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
++    initialState: {
++      value: {
++        label: 'starting_value',
++        distribution: { kind: 'point', value: 2 },
++      },
++    },
++    config: normalizeHorizonConfig({ steps: 2 }),
++    samples: 100,
++    seed: 'ev-point',
++    evaluatePolicy: ({ state }) => ({
++      action: { delta: 1 },
++      objective: { utility: assertRealizedNumber(state.value) },
++    }),
++    applyAction: ({ state, action }) => ({
++      value: assertRealizedNumber(state.value) + action.delta,
++    }),
++    utilityOfRollout,
++  });
++
++  assert.equal(result.expectedUtility, deterministicUtility);
++  assert.equal(result.variance, 0);
++  assert.deepEqual(result.representativeRollout.steps, deterministic.steps);
++}
++
++function testExpectedValueRejectsInvalidSampleCounts(): void {
++  assert.throws(
++    () =>
++      runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
++        initialState: { value: 1 },
++        config: normalizeHorizonConfig({ steps: 1 }),
++        samples: 99,
++        seed: 'too-small',
++        evaluatePolicy: ({ state }) => ({
++          action: { delta: 1 },
++          objective: { utility: assertRealizedNumber(state.value) },
++        }),
++        applyAction: ({ state, action }) => ({
++          value: assertRealizedNumber(state.value) + action.delta,
++        }),
++        utilityOfRollout,
++      }),
++    /between 100 and 5000/
++  );
++}
++
++function testExplanationLabelsExpectedValue(): void {
++  const state = {
++    incomeCents: {
++      label: 'monthly_income',
++      distribution: { kind: 'lognormal', mu: 8, sigma: 0.1 },
++    },
++  };
++  const explanation = buildExpectedValueUncertaintyExplanation({
++    state,
++    seed: 'explain-seed',
++    samples: 500,
++    expectedOutcome: { projectedUtility: 100 },
++    expectedUtility: 100,
++    variance: 400,
++    riskLambda: 0,
++    riskAdjustedExpectedUtility: 100,
++  });
++
++  assert.equal(explanation.type, 'expected_value');
++  assert.equal(explanation.seed, 'explain-seed');
++  assert.equal(explanation.samples, 500);
++  assert.equal(explanation.uncertaintyLevel, 'medium');
++  assert.equal(explanation.confidenceNote, 'results are expectations, not guarantees');
++  assert.deepEqual(explanation.assumptions, [
++    {
++      label: 'monthly_income',
++      path: 'incomeCents',
++      distribution: 'lognormal(mu=8, sigma=0.1)',
++    },
++  ]);
++}
++
++function testRelativeUncertaintyClassification(): void {
++  assert.equal(classifyRelativeUncertainty({ expectedUtility: 100, variance: 25 }), 'low');
++  assert.equal(classifyRelativeUncertainty({ expectedUtility: 100, variance: 400 }), 'medium');
++  assert.equal(classifyRelativeUncertainty({ expectedUtility: 100, variance: 1600 }), 'high');
++  assert.equal(classifyRelativeUncertainty({ expectedUtility: 0, variance: 1 }), 'unknown');
++  assert.equal(classifyRelativeUncertainty({ expectedUtility: 100 }), 'unknown');
++}
++
++testExpectationCorrectness();
++testSeededRngReproducibility();
++testSamplingMeanConvergence();
++testRealizationIsNonMutatingAndNumericOnly();
++testExpectedValuePointMatchesDeterministic();
++testExpectedValueRejectsInvalidSampleCounts();
++testExplanationLabelsExpectedValue();
++testRelativeUncertaintyClassification();
++
++process.stdout.write('engine uncertainty modeling: ok\n');
+diff --git a/tests/node/objective-utility.test.ts b/tests/node/objective-utility.test.ts
+index 0ea0f1f781f2caf04744603881d835a3a63be2a5..3e685eb233efe05a0248bed787776e97372b8321 100644
+--- a/tests/node/objective-utility.test.ts
++++ b/tests/node/objective-utility.test.ts
+@@ -1,11 +1,13 @@
+ import * as assert from 'node:assert/strict';
+ import {
+   REWARD_POINT_VALUE_CENTS,
++  aggregateUtilitySamples,
+   centsToUtilityCents,
+   rewardPointsToUtilityCents,
+   sumObjectiveUtility,
+   utilityCents,
+ } from '../../lib/engine/objective/utility.js';
++import { riskAdjustedUtility } from '../../lib/engine/objective/risk.js';
+ 
+ function testRewardPointsUseExplicitValueMapping(): void {
+   assert.equal(rewardPointsToUtilityCents(1000), 1000);
+@@ -38,8 +40,23 @@ function testTotalUsesObjectiveComponentUtilityCents(): void {
+   assert.equal(total, 750);
+ }
+ 
++function testUtilitySampleAggregation(): void {
++  const aggregate = aggregateUtilitySamples([1, 2, 3]);
++
++  assert.equal(aggregate.expectedUtility, 2);
++  assert.equal(aggregate.variance, 2 / 3);
++  assert.equal(aggregate.samples, 3);
++}
++
++function testRiskAdjustedUtility(): void {
++  assert.equal(riskAdjustedUtility(10, 4, 0), 10);
++  assert.equal(riskAdjustedUtility(10, 4, 0.5), 8);
++}
++
+ testRewardPointsUseExplicitValueMapping();
+ testCashCentsStayCanonical();
+ testTotalUsesObjectiveComponentUtilityCents();
++testUtilitySampleAggregation();
++testRiskAdjustedUtility();
+ 
+ process.stdout.write('objective utility semantics: ok\n');
+diff --git a/tests/replay/index/engine@engine_behavior_v8__engine_input_v1__engine_candidate_space_v1__engine_accounting_v1.json b/tests/replay/index/engine@engine_behavior_v8__engine_input_v1__engine_candidate_space_v1__engine_accounting_v1.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..9abf7e9b65153b12914c372ba6e9b94060e6c293
+--- /dev/null
++++ b/tests/replay/index/engine@engine_behavior_v8__engine_input_v1__engine_candidate_space_v1__engine_accounting_v1.json
+@@ -0,0 +1,11 @@
++{
++  "hashes": [
++    "8f0cf4f6b3683f107427e15adb49485cfddd761980910879e8f4b1b916c4c9b8"
++  ],
++  "versions": {
++    "engineAccountingVersion": "engine_accounting_v1",
++    "engineBehaviorVersion": "engine_behavior_v8",
++    "engineCandidateSpaceVersion": "engine_candidate_space_v1",
++    "engineInputVersion": "engine_input_v1"
++  }
++}
