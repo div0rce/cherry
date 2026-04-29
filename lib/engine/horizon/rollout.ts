@@ -1,6 +1,7 @@
 import type { HorizonConfig } from './config.js';
 import type {
   HorizonRollout,
+  SnapshotStateFn,
   HorizonStep,
   HorizonStepRole,
   HorizonTransitionReason,
@@ -27,19 +28,25 @@ function transitionReasonFor<TAction>(
     : 'projected_future_action';
 }
 
+const defaultSnapshotState = <TState>(state: TState): TState =>
+  structuredClone(state);
+
 export function runHorizonRollout<TState, TAction, TObjective>(args: {
   initialState: TState;
   config: HorizonConfig;
   evaluatePolicy: PolicyEvaluator<TState, TAction, TObjective>;
   applyAction: TransitionFn<TState, TAction>;
+  snapshotState?: SnapshotStateFn<TState>;
 }): HorizonRollout<TState, TAction, TObjective> {
   const steps: HorizonStep<TState, TAction, TObjective>[] = [];
+  const snapshotState =
+    args.snapshotState === undefined ? defaultSnapshotState : args.snapshotState;
 
   let state = args.initialState;
   let selectedPresentAction: TAction | null = null;
 
   for (let step = 0; step < args.config.steps; step += 1) {
-    const stateBefore = state;
+    const stateBefore = snapshotState(state);
     const stepRole = stepRoleFor(step);
     const { action, objective } = choosePlanningAction({
       state,
@@ -60,6 +67,7 @@ export function runHorizonRollout<TState, TAction, TObjective>(args: {
             step,
             applyAction: args.applyAction,
           });
+    const stateAfterSnapshot = snapshotState(stateAfter);
 
     steps.push({
       step,
@@ -68,7 +76,7 @@ export function runHorizonRollout<TState, TAction, TObjective>(args: {
       stateBefore,
       action,
       objective,
-      stateAfter,
+      stateAfter: stateAfterSnapshot,
       transitionReason: transitionReasonFor(stepRole, action),
     });
 

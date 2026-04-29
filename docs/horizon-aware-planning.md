@@ -44,6 +44,11 @@ futureJustification = "forbidden"
 The selected present action is only the step-0 policy action. Future projected
 steps can affect only the projected state sequence inside the rollout.
 
+Rollout step states are recorded as snapshots. Callers may inject custom
+snapshot behavior for non-plain state, canonical serialization, frozen fixtures,
+or class-like objects. The rollout loop still advances with the actual
+transition result.
+
 ## Current Scope
 
 This is not full financial planning.

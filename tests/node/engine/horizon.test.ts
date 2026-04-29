@@ -109,11 +109,43 @@ function testProjectedFutureActionsOnlyAffectProjectedState(): void {
   assert.deepEqual(rollout.selectedPresentAction, rollout.steps[0]?.action);
 }
 
+function testMutatingTransitionsRecordStableSnapshots(): void {
+  const rollout = runHorizonRollout<TestState, TestAction, TestObjective>({
+    initialState: { value: 0 },
+    config: normalizeHorizonConfig({ steps: 3 }),
+    evaluatePolicy: ({ state, step }) => {
+      if (step === 0) {
+        return {
+          action: { id: 'present-action', delta: 1 },
+          objective: { utility: state.value + 10 },
+        };
+      }
+
+      return {
+        action: { id: `future-action-${step}`, delta: 100 + step },
+        objective: { utility: state.value + 10_000 + step },
+      };
+    },
+    applyAction: ({ state, action }) => {
+      state.value += action.delta;
+      return state;
+    },
+  });
+
+  assert.deepEqual(rollout.steps[0]?.stateBefore, { value: 0 });
+  assert.deepEqual(rollout.steps[0]?.stateAfter, { value: 1 });
+  assert.deepEqual(rollout.steps[1]?.stateBefore, { value: 1 });
+  assert.deepEqual(rollout.steps[1]?.stateAfter, { value: 102 });
+  assert.deepEqual(rollout.steps[2]?.stateBefore, { value: 102 });
+  assert.deepEqual(rollout.steps[2]?.stateAfter, { value: 204 });
+}
+
 testConfigDefaults();
 testInvalidHorizonLength();
 testRolloutLabelsAndRoles();
 testRolloutLengthAndFutureJustification();
 testSelectedPresentActionComesOnlyFromStepZero();
 testProjectedFutureActionsOnlyAffectProjectedState();
+testMutatingTransitionsRecordStableSnapshots();
 
 process.stdout.write('engine horizon rollout: ok\n');

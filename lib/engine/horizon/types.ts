@@ -13,6 +13,8 @@ export type HorizonTransitionReason =
   | 'projected_future_action'
   | 'projected_state_only';
 
+export type SnapshotStateFn<TState> = (state: TState) => TState;
+
 export type HorizonStep<TState, TAction, TObjective> = {
   step: HorizonStepIndex;
   label: HorizonLabel;
