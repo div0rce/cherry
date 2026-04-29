@@ -5,7 +5,9 @@ import {
   collectUncertaintyAssumptions,
   createSeededRng,
   expectation,
+  normalizeExpectedValueSamples,
   normalizeHorizonConfig,
+  riskAdjustedUtility,
   realizeState,
   runExpectedValueHorizonRollout,
   runHorizonRollout,
@@ -58,7 +60,6 @@ function utilityOfRollout(
 
 function testExpectationCorrectness(): void {
   assert.equal(expectation({ kind: 'point', value: 7 }), 7);
-  assert.equal(expectation({ kind: 'bernoulli', p: 0.25 }), 0.25);
   assert.equal(expectation({ kind: 'normal', mean: 10, std: 2 }), 10);
   assert.equal(expectation({ kind: 'lognormal', mu: 1, sigma: 0 }), Math.exp(1));
   assert.equal(
@@ -131,6 +132,38 @@ function testRealizationIsNonMutatingAndNumericOnly(): void {
       }),
     { message: 'Invalid uncertain number at value' }
   );
+  assert.throws(
+    () =>
+      collectUncertaintyAssumptions({
+        value: {
+          label: 'bad_extra',
+          distribution: { kind: 'point', value: 1 },
+          extra: true,
+        },
+      }),
+    { message: 'Invalid uncertain number at value' }
+  );
+}
+
+function testLabelWithoutDistributionIsDomainData(): void {
+  const assumptions = collectUncertaintyAssumptions({
+    cards: [{ label: 'Amex Gold', balanceCents: 12_000 }],
+    objectiveProfile: { label: 'default' },
+  });
+
+  assert.deepEqual(assumptions, []);
+}
+
+function testDistributionCreatesUncertaintyIntent(): void {
+  assert.throws(
+    () =>
+      collectUncertaintyAssumptions({
+        value: {
+          distribution: { kind: 'point', value: 1 },
+        },
+      }),
+    { message: 'Invalid uncertain number at value' }
+  );
 }
 
 function testExpectedValuePointMatchesDeterministic(): void {
@@ -160,10 +193,14 @@ function testExpectedValuePointMatchesDeterministic(): void {
 
   assert.equal(result.expectedUtility, deterministicUtility);
   assert.equal(result.variance, 0);
-  assert.deepEqual(result.representativeRollout.steps, deterministic.steps);
+  assert.deepEqual(result.firstSampleRollout.steps, deterministic.steps);
 }
 
 function testExpectedValueRejectsInvalidSampleCounts(): void {
+  assert.throws(
+    () => normalizeExpectedValueSamples(Number.NaN),
+    { message: 'Expected-value samples must be an integer: NaN' }
+  );
   assert.throws(
     () =>
       runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
@@ -181,6 +218,50 @@ function testExpectedValueRejectsInvalidSampleCounts(): void {
         utilityOfRollout,
       }),
     /between 100 and 5000/
+  );
+  assert.throws(
+    () =>
+      runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
+        initialState: { value: 1 },
+        config: normalizeHorizonConfig({ steps: 1 }),
+        samples: 5001,
+        seed: 'too-large',
+        evaluatePolicy: ({ state }) => ({
+          action: { delta: 1 },
+          objective: { utility: assertRealizedNumber(state.value) },
+        }),
+        applyAction: ({ state, action }) => ({
+          value: assertRealizedNumber(state.value) + action.delta,
+        }),
+        utilityOfRollout,
+      }),
+    /between 100 and 5000/
+  );
+}
+
+function testRiskLambdaRejectsNegativeValues(): void {
+  assert.throws(
+    () => riskAdjustedUtility(10, 1, -1),
+    { message: 'Risk lambda must be finite and nonnegative' }
+  );
+  assert.throws(
+    () =>
+      runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
+        initialState: { value: 1 },
+        config: normalizeHorizonConfig({ steps: 1 }),
+        samples: 100,
+        seed: 'bad-risk',
+        riskLambda: -1,
+        evaluatePolicy: ({ state }) => ({
+          action: { delta: 1 },
+          objective: { utility: assertRealizedNumber(state.value) },
+        }),
+        applyAction: ({ state, action }) => ({
+          value: assertRealizedNumber(state.value) + action.delta,
+        }),
+        utilityOfRollout,
+      }),
+    { message: 'Risk lambda must be finite and nonnegative' }
   );
 }
 
@@ -228,8 +309,11 @@ testExpectationCorrectness();
 testSeededRngReproducibility();
 testSamplingMeanConvergence();
 testRealizationIsNonMutatingAndNumericOnly();
+testLabelWithoutDistributionIsDomainData();
+testDistributionCreatesUncertaintyIntent();
 testExpectedValuePointMatchesDeterministic();
 testExpectedValueRejectsInvalidSampleCounts();
+testRiskLambdaRejectsNegativeValues();
 testExplanationLabelsExpectedValue();
 testRelativeUncertaintyClassification();
 

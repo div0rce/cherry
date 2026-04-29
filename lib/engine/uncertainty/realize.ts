@@ -1,5 +1,6 @@
 import { sample } from './sampling.js';
 import {
+  hasUncertaintyShapeIntent,
   isRecord,
   isUncertainNumber,
 } from './types.js';
@@ -22,11 +23,7 @@ function realizeValue(value: unknown, rng: () => number, segments: readonly stri
   }
 
   if (isRecord(value)) {
-    if ('distribution' in value) {
-      const location = segments.length === 0 ? '$' : segments.join('.');
-      throw new Error(`Invalid uncertain number at ${location}`);
-    }
-    if ('label' in value) {
+    if (hasUncertaintyShapeIntent(value)) {
       const location = segments.length === 0 ? '$' : segments.join('.');
       throw new Error(`Invalid uncertain number at ${location}`);
     }

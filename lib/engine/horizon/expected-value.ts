@@ -12,6 +12,7 @@ import { aggregateUtilitySamples } from '../objective/utility.js';
 import {
   DEFAULT_RISK_LAMBDA,
   riskAdjustedUtility,
+  validateRiskLambda,
 } from '../objective/risk.js';
 import {
   DEFAULT_EXPECTED_VALUE_SAMPLES,
@@ -31,7 +32,7 @@ export type ExpectedValueHorizonRollout<TState, TAction, TObjective> = {
   riskLambda: number;
   riskAdjustedUtility: number;
   sampleUtilities: readonly number[];
-  representativeRollout: HorizonRollout<TState, TAction, TObjective>;
+  firstSampleRollout: HorizonRollout<TState, TAction, TObjective>;
 };
 
 export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args: {
@@ -50,9 +51,10 @@ export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args
   );
   const riskLambda =
     args.riskLambda === undefined ? DEFAULT_RISK_LAMBDA : args.riskLambda;
+  validateRiskLambda(riskLambda);
   const rng = createSeededRng(args.seed);
   const utilities: number[] = [];
-  let representativeRollout: HorizonRollout<TState, TAction, TObjective> | null = null;
+  let firstSampleRollout: HorizonRollout<TState, TAction, TObjective> | null = null;
 
   validateUncertaintyState(args.initialState);
 
@@ -71,12 +73,12 @@ export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args
       throw new Error('Expected-value rollout utility must be finite');
     }
     utilities.push(utility);
-    if (representativeRollout === null) {
-      representativeRollout = rollout;
+    if (firstSampleRollout === null) {
+      firstSampleRollout = rollout;
     }
   }
 
-  if (representativeRollout === null) {
+  if (firstSampleRollout === null) {
     throw new Error('Expected-value rollout produced no samples');
   }
 
@@ -95,6 +97,6 @@ export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args
       riskLambda
     ),
     sampleUtilities: utilities,
-    representativeRollout,
+    firstSampleRollout,
   };
 }

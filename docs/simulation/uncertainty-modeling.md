@@ -24,12 +24,14 @@ Uncertain inputs are numeric only. They must be represented as labeled
 Sampling happens before deterministic rollout. Transition functions receive
 realized numeric state, never distributions.
 
+Only `distribution` creates uncertainty-shape intent. `label` alone is always
+ordinary domain data.
+
 ## Supported distributions
 
 The supported numeric distributions are:
 
 - `point(value)`
-- `bernoulli(p)`
 - `normal(mu, sigma)`
 - `lognormal(mu, sigma)`
 - `discrete(values, probs)`
@@ -39,6 +41,11 @@ sum to 1. Nonnegative engine domains such as cents, income, expense, balances,
 limits, cash, liquid amounts, rates, and utilization reject distributions that
 can produce negative samples. Use `lognormal`, nonnegative `point`, or
 nonnegative `discrete` values for positive-only financial quantities.
+
+This domain validation is a PR12 path-name heuristic for common engine fields,
+not a full semantic domain annotation system.
+
+Represent event/value probability as `discrete(values=[0,X], probs=[1-p,p])`.
 
 ## Expected-value rollout
 

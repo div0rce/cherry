@@ -1,5 +1,11 @@
 export const DEFAULT_RISK_LAMBDA = 0;
 
+export function validateRiskLambda(lambda: number): void {
+  if (!Number.isFinite(lambda) || lambda < 0) {
+    throw new Error('Risk lambda must be finite and nonnegative');
+  }
+}
+
 export function riskAdjustedUtility(
   ev: number,
   variance: number,
@@ -11,8 +17,6 @@ export function riskAdjustedUtility(
   if (!Number.isFinite(variance) || variance < 0) {
     throw new Error('Variance must be finite and nonnegative');
   }
-  if (!Number.isFinite(lambda) || lambda < 0) {
-    throw new Error('Risk lambda must be finite and nonnegative');
-  }
+  validateRiskLambda(lambda);
   return ev - lambda * variance;
 }

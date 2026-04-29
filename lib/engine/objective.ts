@@ -50,6 +50,7 @@ export {
 export {
   DEFAULT_RISK_LAMBDA,
   riskAdjustedUtility,
+  validateRiskLambda,
 } from './objective/risk.js';
 
 export const UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT = 0.0001;

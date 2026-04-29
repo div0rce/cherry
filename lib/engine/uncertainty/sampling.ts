@@ -20,9 +20,6 @@ export function validateNumericDistribution(d: NumericDistribution): void {
     case 'point':
       assertFiniteNumber(d.value, 'point.value');
       return;
-    case 'bernoulli':
-      assertProbability(d.p, 'bernoulli.p');
-      return;
     case 'normal':
       assertFiniteNumber(d.mean, 'normal.mean');
       assertFiniteNumber(d.std, 'normal.std');
@@ -67,8 +64,6 @@ export function expectation(d: NumericDistribution): number {
   switch (d.kind) {
     case 'point':
       return d.value;
-    case 'bernoulli':
-      return d.p;
     case 'normal':
       return d.mean;
     case 'lognormal':
@@ -97,8 +92,6 @@ export function sample(d: NumericDistribution, rng: () => number): number {
   switch (d.kind) {
     case 'point':
       return d.value;
-    case 'bernoulli':
-      return rng() < d.p ? 1 : 0;
     case 'normal':
       return d.mean + d.std * standardNormalSample(rng);
     case 'lognormal':

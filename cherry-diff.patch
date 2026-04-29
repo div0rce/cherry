@@ -68,10 +68,10 @@ index 22462ed4d62c1b74b697925450ed1b3816841064..48de22bb2edb5b7ef0cdeb15187f9e15
 +- `docs/simulation/uncertainty-modeling.md`
 diff --git a/docs/simulation/uncertainty-modeling.md b/docs/simulation/uncertainty-modeling.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..817be7266d909d026b4231861d1b416f4848e25a
+index 0000000000000000000000000000000000000000..789feb99684dcc88dafc52e7b66347f7083b2882
 --- /dev/null
 +++ b/docs/simulation/uncertainty-modeling.md
-@@ -0,0 +1,132 @@
+@@ -0,0 +1,139 @@
 +Status: Active
 +Last updated: 2026-04-29
 +
@@ -98,12 +98,14 @@ index 0000000000000000000000000000000000000000..817be7266d909d026b4231861d1b416f
 +Sampling happens before deterministic rollout. Transition functions receive
 +realized numeric state, never distributions.
 +
++Only `distribution` creates uncertainty-shape intent. `label` alone is always
++ordinary domain data.
++
 +## Supported distributions
 +
 +The supported numeric distributions are:
 +
 +- `point(value)`
-+- `bernoulli(p)`
 +- `normal(mu, sigma)`
 +- `lognormal(mu, sigma)`
 +- `discrete(values, probs)`
@@ -113,6 +115,11 @@ index 0000000000000000000000000000000000000000..817be7266d909d026b4231861d1b416f
 +limits, cash, liquid amounts, rates, and utilization reject distributions that
 +can produce negative samples. Use `lognormal`, nonnegative `point`, or
 +nonnegative `discrete` values for positive-only financial quantities.
++
++This domain validation is a PR12 path-name heuristic for common engine fields,
++not a full semantic domain annotation system.
++
++Represent event/value probability as `discrete(values=[0,X], probs=[1-p,p])`.
 +
 +## Expected-value rollout
 +
@@ -206,10 +213,10 @@ index 0000000000000000000000000000000000000000..817be7266d909d026b4231861d1b416f
 +- `docs/engine-optimality/objective.md`
 diff --git a/lib/engine/explain/uncertainty.ts b/lib/engine/explain/uncertainty.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..739ad13b4b5ffdc5511aa8b28b0b4a182ec8460b
+index 0000000000000000000000000000000000000000..fb2885adc976f06489135b7f402af4adc08cb9f9
 --- /dev/null
 +++ b/lib/engine/explain/uncertainty.ts
-@@ -0,0 +1,115 @@
+@@ -0,0 +1,113 @@
 +import {
 +  collectUncertaintyAssumptions,
 +  type UncertaintyAssumption,
@@ -244,8 +251,6 @@ index 0000000000000000000000000000000000000000..739ad13b4b5ffdc5511aa8b28b0b4a18
 +  switch (d.kind) {
 +    case 'point':
 +      return `point(value=${d.value})`;
-+    case 'bernoulli':
-+      return `bernoulli(p=${d.p})`;
 +    case 'normal':
 +      return `normal(mu=${d.mean}, sigma=${d.std})`;
 +    case 'lognormal':
@@ -327,10 +332,10 @@ index 0000000000000000000000000000000000000000..739ad13b4b5ffdc5511aa8b28b0b4a18
 +}
 diff --git a/lib/engine/horizon/expected-value.ts b/lib/engine/horizon/expected-value.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9c0fcd4f6
+index 0000000000000000000000000000000000000000..8ef10275369f0a5ad4076101e54f0b3b798b8416
 --- /dev/null
 +++ b/lib/engine/horizon/expected-value.ts
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,102 @@
 +import type { HorizonConfig } from './config.js';
 +import {
 +  runHorizonRollout,
@@ -345,6 +350,7 @@ index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9
 +import {
 +  DEFAULT_RISK_LAMBDA,
 +  riskAdjustedUtility,
++  validateRiskLambda,
 +} from '../objective/risk.js';
 +import {
 +  DEFAULT_EXPECTED_VALUE_SAMPLES,
@@ -364,7 +370,7 @@ index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9
 +  riskLambda: number;
 +  riskAdjustedUtility: number;
 +  sampleUtilities: readonly number[];
-+  representativeRollout: HorizonRollout<TState, TAction, TObjective>;
++  firstSampleRollout: HorizonRollout<TState, TAction, TObjective>;
 +};
 +
 +export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args: {
@@ -383,9 +389,10 @@ index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9
 +  );
 +  const riskLambda =
 +    args.riskLambda === undefined ? DEFAULT_RISK_LAMBDA : args.riskLambda;
++  validateRiskLambda(riskLambda);
 +  const rng = createSeededRng(args.seed);
 +  const utilities: number[] = [];
-+  let representativeRollout: HorizonRollout<TState, TAction, TObjective> | null = null;
++  let firstSampleRollout: HorizonRollout<TState, TAction, TObjective> | null = null;
 +
 +  validateUncertaintyState(args.initialState);
 +
@@ -404,12 +411,12 @@ index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9
 +      throw new Error('Expected-value rollout utility must be finite');
 +    }
 +    utilities.push(utility);
-+    if (representativeRollout === null) {
-+      representativeRollout = rollout;
++    if (firstSampleRollout === null) {
++      firstSampleRollout = rollout;
 +    }
 +  }
 +
-+  if (representativeRollout === null) {
++  if (firstSampleRollout === null) {
 +    throw new Error('Expected-value rollout produced no samples');
 +  }
 +
@@ -428,7 +435,7 @@ index 0000000000000000000000000000000000000000..17b2f33ab47d98da4bfde46404c619c9
 +      riskLambda
 +    ),
 +    sampleUtilities: utilities,
-+    representativeRollout,
++    firstSampleRollout,
 +  };
 +}
 diff --git a/lib/engine/horizon/index.ts b/lib/engine/horizon/index.ts
@@ -451,7 +458,7 @@ index 24f6cb454828e025057a3e4c73491560e5cb2892..f61fdd4a07f898963022a2ae84af9ac3
 +export * from './uncertainty/index.js';
 +export * from './explain/uncertainty.js';
 diff --git a/lib/engine/objective.ts b/lib/engine/objective.ts
-index e41a9cbf87564651162629fe540479ab30becfec..fe9f4a117e6fdaece727393bd8eb0d6ed4c72387 100644
+index e41a9cbf87564651162629fe540479ab30becfec..3bc8f3ebaf78fb024bc41f236e6118c2dd13a61f 100644
 --- a/lib/engine/objective.ts
 +++ b/lib/engine/objective.ts
 @@ -33,6 +33,7 @@ export {
@@ -462,7 +469,7 @@ index e41a9cbf87564651162629fe540479ab30becfec..fe9f4a117e6fdaece727393bd8eb0d6e
    centsToUtilityCents,
    dollarsToUtilityCents,
    pointsToUtilityCents,
-@@ -42,9 +43,15 @@ export {
+@@ -42,9 +43,16 @@ export {
    type ObjectiveComponent,
    type ObjectiveComponentKind,
    type ObjectiveScoreUnit,
@@ -473,6 +480,7 @@ index e41a9cbf87564651162629fe540479ab30becfec..fe9f4a117e6fdaece727393bd8eb0d6e
 +export {
 +  DEFAULT_RISK_LAMBDA,
 +  riskAdjustedUtility,
++  validateRiskLambda,
 +} from './objective/risk.js';
 +
  export const UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT = 0.0001;
@@ -480,11 +488,17 @@ index e41a9cbf87564651162629fe540479ab30becfec..fe9f4a117e6fdaece727393bd8eb0d6e
  export const PAYDOWN_ACTION_BONUS_UTILITY_CENTS = 1;
 diff --git a/lib/engine/objective/risk.ts b/lib/engine/objective/risk.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..d211c9e2ad57e371d4b770efd788a45cc2869830
+index 0000000000000000000000000000000000000000..705fe3c7c4043399e14ab972b395766141f8a8fe
 --- /dev/null
 +++ b/lib/engine/objective/risk.ts
-@@ -0,0 +1,18 @@
+@@ -0,0 +1,22 @@
 +export const DEFAULT_RISK_LAMBDA = 0;
++
++export function validateRiskLambda(lambda: number): void {
++  if (!Number.isFinite(lambda) || lambda < 0) {
++    throw new Error('Risk lambda must be finite and nonnegative');
++  }
++}
 +
 +export function riskAdjustedUtility(
 +  ev: number,
@@ -497,9 +511,7 @@ index 0000000000000000000000000000000000000000..d211c9e2ad57e371d4b770efd788a45c
 +  if (!Number.isFinite(variance) || variance < 0) {
 +    throw new Error('Variance must be finite and nonnegative');
 +  }
-+  if (!Number.isFinite(lambda) || lambda < 0) {
-+    throw new Error('Risk lambda must be finite and nonnegative');
-+  }
++  validateRiskLambda(lambda);
 +  return ev - lambda * variance;
 +}
 diff --git a/lib/engine/objective/utility.ts b/lib/engine/objective/utility.ts
@@ -562,12 +574,13 @@ index 0000000000000000000000000000000000000000..5028ebff990625ff5a0c9387801e8a74
 +export * from './realize.js';
 diff --git a/lib/engine/uncertainty/policy.ts b/lib/engine/uncertainty/policy.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..bcf5d657e259a566aec5375f52cc32e2478edf95
+index 0000000000000000000000000000000000000000..99a7d3482444d6b508d09e2a58b61e7c0fa70d50
 --- /dev/null
 +++ b/lib/engine/uncertainty/policy.ts
-@@ -0,0 +1,132 @@
+@@ -0,0 +1,129 @@
 +import { validateNumericDistribution } from './sampling.js';
 +import {
++  hasUncertaintyShapeIntent,
 +  isRecord,
 +  isUncertainNumber,
 +  type NumericDistribution,
@@ -627,7 +640,6 @@ index 0000000000000000000000000000000000000000..bcf5d657e259a566aec5375f52cc32e2
 +  switch (d.kind) {
 +    case 'point':
 +      return d.value < 0;
-+    case 'bernoulli':
 +    case 'lognormal':
 +      return false;
 +    case 'normal':
@@ -676,10 +688,7 @@ index 0000000000000000000000000000000000000000..bcf5d657e259a566aec5375f52cc32e2
 +    }
 +
 +    if (isRecord(current)) {
-+      if ('distribution' in current) {
-+        throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
-+      }
-+      if ('label' in current) {
++      if (hasUncertaintyShapeIntent(current)) {
 +        throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
 +      }
 +      if (!isPlainObject(current)) {
@@ -700,12 +709,13 @@ index 0000000000000000000000000000000000000000..bcf5d657e259a566aec5375f52cc32e2
 +}
 diff --git a/lib/engine/uncertainty/realize.ts b/lib/engine/uncertainty/realize.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..16747be345560a8cea9b4f0f61b0ec64ee895469
+index 0000000000000000000000000000000000000000..cfd58da6723cf3d609ac038fef863fc62f6783e0
 --- /dev/null
 +++ b/lib/engine/uncertainty/realize.ts
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,47 @@
 +import { sample } from './sampling.js';
 +import {
++  hasUncertaintyShapeIntent,
 +  isRecord,
 +  isUncertainNumber,
 +} from './types.js';
@@ -728,11 +738,7 @@ index 0000000000000000000000000000000000000000..16747be345560a8cea9b4f0f61b0ec64
 +  }
 +
 +  if (isRecord(value)) {
-+    if ('distribution' in value) {
-+      const location = segments.length === 0 ? '$' : segments.join('.');
-+      throw new Error(`Invalid uncertain number at ${location}`);
-+    }
-+    if ('label' in value) {
++    if (hasUncertaintyShapeIntent(value)) {
 +      const location = segments.length === 0 ? '$' : segments.join('.');
 +      throw new Error(`Invalid uncertain number at ${location}`);
 +    }
@@ -788,10 +794,10 @@ index 0000000000000000000000000000000000000000..2d1378c7f7e426cf38e2f57335146b24
 +}
 diff --git a/lib/engine/uncertainty/sampling.ts b/lib/engine/uncertainty/sampling.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..b79ccc7d9052cc41a46d803eeb00330fc5b43da3
+index 0000000000000000000000000000000000000000..f5e26e5a30e412b118ff02f57b15fed140fff13b
 --- /dev/null
 +++ b/lib/engine/uncertainty/sampling.ts
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,120 @@
 +import type { NumericDistribution } from './types.js';
 +
 +const PROBABILITY_SUM_TOLERANCE = 1e-9;
@@ -813,9 +819,6 @@ index 0000000000000000000000000000000000000000..b79ccc7d9052cc41a46d803eeb00330f
 +  switch (d.kind) {
 +    case 'point':
 +      assertFiniteNumber(d.value, 'point.value');
-+      return;
-+    case 'bernoulli':
-+      assertProbability(d.p, 'bernoulli.p');
 +      return;
 +    case 'normal':
 +      assertFiniteNumber(d.mean, 'normal.mean');
@@ -861,8 +864,6 @@ index 0000000000000000000000000000000000000000..b79ccc7d9052cc41a46d803eeb00330f
 +  switch (d.kind) {
 +    case 'point':
 +      return d.value;
-+    case 'bernoulli':
-+      return d.p;
 +    case 'normal':
 +      return d.mean;
 +    case 'lognormal':
@@ -891,8 +892,6 @@ index 0000000000000000000000000000000000000000..b79ccc7d9052cc41a46d803eeb00330f
 +  switch (d.kind) {
 +    case 'point':
 +      return d.value;
-+    case 'bernoulli':
-+      return rng() < d.p ? 1 : 0;
 +    case 'normal':
 +      return d.mean + d.std * standardNormalSample(rng);
 +    case 'lognormal':
@@ -921,20 +920,18 @@ index 0000000000000000000000000000000000000000..b79ccc7d9052cc41a46d803eeb00330f
 +}
 diff --git a/lib/engine/uncertainty/types.ts b/lib/engine/uncertainty/types.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..d013b38b0c05b6f7ae58f5962c437b6ced16def6
+index 0000000000000000000000000000000000000000..b27bc633d6bb67c06f9e11f46431c8634c77fdb6
 --- /dev/null
 +++ b/lib/engine/uncertainty/types.ts
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,66 @@
 +export type NumericDistributionKind =
 +  | 'point'
-+  | 'bernoulli'
 +  | 'normal'
 +  | 'lognormal'
 +  | 'discrete';
 +
 +export type NumericDistribution =
 +  | { kind: 'point'; value: number }
-+  | { kind: 'bernoulli'; p: number }
 +  | { kind: 'normal'; mean: number; std: number }
 +  | { kind: 'lognormal'; mu: number; sigma: number }
 +  | { kind: 'discrete'; values: number[]; probs: number[] };
@@ -956,14 +953,17 @@ index 0000000000000000000000000000000000000000..d013b38b0c05b6f7ae58f5962c437b6c
 +  return typeof value === 'object' && value !== null && !Array.isArray(value);
 +}
 +
++export function hasUncertaintyShapeIntent(value: unknown): value is Record<string, unknown> {
++  return isRecord(value) && 'distribution' in value;
++}
++
 +export function isNumericDistribution(value: unknown): value is NumericDistribution {
-+  if (!isRecord(value) || typeof value['kind'] !== 'string') return false;
++  if (!isRecord(value)) return false;
++  if (typeof value['kind'] !== 'string') return false;
 +
 +  switch (value['kind']) {
 +    case 'point':
 +      return typeof value['value'] === 'number';
-+    case 'bernoulli':
-+      return typeof value['p'] === 'number';
 +    case 'normal':
 +      return typeof value['mean'] === 'number' && typeof value['std'] === 'number';
 +    case 'lognormal':
@@ -976,8 +976,16 @@ index 0000000000000000000000000000000000000000..d013b38b0c05b6f7ae58f5962c437b6c
 +}
 +
 +export function isUncertainNumber(value: unknown): value is UncertainNumber {
++  if (!hasUncertaintyShapeIntent(value)) return false;
++  const keys = Object.keys(value).sort((a, b) => {
++    if (a < b) return -1;
++    if (a > b) return 1;
++    return 0;
++  });
++  if (keys.length !== 2) return false;
++  if (keys[0] !== 'distribution') return false;
++  if (keys[1] !== 'label') return false;
 +  return (
-+    isRecord(value) &&
 +    typeof value['label'] === 'string' &&
 +    isNumericDistribution(value['distribution'])
 +  );
@@ -1007,10 +1015,10 @@ index 94975bdbd3f749969c0d0b58ae43fea3740e63a5..0481808cf441ec6e8ed3ded57483c0c2
      "accounting": "engine_accounting_v1"
 diff --git a/tests/node/engine/uncertainty.test.ts b/tests/node/engine/uncertainty.test.ts
 new file mode 100644
-index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa71bdb5a8
+index 0000000000000000000000000000000000000000..9a53f43cea4812939c9c22117bc1ac01521d3f00
 --- /dev/null
 +++ b/tests/node/engine/uncertainty.test.ts
-@@ -0,0 +1,236 @@
+@@ -0,0 +1,320 @@
 +import * as assert from 'node:assert/strict';
 +import {
 +  buildExpectedValueUncertaintyExplanation,
@@ -1018,7 +1026,9 @@ index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa
 +  collectUncertaintyAssumptions,
 +  createSeededRng,
 +  expectation,
++  normalizeExpectedValueSamples,
 +  normalizeHorizonConfig,
++  riskAdjustedUtility,
 +  realizeState,
 +  runExpectedValueHorizonRollout,
 +  runHorizonRollout,
@@ -1071,7 +1081,6 @@ index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa
 +
 +function testExpectationCorrectness(): void {
 +  assert.equal(expectation({ kind: 'point', value: 7 }), 7);
-+  assert.equal(expectation({ kind: 'bernoulli', p: 0.25 }), 0.25);
 +  assert.equal(expectation({ kind: 'normal', mean: 10, std: 2 }), 10);
 +  assert.equal(expectation({ kind: 'lognormal', mu: 1, sigma: 0 }), Math.exp(1));
 +  assert.equal(
@@ -1144,6 +1153,38 @@ index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa
 +      }),
 +    { message: 'Invalid uncertain number at value' }
 +  );
++  assert.throws(
++    () =>
++      collectUncertaintyAssumptions({
++        value: {
++          label: 'bad_extra',
++          distribution: { kind: 'point', value: 1 },
++          extra: true,
++        },
++      }),
++    { message: 'Invalid uncertain number at value' }
++  );
++}
++
++function testLabelWithoutDistributionIsDomainData(): void {
++  const assumptions = collectUncertaintyAssumptions({
++    cards: [{ label: 'Amex Gold', balanceCents: 12_000 }],
++    objectiveProfile: { label: 'default' },
++  });
++
++  assert.deepEqual(assumptions, []);
++}
++
++function testDistributionCreatesUncertaintyIntent(): void {
++  assert.throws(
++    () =>
++      collectUncertaintyAssumptions({
++        value: {
++          distribution: { kind: 'point', value: 1 },
++        },
++      }),
++    { message: 'Invalid uncertain number at value' }
++  );
 +}
 +
 +function testExpectedValuePointMatchesDeterministic(): void {
@@ -1173,10 +1214,14 @@ index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa
 +
 +  assert.equal(result.expectedUtility, deterministicUtility);
 +  assert.equal(result.variance, 0);
-+  assert.deepEqual(result.representativeRollout.steps, deterministic.steps);
++  assert.deepEqual(result.firstSampleRollout.steps, deterministic.steps);
 +}
 +
 +function testExpectedValueRejectsInvalidSampleCounts(): void {
++  assert.throws(
++    () => normalizeExpectedValueSamples(Number.NaN),
++    { message: 'Expected-value samples must be an integer: NaN' }
++  );
 +  assert.throws(
 +    () =>
 +      runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
@@ -1194,6 +1239,50 @@ index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa
 +        utilityOfRollout,
 +      }),
 +    /between 100 and 5000/
++  );
++  assert.throws(
++    () =>
++      runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
++        initialState: { value: 1 },
++        config: normalizeHorizonConfig({ steps: 1 }),
++        samples: 5001,
++        seed: 'too-large',
++        evaluatePolicy: ({ state }) => ({
++          action: { delta: 1 },
++          objective: { utility: assertRealizedNumber(state.value) },
++        }),
++        applyAction: ({ state, action }) => ({
++          value: assertRealizedNumber(state.value) + action.delta,
++        }),
++        utilityOfRollout,
++      }),
++    /between 100 and 5000/
++  );
++}
++
++function testRiskLambdaRejectsNegativeValues(): void {
++  assert.throws(
++    () => riskAdjustedUtility(10, 1, -1),
++    { message: 'Risk lambda must be finite and nonnegative' }
++  );
++  assert.throws(
++    () =>
++      runExpectedValueHorizonRollout<TestState, TestAction, TestObjective>({
++        initialState: { value: 1 },
++        config: normalizeHorizonConfig({ steps: 1 }),
++        samples: 100,
++        seed: 'bad-risk',
++        riskLambda: -1,
++        evaluatePolicy: ({ state }) => ({
++          action: { delta: 1 },
++          objective: { utility: assertRealizedNumber(state.value) },
++        }),
++        applyAction: ({ state, action }) => ({
++          value: assertRealizedNumber(state.value) + action.delta,
++        }),
++        utilityOfRollout,
++      }),
++    { message: 'Risk lambda must be finite and nonnegative' }
 +  );
 +}
 +
@@ -1241,8 +1330,11 @@ index 0000000000000000000000000000000000000000..6f4709ce02496da2ecb480ca9198c2aa
 +testSeededRngReproducibility();
 +testSamplingMeanConvergence();
 +testRealizationIsNonMutatingAndNumericOnly();
++testLabelWithoutDistributionIsDomainData();
++testDistributionCreatesUncertaintyIntent();
 +testExpectedValuePointMatchesDeterministic();
 +testExpectedValueRejectsInvalidSampleCounts();
++testRiskLambdaRejectsNegativeValues();
 +testExplanationLabelsExpectedValue();
 +testRelativeUncertaintyClassification();
 +

@@ -1,13 +1,11 @@
 export type NumericDistributionKind =
   | 'point'
-  | 'bernoulli'
   | 'normal'
   | 'lognormal'
   | 'discrete';
 
 export type NumericDistribution =
   | { kind: 'point'; value: number }
-  | { kind: 'bernoulli'; p: number }
   | { kind: 'normal'; mean: number; std: number }
   | { kind: 'lognormal'; mu: number; sigma: number }
   | { kind: 'discrete'; values: number[]; probs: number[] };
@@ -29,14 +27,17 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+export function hasUncertaintyShapeIntent(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && 'distribution' in value;
+}
+
 export function isNumericDistribution(value: unknown): value is NumericDistribution {
-  if (!isRecord(value) || typeof value['kind'] !== 'string') return false;
+  if (!isRecord(value)) return false;
+  if (typeof value['kind'] !== 'string') return false;
 
   switch (value['kind']) {
     case 'point':
       return typeof value['value'] === 'number';
-    case 'bernoulli':
-      return typeof value['p'] === 'number';
     case 'normal':
       return typeof value['mean'] === 'number' && typeof value['std'] === 'number';
     case 'lognormal':
@@ -49,8 +50,16 @@ export function isNumericDistribution(value: unknown): value is NumericDistribut
 }
 
 export function isUncertainNumber(value: unknown): value is UncertainNumber {
+  if (!hasUncertaintyShapeIntent(value)) return false;
+  const keys = Object.keys(value).sort((a, b) => {
+    if (a < b) return -1;
+    if (a > b) return 1;
+    return 0;
+  });
+  if (keys.length !== 2) return false;
+  if (keys[0] !== 'distribution') return false;
+  if (keys[1] !== 'label') return false;
   return (
-    isRecord(value) &&
     typeof value['label'] === 'string' &&
     isNumericDistribution(value['distribution'])
   );

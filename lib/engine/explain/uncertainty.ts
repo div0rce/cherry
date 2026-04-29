@@ -32,8 +32,6 @@ export function formatNumericDistribution(d: NumericDistribution): string {
   switch (d.kind) {
     case 'point':
       return `point(value=${d.value})`;
-    case 'bernoulli':
-      return `bernoulli(p=${d.p})`;
     case 'normal':
       return `normal(mu=${d.mean}, sigma=${d.std})`;
     case 'lognormal':

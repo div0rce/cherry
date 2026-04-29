@@ -1,5 +1,6 @@
 import { validateNumericDistribution } from './sampling.js';
 import {
+  hasUncertaintyShapeIntent,
   isRecord,
   isUncertainNumber,
   type NumericDistribution,
@@ -59,7 +60,6 @@ function distributionCanProduceNegative(d: NumericDistribution): boolean {
   switch (d.kind) {
     case 'point':
       return d.value < 0;
-    case 'bernoulli':
     case 'lognormal':
       return false;
     case 'normal':
@@ -108,10 +108,7 @@ export function collectUncertaintyAssumptions(value: unknown): UncertaintyAssump
     }
 
     if (isRecord(current)) {
-      if ('distribution' in current) {
-        throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
-      }
-      if ('label' in current) {
+      if (hasUncertaintyShapeIntent(current)) {
         throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
       }
       if (!isPlainObject(current)) {
