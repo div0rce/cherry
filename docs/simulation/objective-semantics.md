@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-04-28
+Last updated: 2026-04-29
 
 # Objective Semantics
 
@@ -60,15 +60,29 @@ does not define a true global utility function.
 
 Cherry does not claim long-horizon global optimality. It ranks the currently generated candidate set under a documented, unit-consistent objective.
 
+### Expected-value overlay
+
+Expected-value simulation aggregates sample utility in the same canonical
+`utility_usd_cents` unit. It is an overlay on deterministic scoring, not a
+replacement for the live objective.
+
+Variance stays in utility-space. Risk-adjusted utility, when used, is computed
+from expected utility and variance with an explicit dimensionless risk
+coefficient. Expected-value explanations must label outputs as expectations,
+not guarantees.
+
 ## Future/Target behavior
 
 - Any new score dimension must either convert into `objectiveUtilityCents` or be
   explicitly documented as a bounded non-utility heuristic contribution.
 - Any change to live objective semantics must update this document, tests, and
   engine behavior versioning.
+- Add uncertainty or risk metrics only when their unit semantics remain explicit
+  and bounded.
 
 ## Related docs
 
 - `docs/engine-optimality/objective.md`
 - `docs/engine-optimality/status.md`
 - `docs/engine-optimality/candidate-space.md`
+- `docs/simulation/uncertainty-modeling.md`

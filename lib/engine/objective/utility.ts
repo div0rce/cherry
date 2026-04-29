@@ -26,6 +26,12 @@ export type ObjectiveComponent = {
   boundedHeuristic?: boolean;
 };
 
+export type UtilityResult = {
+  expectedUtility: number;
+  variance?: number;
+  samples?: number;
+};
+
 export function utilityCents(value: number): UtilityCents {
   if (!Number.isFinite(value)) {
     throw new Error('Utility cents must be finite');
@@ -55,4 +61,30 @@ export function sumObjectiveUtility(
   return utilityCents(
     components.reduce((sum, component) => sum + component.utilityCents, 0)
   );
+}
+
+export function aggregateUtilitySamples(samples: readonly number[]): Required<UtilityResult> {
+  if (samples.length === 0) {
+    throw new Error('Utility samples must not be empty');
+  }
+
+  let total = 0;
+  for (const value of samples) {
+    if (!Number.isFinite(value)) {
+      throw new Error('Utility samples must be finite');
+    }
+    total += value;
+  }
+
+  const expectedUtility = total / samples.length;
+  const squaredErrorTotal = samples.reduce((sum, value) => {
+    const delta = value - expectedUtility;
+    return sum + delta * delta;
+  }, 0);
+
+  return {
+    expectedUtility,
+    variance: squaredErrorTotal / samples.length,
+    samples: samples.length,
+  };
 }

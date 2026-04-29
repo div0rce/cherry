@@ -33,6 +33,7 @@ export {
   OBJECTIVE_SCORE_UNIT,
   POINTS_PER_DOLLAR,
   REWARD_POINT_VALUE_CENTS,
+  aggregateUtilitySamples,
   centsToUtilityCents,
   dollarsToUtilityCents,
   pointsToUtilityCents,
@@ -42,8 +43,15 @@ export {
   type ObjectiveComponent,
   type ObjectiveComponentKind,
   type ObjectiveScoreUnit,
+  type UtilityResult,
   type UtilityCents,
 } from './objective/utility.js';
+
+export {
+  DEFAULT_RISK_LAMBDA,
+  riskAdjustedUtility,
+  validateRiskLambda,
+} from './objective/risk.js';
 
 export const UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT = 0.0001;
 export const DEBT_BALANCE_RELIEF_UTILITY_CENTS_PER_DEBT_CENT = 0.0001;
