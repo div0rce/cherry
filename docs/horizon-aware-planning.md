@@ -59,8 +59,22 @@ This is not a UI redesign.
 The horizon subsystem is generic. It accepts injected policy and transition
 functions and does not import solver internals.
 
+## Expected-Value Overlay
+
+PR12 adds a separate expected-value wrapper for horizon rollout. Deterministic
+`runHorizonRollout` remains the base primitive.
+
+Expected-value rollout samples labeled numeric uncertainty before each
+deterministic rollout, then aggregates utility in `utility_usd_cents` through an
+explicit utility extractor. Transition functions still receive concrete state,
+not distributions.
+
+Expected-value output is labeled as expectation. It must not be described as a
+guaranteed future outcome.
+
 ## Related docs
 
 - `docs/engine-time-semantics.md`
 - `docs/engine-optimality/trace.md`
 - `docs/simulation/objective-semantics.md`
+- `docs/simulation/uncertainty-modeling.md`

@@ -1,11 +1,13 @@
 import * as assert from 'node:assert/strict';
 import {
   REWARD_POINT_VALUE_CENTS,
+  aggregateUtilitySamples,
   centsToUtilityCents,
   rewardPointsToUtilityCents,
   sumObjectiveUtility,
   utilityCents,
 } from '../../lib/engine/objective/utility.js';
+import { riskAdjustedUtility } from '../../lib/engine/objective/risk.js';
 
 function testRewardPointsUseExplicitValueMapping(): void {
   assert.equal(rewardPointsToUtilityCents(1000), 1000);
@@ -38,8 +40,23 @@ function testTotalUsesObjectiveComponentUtilityCents(): void {
   assert.equal(total, 750);
 }
 
+function testUtilitySampleAggregation(): void {
+  const aggregate = aggregateUtilitySamples([1, 2, 3]);
+
+  assert.equal(aggregate.expectedUtility, 2);
+  assert.equal(aggregate.variance, 2 / 3);
+  assert.equal(aggregate.samples, 3);
+}
+
+function testRiskAdjustedUtility(): void {
+  assert.equal(riskAdjustedUtility(10, 4, 0), 10);
+  assert.equal(riskAdjustedUtility(10, 4, 0.5), 8);
+}
+
 testRewardPointsUseExplicitValueMapping();
 testCashCentsStayCanonical();
 testTotalUsesObjectiveComponentUtilityCents();
+testUtilitySampleAggregation();
+testRiskAdjustedUtility();
 
 process.stdout.write('objective utility semantics: ok\n');
