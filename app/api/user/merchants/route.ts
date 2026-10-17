@@ -24,7 +24,6 @@ export async function GET(request: Request): Promise<Response> {
           query !== '' ? { not: null, contains: query, mode: 'insensitive' } : { not: null },
       },
       select: { merchantName: true },
-      distinct: ['merchantName'],
       take: 20,
       orderBy: { postedAt: 'desc' },
     });
