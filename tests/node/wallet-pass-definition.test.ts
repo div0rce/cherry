@@ -17,4 +17,11 @@ assert.equal('boardingPass' in definition || 'coupon' in definition || 'eventTic
 const storeCard = definition['storeCard'] as { primaryFields: Array<{ key: string; value: unknown }> };
 assert.deepEqual(storeCard.primaryFields[0], { key: 'balance', label: 'Cherry Points', value: 42 });
 
+// The serial is stable across balance changes, so a re-download replaces the existing card.
+const later = buildCherryPassDefinition(
+  { userId: 'user_123', userName: 'Ada', cherryPoints: 99 },
+  { passTypeId: 'pass.com.cherry.pass', teamId: 'TEAMID', orgName: 'Cherry', passDescription: 'Cherry Pass' }
+);
+assert.equal(later['serialNumber'], definition['serialNumber']);
+
 process.stdout.write('wallet-pass-definition: ok\n');
