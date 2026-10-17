@@ -11176,13 +11176,6 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "source": "legacy",
     "tier": "persistence-only"
   },
-  "lib/history.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy",
-    "tier": "persistence-only"
-  },
   "lib/income/classifier.ts": {
     "effects": [
       "console",
@@ -11192,13 +11185,6 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "tier": "persistence-only"
   },
   "lib/income/monthly.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy",
-    "tier": "persistence-only"
-  },
-  "lib/ingest/bank-transactions.ts": {
     "effects": [
       "prisma"
     ],
@@ -11248,13 +11234,6 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "tier": "persistence-only"
   },
   "lib/sessions/summaries.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy",
-    "tier": "persistence-only"
-  },
-  "lib/simulation.ts": {
     "effects": [
       "prisma"
     ],
