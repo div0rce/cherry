@@ -196,6 +196,7 @@ export const GUARDRAILS = Object.freeze({
   'check:accounting-proof-coverage': ACCOUNTING_PROOF_COVERAGE_PATH,
   'check:replay-equals-materialized': REPLAY_EQUALS_MATERIALIZED_PATH,
   'check:no-mutation': NO_MUTATION_PATH,
+  'check:domain-boundaries': `${CHECK_PATH_BASE}domain-boundaries.mts`,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;

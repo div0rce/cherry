@@ -27,11 +27,29 @@ const testFiles = fg
   })
   .sort();
 
-if (testFiles.length === 0) {
+// --filter=<glob>[,<glob>] narrows the run (DOMAIN-level verification). Never authoritative:
+// the FULL gate is `npm run check && npm test && npm run build`.
+const filterArg = process.argv.find((arg) => arg.startsWith('--filter='));
+const filteredFiles =
+  filterArg === undefined
+    ? testFiles
+    : fg
+        .sync(filterArg.slice('--filter='.length).split(',').filter((glob) => glob.length > 0), {
+          cwd: repoRoot,
+          absolute: true,
+          ignore: ['**/__mocks__/**', 'tests/fixtures/**', 'tests/db/**'],
+        })
+        .filter((file) => testFiles.includes(file))
+        .sort();
+if (filterArg !== undefined) {
+  process.stdout.write(`FILTERED RUN (${filteredFiles.length}/${testFiles.length} files); not a substitute for the full gate\n`);
+}
+
+if (filteredFiles.length === 0) {
   fail(PREFIX, 'No Node tests found under tests/node/**/*.test.{js,ts,tsx}', { fix: FIX });
 }
 
-for (const file of testFiles) {
+for (const file of filteredFiles) {
   process.stdout.write(`RUN ${path.relative(repoRoot, file)}\n`);
   const result = runTsEsm(
     file,
