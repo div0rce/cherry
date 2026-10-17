@@ -296,7 +296,7 @@ const MONEY_FLOAT_ALLOWLIST = new Map([
   ['lib/evaluator/stats.ts', 'TEMP: legacy stats'],
   ['lib/engine/legacy-mapper.ts', 'TEMP: legacy mapper'],
   ['lib/engine/objective.ts', 'TEMP: pre-Cents objective'],
-  ['lib/engine/public.ts', 'TEMP: public adapter'],
+  ['lib/autopilot/engine-decision.ts', 'TEMP: Autopilot swipe adapter (was lib/engine/public.ts)'],
   ['lib/autopilot/runSimulation.ts', 'TEMP: sim bridge'],
   ['lib/autopilot/service.ts', 'TEMP: service layer'],
   ['lib/alerts/sendEmailAlert.ts', 'TEMP: formatting only'],
