@@ -224,23 +224,23 @@ Purpose: a per-user, per-UTC-day spend-safety summary. Advisory only; it never a
 ### `POST /api/internal/run-daily`
 - Auth: `withUser`; runs for the signed-in user only (no `userId` field).
 - Gate: `CHERRY_DAILYSTATE_CRON_ENABLED=true`, else `403 { error: "daily_state_disabled" }`. Checked after auth, so unauthenticated calls get `401` first.
-- Body (inline strict Zod schema): `{ date?: string }`. A JSON body is required (send `{}`). `date` is parsed with `new Date()` and defaults to now; the run targets that date's UTC day. Past and future dates are not bounded.
+- Body (inline strict Zod schema): `{ date?: string }`. A JSON body is required (send `{}`). `date` is parsed with `new Date()` and defaults to now; the run targets that date's UTC day. Dates after the current UTC day return `400 { error: "future_date" }` (a future date would roll buckets forward and zero their spend); past dates are allowed.
 - Response `200`: `{ userId, date, status, inputsVersion, engineVersion }`; `date` echoes the parsed input, not the normalized UTC day.
-- Errors: `400` from `parseJsonBody`; `400 { error: "invalid_date" }`.
+- Errors: `400` from `parseJsonBody`; `400 { error: "invalid_date" }`; `400 { error: "future_date" }`.
 - Side effects:
   - Upserts `DailyState` for `(userId, UTC day)` with `source = MANUAL`.
   - May persist bucket period rollovers (`ensureBucketFresh` at the target UTC midnight).
   - May create an `AlertEvent` row and log a placeholder alert email (`lib/alerts/sendEmailAlert.ts` only logs).
   - If computation throws, writes an `INSUFFICIENT_DATA` row with `errors` set and still returns `200`.
 
-### `POST /api/internal/run-daily-all`
+### `GET|POST /api/internal/run-daily-all`
 - Auth: `Authorization: Bearer <CRON_SECRET>`, compared with `timingSafeEqual`; no user session. Returns `401 { error: "Unauthorized" }` when the header does not match or `CRON_SECRET` is unset or shorter than 32 characters.
 - Gate: `CHERRY_DAILYSTATE_CRON_ENABLED=true`, else `403 { error: "daily_state_disabled" }` (checked after the secret).
-- Body (inline strict Zod schema): `{ date?: string, batchSize?: int 1-500 }` (`batchSize` defaults to 100). A JSON body is required (send `{}`). Invalid `date` returns `400 { error: "invalid_date" }`.
+- Body (inline strict Zod schema): `{ date?: string, batchSize?: int 1-500 }` (`batchSize` defaults to 100). `POST` requires a JSON body (send `{}`); `GET` takes no body and runs for today with the default batch size (what Vercel Cron sends). Invalid `date` returns `400 { error: "invalid_date" }`; a date after the current UTC day returns `400 { error: "future_date" }`.
 - Behavior: pages through all users by `id`, `batchSize` at a time, and runs `runDailyForUser` with `source = NIGHTLY` for each, all inside this one request. Per-user failures are logged and counted, not fatal.
 - Response `200`: `{ ok: true, processed, succeeded, failed, durationMs }`. The runner writes an error row instead of throwing for most computation errors, so `failed` counts only users whose fallback write also failed.
 - Side effects: same as `run-daily`, for every user.
-- Exports `POST` only. Vercel Cron sends `GET`, so a Vercel cron entry pointing here would get `405`; `vercel.json` has no `crons` entry today.
+- Scheduling: nothing in the repo schedules it; `vercel.json` has no `crons` entry. A Vercel cron entry can call `GET` once `CRON_SECRET` is set.
 
 ---
 
