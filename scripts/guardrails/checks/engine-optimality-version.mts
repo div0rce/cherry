@@ -28,7 +28,7 @@ if (traceVersion !== EXPECTED_TRACE_VERSION) {
 if (details.length > 0) {
   fail(PREFIX, 'Engine optimality versions changed', {
     details,
-    fix: 'Update docs/engine-optimality/*, tests/engine/optimality/*, and this guardrail.',
+    fix: 'Update docs/engine-optimality/*, tests/node/engine/optimality/*, and this guardrail.',
   });
 }
 

@@ -379,14 +379,6 @@ async function main(): Promise<void> {
           );
         }
 
-        if (relPath.startsWith('tests/engine/') && targetEnv !== 'node') {
-          violations.push(
-            `${relPath}:${imp.line}:${imp.col}: tests/engine may only import env:node (saw ${envIdFor(
-              targetEnv
-            )} via ${spec})`
-          );
-        }
-
         if (relPath.startsWith('tests/db/') && targetEnv !== 'node') {
           violations.push(
             `${relPath}:${imp.line}:${imp.col}: tests/db may only import env:node (saw ${envIdFor(
@@ -409,12 +401,6 @@ async function main(): Promise<void> {
         if (relPath.startsWith('tests/node/') && isUiAlias(spec)) {
           violations.push(
             `${relPath}:${imp.line}:${imp.col}: tests/node may not import ${spec}`
-          );
-        }
-
-        if (relPath.startsWith('tests/engine/') && isUiAlias(spec)) {
-          violations.push(
-            `${relPath}:${imp.line}:${imp.col}: tests/engine may not import ${spec}`
           );
         }
 
@@ -442,12 +428,6 @@ async function main(): Promise<void> {
       if (relPath.startsWith('tests/node/') && isUiAlias(spec)) {
         violations.push(
           `${relPath}:${imp.line}:${imp.col}: tests/node may not import ${spec}`
-        );
-      }
-
-      if (relPath.startsWith('tests/engine/') && isUiAlias(spec)) {
-        violations.push(
-          `${relPath}:${imp.line}:${imp.col}: tests/engine may not import ${spec}`
         );
       }
     }

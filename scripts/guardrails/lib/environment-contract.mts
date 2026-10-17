@@ -38,7 +38,6 @@ export const ENVIRONMENT_CONTRACTS = Object.freeze({
         `lib/accounting/**/${SOURCE_EXT}`,
         `lib/**/${SOURCE_EXT}`,
         `scripts/**/${SOURCE_EXT}`,
-        `tests/engine/**/${SOURCE_EXT}`,
         `tests/node/**/${SOURCE_EXT}`,
         `tests/db/**/${SOURCE_EXT}`,
         'data/**/*.json',
@@ -91,7 +90,6 @@ export const ENVIRONMENT_CONTRACTS = Object.freeze({
       exclude: [
         `tests/node/**/${SOURCE_EXT}`,
         `tests/next/**/${SOURCE_EXT}`,
-        `tests/engine/**/${SOURCE_EXT}`,
         `tests/db/**/${SOURCE_EXT}`,
       ],
     },
