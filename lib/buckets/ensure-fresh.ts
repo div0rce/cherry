@@ -26,8 +26,11 @@ export async function ensureBucketFresh(
 
   const balance = computeBucketBalanceFromNumbers(rolled.budgetAmount, rolled.spentCents, 0);
 
-  const updated = await db.bucket.update({
-    where: { id: bucketId },
+  // Conditional on the period this call read: if a concurrent caller already rolled the bucket
+  // (and a confirm may since have incremented its spend), an unconditional write here would reset
+  // that spend to the stale rollover value. In that case keep the current row.
+  await db.bucket.updateMany({
+    where: { id: bucketId, periodStart: bucket.periodStart, periodEnd: bucket.periodEnd },
     data: {
       periodStart: rolled.periodStart,
       periodEnd: rolled.periodEnd,
@@ -37,5 +40,5 @@ export async function ensureBucketFresh(
     },
   });
 
-  return updated;
+  return db.bucket.findUnique({ where: { id: bucketId } });
 }
