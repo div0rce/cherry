@@ -332,6 +332,7 @@ export default defineConfig([
     'next.config.ts',
     'tailwind.config.ts',
     'proxy.ts',
+    'instrumentation.ts',
     'eslint.config.mjs',
     'postcss.config.mjs',
   ]),
@@ -11580,6 +11581,7 @@ export default config;
     "data/**/*.ts",
     "data/**/*.json",
     "proxy.ts",
+    "instrumentation.ts",
     "next-env.d.ts",
     "next.config.ts",
     "tailwind.config.ts"
