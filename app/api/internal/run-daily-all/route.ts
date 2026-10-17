@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -10,6 +9,7 @@ import { isFutureUtcDay, runDailyForUser } from '../../../../lib/daily-state/run
 import { logInfo, logError } from '../../../../lib/logger.js';
 import { asAppError } from '../../../../lib/errors.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
+import { hasBearerSecret } from '../../../../lib/identity/bearer-secret.js';
 
 const RunAllSchema = z
   .object({
@@ -18,17 +18,13 @@ const RunAllSchema = z
   })
   .strict();
 
-// This job touches every user, so a user session is not enough: callers must present
-// `Authorization: Bearer <CRON_SECRET>` (the header Vercel Cron sends). Fails closed when the
-// secret is unset or shorter than 32 characters.
+// This job touches every user, so a user session is not enough: callers must present the
+// CRON_SECRET bearer header that Vercel Cron sends. Fails closed when the secret is unset or
+// shorter than 32 characters.
 const MIN_CRON_SECRET_LENGTH = 32;
 
 function hasCronSecret(request: NextRequest): boolean {
-  const secret = process.env['CRON_SECRET'];
-  if (secret === undefined || secret.length < MIN_CRON_SECRET_LENGTH) return false;
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const actual = Buffer.from(request.headers.get('authorization') ?? '');
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
+  return hasBearerSecret(request.headers, process.env['CRON_SECRET'], MIN_CRON_SECRET_LENGTH);
 }
 
 function rejectUnlessAllowed(request: NextRequest): NextResponse | null {
