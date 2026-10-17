@@ -129,7 +129,7 @@ Purpose: advisory card choice for a described purchase (preview), then a record 
   - `ui`: copy bundle (badge, labels, `explanation { primary, secondary[], warnings[] }`, panel copy).
 - Errors (`{ error, code }`):
   - `400 INVALID_PAYLOAD` for bad JSON or schema failures (Zod issues are not returned).
-  - `400` `INVALID_MERCHANT`, `INVALID_AMOUNT`, `INVALID_OCCURRED_AT`, `INVALID_IDEMPOTENCY`.
+  - `400 INVALID_IDEMPOTENCY` when the decision fingerprint cannot be built. (The service also defines `INVALID_MERCHANT`, `INVALID_AMOUNT`, and `INVALID_OCCURRED_AT`, but the route's schema rejects those inputs first with `INVALID_PAYLOAD`.)
   - `401 UNAUTHORIZED`; `503 ENGINE_TIMEOUT`.
   - `500` `ENGINE_ERROR`, `INVALID_PREVIEW_OUTPUT`, `PREVIEW_UNEXPECTED_ERROR`. An `occurredAt` later than the request time trips an invariant and returns `500 PREVIEW_UNEXPECTED_ERROR`, not `400`.
 - Side effects: no session, ledger, or bucket writes. Logs a `DecisionEvent` row when authority returns `ok: true` (telemetry, as `/api/scan` does).
