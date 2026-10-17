@@ -115,7 +115,6 @@ export default defineConfig([
     'next.config.ts',
     'tailwind.config.ts',
     'proxy.ts',
-    'instrumentation.ts',
     'eslint.config.mjs',
     'postcss.config.mjs',
   ]),
