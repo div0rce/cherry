@@ -18,7 +18,7 @@ export default async function EditRewardRulePage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId, ruleId } = resolvedParams;
-  await requireUserContext('/app/onboarding');
+  await requireUserContext(`/app/onboarding/cards/${cardId}/rules/${ruleId}/edit`);
   const ruleResponse = await fetchFromApi<
     Array<{
       id: string;

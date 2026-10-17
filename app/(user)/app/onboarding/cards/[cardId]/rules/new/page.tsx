@@ -17,7 +17,7 @@ export default async function NewRewardRulePage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
-  await requireUserContext('/app/onboarding');
+  await requireUserContext(`/app/onboarding/cards/${cardId}/rules/new`);
   const response = await fetchFromApi<Array<{ id: string; nickname: string }>>('/api/cards');
   if (response.ok !== true) {
     redirect('/app/onboarding?missing=cards');
