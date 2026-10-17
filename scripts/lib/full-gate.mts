@@ -8,9 +8,11 @@ import { runTool } from '../guardrails/lib/run-tool.mjs';
 // Shared by verify:preflight and verify:full. Local workflow only: CI runs ci:verify directly and
 // never reads the lock or the log.
 
-// ponytail: 2 GiB is about twice node_modules (828 MB) + .next (258 MB), measured 2026-10-17; npm ci
-// and next build hit ENOSPC near 300 MB free. Raise it if those outputs grow.
-export const MIN_FREE_BYTES = 2 * 1024 ** 3;
+// ponytail: 1 GiB is about 4x a from-scratch .next (258 MB, measured 2026-10-17), the largest write
+// FULL makes in an installed checkout; npm ci on an unchanged lockfile replaces node_modules (828 MB)
+// at about net zero. ENOSPC hit near 330 MB free. A fresh worktree needs ~1.1 GB more, but preflight
+// needs installed deps, so check `df -h .` by hand there. Raise it if these outputs grow.
+export const MIN_FREE_BYTES = 1024 ** 3;
 export const LOCK_NAME = 'cherry-full-gate.lock';
 export const LOG_NAME = 'cherry-full-gate.log';
 
