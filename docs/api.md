@@ -195,9 +195,9 @@ Purpose: advisory card choice for a described purchase (preview), then a record 
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `GET /api/user/merchants` — merchant-name suggestions from the user's `BankTransaction` rows.
-  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). Every error, including an auth failure, returns `200 { names: [] }`; the route never returns `401`.
-  - Query: `query` (optional string, trimmed). It is meant as a case-insensitive `merchantName` substring filter, but the `where` clause overwrites it with `merchantName: { not: null }`, so it is currently ignored.
-  - Response: `{ names: string[] }`, the distinct non-empty `merchantName` values among the user's 20 most recent rows by `postedAt` (fewer than 20 after de-duplication).
+  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). Unauthenticated calls return `401`; backend failures are logged and return `500 { error: "merchant_lookup_failed", names: [] }`.
+  - Query: `query` (optional string, trimmed): case-insensitive `merchantName` substring filter.
+  - Response: `{ names: string[] }`, up to 20 distinct non-empty `merchantName` values, most recent first by `postedAt`.
   - Side effects: read-only.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
 - `/api/autopilot/prereqs` — returns Autopilot onboarding prerequisites (`cards/rules/buckets` counts + warnings) and the first missing step.
@@ -252,11 +252,11 @@ Purpose: a per-user, per-UTC-day spend-safety summary. Advisory only; it never a
 - `/api/dev/pending-sessions` — list PENDING-ledger sessions for the user.
 - `POST /api/dev/engine/inspect` — engine decision dump for `/dev/engine/inspector`.
   - Gate: `proxy.ts` answers `/api/dev/*` with plain-text `403` when `NODE_ENV=production`, unless `CHERRY_DEV_SHELL_ENABLED=true`.
-  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). The catch block maps every error, including the production lab-demo refusal, to `500 { error }` rather than `401`.
+  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). Auth failures (including the production lab-demo refusal) return `401`.
   - Body (inline strict Zod schema): `merchant` (non-empty string), `amount` (positive number in dollars, rounded to cents), `category?` (string, upper-cased into the merchant category key), `mcc?` (string).
   - Behavior: builds `EngineState` with `fromPrismaUserToEngineState` and runs `safeSolveDecisionForWorld` (up to 64 candidates, no legacy decision).
   - Response `200`: `{ decisions: [{ id, actionType, cardId, score, constraintsBreached }], guardrails, topDecision }`; `guardrails` is the de-duplicated union of `constraintsBreached`. When the solver returns not-ok: `200 { decisions: [], guardrails: [], error }`.
-  - Errors: `400` from `parseJsonBody`; `500 { error }` for anything thrown.
+  - Errors: `400` from `parseJsonBody`; `401` for auth failures; `500 { error }` for anything else thrown.
   - Side effects: read-only.
 - `/api/dev/bank/ingest` — dev-only bank ingest; `POST { transactions: RawBankTransaction[] }` upserts `BankTransaction` rows idempotently (`source = "dev_simulator"`), `GET` dumps recent rows for the current user. In production, dev sources are rejected.
 - `/api/dev/verification/trigger` — dev-only manual verification trigger that forwards a `VerificationSignal` into `verifySessionFromSignal` (tests ledger POSTED/REVOKED without bank simulator UI).
