@@ -54,7 +54,7 @@ npm ci                                # postinstall: patch-package + prisma gene
 export CHERRY_TMP_ROOT="$HOME/.cherry-tmp"; mkdir -p "$CHERRY_TMP_ROOT"; chmod 700 "$CHERRY_TMP_ROOT"
 export CHERRY_VINE_SIGNATURE_MODE=enforce   # build asserts production config without it
 ```
-Before `npm ci`, a build, or FULL: `npm run verify:preflight` (Node/npm pins, `CHERRY_*` env, at least 2 GiB free, no git operation or FULL run in progress in this worktree). It needs installed deps; on a fresh clone check `df -h .` by hand. Reuse a working `node_modules`; rerun `npm ci` only when `package-lock.json` changed or the install is broken.
+Before `npm ci`, a build, or FULL: `npm run verify:preflight` (Node/npm pins, `CHERRY_*` env, at least 1 GiB free, no git operation or FULL run in progress in this worktree). It needs installed deps; on a fresh clone check `df -h .` by hand. Reuse a working `node_modules`; rerun `npm ci` only when `package-lock.json` changed or the install is broken.
 `rg`, `git`, `node` must be on PATH. `npm run dev` needs `DATABASE_URL` (predev runs `check:db-ready`). Env contract: `.env.example`, `docs/env-policy.md`; never commit `.env*`.
 
 ## Verification levels
