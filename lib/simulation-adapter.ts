@@ -23,7 +23,7 @@ export async function runSimulation(
   }
   const runner =
     overrides?.runEngineFn ??
-    (await import('./engine.js')).runEngine;
+    (await import('./legacy-engine.js')).runEngine;
   const decision = await runner(input);
   return { decision };
 }

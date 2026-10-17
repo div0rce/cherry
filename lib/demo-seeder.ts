@@ -13,7 +13,7 @@ import {
   VerificationStatus,
 } from '@prisma/client';
 import type { OverallVerdict } from './enums.js';
-import { runEngine } from './engine.js';
+import { runEngine } from './legacy-engine.js';
 import { assertUserId } from './invariants.js';
 import { isPrismaP2003, logInvariant } from './user-context.js';
 import { computeBucketBalanceFromNumbers, deriveLegacyCurrentAmount } from './buckets-runtime.js';
