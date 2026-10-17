@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-09-22
+Last updated: 2026-10-17
 
 # Cherry API Reference (App Router)
 
@@ -28,6 +28,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 ## Auth
 - Auth stack: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`.
 - Auth guard: every stateful route resolves the user via `resolveUserContext` (`lib/user-context.ts`); nine routes use the `withUser` wrapper (`lib/with-user.ts`) around it. Unauthenticated calls return `401`.
+- Lab-demo fallback: routes that call `resolveUserContext({ requireAuth: true, allowLabDemo: true })` serve the shared lab user (`lab+single-user@cherry.dev`, created on first use) when there is no session. `lib/user-context.ts` refuses this in production (`ServerConfig.environment === 'production'`) by throwing an `UNAUTHORIZED` `AppError` (401); whether the client sees `401` depends on the route's catch block. `withUser` passes `allowLabDemo: false` and returns plain-text `401 Unauthorized` on any auth failure. Every successful `resolveUserContext` call also upserts the caller's `User` row; "read-only" notes below ignore that.
 - Client rule: on `401`, prompt sign-in (`signIn()`); server components redirect to `/signin?callbackUrl=...`.
 - `GET /api/user/context` — returns `{ userId, mode }` for authenticated requests (used by server components to avoid direct config access).
 
@@ -112,6 +113,43 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 
 ---
 
+## Autopilot
+Routes: `app/api/autopilot/preview/route.ts`, `app/api/autopilot/commit/route.ts`; service `lib/autopilot/service.ts`.
+
+Purpose: advisory card choice for a described purchase (preview), then a record that the user followed it (commit). Neither route touches payment rails. Prerequisites: `/api/autopilot/prereqs` (see Cards, Buckets, Simulation, MCCs).
+
+### `POST /api/autopilot/preview`
+- Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (lab-demo fallback outside production; see Auth).
+- Gates: none.
+- Body (`AutopilotPreviewInputSchema` in `lib/validation/autopilot/preview.ts`, strict): `merchant` (non-empty string), `amountCents` (positive int), `category` (required; one of `AUTOPILOT_REWARD_CATEGORIES` in `lib/autopilot/types.ts`), `occurredAt?` (ISO 8601 datetime string; defaults to request time).
+- Behavior: `getAutopilotPreview` runs the Autopilot engine at `occurredAt` with a 1500 ms timeout, derives a deterministic `decisionId` (`edid_v1_...`) from the inputs plus a bucket/card state snapshot hash, runs `simulateSpendAuthority` (authority_v1), and validates the result against `AutopilotPreviewOutputSchema`.
+- Response `200`: `{ decisionId, merchant, amountCents, occurredAt, status, recommendedCard, expectedMonetaryBenefitCents, expectedPointsDelta, bucketImpact, reasonCode, authority, ui }`.
+  - `status`: `ok | blocked | fallback`; `blocked` and `fallback` still return `200`.
+  - `recommendedCard`: `{ id, label, issuer, network } | null`; `bucketImpact`: `{ bucketId, name, remainingCents, spentCents } | null`.
+  - `ui`: copy bundle (badge, labels, `explanation { primary, secondary[], warnings[] }`, panel copy).
+- Errors (`{ error, code }`):
+  - `400 INVALID_PAYLOAD` for bad JSON or schema failures (Zod issues are not returned).
+  - `400` `INVALID_MERCHANT`, `INVALID_AMOUNT`, `INVALID_OCCURRED_AT`, `INVALID_IDEMPOTENCY`.
+  - `401 UNAUTHORIZED`; `503 ENGINE_TIMEOUT`.
+  - `500` `ENGINE_ERROR`, `INVALID_PREVIEW_OUTPUT`, `PREVIEW_UNEXPECTED_ERROR`. An `occurredAt` later than the request time trips an invariant and returns `500 PREVIEW_UNEXPECTED_ERROR`, not `400`.
+- Side effects: no session, ledger, or bucket writes. Logs a `DecisionEvent` row when authority returns `ok: true` (telemetry, as `/api/scan` does).
+
+### `POST /api/autopilot/commit`
+- Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth).
+- Gate: `AUTOPILOT_COMMIT_V2=true` selects the v2 path; any other value uses v1. Read once at module load, so changing it needs a restart. The flag never disables the route.
+- Body (`AutopilotCommitInputSchema` in `lib/autopilot/types.ts`, strict): `decisionId`, `merchant`, `amountCents` (positive int), `cardId` (non-empty strings), `occurredAt` (required ISO 8601 datetime), `category?` (defaults to `OTHER`), `userNote?` (string, max 500; accepted but not used).
+- Behavior: re-runs the preview evaluation (no timeout) and requires the recomputed `decisionId` to equal the submitted one, `status` to be `ok`, and `cardId` to equal the recommended card. To match, resend the preview's `merchant`, `amountCents`, `occurredAt`, and `category`; a bucket/card state change since preview also changes the `decisionId`.
+  - v1 (default): in one transaction, creates a sandbox `SimulatedTransaction` with `id = decisionId`, `status = APPROVED`, `reason = AUTOPILOT_COMMIT`. Does not change bucket `spentCents`; no session or ledger rows. Response `{ decisionId, transactionId, bucket, status }`.
+  - v2: upserts a `RecommendationSession` (`source = AUTOPILOT`, keyed by `engineDecisionId`), confirms it via `confirmRecommendationSession` (session `CLAIMED`, bucket `spentCents` incremented, one `PENDING` `CherryPointLedger` row, zero points allowed), then creates an `AutopilotCommit` row. Response `{ decisionId, sessionId, bucket, status }`.
+- Response `200`: `status` is `created` or `already_exists`. Repeating a commit for the same `decisionId` is idempotent (v1 by `SimulatedTransaction.id`, v2 by `AutopilotCommit (userId, decisionId)`). `bucket` is the recommended bucket as `BucketRuntime`, or `null`; in v1 it is the pre-commit state.
+- Errors:
+  - Invalid body: `parseJsonBody` `400` (`{ error: "Invalid JSON body" }` or `{ error: "Validation failed", issues }`).
+  - Service errors as `{ error, code }`: `400` `DECISION_MISMATCH`, `DECISION_BLOCKED`, `CARD_MISMATCH`, plus the preview evaluation `400`s and `500 ENGINE_ERROR`. v2 adds `COMMIT_INVARIANT_VIOLATION` (status taken from the session-confirm error, e.g. `400` when already claimed, `404` when the session or bucket is missing) and `500 MISSING_ENGINE_DECISION_ID`.
+  - `401 UNAUTHORIZED`; anything else `500 AUTOPILOT_COMMIT_UNEXPECTED`.
+- Side effects: as listed for v1/v2 above; both paths may also persist a bucket period rollover via `ensureBucketFresh`.
+
+---
+
 ## Vine Order Ingestion (dev-only)
 - Route: `app/api/vine/order/route.ts`
 - Purpose: ingest order context from the Vine simulator or future hardware, run the engine, and create a bound `RecommendationSession`.
@@ -156,10 +194,53 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/simulate` — Runs the same engine as `/api/scan`/`/api/sessions` (via `safeSolveDecisionForUser` in `lib/engine/solver.ts`) and records a `SimulatedTransaction` for sandbox history; does **not** mutate buckets. Live simulation is single-step and present-time: purchase projections are authorization effects, not posted settlement, and the simulator is not a generic future scheduler. Scheduled paydowns are kept as raw source data but only scheduled paydowns with `effectiveAtMs <= decisionTimeMs` mutate present preview state. Future scheduled paydowns are future-only and may surface only through `contingentRecommendation` and `futureRiskContext`. `USE_CARD_WITH_PAYDOWN` applies purchase first and immediate paydown second in the same preview step. Also runs `simulateSpendAuthority` (authority_v1), logs a `DecisionEvent` when authority returns `ok: true`, and returns an `authority` verdict/severity/reasons/counterfactuals alongside the legacy card-focused response. The solver now considers multi-action decisions (delay/reject/merchant-switch/debt paydown), but this route still returns the legacy card-focused response.
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
+- `GET /api/user/merchants` — merchant-name suggestions from the user's `BankTransaction` rows.
+  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). Every error, including an auth failure, returns `200 { names: [] }`; the route never returns `401`.
+  - Query: `query` (optional string, trimmed). It is meant as a case-insensitive `merchantName` substring filter, but the `where` clause overwrites it with `merchantName: { not: null }`, so it is currently ignored.
+  - Response: `{ names: string[] }`, the distinct non-empty `merchantName` values among the user's 20 most recent rows by `postedAt` (fewer than 20 after de-duplication).
+  - Side effects: read-only.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
 - `/api/autopilot/prereqs` — returns Autopilot onboarding prerequisites (`cards/rules/buckets` counts + warnings) and the first missing step.
 
-All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.ts`, and `resolveUserContext` (or `withUser`) where stateful. Not yet documented here: `/api/autopilot/preview`, `/api/autopilot/commit`, `/api/daily-state`, `/api/dev/engine/inspect`, `/api/internal/run-daily`, `/api/internal/run-daily-all`, `/api/user/merchants`; see `docs/architecture/data-flow.md` and the route files.
+All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.ts`, and `resolveUserContext` (or `withUser`) where stateful. Autopilot preview/commit, DailyState, and dev engine routes have their own sections. `POST /api/autopilot` (`{ merchant, amount }` in dollars; no in-repo callers) is not yet documented here; see `app/api/autopilot/route.ts` and `docs/architecture/data-flow.md`.
+
+---
+
+## DailyState
+Routes: `app/api/daily-state/route.ts`, `app/api/internal/run-daily/route.ts`, `app/api/internal/run-daily-all/route.ts`; runner `lib/daily-state/runDailyForUser.ts`. Contract: `docs/daily-state.md`.
+
+Purpose: a per-user, per-UTC-day spend-safety summary. Advisory only; it never authorizes spend.
+
+### `GET /api/daily-state`
+- Auth: `withUser` (no lab demo; plain-text `401 Unauthorized`).
+- Gates: none (not behind `CHERRY_DAILYSTATE_CRON_ENABLED`).
+- Response `200`: the user's `DailyState` row with the latest `computedAt`: `{ id, userId, date, status, safeToSpendCents, nextRiskEvent, summary, computedAt, source, engineVersion, inputsVersion, errors }`.
+  - `status`: `SAFE | TIGHT | RISKY | INSUFFICIENT_DATA`.
+  - `summary`: `{ buckets: { remainingCents, exhaustedCategories }, pointsPending, sessionsPendingVerification }`, or null on error rows.
+  - The runner sets `computedAt` to the target date's UTC midnight, so "latest" means the latest target date, not the most recent run.
+- Errors: `404 { error: "not_found" }` when the user has no row.
+- Side effects: read-only.
+
+### `POST /api/internal/run-daily`
+- Auth: `withUser`; runs for the signed-in user only (no `userId` field).
+- Gate: `CHERRY_DAILYSTATE_CRON_ENABLED=true`, else `403 { error: "daily_state_disabled" }`. Checked after auth, so unauthenticated calls get `401` first.
+- Body (inline strict Zod schema): `{ date?: string }`. A JSON body is required (send `{}`). `date` is parsed with `new Date()` and defaults to now; the run targets that date's UTC day. Past and future dates are not bounded.
+- Response `200`: `{ userId, date, status, inputsVersion, engineVersion }`; `date` echoes the parsed input, not the normalized UTC day.
+- Errors: `400` from `parseJsonBody`; `400 { error: "invalid_date" }`.
+- Side effects:
+  - Upserts `DailyState` for `(userId, UTC day)` with `source = MANUAL`.
+  - May persist bucket period rollovers (`ensureBucketFresh` at the target UTC midnight).
+  - May create an `AlertEvent` row and log a placeholder alert email (`lib/alerts/sendEmailAlert.ts` only logs).
+  - If computation throws, writes an `INSUFFICIENT_DATA` row with `errors` set and still returns `200`.
+
+### `POST /api/internal/run-daily-all`
+- Auth: `Authorization: Bearer <CRON_SECRET>`, compared with `timingSafeEqual`; no user session. Returns `401 { error: "Unauthorized" }` when the header does not match or `CRON_SECRET` is unset or shorter than 32 characters.
+- Gate: `CHERRY_DAILYSTATE_CRON_ENABLED=true`, else `403 { error: "daily_state_disabled" }` (checked after the secret).
+- Body (inline strict Zod schema): `{ date?: string, batchSize?: int 1-500 }` (`batchSize` defaults to 100). A JSON body is required (send `{}`). Invalid `date` returns `400 { error: "invalid_date" }`.
+- Behavior: pages through all users by `id`, `batchSize` at a time, and runs `runDailyForUser` with `source = NIGHTLY` for each, all inside this one request. Per-user failures are logged and counted, not fatal.
+- Response `200`: `{ ok: true, processed, succeeded, failed, durationMs }`. The runner writes an error row instead of throwing for most computation errors, so `failed` counts only users whose fallback write also failed.
+- Side effects: same as `run-daily`, for every user.
+- Exports `POST` only. Vercel Cron sends `GET`, so a Vercel cron entry pointing here would get `405`; `vercel.json` has no `crons` entry today.
 
 ---
 
@@ -169,6 +250,14 @@ All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.
 - No destructive admin HTTP mutation routes remain under `/api/admin/*`.
 - `/api/seed-demo` and `/api/seed-demo/cards-buckets` — seed demo data.
 - `/api/dev/pending-sessions` — list PENDING-ledger sessions for the user.
+- `POST /api/dev/engine/inspect` — engine decision dump for `/dev/engine/inspector`.
+  - Gate: `proxy.ts` answers `/api/dev/*` with plain-text `403` when `NODE_ENV=production`, unless `CHERRY_DEV_SHELL_ENABLED=true`.
+  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). The catch block maps every error, including the production lab-demo refusal, to `500 { error }` rather than `401`.
+  - Body (inline strict Zod schema): `merchant` (non-empty string), `amount` (positive number in dollars, rounded to cents), `category?` (string, upper-cased into the merchant category key), `mcc?` (string).
+  - Behavior: builds `EngineState` with `fromPrismaUserToEngineState` and runs `safeSolveDecisionForWorld` (up to 64 candidates, no legacy decision).
+  - Response `200`: `{ decisions: [{ id, actionType, cardId, score, constraintsBreached }], guardrails, topDecision }`; `guardrails` is the de-duplicated union of `constraintsBreached`. When the solver returns not-ok: `200 { decisions: [], guardrails: [], error }`.
+  - Errors: `400` from `parseJsonBody`; `500 { error }` for anything thrown.
+  - Side effects: read-only.
 - `/api/dev/bank/ingest` — dev-only bank ingest; `POST { transactions: RawBankTransaction[] }` upserts `BankTransaction` rows idempotently (`source = "dev_simulator"`), `GET` dumps recent rows for the current user. In production, dev sources are rejected.
 - `/api/dev/verification/trigger` — dev-only manual verification trigger that forwards a `VerificationSignal` into `verifySessionFromSignal` (tests ledger POSTED/REVOKED without bank simulator UI).
 - Dev-only CSV ingest shortcut: `npm run dev:ingest:moustafa-bank` parses the tracked synthetic fixture at `data/bank/moustafa-adv-safebalance-2061.csv` and writes `BankTransaction` rows with `source = "csv_dev"`; blocked in production. Only synthetic financial fixtures may be committed; see `docs/data-policy.md`.
