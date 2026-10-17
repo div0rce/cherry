@@ -50,7 +50,7 @@ Traces of the main operations through the layers, as implemented. Paths are exac
 `lib/evaluator/offline-history.ts` replays `BankTransaction` rows through `safeSolveDecisionForUser` and writes only `HistoricalEngineEvaluation`. Gated by `CHERRY_OFFLINE_EVALUATOR_ENABLED`; must call `assertOfflineEvaluatorModelsReady()` first.
 
 ## Wallet pass — `GET /api/wallet/cherry-pass`
-Returns 501 unless `CHERRY_WALLET_PASS_ENABLED=true` and all Apple env vars are set (`lib/wallet/config.ts`); otherwise builds a `storeCard` pass (`lib/wallet/cherryPass.ts`). Never a payment instrument.
+Returns 501 unless `CHERRY_WALLET_PASS_ENABLED=true` and all Apple env vars are set (`lib/wallet/config.ts`); otherwise builds a static `storeCard` pass (`lib/wallet/cherryPass.ts`) showing the posted Cherry Points balance (`lib/points.ts`). No pass-update web service, so no `webServiceURL`. Never a payment instrument.
 
 ## Related docs
 - `docs/api.md` (request/response shapes), `docs/verification-flow.md`, `docs/cherry-vine.md`, `docs/autopilot-master-spec.md`, `docs/offline-evaluator.md`
