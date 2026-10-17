@@ -14,7 +14,6 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const repoRoot = path.resolve(path.dirname(__filename), '..', '..', '..');
 const fixtureRoot = path.join(repoRoot, 'tests', 'fixtures', 'guardrails', 'repo', 'side-effects');
-const tmpBase = process.env['CHERRY_TMP_ROOT'] ?? os.tmpdir();
 const CLOCK_FIXTURES = ['clock-new-date.ts', 'clock-now.ts', 'clock-spread.ts'] as const;
 
 function runGuardrail(name: string, root: string): { status: number | null; output: string } {
@@ -40,7 +39,7 @@ function runGuardrail(name: string, root: string): { status: number | null; outp
 
   // Each clock-read syntax must fail on its own when it is not allowlisted.
   for (const file of CLOCK_FIXTURES) {
-    const unlisted = fs.mkdtempSync(path.join(tmpBase, 'side-effects-unlisted-'));
+    const unlisted = fs.mkdtempSync(path.join(os.tmpdir(), 'cherry-side-effects-unlisted-'));
     try {
       fs.mkdirSync(path.join(unlisted, 'lib'));
       fs.mkdirSync(path.join(unlisted, 'scripts'));
@@ -57,7 +56,7 @@ function runGuardrail(name: string, root: string): { status: number | null; outp
 
 // 2. Expiry against HEAD commit date, in a throwaway git repo.
 {
-  const repo = fs.mkdtempSync(path.join(tmpBase, 'side-effects-diff-'));
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'cherry-side-effects-diff-'));
   const git = (args: string[], date: string): void => {
     const result = spawnSync('git', args, {
       cwd: repo,
