@@ -66,7 +66,7 @@ Before `npm ci`, a build, or FULL: `npm run verify:preflight` (Node/npm pins, `C
 | DB | `npm run test:db` (real Postgres) | schema or migration changes |
 
 Order: edit → FAST → DOMAIN → commit → FULL → push. FAST and DOMAIN results are never cited as the gate.
-- `verify:full` holds a per-worktree lock (no overlapping FULL runs) and appends `<tree SHA> <node> pass|fail` to `.git/cherry-full-gate.log` for clean committed trees. A tree that already passed on the same Node is not re-run. Any commit changes the tree SHA, which invalidates the record. Use `-- --force` only with a concrete reason (suspected flake, changed gitignored input such as `.env*` or `node_modules`). Put the verified tree SHA in the PR's Testing section.
+- `verify:full` holds a per-worktree lock (no overlapping FULL runs). For a clean checkout it appends `<HEAD> <origin/main> <main> <node> pass|fail` to `.git/cherry-full-gate.log`. Those are the git inputs `ci:verify` reads. If the latest line for the current key is a pass, the run is skipped. A new commit, a rebase, an amend, or a fetch that moves `main` or `origin/main` changes the key. Use `-- --force` only with a concrete reason (suspected flake, changed gitignored input such as `.env*` or `node_modules`); a failed forced run cancels the earlier pass. A lock left by a killed run is not reclaimed automatically: `verify:preflight` names it, and you delete it once no `ci:verify` is running. Put the verified commit SHA in the PR's Testing section.
 - Never run FULL, `npm run build`, or `npm ci` while another of them is running in the same worktree.
 
 `check` = core guardrails + lint + typecheck; it runs no tests. `npm test` runs every `tests/**/*.test.*` except `tests/db`. Tests run with Prisma mocked; CI green does not prove DB behavior. CI (`.github/workflows/ci.yml`) runs `check:guardrails`, `check:tests:node`, `check:tests:next` (TZ=UTC, LC_ALL=C), then `ci:verify` (so each test runs twice: once there, once in `npm test`); `env-checks.yml` adds Postgres, migrations, `check:env`, `test:db`.
@@ -79,8 +79,8 @@ Order: edit → FAST → DOMAIN → commit → FULL → push. FAST and DOMAIN re
 git checkout main && git pull --ff-only
 git checkout -b <type>/<short-description>      # feat/ fix/ chore/ docs/
 # implement; keep to one coherent change; no unrelated cleanup
-npm run verify:full                             # FULL
 git add . && git commit -m "<type>(<scope>): <summary>"
+npm run verify:full                             # FULL on the committed state (recorded)
 git push -u origin <type>/<short-description>
 ```
 - Never commit to `main`. Never merge unless explicitly told; prefer squash and merge when asked.
