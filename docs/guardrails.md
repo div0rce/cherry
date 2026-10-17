@@ -28,6 +28,7 @@ Last updated: 2026-10-16
 - Accounting invariants run as deterministic guardrails over `lib/accounting` and its property tests.
 - Engine optimality guardrail runs bounded oracle tests via `check:engine-optimality`.
 - Engine optimality versions are frozen by `check:engine-optimality-version`.
+- Domain ownership and dependency direction are enforced from `scripts/guardrails/domains.manifest.json` (`check:domain-boundaries`).
 - Objective semantics are enforced for live objective paths via `check:objective-semantics`.
 - Guardrail runner supports `--aggregate` shadow execution; it accepts guardrail names only (no per-guardrail args) and reports in registry order by default (`--sort=name` for alphabetical).
 - Workflow presence, quoted expressions, runner-context, and delete-safety are enforced (`check:workflow-files-present`, `check:workflow-expressions-quoted`, `check:workflow-runner-context`, `check:no-workflow-force-delete`).
@@ -107,7 +108,7 @@ Last updated: 2026-10-16
 - NodeNext usage is quarantined to script configs only.
 - `docs/config-snapshot.md` must list every config file and match on-disk contents.
 - `check:config-snapshot` is read-only. Guardrails may verify the snapshot, but they must not rewrite it at runtime.
-- `.js` import specifiers are disallowed in app/components/lib/tests; they are permitted only in scripts.
+- Relative import specifiers carry a `.js` extension everywhere (resolved to `.ts` by tsx/Next); `@/` aliases are forbidden in app/components/lib/tests (`check:repo-guardrails`).
 - `next.config.ts` must exclude `.next/export-detail.json`, `.next/lock`, and `.next/server/proxy.js` from output tracing to avoid non-export build failures.
 - Enforcement: `check:config-snapshot`.
 
@@ -267,7 +268,7 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 - DB materialized balances must match in-memory replayed ledger balances.
 - Enforcement: `check:db-accounting-replay`.
 
-### Guardrail 44 — Accounting Proof Coverage
+### Guardrail 44b — Accounting Proof Coverage
 
 - Every accounting axiom must be covered by at least one artifact and marked FULL.
 - Enforcement: `check:accounting-proof-coverage`.
@@ -412,7 +413,7 @@ Guardrail checks: `check:branded-literal` and `tests/node/guardrails/branded-typ
 - Engine-sensitive changes require a version bump and an engine-freeze baseline bump in a separate `chore(engine-freeze)` commit.
 - Guardrail check: `check:engine-version-bump`.
 
-### Guardrail 57 — Engine Version Import Restriction
+### Guardrail 57b — Engine Version Import Restriction
 
 - Imports of `lib/engine/version.ts` are limited to EngineInput and engine entrypoints.
 - Guardrail check: `check:engine-version-imports`.
@@ -551,6 +552,13 @@ Any duplication is a hard CI failure.
 - Package scripts that invoke files under `scripts/` must go through `npm run ts:esm`.
 - Direct `node`, `tsx`, or `ts-node` usage in script commands is forbidden.
 - Guardrail: `check:script-runner-contract`.
+
+### Guardrail 34 — Domain Boundaries
+
+- Every source file under `lib/`, `app/`, `components/`, `types/` is owned by exactly one domain declared in `scripts/guardrails/domains.manifest.json`.
+- A domain may only value-import domains listed in its `mayImport` (type-only imports are not checked). Known debt edges live in `allowedViolations` with a reason and must be removed when fixed.
+- Each domain's `tests` globs and `docs` paths must resolve to real files, so the manifest doubles as the change-impact map (`docs/architecture/domains.md`).
+- Guardrail: `check:domain-boundaries`. Set `CHERRY_DOMAIN_BOUNDARIES_REPORT=1` to print cross-domain edge counts instead of failing.
 
 ## Future/Target behavior
 

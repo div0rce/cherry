@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-01-18
+Last updated: 2026-09-22
 
 # Accounting Proof Inventory
 
@@ -47,14 +47,14 @@ Implicitly proves: Deterministic event stream generator for accounting proofs
 Notes: Provides seeded event generation and snapshot helpers for property tests.
 Maturity: PARTIAL
 
-Artifact: tests/engine-accounting-proof.test.ts
-Location: tests/engine-accounting-proof.test.ts
+Artifact: tests/node/engine-accounting-proof.test.ts
+Location: tests/node/engine-accounting-proof.test.ts
 Implicitly proves: Engine output proposals must satisfy ledger invariants; unsafe decisions filtered
 Notes: Exercises overdraft, unbalanced postings, sign abuse, and filtering logic.
 Maturity: IMPLICIT
 
-Artifact: tests/engine-accounting-time-order.test.ts
-Location: tests/engine-accounting-time-order.test.ts
+Artifact: tests/node/engine-accounting-time-order.test.ts
+Location: tests/node/engine-accounting-time-order.test.ts
 Implicitly proves: Engine-output application preserves monotonic time ordering for balances
 Notes: Applies engine-generated hypothetical txns at ordered effective times and checks as-of balances.
 Maturity: EXPLICIT

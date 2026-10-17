@@ -22,7 +22,7 @@ Code inspected:
 - Tests: `tests/*.test.js`.
 
 Docs consulted:
-- `docs/legal-constraints.md`, `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `docs/buckets-rollover-plan.md`, `docs/system-overview.md`, `docs/repo-structure.md`, `AGENTS.md`, `.github/copilot-instructions.md`.
+- `docs/legal-constraints.md`, `docs/cherry-vision.md`, `docs/cherry-vine.md`, `docs/wallet-pass.md`, `docs/api.md`, `docs/buckets-rollover-plan.md`, `docs/system-overview.md`, `docs/repo-structure.md`, `AGENTS.md`.
 
 ## 1. Current behavior (verified)
 - Bank ingest (new):

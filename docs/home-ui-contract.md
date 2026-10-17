@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-09-22
 
 # Home UI Contract (Idle / Observe)
 
@@ -65,7 +65,7 @@ Last updated: 2026-01-03
 - They must not be framed as allowances, approvals, recommendations, or limits enforced by Cherry.
 
 ## Guardrails & tests
-- Contract and guardrails enforced by `tests/home-ui-contract.test.ts` and Home surface tests; they ensure the bundle is authority-free, honors max lengths, and keeps Autopilot gated behind intent declaration.
+- Contract and guardrails enforced by `tests/node/home-ui-contract.test.ts` and Home surface tests; they ensure the bundle is authority-free, honors max lengths, and keeps Autopilot gated behind intent declaration.
 - If Home behavior changes, update this document, `lib/home/ui-bundle.ts`, and associated tests together.
 
 ## Related docs

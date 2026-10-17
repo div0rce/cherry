@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-04-26
+Last updated: 2026-09-22
 
 # Cherry API Reference (App Router)
 
@@ -27,7 +27,7 @@ This file documents the server routes under `app/api/*` and how they align with 
 
 ## Auth
 - Auth stack: NextAuth (PrismaAdapter) in `app/api/auth/[...nextauth]/route.ts`.
-- Auth guard: `withUser` (`lib/with-user.ts`) wraps all stateful routes; unauthenticated calls return `401`.
+- Auth guard: every stateful route resolves the user via `resolveUserContext` (`lib/user-context.ts`); nine routes use the `withUser` wrapper (`lib/with-user.ts`) around it. Unauthenticated calls return `401`.
 - Client rule: on `401`, prompt sign-in (`signIn()`); server components redirect to `/signin?callbackUrl=...`.
 - `GET /api/user/context` — returns `{ userId, mode }` for authenticated requests (used by server components to avoid direct config access).
 
@@ -159,7 +159,7 @@ Purpose: persist a recommendation (manual scan or Vine), let the user claim they
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
 - `/api/autopilot/prereqs` — returns Autopilot onboarding prerequisites (`cards/rules/buckets` counts + warnings) and the first missing step.
 
-All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.ts`, and `withUser` guard where stateful.
+All use Zod validation in `lib/schemas/*`, `parseJsonBody` from `lib/validation.ts`, and `resolveUserContext` (or `withUser`) where stateful. Not yet documented here: `/api/autopilot/preview`, `/api/autopilot/commit`, `/api/daily-state`, `/api/dev/engine/inspect`, `/api/internal/run-daily`, `/api/internal/run-daily-all`, `/api/user/merchants`; see `docs/architecture/data-flow.md` and the route files.
 
 ---
 

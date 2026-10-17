@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-09-22
 
 # Routes Map
 
@@ -9,7 +9,7 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Curr
 
 | Path | Surface | Purpose | Owner | Notes |
 | --- | --- | --- | --- | --- |
-| /signin | User | Auth entry for user + dev shells | Auth/Product | Shared sign-in at root; do not bypass NextAuth. |
+| /signin | User | Auth entry for user + dev shells | Auth/Product | NextAuth `pages.signIn` target; `app/signin/` currently holds only `signin-card.tsx` (no `page.tsx`). |
 | /app | User | User shell for advisory entry | Product | Primary user shell. |
 | /app/onboarding | User | Onboarding hub | Product | Buckets/cards creation flows. |
 | /app/onboarding/buckets/new | User | New bucket flow | Product |  |
@@ -21,7 +21,7 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Curr
 | /app/autopilot | User | Autopilot detail surface | Product | Lives under `/app`. |
 | /buckets | User | Buckets overview | Product | User shell outside `/app`. |
 | /history | User | Spend history timeline | Product |  |
-| /dev | Dev | Dev console dashboard | Devtools/Infra | Dev-only shell, gated by middleware. |
+| /dev | Dev | Dev console dashboard | Devtools/Infra | Dev-only shell; `proxy.ts` gates `/dev/:path*` and `/api/dev/:path*` only. |
 | /dev/buckets | Dev | Buckets management with diagnostics | Devtools/Infra | Dev-only. |
 | /dev/history | Dev | Spend history inspector | Devtools/Infra | Dev-only. |
 | /dev/statements | Dev | Statement rollups | Devtools/Infra |  |

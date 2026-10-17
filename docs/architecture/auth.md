@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-09-22
 
 # Auth Architecture (NextAuth + Prisma)
 
@@ -11,7 +11,7 @@ This document explains how authentication works in Cherry and how to keep it ali
 - Identity/auth stack: **NextAuth** with **PrismaAdapter**.
 - Location: `app/api/auth/[...nextauth]/route.ts`.
 - Storage: `User`, `Account`, `Session`, `VerificationToken` tables in `prisma/schema.prisma`.
-- Session guard: `withUser` (`lib/with-user.ts`) extracts `userId` via `getServerSession` and returns `401` on failure.
+- Session guard: `resolveUserContext` (`lib/user-context.ts`) resolves `userId` from the NextAuth v5 `auth()` session (`lib/auth.ts`); `withUser` (`lib/with-user.ts`) wraps it and returns `401` on failure.
 - Client handling: components use `useSession()` and call `signIn()` on `401` responses from APIs.
 
 ## Current behavior (enforced / in code)

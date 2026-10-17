@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-09-22
 
 # Cherry System Overview
 
@@ -29,7 +29,7 @@ This file summarizes where those concepts live in code today and highlights gaps
   - Advisory-only: `/api/scan` in `app/api/scan/route.ts` runs the engine, allows `expectedAmountCents = 0`, and logs `DecisionEvent` telemetry but does not create sessions or ledger rows.
   - Context ingest: `/api/vine/order` (dev-only) accepts Vine terminal payloads or `OrderContext`, enforces freshness (~3 minutes), creates sessions, and logs authority decisions; simulator UI at `/vine-simulator`.
 - **Evaluate**
-  - Canonical engine: `lib/engine.ts` (+ invariants in `lib/engine-invariants.ts`), MCC-aware via `resolveCategory`; buckets are rolled in-memory and normalized via `lib/buckets-runtime.ts` before verdicts.
+  - Canonical engine: the solver in `lib/engine/solver.ts`, called by routes through `safeSolveDecisionForWorld` (`lib/engine/run.ts`) with an `EngineInput` built by `lib/engine/input/fromLegacy.ts`; the legacy MCC-aware engine (`lib/engine/legacy.ts`, `resolveCategory`) still supplies the response shape. Buckets are rolled in-memory and normalized via `lib/buckets-runtime.ts` before verdicts.
   - Zod schemas ensure typed inputs (`lib/schemas/*` + `parseJsonBody` in `lib/validation.ts`).
 - **Recommend**
   - Decisions flow back to clients (`ScanClient`, Vine simulator) with bucket/card verdicts and Cherry incentive offers; `RecommendationSession` stores verdicts, coverageMode, orderToken, expiry.
@@ -51,7 +51,7 @@ This file summarizes where those concepts live in code today and highlights gaps
 ---
 
 ## Current Strengths
-- Single engine path (`lib/engine.ts`) used by `/api/scan`, `/api/sessions`, `/api/vine/order`; bucket rollover applied in memory for verdict accuracy.
+- Single engine entrypoint (`safeSolveDecisionForWorld`) used by `/api/scan`, `/api/simulate`, `/api/sessions`, and via `lib/vine/run-recommendation.ts` by `/api/vine/order`; bucket rollover applied in memory for verdict accuracy.
 - Session + ledger lifecycle exists with anomaly handling, verification stubs, and bucket spend increment on confirm.
 - Dev tooling: Vine simulator UI, admin diagnostics and seed endpoints, MCC ingest script, integrity audit script.
 - UI surfaces: Manual Lookup & Rewards (`/scan`), Sessions list (`/sessions`), Vine simulator (`/vine-simulator`), Admin panel (`/admin`).
@@ -96,7 +96,7 @@ This file summarizes where those concepts live in code today and highlights gaps
 - Hardware: `docs/cherry-vine.md`
 - Wallet: `docs/wallet-pass.md`
 - API contract (including `/api/scan`): `docs/api.md`
-- Agent ops: `AGENTS.md`, `.github/copilot-instructions.md`
+- Agent ops: `AGENTS.md`; architecture map: `docs/architecture/index.md`
 
 ## Documentation index (all markdown, non-fixture)
 
@@ -104,9 +104,8 @@ This file summarizes where those concepts live in code today and highlights gaps
 - `README.md`
 - `AGENTS.md`
 - `CONTRIBUTING.md`
-- `AUDIT.md`
-- `DOC_REWRITE_TASK.md` (temporary)
-- `.github/copilot-instructions.md`
+- `AUDIT.md` (historical)
+- `CLAUDE.md`, `.github/copilot-instructions.md` (pointers to `AGENTS.md`)
 - `.github/pull_request_template.md`
 - `types/compat/README.md`
 
@@ -124,7 +123,6 @@ This file summarizes where those concepts live in code today and highlights gaps
 - `docs/dev-ui-parity.md`
 - `docs/shell-architecture.md`
 - `docs/repo-structure.md`
-- `docs/repo-structure-plan.md` (deprecated)
 
 ### Engine, authority, buckets
 - `docs/authority-v1.md`
@@ -152,20 +150,17 @@ This file summarizes where those concepts live in code today and highlights gaps
 - `docs/ci-and-guardrails.md`
 - `docs/guardrails.md`
 - `docs/guardrails-status.md`
-- `docs/guardrails-todo.md` (deprecated)
 - `docs/script-standards.md`
 - `docs/zod-style.md`
 - `docs/audit-format.md`
 
 ### Architecture notes
+- `docs/architecture/index.md` (start here), `domains.md`, `dependency-rules.md`, `data-flow.md`, `testing.md`, `decisions/`
 - `docs/architecture/auth.md`
-- `docs/architecture/typed-eslint-postmortem.md` (deprecated)
 - `docs/architecture/compat-shims.md`
 
 ### Audits, plans, and drafts
 - `docs/cherry-core-loop-engine-vine-wallet-audit.md`
-- `docs/core-loop-audit.md` (deprecated)
-- `docs/agent-run-summary.md` (deprecated)
 - `docs/marketing-hero-spec.md` (draft)
 
 ## Related docs
