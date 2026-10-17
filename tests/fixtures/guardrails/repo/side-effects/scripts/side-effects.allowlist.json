@@ -1,0 +1,17 @@
+{
+  "lib/clock-new-date.ts": {
+    "effects": ["time"],
+    "source": "legacy",
+    "tier": "boundary-time"
+  },
+  "lib/clock-now.ts": {
+    "effects": ["time"],
+    "source": "legacy",
+    "tier": "boundary-time"
+  },
+  "lib/clock-spread.ts": {
+    "effects": ["time"],
+    "source": "legacy",
+    "tier": "boundary-time"
+  }
+}
