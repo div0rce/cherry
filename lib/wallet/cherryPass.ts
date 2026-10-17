@@ -50,7 +50,9 @@ export function buildCherryPassDefinition(
   return {
     formatVersion: 1,
     passTypeIdentifier: config.passTypeId,
-    serialNumber: `${payload.userId}-${payload.cherryPoints}`,
+    // Stable per user: Wallet replaces a pass with the same serial, so re-downloading after the
+    // balance changes updates the card instead of adding a second one.
+    serialNumber: payload.userId,
     teamIdentifier: config.teamId,
     organizationName: config.orgName,
     description: config.passDescription,
