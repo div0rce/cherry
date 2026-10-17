@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-03-19
+Last updated: 2026-10-17
 
 # Autopilot Master Spec
 
@@ -25,7 +25,7 @@ Autopilot is Cherry’s before-purchase spend planning copilot. It observes user
 - `/app/autopilot` (AutopilotShell): user-facing page that gathers context and renders results; stateless aside from client state.
 - `/api/autopilot/preview`: advisory API; auth required; consumes merchant/amount/category/occurredAt; returns an engine-backed preview; stateless (no bucket/session mutation).
 - `/api/autopilot/commit` (transitional): optional follow-up to persist a simulated swipe; auth required; re-evaluates via the same engine flow as preview and writes a simulated transaction. It does not create `RecommendationSession` or ledger rows today and should be treated as experimental until the Phase 3 commit spec is finalized.
-- Engine entry: `lib/engine/public.getAutopilotDecisionForUserSwipe` invoked by the preview service.
+- Engine entry: `lib/autopilot/engine-decision.getAutopilotDecisionForUserSwipe` invoked by the preview service.
 - Validation entry: `lib/validation/autopilot/preview.ts` (input + output schemas; single source used by route, service, adapter).
 - Service entry: `lib/autopilot/service.ts#getAutopilotPreview` (engine orchestration + DTO mapping + output validation; no writes).
 
@@ -79,7 +79,7 @@ Verbal diagrams:
 - Lifecycle: Idle → Simulating → Recommended (safe) or Warning (caution/fallback/blocked) → (Optional) Commit (current: simulated transaction only; target: shared confirm pipeline/session+ledger) or Ignore.
 
 ## 6. Engine Contract for Autopilot
-`lib/engine/public.getAutopilotDecisionForUserSwipe` requires: authenticated `userId`, normalized merchant name, positive `amountCents`, card universe IDs, and resolved category (via scan helper). It produces: decision kind (`OK`/`FALLBACK`/`BLOCKED`), recommended card ID (or null), known monetary benefit vs runner-up when computable, raw issuer-points delta when applicable, optional bucket delta (remaining/spent projections), reason code, and user-facing message. Live preview semantics are single-step and present-time: purchases are pending authorization effects, not posted settlement, and the live preview is not a future scheduler. `USE_CARD_WITH_PAYDOWN` applies purchase authorization first and immediate paydown second in the same preview. Internally it calls the solver (`safeSolveDecisionForUser`) using bounded heuristic scoring weights (`rewards`, `runway`, `debtRelief`) and filters to card actions only.
+`lib/autopilot/engine-decision.getAutopilotDecisionForUserSwipe` requires: authenticated `userId`, normalized merchant name, positive `amountCents`, card universe IDs, and resolved category (via scan helper). It produces: decision kind (`OK`/`FALLBACK`/`BLOCKED`), recommended card ID (or null), known monetary benefit vs runner-up when computable, raw issuer-points delta when applicable, optional bucket delta (remaining/spent projections), reason code, and user-facing message. Live preview semantics are single-step and present-time: purchases are pending authorization effects, not posted settlement, and the live preview is not a future scheduler. `USE_CARD_WITH_PAYDOWN` applies purchase authorization first and immediate paydown second in the same preview. Internally it calls the solver (`safeSolveDecisionForUser`) using bounded heuristic scoring weights (`rewards`, `runway`, `debtRelief`) and filters to card actions only.
 
 ## 7. Preview Backend Integration Contract (/api/autopilot/preview)
 - Request (`/api/autopilot/preview`): JSON with `merchant` (string, trimmed, required), `amountCents` (positive int), optional `occurredAt`, **required** `category` (`AutopilotRewardCategory`). Auth required (`resolveUserContext`, allow lab demo). Stateless: no bucket writes. Parsed via `AutopilotPreviewInputSchema` in `lib/validation/autopilot/preview.ts`.
@@ -162,7 +162,7 @@ Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`s
 
 ## 14. Constraints and Guardrails
 - Advisory-only: no payment rails, no card/proxy semantics, no bucket/session mutation on preview.
-- Engine source of truth: `lib/engine/public.getAutopilotDecisionForUserSwipe` and solver; no forked logic in UI/adapter.
+- Engine source of truth: `lib/autopilot/engine-decision.getAutopilotDecisionForUserSwipe` and solver; no forked logic in UI/adapter.
 - UI purity: `AutopilotShell`, `AutopilotPurchaseForm`, `AutopilotDecisionPanel`, `AutopilotMonthImpactBar` must remain render-only; all mapping stays in the adapter or backend.
 - Legal identity: obey `docs/cherry-vision.md` and `docs/legal-constraints.md` (copilot, not a card/terminal).
 

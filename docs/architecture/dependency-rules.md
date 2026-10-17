@@ -40,8 +40,6 @@ Cross-domain edge counts: `CHERRY_DOMAIN_BOUNDARIES_REPORT=1 npm run check:domai
 
 ## Current allowlisted debt
 Listed with reasons in `domains.manifest.json`. As of this writing:
-- `lib/engine/legacy.ts` -> `lib/legacy-engine.ts` and `lib/engine/public.ts` -> `lib/engine-state.ts`: the engine barrel (`lib/engine.ts`) re-exports Prisma-backed runtime bridges, so importing the barrel loads Prisma. Removing this is an engine-freeze change (see `docs/doctrine.md` §1 and §8).
-- `lib/engine/public.ts` -> `lib/scan-helpers.ts`: value cycle `lib/engine.ts` -> `engine/index` -> `engine/public` -> `scan-helpers` -> `lib/engine.ts`.
 - `lib/authority/replayAuthority.ts` -> `lib/adapters/runtime/authority.replay.prisma.ts`: pure module re-exporting a runtime implementation; it has no importers.
 - `lib/adapters/runtime/{authority,engine-state}.prisma.ts` -> `lib/buckets/periods.ts` and `lib/buckets-runtime.ts`, and `lib/adapters/runtime/legacy-engine.prisma.ts` -> `lib/buckets/periods.ts`: runtime loaders apply pure bucket math owned by the `buckets` service. Listed edge by edge so runtime cannot import any other service code. Retire by moving bucket math to a core domain.
 

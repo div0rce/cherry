@@ -15,7 +15,7 @@ Root contract: `../../AGENTS.md`. This lives in docs rather than `lib/engine/` b
 
 ## Purity
 - No `Date` anywhere in `lib/engine/`, including `input/fromLegacy.ts` (`check:engine-date` bans the token). Time is `nowMs` in the context.
-- No Prisma, no `lib/prisma`, no `lib/adapters/runtime` value imports (`check:engine-prisma`, `check:domain-boundaries`). Existing exceptions (`legacy.ts` -> `../legacy-engine.js`, `public.ts` -> `../engine-state.js`) are allowlisted debt; do not add more.
+- No Prisma, no `lib/prisma`, no `lib/adapters/runtime` value imports (`check:engine-prisma`, `check:domain-boundaries`). There are no exceptions: the barrel (`lib/engine.ts`) re-exports only types from `lib/legacy-engine.ts`, and Autopilot's Prisma-backed swipe entry lives in `lib/autopilot/engine-decision.ts`.
 - No `??` silent defaults, no float money math (`check:repo-guardrails`). Money is integer cents; scores use `OBJECTIVE_SCORE_UNIT`.
 - Never throw across the boundary from `safeSolveDecisionFor*`; return `{ ok: false, reason }`.
 
@@ -23,5 +23,5 @@ Root contract: `../../AGENTS.md`. This lives in docs rather than `lib/engine/` b
 - `lib/engine/input/EngineInput.ts` — the only input contract (`check:engine-input-boundary`); `input/fromLegacy.ts` builds it; `input/validate.ts` is total.
 - `solver.ts` — `solveDecision`, `safeSolveDecisionForUser`. `run.ts` — `safeSolveDecisionForWorld` (what routes call).
 - `objective.ts`, `candidates.ts`, `guardrails.ts`, `simulate.ts`, `horizon/`, `uncertainty/`, `optimality/` — scoring, candidate space, hard constraints, rollouts, proofs.
-- `legacy.ts` + `legacy-mapper.ts` — the older MCC-aware engine and its mapping to the solver's decision shape; still consumed by routes for response compatibility.
+- `legacy-mapper.ts` — maps solver decisions to the older MCC-aware engine's decision shape (its runtime is `lib/legacy-engine.ts`, imported directly by routes, never through the barrel); still consumed for response compatibility.
 - Tests: `tests/node/engine*.test.*`, `tests/node/engine/**`; replay fixtures in `tests/replay/`.

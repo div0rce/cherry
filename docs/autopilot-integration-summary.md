@@ -1,10 +1,10 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-10-17
 
 # Autopilot Integration Summary
 
 ## Current behavior (enforced / in code)
-- **Engine location:** `lib/engine/public.getAutopilotDecisionForUserSwipe` (solver via `safeSolveDecisionForUser`; guardrails documented in `AGENTS.md`).
+- **Engine location:** `lib/autopilot/engine-decision.getAutopilotDecisionForUserSwipe` (solver via `safeSolveDecisionForUser`; guardrails documented in `AGENTS.md`).
 - **Backend routes:** `/api/autopilot/preview` (advisory fetch for UI) and `/api/autopilot/commit` (transitional: re-evaluates, enforces fingerprint/idempotency, writes a `simulatedTransaction`, and **may mutate bucket state** when the engine provides a bucket delta; no `RecommendationSession` or ledger rows today). Commit must never be exposed to end users and must not be used as a substitute for sessions/ledger-based state transitions. Both require auth via `resolveUserContext`.
 - **Service and validation:** `/api/autopilot/preview` now flows through `lib/autopilot/service.getAutopilotPreview` and validates both input and output with `lib/validation/autopilot/preview.ts` (single source for schemas; route re-validates before responding).
 - **Reliability/observability:** Preview route enforces structured error codes (`INVALID_PAYLOAD`, `UNAUTHORIZED`, `ENGINE_ERROR`, `ENGINE_TIMEOUT`, `PREVIEW_UNEXPECTED_ERROR`), wraps engine calls with a timeout, and emits metrics for request counts/status breakdown, bucket pressure/warnings, and route/service latency.
@@ -17,7 +17,7 @@ Last updated: 2026-01-03
 - **Zero-context onboarding (for AI agents):**
   1. Cherry is a spending copilot (not a card, not payment rails); keep advisory-only framing (see `docs/cherry-vision.md`, `docs/legal-constraints.md`).
   2. UI entry: `app/(user)/app/autopilot/page.tsx` → `AutopilotShell` → `runSimulation` → `AutopilotDecisionPanel`.
-  3. Backend entry: `/api/autopilot/preview` (validated by `AutopilotPreviewOutputSchema`); solver entry `lib/engine/public.getAutopilotDecisionForUserSwipe`.
+  3. Backend entry: `/api/autopilot/preview` (validated by `AutopilotPreviewOutputSchema`); solver entry `lib/autopilot/engine-decision.getAutopilotDecisionForUserSwipe`.
   4. Adapter source of truth: `lib/autopilot/runSimulation.ts` (do not move logic into components).
   5. Contract doc: `docs/autopilot-engine-adapter.md` (keep it in sync if fields change).
   6. Validation: run `npm test` (includes `tests/node/autopilot-runSimulation.test.js`) to ensure mapping stays intact.
