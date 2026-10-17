@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-09-22
+Last updated: 2026-10-16
 
 # Information Architecture
 
@@ -48,7 +48,7 @@ Cherry’s surfaces are intentionally split into three buckets so marketing, pro
 
 ## Future/Target behavior (explicitly speculative)
 - Implement marketing routes under `app/(marketing)` with a clear CTA to `/signin`.
-- Decide on `/autopilot`, `/cards`, and legacy `/home/*` aliases and implement or remove them from `lib/routes.ts`.
+- Decide on `/autopilot`, `/cards`, and legacy `/home/*` aliases and implement or remove them from `lib/routes.ts`. (`/` now redirects to `/app`; `/signin` defaults to `/app`, not `/cards`.)
 
 ## Related docs
 - `docs/routes-map.md`
