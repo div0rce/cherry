@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { z } from 'zod';
@@ -72,19 +73,50 @@ function commitOf(root: string, ref: string): string {
   return result.ok ? result.stdout.trim() : '-';
 }
 
-// What ci:verify reads from git: the working tree (must be clean, untracked files included whatever
-// status.showUntrackedFiles says), HEAD's history (HEAD~1 diffs, commit messages), and merge-bases
-// with origin/main and main. Null when the tree is dirty: dirty runs are never recorded.
-// ponytail: gitignored inputs (.env*, node_modules) are not in the key; pass --force after changing them.
+// Per-shell values that do not reach the gate's behavior; everything else in the environment is keyed.
+const VOLATILE_ENV = new Set([
+  '_',
+  'OLDPWD',
+  'SHLVL',
+  'TERM_SESSION_ID',
+  'ITERM_SESSION_ID',
+  'SECURITYSESSIONID',
+  'SSH_AUTH_SOCK',
+  'COLUMNS',
+  'LINES',
+]);
+
+// Untracked inputs: the installed dependency tree (npm's node_modules/.package-lock.json), the
+// gitignored .env* files next build loads, and the environment. Hashed, so no value is stored.
+// ponytail: keys the whole environment, so a changed shell means a re-run (safe miss), never a stale pass.
+function untrackedInputsHash(root: string): string {
+  const hash = createHash('sha256');
+  const installed = path.join(root, 'node_modules', '.package-lock.json');
+  hash.update(fs.existsSync(installed) ? fs.readFileSync(installed) : 'no-install');
+  for (const name of fs.readdirSync(root).filter((entry) => entry.startsWith('.env')).sort()) {
+    const file = path.join(root, name);
+    if (fs.statSync(file).isFile()) hash.update(`\0${name}\0`).update(fs.readFileSync(file));
+  }
+  for (const name of Object.keys(process.env).filter((entry) => !VOLATILE_ENV.has(entry)).sort()) {
+    hash.update(`\0${name}=${process.env[name] ?? ''}`);
+  }
+  return hash.digest('hex').slice(0, 16);
+}
+
+// Everything that can change ci:verify's result: the working tree (must be clean, untracked files
+// included whatever status.showUntrackedFiles says; tracked config lives in HEAD), HEAD's history
+// (HEAD~1 diffs, commit messages), merge-bases with origin/main and main, the Node version, and the
+// untracked inputs above. Null when the tree is dirty: dirty runs are never recorded.
 export function gateKey(root: string): string | null {
   const status = runTool('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root });
   if (!status.ok || status.stdout.trim().length > 0) return null;
   const head = commitOf(root, 'HEAD');
   if (head === '-') return null;
-  return `${head} ${commitOf(root, 'origin/main')} ${commitOf(root, 'main')} ${process.version}`;
+  const refs = `${head} ${commitOf(root, 'origin/main')} ${commitOf(root, 'main')}`;
+  return `${refs} ${process.version} ${untrackedInputsHash(root)}`;
 }
 
-// Log lines are "<HEAD> <origin/main> <main> <node> pass|fail"; the latest line for a key wins, so a
+// Log lines are "<HEAD> <origin/main> <main> <node> <inputs> pass|fail"; the latest line for a key wins, so a
 // failed --force run cancels an earlier pass.
 export function hasPassed(logFile: string, key: string): boolean {
   if (!fs.existsSync(logFile)) return false;

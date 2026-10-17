@@ -17,8 +17,8 @@ import { resolveRootArg } from './lib/root-arg.mjs';
 ensureTsEsm();
 
 // The local FULL gate: preflight, one run per worktree at a time, and no re-run of a clean commit that
-// already passed against the same main refs on this Node version (--force re-runs it). It runs exactly
-// `npm run ci:verify`.
+// already passed with the same main refs, Node version, installed deps, .env* files, and environment
+// (--force re-runs it). It runs exactly `npm run ci:verify`.
 const PREFIX = 'verify:full';
 const root = resolveRootArg(process.argv);
 const force = process.argv.includes('--force');
@@ -37,7 +37,10 @@ async function runFull(): Promise<number> {
   const key = gateKey(root);
   const logFile = gitPath(root, LOG_NAME);
   if (key !== null && !force && hasPassed(logFile, key)) {
-    process.stdout.write(`${PREFIX}: ${key} already passed; not re-running (--force to re-run)\n`);
+    process.stdout.write(
+      `${PREFIX}: recorded pass for ${key}; not re-run. This is not fresh verification: ` +
+        'cite the run that recorded it, or pass --force.\n'
+    );
     return 0;
   }
 
