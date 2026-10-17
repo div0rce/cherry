@@ -11,7 +11,7 @@ const now = new Date(); const nowMs = now.getTime(); const world = buildPrismaWo
 const result = await someService(world, userId, parsed.data, { nowMs });   // one call into lib/
 return NextResponse.json(result);
 ```
-- Unauthenticated stateful requests return 401. `allowLabDemo: true` is only for advisory dev surfaces (`/api/scan`).
+- Unauthenticated stateful requests return 401. `resolveUserContext` throws an UNAUTHORIZED `AppError`; a route that calls it directly must catch it, or export its handlers as `export const GET = withAuthErrors(handleGET)` (`lib/with-user.ts`). An uncaught one is a 500. `allowLabDemo: true` is only for advisory dev surfaces (`/api/scan`).
 - No decision logic inline; engine decisions only via `safeSolveDecisionForWorld` (`lib/engine/run.ts`).
 - Time and randomness are created here and passed down. `process.env` reads are allowed only in `app/api/**` and `scripts/**` and should go through `lib/config` (`check:config`).
 - A route file is owned by its service domain (`scripts/guardrails/domains.manifest.json`); it may import only what that domain may import. New route directory: add it to the owning domain's `owns`.
