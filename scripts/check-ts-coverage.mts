@@ -91,6 +91,7 @@ function expectedOwner(relativePath: string): Owner {
     relativePath.startsWith('data/') ||
     relativePath.startsWith('tests/') ||
     relativePath === 'proxy.ts' ||
+    relativePath === 'instrumentation.ts' ||
     relativePath === 'next-env.d.ts' ||
     relativePath === 'next.config.ts' ||
     relativePath === 'tailwind.config.ts'

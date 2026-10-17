@@ -157,7 +157,8 @@
       "description": "Typed, frozen server/public config loaded once at the boundary.",
       "owns": [
         "lib/config/**",
-        "lib/base-url.ts"
+        "lib/base-url.ts",
+        "instrumentation.ts"
       ],
       "mayImport": [
         "shared"
