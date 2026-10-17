@@ -13,7 +13,6 @@
   ],
   "include": [
     "lib/engine/optimality/**/*.ts",
-    "tests/engine/optimality/**/*.ts",
     "tests/node/engine/optimality/**/*.ts"
   ]
 }

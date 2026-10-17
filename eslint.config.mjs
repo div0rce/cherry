@@ -360,12 +360,4 @@ export default defineConfig([
       ],
     },
   },
-  {
-    files: [
-      'tests/api-rewards.validation.test.js',
-    ],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-    },
-  },
 ]);

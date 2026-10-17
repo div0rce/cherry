@@ -21,8 +21,7 @@
     "scripts/**/*.mts",
     "scripts/**/*.cts",
     "prisma/scripts/**/*.ts",
-    "tests/node/**/*",
-    "tests/guardrails/**/*"
+    "tests/node/**/*"
   ],
   "exclude": [
     "tests/node/engine/optimality/**"
