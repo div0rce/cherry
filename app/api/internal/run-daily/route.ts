@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { withUser } from '../../../../lib/with-user.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
 import { DailyStateSource } from '@prisma/client';
-import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
+import { isFutureUtcDay, runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
 
 // Runs for the signed-in user only. There is deliberately no `userId` field: any signed-in user
 // could otherwise write DailyState for someone else. Batch runs use /api/internal/run-daily-all.
@@ -34,11 +34,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!Number.isFinite(targetDate.getTime())) {
       return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
     }
+    const nowMs = Date.now();
+    if (isFutureUtcDay(targetDate, nowMs)) {
+      return NextResponse.json({ error: 'future_date' }, { status: 400 });
+    }
 
     const result = await runDailyForUser({
       userId: targetUserId,
       date: targetDate,
       source: DailyStateSource.MANUAL,
+      nowMs,
     });
 
     return NextResponse.json({

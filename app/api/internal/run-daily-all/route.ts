@@ -2,10 +2,11 @@ import { timingSafeEqual } from 'node:crypto';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-// NOTE: DailyState pipeline is advisory-only. No auth/spend/alerts/UI coupling here.
+// NOTE: DailyState is advisory: it never touches sessions or ledger, but it does roll buckets
+// into their current period and may record AlertEvents (see lib/daily-state/runDailyForUser.ts).
 import { DailyStateSource } from '@prisma/client';
 import { prisma } from '../../../../lib/prisma.js';
-import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
+import { isFutureUtcDay, runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
 import { logInfo, logError } from '../../../../lib/logger.js';
 import { asAppError } from '../../../../lib/errors.js';
 import { parseJsonBody } from '../../../../lib/validation.js';
@@ -30,25 +31,41 @@ function hasCronSecret(request: NextRequest): boolean {
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+function rejectUnlessAllowed(request: NextRequest): NextResponse | null {
   if (!hasCronSecret(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   if (process.env['CHERRY_DAILYSTATE_CRON_ENABLED'] !== 'true') {
     return NextResponse.json({ error: 'daily_state_disabled' }, { status: 403 });
   }
+  return null;
+}
 
+// Vercel Cron calls GET with no body: run for today with the default batch size.
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return rejectUnlessAllowed(request) ?? runAll({});
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const rejected = rejectUnlessAllowed(request);
+  if (rejected !== null) return rejected;
   const parsed = await parseJsonBody(request, RunAllSchema);
   if (parsed.ok !== true) return parsed.response;
-  const body: z.infer<typeof RunAllSchema> = parsed.data;
+  return runAll(parsed.data);
+}
 
+async function runAll(body: z.infer<typeof RunAllSchema>): Promise<NextResponse> {
+  const nowMs = Date.now();
   const targetDate =
-    typeof body.date === 'string' && body.date.length > 0 ? new Date(body.date) : new Date();
+    typeof body.date === 'string' && body.date.length > 0 ? new Date(body.date) : new Date(nowMs);
   if (!Number.isFinite(targetDate.getTime())) {
     return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
   }
+  if (isFutureUtcDay(targetDate, nowMs)) {
+    return NextResponse.json({ error: 'future_date' }, { status: 400 });
+  }
   const batchSize = body.batchSize ?? 100;
-  const startedAt = Date.now();
+  const startedAt = nowMs;
 
   let cursor: string | null = null;
   let processed = 0;
@@ -71,6 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           userId: user.id,
           date: targetDate,
           source: DailyStateSource.NIGHTLY,
+          nowMs,
         });
         succeeded += 1;
       } catch (error: unknown) {
