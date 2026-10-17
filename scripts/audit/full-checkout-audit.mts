@@ -1129,7 +1129,7 @@ function main(): void {
     location: `${homeBundle.entry.path}, app/api/wallet/cherry-pass/route.ts`,
     title: 'Several polished surfaces are powered by placeholder or mock-like logic',
     reason:
-      'The home bundle is static, wallet pass is scaffolded, and Vine correlation still returns `null` with placeholder implementations nearby.',
+      'The home bundle is static and the wallet pass is scaffolded, with placeholder implementations nearby.',
     risk:
       'The codebase creates false confidence by presenting mature interfaces over incomplete backend behavior.',
     fix:
@@ -1576,7 +1576,6 @@ ${markdownFindings(llmSmellFindings)}
 
 ## 5 Dangerous False-Confidence Code
 - Placeholder reward values in wallet pass.
-- Null-returning Vine verification correlator.
 
 ## 6 Cleanup Priorities
 - Collapse wrapper-only simulation adapters.
@@ -1653,11 +1652,10 @@ ${markdownFindings(securityFindings)}
 - Actual implemented model: real engine + persistence core with incomplete shell/product edges.
 - Divergence: user-facing polish exceeds live backend integration in several places.
 - Foundational modules: engine, authority, sessions/ledger, bucket runtime, Prisma schema, DB tests.
-- Cosmetic/unfinished modules: home bundle, wallet pass, auto-verification, orphaned Vine verification correlator.
+- Cosmetic/unfinished modules: home bundle, wallet pass, auto-verification.
 
 ## 11B Simulation Engine Analysis
 - Canonical engine path is real and deterministic.
-- Legacy archived simulation engine is still present and should be removed or quarantined.
 - Simulation logic is split across scan, simulate, autopilot, and Vine flows; the system would benefit from one canonical public simulation contract.
 
 ## 11C Abandoned Subsystems
