@@ -68,4 +68,19 @@ for (const { file, source, message } of BAD) {
   assert.equal(status, 0, `expected type-only import to pass, got: ${output}`);
 }
 
+// Comments that mention imports load nothing and must not fail the check.
+{
+  const source = [
+    "// require('@prisma/client')",
+    "/* import('../prisma.js') and import '@prisma/client'; */",
+    "/**",
+    " * export { prisma } from '../prisma.js';",
+    " */",
+    'export const x = 1;',
+    '',
+  ].join('\n');
+  const { status, output } = runSource('lib/authority/commented.ts', source);
+  assert.equal(status, 0, `expected commented-out imports to pass, got: ${output}`);
+}
+
 process.stdout.write('engine-prisma-import: ok\n');
