@@ -24,9 +24,9 @@ function runGuardrail(file) {
 }
 
 const guardrails = [
-  'tests/autopilot-runsimulation-literals.test.ts',
-  'tests/autopilot-decisionpanel-literals.test.ts',
-  'tests/autopilot-purchaseform-literals.test.ts',
+  'tests/node/autopilot-runsimulation-literals.test.ts',
+  'tests/next/autopilot-decisionpanel-literals.test.ts',
+  'tests/next/autopilot-purchaseform-literals.test.ts',
 ];
 
 for (const file of guardrails) {

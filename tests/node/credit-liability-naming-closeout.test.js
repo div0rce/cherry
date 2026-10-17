@@ -15,7 +15,6 @@ const command = `
     -e "MISSING_DEBT_TRUTH" \
     -e "creditMissingDebtTruth" \
     -e "missing debt truth" \
-    -g '!tests/credit-liability-naming-closeout.test.js' \
     -g '!tests/node/credit-liability-naming-closeout.test.js' \
     app lib tests docs
 `;
