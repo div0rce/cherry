@@ -77,10 +77,11 @@ Rationale:
 - Seeded identities drift; constructors don’t.
 - This preserves invariants and stabilizes dev/prod boot.
 */
-export async function requireUserContext(): Promise<UserContextResponse> {
+// returnTo is the calling page's path, so sign-in sends the visitor back to it.
+export async function requireUserContext(returnTo: string): Promise<UserContextResponse> {
   const result = await fetchFromApi<UserContextResponse>('/api/user/context');
   if (result.ok !== true && result.error === 'UNAUTHORIZED') {
-    redirect('/signin');
+    redirect(`/signin?callbackUrl=${encodeURIComponent(returnTo)}`);
   }
   if (result.ok !== true) {
     throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);

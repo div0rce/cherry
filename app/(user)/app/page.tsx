@@ -5,6 +5,6 @@ export const dynamic = 'force-dynamic';
 
 
 export default async function AppHome(): Promise<JSX.Element> {
-  await requireUserContext();
+  await requireUserContext('/app');
   return <HomeScreen />;
 }

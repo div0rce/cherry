@@ -9,7 +9,7 @@ export async function loadDemoDataset(
   _prevState: ActionState,
   _formData: FormData
 ): Promise<ActionState> {
-  const { mode } = await requireUserContext();
+  const { mode } = await requireUserContext('/app/onboarding');
 
   if (mode !== 'LAB_DEMO') {
     return { status: 'error', message: 'Demo dataset is only available in lab demo mode.' };

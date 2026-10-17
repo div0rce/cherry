@@ -60,7 +60,7 @@ export async function updateBucket(
     };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
 
   const now = resolveExplicitNow(formData.get('now'));
   const desiredPeriod = parsed.data.period as BucketPeriod;
@@ -100,7 +100,7 @@ export async function deleteBucket(
     return { status: 'error', message: 'Bucket id is required.', fieldErrors };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>(`/api/buckets/${parsed.data.bucketId}`, {
     method: 'DELETE',
   });

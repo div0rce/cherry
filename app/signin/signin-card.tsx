@@ -1,9 +1,8 @@
 'use client';
 
 import type { JSX } from 'react';
-import { useState } from 'react';
-import { signIn } from 'next-auth/react';
-import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { getProviders, signIn } from 'next-auth/react';
 import { hasText } from '../../lib/text.js';
 import { logGuardrailEvent } from '../../lib/log.js';
 import { ROUTES } from '../../lib/routes.js';
@@ -27,6 +26,18 @@ export function SignInCard({
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Which providers this deployment has (credentials is dev-only; Google and Email depend on
+  // env). undefined while loading, null if the lookup failed.
+  const [providers, setProviders] = useState<Record<string, unknown> | null | undefined>(undefined);
+  useEffect(() => {
+    getProviders()
+      .then((list) => setProviders(list))
+      .catch(() => setProviders(null));
+  }, []);
+  const hasProvider = (id: string): boolean =>
+    providers !== undefined && providers !== null && id in providers;
+  const usesPassword = hasProvider('credentials');
+  const usesEmailLink = !usesPassword && hasProvider('email');
   const getTimestamp = () => {
     if (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number') {
       return new Date(performance.timeOrigin + performance.now()).toISOString();
@@ -41,6 +52,15 @@ export function SignInCard({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus(null);
+    if (usesEmailLink) {
+      if (!hasText(email.trim())) {
+        setStatus('Email is required.');
+        return;
+      }
+      setSubmitting(true);
+      await signIn('email', { email: email.trim(), callbackUrl });
+      return;
+    }
 
     const emailTrimmed = email.trim();
     const passwordTrimmed = password.trim();
@@ -98,62 +118,63 @@ export function SignInCard({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-200">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
-            placeholder="you@example.com"
-            required
-          />
-        </div>
+      {providers !== undefined && !usesPassword && !usesEmailLink && !hasProvider('google') && (
+        <p className="mt-4 text-sm text-slate-300">No sign-in method is configured for this environment.</p>
+      )}
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-slate-200">Password</label>
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="text-xs text-pink-200 hover:text-pink-100"
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
+      {(usesPassword || usesEmailLink) && (
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-200">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
+              placeholder="you@example.com"
+              required
+            />
           </div>
-          <input
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
-            placeholder="••••••••"
-            required
-          />
-          <div className="text-xs text-slate-400">
-            <Link href="/forgot-password" className="text-pink-200 hover:text-pink-100">
-              Forgot your password?
-            </Link>
-          </div>
-        </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          {usesPassword && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-slate-200">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="text-xs text-pink-200 hover:text-pink-100"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-pink-500 focus:outline-none"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {usesEmailLink
+              ? submitting ? 'Sending link…' : 'Email me a sign-in link'
+              : submitting ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      )}
 
       <div className="mt-4 space-y-3">
-        <SocialButtons callbackUrl={callbackUrl} />
-        <div className="flex items-center justify-between text-xs text-slate-400">
-          <span>Don’t have an account?</span>
-          <Link href="/signup" className="text-pink-200 hover:text-pink-100">
-            Create one
-          </Link>
-        </div>
+        {hasProvider('google') && (
+          <SocialButtons callbackUrl={callbackUrl} showDivider={usesPassword || usesEmailLink} />
+        )}
         <p className="text-[11px] text-slate-500">
           By continuing you agree to the Cherry Terms and Privacy Policy.
         </p>
@@ -162,16 +183,18 @@ export function SignInCard({
   );
 }
 
-function SocialButtons({ callbackUrl }: { callbackUrl: string }) {
+function SocialButtons({ callbackUrl, showDivider }: { callbackUrl: string; showDivider: boolean }) {
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/10" />
-        <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-          or continue with
-        </span>
-        <div className="h-px flex-1 bg-white/10" />
-      </div>
+      {showDivider && (
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            or continue with
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+      )}
       <button
         type="button"
         onClick={() => signIn('google', { callbackUrl })}

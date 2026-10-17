@@ -71,7 +71,7 @@ export async function updateCard(
   const hasNetwork = typeof networkInput === 'string' && networkInput.trim().length > 0;
   const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
@@ -106,7 +106,7 @@ export async function deleteCard(
     return { status: 'error', message: 'Card id is required.', fieldErrors };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>('/api/cards', {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },

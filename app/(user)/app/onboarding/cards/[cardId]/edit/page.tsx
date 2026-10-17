@@ -18,7 +18,7 @@ export default async function EditCardPage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { cardId } = resolvedParams;
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<
     Array<{
       id: string;

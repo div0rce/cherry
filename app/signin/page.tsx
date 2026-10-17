@@ -43,8 +43,8 @@ function LeftPanel(): JSX.Element {
         <div className="text-xs uppercase tracking-[0.2em] text-pink-200">Cherry</div>
         <h1 className="text-3xl font-semibold text-white">Sign in to your spending copilot</h1>
         <p className="text-slate-300">
-          Cherry routes your swipes to the best card, keeps buckets on track, and simulates rewards
-          before you pay.
+          Cherry recommends the best card for each purchase, keeps buckets on track, and simulates
+          rewards before you pay. It never touches your payments.
         </p>
       </div>
 

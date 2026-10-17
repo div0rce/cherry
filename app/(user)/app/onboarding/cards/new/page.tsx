@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 
 export default async function NewCardPage(): Promise<JSX.Element> {
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
 
   return (
     <main className="min-h-screen bg-linear-to-brom-[#f8fafc] to-[#e2e8f0]">
