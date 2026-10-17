@@ -15,18 +15,20 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 - `run-daily` requires a signed-in user and runs for that user only (it takes no `userId`).
 - `run-daily-all` touches every user, so it requires `Authorization: Bearer $CRON_SECRET` instead of a session (the header Vercel Cron sends). It returns 401 when the secret is unset or shorter than 32 characters.
 - Scheduling is external to the repo; no cron runner is bundled here.
-- DailyState is advisory-only and does not mutate buckets, sessions, or ledger.
+- DailyState is advisory-only and never touches sessions or the ledger. It does write: the `DailyState` row; the user's buckets, via `ensureBucketFresh`, when a period has ended (rollover resets `spentCents` for the new period); and `AlertEvent` rows on status changes.
+- Dates after the current UTC day are rejected (`400 future_date`), and `runDailyForUser` refuses them too: a future date would roll every bucket into a future period and zero its spend.
+- `run-daily-all` also accepts `GET` with no body (what Vercel Cron sends), running for today with the default batch size.
 
 ## Scope
 - Headless kernel only. No UI surfaces or alerts in this spec.
-- Reads buckets, cards, sessions, ledger, and ingest signals; writes only the DailyState table.
+- Reads buckets, cards, sessions, ledger, and ingest signals; writes the DailyState row, bucket rollovers, and alert events (see Current behavior).
 - Out of scope: wallet pass, Vine hardware changes, new payment rails, or any card authorization behavior.
 
 ---
 
 ## Trigger Contract (Time)
 - Schedule: run once per user per UTC day (default at 00:15 UTC). Allow manual backfill via `POST /api/internal/run-daily` (own user) gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true` and auth.
-- Idempotency: `(userId, date)` is unique. Recomputes for the same day overwrite the row only on success.
+- Idempotency: `(userId, date)` is unique. Recomputes for the same day overwrite the row; a computation error is recorded as an `INSUFFICIENT_DATA` row rather than thrown.
 - Batch: cron/worker pages through users to avoid timeouts; manual route accepts optional `{ date? }` for the signed-in user.
 - Fanout: internal nightly orchestrator (`POST /api/internal/run-daily-all`) pages through users in batches; errors are isolated per user.
 
