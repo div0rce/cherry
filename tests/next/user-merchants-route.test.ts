@@ -52,7 +52,8 @@ async function run(): Promise<void> {
     userId: 'user-1',
     merchantName: { not: null, contains: 'chip', mode: 'insensitive' },
   });
-  assert.deepEqual(findManyArgs?.distinct, ['merchantName']);
+  // No `distinct`: Prisma 6 applies it in memory, which drops the database-level LIMIT.
+  assert.equal(findManyArgs?.distinct, undefined);
 
   await GET(new Request('http://localhost/api/user/merchants'));
   assert.deepEqual(findManyArgs?.where, { userId: 'user-1', merchantName: { not: null } });
