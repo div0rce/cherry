@@ -467,10 +467,11 @@
         "persistence",
         "identity",
         "config",
-        "observability"
+        "observability",
+        "sessions"
       ],
       "tests": [
-        "tests/node/wallet-pass-config.test.js"
+        "tests/node/wallet-pass-*.test.*"
       ],
       "docs": [
         "docs/wallet-pass.md"
