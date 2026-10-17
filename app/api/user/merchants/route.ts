@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma.js';
 import { resolveUserContext } from '../../../../lib/user-context.js';
 import { auth } from '../../../../lib/auth.js';
+import { asAppError, isUnauthorized } from '../../../../lib/errors.js';
+import { logError } from '../../../../lib/logger.js';
 
 export async function GET(request: Request): Promise<Response> {
   try {
@@ -14,12 +16,15 @@ export async function GET(request: Request): Promise<Response> {
     const query = (searchParams.get('query') ?? '').trim();
 
     const merchants = await prisma.bankTransaction.findMany({
+      // One merchantName filter: a spread followed by a second merchantName key used to drop the
+      // search term and always return the most recent names.
       where: {
         userId,
-        ...(query !== '' ? { merchantName: { contains: query, mode: 'insensitive' } } : {}),
-        merchantName: { not: null },
+        merchantName:
+          query !== '' ? { not: null, contains: query, mode: 'insensitive' } : { not: null },
       },
       select: { merchantName: true },
+      distinct: ['merchantName'],
       take: 20,
       orderBy: { postedAt: 'desc' },
     });
@@ -34,7 +39,11 @@ export async function GET(request: Request): Promise<Response> {
 
     return NextResponse.json({ names });
   } catch (error: unknown) {
-    void error;
-    return NextResponse.json({ names: [] });
+    const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logError('user_merchants_failed', appError);
+    return NextResponse.json({ error: 'merchant_lookup_failed', names: [] }, { status: 500 });
   }
 }
