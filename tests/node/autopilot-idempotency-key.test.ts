@@ -325,7 +325,11 @@ async function runUpsertIdempotencySuite() {
     resolveScanCategory: async () => RewardCategory.DINING,
   });
   mockModule(requireModule.resolve('../../lib/sessions/confirm-service'), {
-    confirmRecommendationSession: async () => {},
+    // Honors the inTransaction contract: the commit row is written inside the confirm transaction.
+    confirmRecommendationSession: async (params: { inTransaction?: (tx: unknown) => Promise<void> }) => {
+      const { prisma } = requireModule(requireModule.resolve('../../lib/prisma')) as { prisma: unknown };
+      if (params.inTransaction !== undefined) await params.inTransaction(prisma);
+    },
     SessionConfirmError: class SessionConfirmError extends Error {
       status = 400;
       code = 'TEST';
@@ -523,7 +527,11 @@ async function runTransitionalCommitDoesNotPostBucketSpendSuite() {
     resolveScanCategory: async () => RewardCategory.DINING,
   });
   mockModule(requireModule.resolve('../../lib/sessions/confirm-service'), {
-    confirmRecommendationSession: async () => {},
+    // Honors the inTransaction contract: the commit row is written inside the confirm transaction.
+    confirmRecommendationSession: async (params: { inTransaction?: (tx: unknown) => Promise<void> }) => {
+      const { prisma } = requireModule(requireModule.resolve('../../lib/prisma')) as { prisma: unknown };
+      if (params.inTransaction !== undefined) await params.inTransaction(prisma);
+    },
     SessionConfirmError: class SessionConfirmError extends Error {
       status = 400;
       code = 'TEST';
