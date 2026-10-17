@@ -58,9 +58,32 @@ function git(...args: string[]): string {
 
   const head = git('rev-parse', 'HEAD');
   const key = gateKey(root);
-  assert.equal(key, `${head} - - ${process.version}`, 'no origin/main or main in this repo');
+  assert.match(key ?? '', new RegExp(`^${head} - - ${process.version} [0-9a-f]{16}$`), 'no main refs here');
   git('commit', '-q', '--amend', '-m', 'same tree, new commit');
   assert.notEqual(gateKey(root), key, 'a rewritten commit is not the verified one');
+
+  // Untracked inputs: gitignored .env* files, the installed dependency tree, and the environment.
+  fs.writeFileSync(path.join(root, '.gitignore'), '.env*\nnode_modules/\n');
+  git('add', '.gitignore');
+  git('commit', '-q', '-m', 'ignore');
+  const base = gateKey(root);
+  assert.notEqual(base, null, 'gitignored files keep the tree clean');
+  fs.writeFileSync(path.join(root, '.env.local'), 'AUTH_SECRET=a\n');
+  const withEnvFile = gateKey(root);
+  assert.notEqual(withEnvFile, base, 'adding .env.local changes the key');
+  fs.writeFileSync(path.join(root, '.env.local'), 'AUTH_SECRET=b\n');
+  assert.notEqual(gateKey(root), withEnvFile, 'editing .env.local changes the key');
+  fs.mkdirSync(path.join(root, 'node_modules'));
+  const beforeInstall = gateKey(root);
+  fs.writeFileSync(path.join(root, 'node_modules', '.package-lock.json'), '{"lockfileVersion":3}');
+  assert.notEqual(gateKey(root), beforeInstall, 'a changed installed tree changes the key');
+  const beforeEnv = gateKey(root);
+  process.env['CHERRY_FULL_GATE_TEST'] = '1';
+  assert.notEqual(gateKey(root), beforeEnv, 'an environment variable changes the key');
+  delete process.env['CHERRY_FULL_GATE_TEST'];
+  assert.equal(gateKey(root), beforeEnv, 'identical inputs give the identical key');
+  process.env['SHLVL'] = '99';
+  assert.equal(gateKey(root), beforeEnv, 'per-shell variables are not keyed');
 
   fs.writeFileSync(path.join(root, 'a.txt'), 'b\n');
   assert.equal(gateKey(root), null, 'modified files make the tree dirty');
