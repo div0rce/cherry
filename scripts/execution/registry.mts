@@ -35,6 +35,9 @@ export const EXECUTION = {
   'verify:8.3-closure-artifact': 'scripts/verify-8-3-closure-artifact.mts',
   'verify:cherry-diff-artifact': 'scripts/verify-cherry-diff-artifact.mts',
   'verify:repo-closure': 'scripts/verify-repo-closure.mts',
+  'verify:preflight': 'scripts/preflight.mts',
+  'verify:full': 'scripts/verify-full.mts',
+  'generate:config-snapshot': 'scripts/generate-config-snapshot.mts',
   'report:domain-impact': 'scripts/domain-impact.mts',
 } as const;
 
