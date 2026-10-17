@@ -1126,7 +1126,7 @@ function main(): void {
   llmSmellFindings.push({
     severity: 'HIGH',
     confidence: 'Confirmed',
-    location: `${homeBundle.entry.path}, app/api/wallet/cherry-pass/route.ts, lib/verification/vine.ts`,
+    location: `${homeBundle.entry.path}, app/api/wallet/cherry-pass/route.ts`,
     title: 'Several polished surfaces are powered by placeholder or mock-like logic',
     reason:
       'The home bundle is static, wallet pass is scaffolded, and Vine correlation still returns `null` with placeholder implementations nearby.',
@@ -1148,18 +1148,6 @@ function main(): void {
     fix:
       'Collapse wrappers into a single canonical simulation adapter and make legacy compatibility explicit at the edge.',
   });
-
-  const verificationVine = parsedFiles.get('lib/verification/vine.ts');
-  if (verificationVine != null && (inbound.get('lib/verification/vine.ts') ?? 0) === 0) {
-    abandonedEntries.push({
-      name: 'Vine verification correlator',
-      location: 'lib/verification/vine.ts',
-      evidence: 'No inbound local imports in the dependency graph; the file returns `null` unconditionally.',
-      status: 'orphaned',
-      operationalRisk: 'It suggests an automated verification path exists when no runtime path consumes it.',
-      recommendedAction: 'Delete or integrate it into the verification flow with tests.',
-    });
-  }
 
   const riskRows = [
     ['Sensitive financial fixture data in checkout', 'CRITICAL', realBankDataFiles[0] ?? 'data/bank', 'Remove or sanitize committed bank data.'],
@@ -1267,14 +1255,13 @@ Observe surface (/api/scan, /api/vine/order, /api/autopilot/*)
 
 ### Critical Missing Links
 - Confirmed: \`autoVerifySession()\` is a no-op; verification automation is not connected to real signals.
-- Confirmed: \`lib/verification/vine.ts\` returns \`null\` and is not part of a live graph path.
 - Confirmed: Wallet pass remains 501-gated and uses placeholder reward state.
 - Probable: The user-facing shell cannot yet reflect the full authority/daily-state/session model because key aggregation surfaces are still stubbed or partial.
 
 ### Probable Evolution Path
 - Probable: The codebase is moving toward a versioned deterministic engine + authority policy core, with replay/guardrail discipline and DB semantic tests as hard constraints.
 - Probable: Legacy decision compatibility layers will need to be retired before the system can present a simpler public API contract.
-- Probable: The next stabilization phase should focus on verification automation, live home/dashboard data, and pruning archived simulation paths before adding new product surfaces.
+- Probable: The next stabilization phase should focus on verification automation and live home/dashboard data before adding new product surfaces.
 `;
 
   const codeAudit = `# Code Audit
@@ -1461,7 +1448,7 @@ ${markdownFindings(securityFindings)}
 - Confirmed: Cherry is also not product-complete. The current system is best described as a partial prototype with a real backend core and incomplete user/product surfaces.
 
 ## Completeness
-- Payment simulation engine: Partially complete. Canonical projection logic exists in \`lib/engine/simulate.ts\`, but legacy simulation code remains alongside it.
+- Payment simulation engine: Canonical projection logic lives in \`lib/engine/simulate.ts\`; the archived legacy engine was deleted.
 - Budget modeling: Largely real. Bucket runtime, period rollover, strict-mode logic, category preferences, and daily-state/authority policies are implemented.
 - Scenario computation: Real but fragmented. Autopilot, simulate, scan, and Vine all evaluate scenarios, but several surfaces still bridge through legacy mappings.
 - Transaction graph / ledger: Real. Session, CherryPointLedger, accounting ledger, and DB semantic tests show durable backend intent.
@@ -1537,10 +1524,8 @@ Persisted Result / API Response / UI Output
 ## 7 Budget Update Rules
 - Canonical simulation projection is side-effect free.
 - Session confirm/verify flows are stateful and can mutate bucket spend and ledger status.
-- Legacy archived simulation mutates bucket spend directly and is therefore semantically different from canonical projection.
 
 ## 8 Missing or Broken Simulation Links
-- Confirmed: Archived legacy simulation remains in-tree and can mislead implementers.
 - Confirmed: Several entrypoints still map solver output into legacy decision types.
 - Confirmed: Verification automation is not wired, so simulation outcomes do not naturally mature into fully trusted posted results.
 
@@ -1592,10 +1577,8 @@ ${markdownFindings(llmSmellFindings)}
 ## 5 Dangerous False-Confidence Code
 - Placeholder reward values in wallet pass.
 - Null-returning Vine verification correlator.
-- Archived legacy simulation engine preserved beside canonical engine code.
 
 ## 6 Cleanup Priorities
-- Remove archived/superseded simulation code.
 - Collapse wrapper-only simulation adapters.
 - Hide or clearly label stubbed user-shell surfaces until backed by live state.
 `;
@@ -1615,7 +1598,7 @@ ${repoMapLines}
 - Intended system: advisory spending copilot with Observe -> Evaluate -> Recommend -> Reward, never touching payment rails.
 - Actual implemented system: Next.js + Prisma app with a real engine/authority/session core, plus several stubbed or scaffolded user/product surfaces.
 - Foundational modules: \`lib/engine/*\`, \`lib/authority/*\`, \`lib/sessions/*\`, \`lib/buckets-runtime.ts\`, \`lib/adapters/runtime/*\`, \`prisma/schema.prisma\`.
-- Cosmetic or unfinished modules: \`lib/home/ui-bundle.ts\`, wallet pass scaffold, automated verification hooks, archived legacy simulation engine.
+- Cosmetic or unfinished modules: \`lib/home/ui-bundle.ts\`, wallet pass scaffold, automated verification hooks.
 
 ## 4 Dependency Graph Analysis
 - Parseable graph nodes: ${graphNodes.length}
@@ -1661,8 +1644,8 @@ ${markdownFindings(securityFindings)}
 - Answer 2: The simulation engine actually lives in the canonical solver/projection path under \`lib/engine/*\`, with adapters in \`lib/simulation-adapter.ts\` and \`lib/autopilot/runSimulation.ts\`. The archived legacy engine \`lib/simulation.ts\` has been deleted.
 - Answer 3: Budgeting logic is mostly coherent in the backend core (bucket runtime, strict mode, daily state, authority), but fragmented at product boundaries because multiple surfaces still bridge through older shapes.
 - Answer 4: The home UI bundle, wallet pass scaffold, and null/no-op verification helpers create the strongest illusion of progress without equivalent functional depth.
-- Answer 5: \`lib/simulation.ts\` has been deleted; \`lib/verification/vine.ts\` is imported by \`/api/vine/order\` and stays.
-- Answer 6: If development resumes, stabilize verification automation, retire legacy simulation/response shims, and replace static shell bundles with live data.
+- Answer 5: \`lib/simulation.ts\` and the \`lib/verification/vine.ts\` placeholder have been deleted.
+- Answer 6: If development resumes, stabilize verification automation, retire legacy response shims, and replace static shell bundles with live data.
 - Answer 7: The implied architectural direction is a rigorously versioned, deterministic decisioning core with replay/guardrail governance and thinner public API adapters.
 
 ## 11A Reverse-Engineered System Design
@@ -1694,7 +1677,6 @@ ${renderTable([['Risk', 'Severity', 'Location', 'Fix'], ...riskRows])}
 - Remove or sanitize sensitive bank CSV data.
 - Wire the home bundle to real state or explicitly gate it as demo-only.
 - Implement or delete the automated verification path.
-- Archive or delete the legacy simulation engine.
 - Add explicit operator authorization to admin endpoints.
 
 ## 14 Strategic Refactors
