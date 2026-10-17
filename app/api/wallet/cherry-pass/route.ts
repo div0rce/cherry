@@ -5,6 +5,7 @@ import { prisma } from '../../../../lib/prisma.js';
 import { logError } from '../../../../lib/logger.js';
 import { asAppError } from '../../../../lib/errors.js';
 import { getWalletPassConfigStatus } from '../../../../lib/wallet/config.js';
+import { getCherryPointsBalance } from '../../../../lib/points.js';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   return withUser(request, async (userId) => {
@@ -22,13 +23,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { name: true },
-      });
-
+      const [user, cherryPoints] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+        getCherryPointsBalance(userId),
+      ]);
       const userName = user?.name ?? 'Cherry Member';
-      const cherryPoints = 0; // placeholder until points tracked in DB
 
       const { generateCherryPass } = await import('../../../../lib/wallet/cherryPass.js');
       const pkpassBuffer = await generateCherryPass({
