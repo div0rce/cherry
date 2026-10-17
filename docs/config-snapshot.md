@@ -830,7 +830,6 @@ export default nextConfig;
         "@tailwindcss/postcss": "^4",
         "@types/cookie": "^0.6.0",
         "@types/node": "^24.12.2",
-        "@types/nodemailer": "^7.0.4",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -3610,16 +3609,6 @@ export default nextConfig;
       "license": "MIT",
       "dependencies": {
         "undici-types": "~7.16.0"
-      }
-    },
-    "node_modules/@types/nodemailer": {
-      "version": "7.0.9",
-      "resolved": "https://registry.npmjs.org/@types/nodemailer/-/nodemailer-7.0.9.tgz",
-      "integrity": "sha512-vI8oF1M+8JvQhsId0Pc38BdUP2evenIIys7c7p+9OZXSPOH5c1dyINP1jT8xQ2xPuBUXmIC87s+91IZMDjH8Ow==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/node": "*"
       }
     },
     "node_modules/@types/react": {
@@ -9897,7 +9886,6 @@ export default nextConfig;
     "@tailwindcss/postcss": "^4",
     "@types/cookie": "^0.6.0",
     "@types/node": "^24.12.2",
-    "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -11364,18 +11352,6 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "audit": "2026-01-28",
     "removeWhen": "Remove once cookie ships types or @types/cookie satisfies imports"
   },
-  "types/compat/next-auth.d.ts": {
-    "reason": "Cherry augments next-auth Session/User with user.id",
-    "upstream": "next-auth@5.0.0-beta.30",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once next-auth exposes user.id or Cherry stops augmenting session types"
-  },
-  "types/compat/nextauth.d.ts": {
-    "reason": "@auth/core Adapter type is not exposed in current upstream typings",
-    "upstream": "@auth/core@0.41.1",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once @auth/core exports Adapter type"
-  },
   "types/compat/nodemailer-json.d.cts": {
     "reason": "nodemailer JSON transport lacks stable typings",
     "upstream": "nodemailer@^10",
@@ -11412,11 +11388,11 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "audit": "2026-10-17",
     "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
   },
-  "types/compat/url-pattern.d.ts": {
-    "reason": "next@16.3 declarations reference global URLPatternInput and URLPatternOptions; TypeScript 5.9 lib.dom lacks URLPattern and @types/node 24 declares only URLPattern/URLPatternInit globally",
+  "types/compat/next-globals.d.ts": {
+    "reason": "next@16.3 declarations reference globals that TypeScript 5.9 with target ES2022 lacks: PromiseWithResolvers (ES2024 lib) and URLPatternInput / URLPatternOptions (TypeScript's DOM lib has no URLPattern; @types/node 24 declares only URLPattern/URLPatternInit globally)",
     "upstream": "next@16.3.8",
     "audit": "2026-10-17",
-    "removeWhen": "Remove once the TypeScript DOM lib or @types/node declares URLPatternInput and URLPatternOptions globally"
+    "removeWhen": "Remove once the repo targets ES2024 for browser code and the TypeScript DOM lib or @types/node declares URLPatternInput and URLPatternOptions globally"
   }
 }
 ```
@@ -11734,7 +11710,7 @@ export default config;
     "useUnknownInCatchVariables": true,
 
     // --- Runtime / emit model ---
-    "target": "ES2024",
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
