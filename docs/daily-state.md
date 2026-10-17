@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-10-17
 
 # DailyState & Cron Contract
 
@@ -11,7 +11,9 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 
 ## Current behavior (enforced / in code)
 - Manual and batch endpoints exist: `POST /api/internal/run-daily` and `POST /api/internal/run-daily-all`.
-- Both endpoints are gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true` and require auth.
+- Both endpoints are gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true`.
+- `run-daily` requires a signed-in user and runs for that user only (it takes no `userId`).
+- `run-daily-all` touches every user, so it requires `Authorization: Bearer $CRON_SECRET` instead of a session (the header Vercel Cron sends). It returns 401 when the secret is unset or shorter than 32 characters.
 - Scheduling is external to the repo; no cron runner is bundled here.
 - DailyState is advisory-only and does not mutate buckets, sessions, or ledger.
 
@@ -23,9 +25,9 @@ Aligns with: `docs/legal-constraints.md` (advisory-only), `docs/cherry-vision.md
 ---
 
 ## Trigger Contract (Time)
-- Schedule: run once per user per UTC day (default at 00:15 UTC). Allow manual backfill via `POST /api/internal/run-daily` gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true` and auth.
+- Schedule: run once per user per UTC day (default at 00:15 UTC). Allow manual backfill via `POST /api/internal/run-daily` (own user) gated by `CHERRY_DAILYSTATE_CRON_ENABLED=true` and auth.
 - Idempotency: `(userId, date)` is unique. Recomputes for the same day overwrite the row only on success.
-- Batch: cron/worker pages through users to avoid timeouts; manual route accepts optional `{ userId?, date? }`.
+- Batch: cron/worker pages through users to avoid timeouts; manual route accepts optional `{ date? }` for the signed-in user.
 - Fanout: internal nightly orchestrator (`POST /api/internal/run-daily-all`) pages through users in batches; errors are isolated per user.
 
 ---
