@@ -414,7 +414,8 @@
         "tests/next/api-sessions*.test.*",
         "tests/node/sessions-bucket-reversal.test.js",
         "tests/node/verification-session.test.js",
-        "tests/node/idempotency.test.ts"
+        "tests/node/idempotency.test.ts",
+        "tests/node/session-confirm-atomic.test.ts"
       ],
       "docs": [
         "docs/verification-flow.md",
