@@ -195,9 +195,9 @@ Purpose: advisory card choice for a described purchase (preview), then a record 
 - `/api/simulations` and `/api/simulations/[id]` — List/fetch simulated transactions.
 - `/api/mccs` — Read MCC → RewardCategory mapping.
 - `GET /api/user/merchants` — merchant-name suggestions from the user's `BankTransaction` rows.
-  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). Unauthenticated calls return `401`; backend failures are logged and return `500 { error: "merchant_lookup_failed", names: [] }`.
+  - Auth: `resolveUserContext({ requireAuth: true, allowLabDemo: true })` (see Auth). Unauthenticated calls return `401` in production; outside production a request without a session uses the lab-demo user instead (see Auth). Backend failures are logged and return `500 { error: "merchant_lookup_failed", names: [] }`.
   - Query: `query` (optional string, trimmed): case-insensitive `merchantName` substring filter.
-  - Response: `{ names: string[] }`, up to 20 distinct non-empty `merchantName` values, most recent first by `postedAt`.
+  - Response: `{ names: string[] }`, the distinct non-empty `merchantName` values among the user's 20 most recent matching rows by `postedAt` (fewer than 20 after de-duplication).
   - Side effects: read-only.
 - `/api/activity` — Activity feed (sessions/ledger/simulations) with pagination/filters.
 - `/api/autopilot/prereqs` — returns Autopilot onboarding prerequisites (`cards/rules/buckets` counts + warnings) and the first missing step.
