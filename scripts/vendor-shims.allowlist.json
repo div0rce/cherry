@@ -1,14 +1,14 @@
 {
-  "patches/@auth+core+0.41.1.patch": {
+  "patches/@auth+core+0.41.3.patch": {
     "reason": "Upstream @auth/core nodemailer.d.ts strictFunctionTypes mismatch; patch provider param type",
-    "upstream": "@auth/core@0.41.1",
-    "audit": "2026-01-27",
+    "upstream": "@auth/core@0.41.3",
+    "audit": "2026-10-17",
     "removeWhen": "Remove once upstream fixes nodemailer.d.ts and Cherry upgrades"
   },
-  "patches/next-auth+5.0.0-beta.30.patch": {
+  "patches/next-auth+5.0.0-beta.32.patch": {
     "reason": "Upstream next-auth react.d.ts imports missing SignInAuthorizationParams; define it in client.d.ts",
-    "upstream": "next-auth@5.0.0-beta.30",
-    "audit": "2026-01-27",
+    "upstream": "next-auth@5.0.0-beta.32",
+    "audit": "2026-10-17",
     "removeWhen": "Remove once next-auth exports SignInAuthorizationParams in lib/client.d.ts"
   },
   "types/compat/hexagon__base64.d.ts": {
@@ -35,46 +35,46 @@
     "audit": "2026-01-28",
     "removeWhen": "Remove once @auth/core exports Adapter type"
   },
-  "types/compat/nodemailer.d.ts": {
-    "reason": "nodemailer package typings are required by auth email provider types",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings or auth providers stop importing them"
-  },
   "types/compat/nodemailer-json.d.cts": {
     "reason": "nodemailer JSON transport lacks stable typings",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings"
+    "upstream": "nodemailer@^10",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
   },
   "types/compat/nodemailer-sendmail.d.cts": {
     "reason": "nodemailer sendmail transport lacks stable typings",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings"
+    "upstream": "nodemailer@^10",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
   },
   "types/compat/nodemailer-ses.d.cts": {
     "reason": "nodemailer SES transport lacks stable typings",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings"
+    "upstream": "nodemailer@^10",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
   },
   "types/compat/nodemailer-smtp-pool.d.cts": {
     "reason": "nodemailer SMTP pool transport lacks stable typings",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings"
+    "upstream": "nodemailer@^10",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
   },
   "types/compat/nodemailer-smtp.d.cts": {
     "reason": "nodemailer SMTP transport lacks stable typings",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings"
+    "upstream": "nodemailer@^10",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
   },
   "types/compat/nodemailer-stream.d.cts": {
     "reason": "nodemailer stream transport lacks stable typings",
-    "upstream": "nodemailer@^7",
-    "audit": "2026-01-28",
-    "removeWhen": "Remove once nodemailer ships transport typings"
+    "upstream": "nodemailer@^10",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once nodemailer ships typings for its lib/* transport subpaths that @auth/core can import as types"
+  },
+  "types/compat/url-pattern.d.ts": {
+    "reason": "next@16.3 declarations reference global URLPatternInput and URLPatternOptions; TypeScript 5.9 lib.dom lacks URLPattern and @types/node 24 declares only URLPattern/URLPatternInit globally",
+    "upstream": "next@16.3.8",
+    "audit": "2026-10-17",
+    "removeWhen": "Remove once the TypeScript DOM lib or @types/node declares URLPatternInput and URLPatternOptions globally"
   }
 }
