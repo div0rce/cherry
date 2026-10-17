@@ -332,7 +332,6 @@ export default defineConfig([
     'next.config.ts',
     'tailwind.config.ts',
     'proxy.ts',
-    'instrumentation.ts',
     'eslint.config.mjs',
     'postcss.config.mjs',
   ]),
@@ -11695,7 +11694,8 @@ export default config;
     "scripts",
     "tests",
     "types",
-    "prisma"
+    "prisma",
+    "instrumentation.ts"
   ],
   "exclude": [
     "node_modules",
@@ -11724,7 +11724,8 @@ export default config;
     "scripts",
     "tests",
     "types",
-    "prisma"
+    "prisma",
+    "instrumentation.ts"
   ],
   "exclude": [
     "node_modules",
