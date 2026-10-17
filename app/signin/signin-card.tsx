@@ -32,7 +32,10 @@ export function SignInCard({
   useEffect(() => {
     getProviders()
       .then((list) => setProviders(list))
-      .catch(() => setProviders(null));
+      .catch((error: unknown) => {
+        void error;
+        setProviders(null);
+      });
   }, []);
   const hasProvider = (id: string): boolean =>
     providers !== undefined && providers !== null && id in providers;
