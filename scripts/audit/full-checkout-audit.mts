@@ -1023,20 +1023,6 @@ function main(): void {
       'Either wire the function to bank/Vine/receipt signals or remove the automation surface until the end-to-end verification path exists.',
   });
 
-  const legacySimulation = findParsed(parsedFiles, 'lib/simulation.ts');
-  codeFindings.push({
-    severity: 'HIGH',
-    confidence: 'Confirmed',
-    location: lineRef(legacySimulation.entry.path, legacySimulation.lines, 'LEGACY SIMULATION ENGINE (ARCHIVED)'),
-    title: 'Archived legacy simulation engine remains in-tree beside the canonical engine',
-    reason:
-      'The file is marked archived, mutates buckets and simulated transactions directly, and coexists with `lib/engine/simulate.ts` and `lib/simulation-adapter.ts`.',
-    risk:
-      'This preserves a second simulation model with different semantics and invites accidental reuse, drift, or documentation confusion.',
-    fix:
-      'Move the archived implementation under an explicit legacy directory or delete it once any remaining references are removed.',
-  });
-
   const userMerchants = findParsed(parsedFiles, 'app/api/user/merchants/route.ts');
   codeFindings.push({
     severity: 'MEDIUM',
@@ -1175,22 +1161,10 @@ function main(): void {
     });
   }
 
-  if ((inbound.get('lib/simulation.ts') ?? 0) === 0) {
-    abandonedEntries.push({
-      name: 'Archived legacy simulation engine',
-      location: 'lib/simulation.ts',
-      evidence: 'Marked archived in-file and has zero inbound local imports from runtime modules in the graph.',
-      status: 'superseded',
-      operationalRisk: 'It preserves obsolete semantics that can be confused with the canonical engine.',
-      recommendedAction: 'Archive outside the runtime tree or delete after documenting any historical need.',
-    });
-  }
-
   const riskRows = [
     ['Sensitive financial fixture data in checkout', 'CRITICAL', realBankDataFiles[0] ?? 'data/bank', 'Remove or sanitize committed bank data.'],
     ['Home shell backed by static stub bundle', 'HIGH', 'lib/home/ui-bundle.ts', 'Wire to live backend state or gate as demo-only.'],
     ['Auto-verification is not implemented', 'HIGH', 'lib/verification/verify-session.ts', 'Complete signal-based verification or remove the hook.'],
-    ['Legacy simulation engine remains in runtime tree', 'HIGH', 'lib/simulation.ts', 'Archive or delete the obsolete engine path.'],
     ['Destructive admin routes lack role checks', 'MEDIUM', 'app/api/admin/*', 'Add explicit operator authorization.'],
     ['Merchant lookup masks backend errors', 'MEDIUM', 'app/api/user/merchants/route.ts', 'Return explicit degraded or error responses.'],
     ['Wallet pass still relies on placeholder rewards', 'LOW', 'app/api/wallet/cherry-pass/route.ts', 'Keep feature gated until DB-backed.'],
@@ -1244,7 +1218,7 @@ function main(): void {
 - Engine core: deterministic solver and input boundary under \`lib/engine/*\`, plus authority policy under \`lib/authority/*\`.
 - Persistence: Prisma schema with ${prismaModels.length} models, ${prismaEnums.length} enums, ${relationCount} explicit relation annotations, and ${indexCount} explicit secondary indexes.
 - Reward/session lifecycle: \`/api/sessions\` plus confirm/verify flows backed by \`RecommendationSession\`, \`CherryPointLedger\`, and bucket rollover/reversal helpers.
-- Simulation and autopilot: \`/api/simulate\`, \`/api/simulations\`, \`lib/engine/simulate.ts\`, \`lib/autopilot/*\`, plus a legacy archived engine in \`lib/simulation.ts\`.
+- Simulation and autopilot: \`/api/simulate\`, \`/api/simulations\`, \`lib/engine/simulate.ts\`, \`lib/autopilot/*\`. (The archived DB-mutating legacy engine \`lib/simulation.ts\` was deleted.)
 - Ingest and context: bank ingest helpers, merchant observations, Vine device/order context, daily-state computations, and offline evaluator artifacts.
 - Infra and quality gates: package scripts, guardrail registry, CI workflows, migration tests, DB semantic tests, and execution runners.
 
@@ -1288,7 +1262,6 @@ Observe surface (/api/scan, /api/vine/order, /api/autopilot/*)
 
 ### Architectural Mismatches
 - Confirmed: Public-facing scan/simulate flows still map canonical solver output back into legacy decision structures.
-- Confirmed: Two simulation lineages coexist: canonical solver projection under \`lib/engine/simulate.ts\` and an archived DB-mutating legacy engine in \`lib/simulation.ts\`.
 - Confirmed: The home surface advertises a rich product shell while using a stubbed read-only bundle.
 - Confirmed: Wallet and automated verification are represented in code and docs but remain incomplete in runtime capability.
 
@@ -1519,7 +1492,6 @@ ${markdownFindings(securityFindings)}
 - Canonical projection: \`lib/engine/simulate.ts\`
 - Canonical solve/run path: \`lib/engine/run.ts\`, \`lib/engine/solver.ts\`, \`lib/engine/input/*\`
 - Authority layer: \`lib/authority/simulateSpendAuthority.ts\` and Prisma snapshot adapter
-- Legacy archived engine: \`lib/simulation.ts\`
 
 ## 3 State Representation
 - Engine state: cards, buckets, debts, cash, preferences, versioned engine input
@@ -1578,7 +1550,6 @@ Persisted Result / API Response / UI Output
 - Daily-state, authority, and simulation are conceptually aligned, but the UI shell does not yet expose that coherence.
 
 ## 10 Recommended Refactor Plan
-- Delete or archive \`lib/simulation.ts\` outside runtime paths.
 - Promote one canonical simulation contract derived from solver output.
 - Attach session verification to real signals before adding new reward surfaces.
 - Replace stubbed home/dashboard simulation summaries with live daily-state and recent-decision data.
@@ -1687,10 +1658,10 @@ ${markdownFindings(securityFindings)}
 
 ## 11 Cherry System Evaluation
 - Answer 1: Cherry is a partial prototype with a real backend core, not a mere UI shell.
-- Answer 2: The simulation engine actually lives in the canonical solver/projection path under \`lib/engine/*\`, with adapters in \`lib/simulation-adapter.ts\` and \`lib/autopilot/runSimulation.ts\`; \`lib/simulation.ts\` is archived legacy code.
+- Answer 2: The simulation engine actually lives in the canonical solver/projection path under \`lib/engine/*\`, with adapters in \`lib/simulation-adapter.ts\` and \`lib/autopilot/runSimulation.ts\`. The archived legacy engine \`lib/simulation.ts\` has been deleted.
 - Answer 3: Budgeting logic is mostly coherent in the backend core (bucket runtime, strict mode, daily state, authority), but fragmented at product boundaries because multiple surfaces still bridge through older shapes.
 - Answer 4: The home UI bundle, wallet pass scaffold, and null/no-op verification helpers create the strongest illusion of progress without equivalent functional depth.
-- Answer 5: Immediate delete/archive candidates are \`lib/simulation.ts\` and \`lib/verification/vine.ts\` unless a live consumer is restored.
+- Answer 5: \`lib/simulation.ts\` has been deleted; \`lib/verification/vine.ts\` is imported by \`/api/vine/order\` and stays.
 - Answer 6: If development resumes, stabilize verification automation, retire legacy simulation/response shims, and replace static shell bundles with live data.
 - Answer 7: The implied architectural direction is a rigorously versioned, deterministic decisioning core with replay/guardrail governance and thinner public API adapters.
 

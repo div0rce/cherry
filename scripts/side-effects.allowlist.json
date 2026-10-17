@@ -127,13 +127,6 @@
     "source": "legacy",
     "tier": "persistence-only"
   },
-  "lib/history.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy",
-    "tier": "persistence-only"
-  },
   "lib/income/classifier.ts": {
     "effects": [
       "console",
@@ -143,13 +136,6 @@
     "tier": "persistence-only"
   },
   "lib/income/monthly.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy",
-    "tier": "persistence-only"
-  },
-  "lib/ingest/bank-transactions.ts": {
     "effects": [
       "prisma"
     ],
@@ -199,13 +185,6 @@
     "tier": "persistence-only"
   },
   "lib/sessions/summaries.ts": {
-    "effects": [
-      "prisma"
-    ],
-    "source": "legacy",
-    "tier": "persistence-only"
-  },
-  "lib/simulation.ts": {
     "effects": [
       "prisma"
     ],
