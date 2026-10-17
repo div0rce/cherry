@@ -141,7 +141,7 @@ Purpose: advisory card choice for a described purchase (preview), then a record 
 - Behavior: re-runs the preview evaluation (no timeout) and requires the recomputed `decisionId` to equal the submitted one, `status` to be `ok`, and `cardId` to equal the recommended card. To match, resend the preview's `merchant`, `amountCents`, `occurredAt`, and `category`; a bucket/card state change since preview also changes the `decisionId`.
   - v1 (default): in one transaction, creates a sandbox `SimulatedTransaction` with `id = decisionId`, `status = APPROVED`, `reason = AUTOPILOT_COMMIT`. Does not change bucket `spentCents`; no session or ledger rows. Response `{ decisionId, transactionId, bucket, status }`.
   - v2: upserts a `RecommendationSession` (`source = AUTOPILOT`, keyed by `engineDecisionId`), confirms it via `confirmRecommendationSession` (session `CLAIMED`, bucket `spentCents` incremented, one `PENDING` `CherryPointLedger` row, zero points allowed), then creates an `AutopilotCommit` row. Response `{ decisionId, sessionId, bucket, status }`.
-- Response `200`: `status` is `created` or `already_exists`. Repeating a commit for the same `decisionId` is idempotent (v1 by `SimulatedTransaction.id`, v2 by `AutopilotCommit (userId, decisionId)`). `bucket` is the recommended bucket as `BucketRuntime`, or `null`; in v1 it is the pre-commit state.
+- Response `200`: `status` is `created` or `already_exists`. v1 is idempotent for the same `decisionId` (by `SimulatedTransaction.id`). v2 is **not** reliably idempotent: when a bucket is recommended, the first commit increments its `spentCents`, so a retry's re-run evaluation yields a different `decisionId` and fails with `400 DECISION_MISMATCH` before the `AutopilotCommit (userId, decisionId)` check can return `already_exists`. `bucket` is the recommended bucket as `BucketRuntime`, or `null`; in v1 it is the pre-commit state.
 - Errors:
   - Invalid body: `parseJsonBody` `400` (`{ error: "Invalid JSON body" }` or `{ error: "Validation failed", issues }`).
   - Service errors as `{ error, code }`: `400` `DECISION_MISMATCH`, `DECISION_BLOCKED`, `CARD_MISMATCH`, plus the preview evaluation `400`s and `500 ENGINE_ERROR`. v2 adds `COMMIT_INVARIANT_VIOLATION` (status taken from the session-confirm error, e.g. `400` when already claimed, `404` when the session or bucket is missing) and `500 MISSING_ENGINE_DECISION_ID`.
@@ -216,7 +216,7 @@ Purpose: a per-user, per-UTC-day spend-safety summary. Advisory only; it never a
 - Gates: none (not behind `CHERRY_DAILYSTATE_CRON_ENABLED`).
 - Response `200`: the user's `DailyState` row with the latest `computedAt`: `{ id, userId, date, status, safeToSpendCents, nextRiskEvent, summary, computedAt, source, engineVersion, inputsVersion, errors }`.
   - `status`: `SAFE | TIGHT | RISKY | INSUFFICIENT_DATA`.
-  - `summary`: `{ buckets: { remainingCents, exhaustedCategories }, pointsPending, sessionsPendingVerification }`, or null on error rows.
+  - `summary`: `{ buckets: { remainingCents, exhaustedCategories }, pointsPending, sessionsPendingVerification }`, or null on an error row created by a failed first run. If a recompute fails for a day that already had a successful row, the row's `status` becomes `INSUFFICIENT_DATA` and `errors` is set, but the earlier `summary`, `safeToSpendCents`, and `nextRiskEvent` stay in place.
   - The runner sets `computedAt` to the target date's UTC midnight, so "latest" means the latest target date, not the most recent run.
 - Errors: `404 { error: "not_found" }` when the user has no row.
 - Side effects: read-only.
