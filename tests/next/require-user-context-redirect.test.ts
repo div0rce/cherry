@@ -2,8 +2,8 @@ import * as assert from 'node:assert/strict';
 import * as Module from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-// requireUserContext() sends signed-out visitors to /signin instead of throwing, and still throws
-// for any other failure.
+// requireUserContext() sends signed-out visitors to /signin, returning them to the page they asked
+// for, instead of throwing; it still throws for any other failure.
 
 const __filename = fileURLToPath(import.meta.url);
 const requireModule = Module.createRequire(__filename);
@@ -39,22 +39,22 @@ stub('../../lib/api/fetch-json', { fetchApiResult: async () => nextResult });
 const apiPath = requireModule.resolve('../../app/(user)/_lib/api.ts');
 delete requireModule.cache[apiPath];
 const { requireUserContext } = requireModule(apiPath) as {
-  requireUserContext: () => Promise<{ userId: string; mode: string }>;
+  requireUserContext: (returnTo: string) => Promise<{ userId: string; mode: string }>;
 };
 
 async function run(): Promise<void> {
   nextResult = { ok: true, data: { userId: 'user-1', mode: 'AUTHENTICATED' } };
-  assert.deepEqual(await requireUserContext(), { userId: 'user-1', mode: 'AUTHENTICATED' });
+  assert.deepEqual(await requireUserContext('/buckets'), { userId: 'user-1', mode: 'AUTHENTICATED' });
 
   nextResult = { ok: false, error: 'UNAUTHORIZED', message: 'Unauthorized' };
-  await assert.rejects(requireUserContext(), (error: unknown) => {
+  await assert.rejects(requireUserContext('/buckets'), (error: unknown) => {
     assert.ok(error instanceof RedirectError, `expected a redirect, got ${String(error)}`);
-    assert.equal(error.url, '/signin');
+    assert.equal(error.url, '/signin?callbackUrl=%2Fbuckets');
     return true;
   });
 
   nextResult = { ok: false, error: 'INTERNAL', message: 'boom' };
-  await assert.rejects(requireUserContext(), (error: unknown) => {
+  await assert.rejects(requireUserContext('/buckets'), (error: unknown) => {
     assert.equal(error instanceof RedirectError, false, 'non-auth failures must not redirect');
     return true;
   });
