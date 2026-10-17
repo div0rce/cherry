@@ -53,7 +53,7 @@ and injective.
 
 - `objectiveVersion` is `objective_v1`.
 - Any change to vector semantics, ordering, or tie-break must bump
-  `objectiveVersion` and update the tests in `tests/engine/optimality`.
+  `objectiveVersion` and update the tests in `tests/node/engine/optimality`.
 - Any change to `candidateKey` format or ordering requires bumping both
   `objectiveVersion` and `candidateSpaceVersion`.
 

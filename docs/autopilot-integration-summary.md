@@ -20,7 +20,7 @@ Last updated: 2026-01-03
   3. Backend entry: `/api/autopilot/preview` (validated by `AutopilotPreviewOutputSchema`); solver entry `lib/engine/public.getAutopilotDecisionForUserSwipe`.
   4. Adapter source of truth: `lib/autopilot/runSimulation.ts` (do not move logic into components).
   5. Contract doc: `docs/autopilot-engine-adapter.md` (keep it in sync if fields change).
-  6. Validation: run `npm test` (includes `tests/autopilot-runSimulation.test.js`) to ensure mapping stays intact.
+  6. Validation: run `npm test` (includes `tests/node/autopilot-runSimulation.test.js`) to ensure mapping stays intact.
 
 ## Future/Target behavior (explicitly speculative)
 - Tighten commit semantics and document Phase 3 behavior before enabling user-facing commit flows.
