@@ -2,10 +2,21 @@ import type { PublicConfig } from './public.js';
 import type { RuntimeConfig } from './runtime.js';
 import type { ServerConfig } from './server.js';
 
-let serverConfig: ServerConfig | null = null;
-let publicConfig: PublicConfig | null = null;
-let runtimeConfig: RuntimeConfig | null = null;
-let serverConfigLocked = false;
+// One store per process, not per module copy. Next compiles this module into every bundle layer
+// (route handlers, server components, instrumentation.ts) as separate copies, so module-level
+// variables set in one copy were invisible to the others and every getServerConfig() in a
+// production server threw "not initialized". Same process-wide pattern as lib/prisma.ts.
+type ConfigState = {
+  server: ServerConfig | null;
+  public: PublicConfig | null;
+  runtime: RuntimeConfig | null;
+  serverLocked: boolean;
+};
+const globalForConfig = globalThis as unknown as { __cherryConfigState?: ConfigState };
+if (globalForConfig.__cherryConfigState === undefined) {
+  globalForConfig.__cherryConfigState = { server: null, public: null, runtime: null, serverLocked: false };
+}
+const state: ConfigState = globalForConfig.__cherryConfigState;
 
 function deepFreeze<T>(obj: T): T {
   Object.freeze(obj);
@@ -24,68 +35,72 @@ function deepFreeze<T>(obj: T): T {
 }
 
 export function lockServerConfig(): void {
-  if (serverConfigLocked) return;
-  if (serverConfig === null) {
+  if (state.serverLocked) return;
+  if (state.server === null) {
     throw new Error('Cannot lock server config before it is set.');
   }
-  serverConfigLocked = true;
+  state.serverLocked = true;
 }
 
 export function setServerConfig(
   config: ServerConfig,
   options?: { lock?: boolean; allowOverwrite?: boolean }
 ): ServerConfig {
-  if (serverConfigLocked) {
+  if (state.serverLocked) {
     throw new Error('Server config is locked. Config must be set before execution.');
   }
 
-  if (serverConfig !== null && options?.allowOverwrite !== true) {
+  if (state.server !== null && options?.allowOverwrite !== true) {
     throw new Error('Server config already set.');
   }
 
-  serverConfig = deepFreeze({ ...config });
+  state.server = deepFreeze({ ...config });
   if (options?.lock ?? true) {
     lockServerConfig();
   }
-  return serverConfig;
+  return state.server;
 }
 
 export function getServerConfig(): ServerConfig {
-  if (serverConfig === null) {
+  if (state.server === null) {
     throw new Error(
       'ServerConfig not initialized. Call initConfigFromEnv() in app/api/** routes, scripts, or test bootstrap before reading config.'
     );
   }
 
-  return serverConfig;
+  return state.server;
+}
+
+export function hasServerConfig(): boolean {
+  return state.server !== null;
 }
 
 export function setPublicConfig(config: PublicConfig): PublicConfig {
-  publicConfig = deepFreeze({ ...config });
-  return publicConfig;
+  state.public = deepFreeze({ ...config });
+  return state.public;
 }
 
 export function getPublicConfig(): PublicConfig {
-  if (publicConfig === null) {
+  if (state.public === null) {
     throw new Error('PublicConfig not initialized; load config at the boundary first');
   }
-  return publicConfig;
+  return state.public;
 }
 
 export function setRuntimeConfig(config: RuntimeConfig): RuntimeConfig {
-  runtimeConfig = deepFreeze({ ...config });
-  return runtimeConfig;
+  state.runtime = deepFreeze({ ...config });
+  return state.runtime;
 }
 
 export function getRuntimeConfig(): RuntimeConfig {
-  if (runtimeConfig === null) {
+  if (state.runtime === null) {
     throw new Error('RuntimeConfig not initialized; load config at the boundary first');
   }
-  return runtimeConfig;
+  return state.runtime;
 }
 
 export function isServerConfigLocked(): boolean {
-  return serverConfigLocked;
+  return state.serverLocked;
 }
 
 export function resetServerConfigForTests(config: ServerConfig): void {
@@ -96,6 +111,6 @@ export function resetServerConfigForTests(config: ServerConfig): void {
   if (!isTestRuntime) {
     throw new Error('resetServerConfigForTests may only be called from the test harness');
   }
-  serverConfigLocked = false;
-  serverConfig = deepFreeze({ ...config });
+  state.serverLocked = false;
+  state.server = deepFreeze({ ...config });
 }
