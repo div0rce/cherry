@@ -19,7 +19,7 @@
     "useUnknownInCatchVariables": true,
 
     // --- Runtime / emit model ---
-    "target": "ES2024",
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
