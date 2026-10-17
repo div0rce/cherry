@@ -9693,6 +9693,9 @@ export default nextConfig;
     "verify:cherry-diff-artifact": "npm run ts:esm -- scripts/execution/run.mts verify:cherry-diff-artifact",
     "verify:8.3-closure-artifact": "npm run ts:esm -- scripts/execution/run.mts verify:8.3-closure-artifact",
     "verify:repo-closure": "npm run ts:esm -- scripts/execution/run.mts verify:repo-closure",
+    "verify:preflight": "npm run ts:esm -- scripts/execution/run.mts verify:preflight",
+    "verify:full": "npm run ts:esm -- scripts/execution/run.mts verify:full",
+    "generate:config-snapshot": "npm run ts:esm -- scripts/execution/run.mts generate:config-snapshot",
     "report:domain-impact": "npm run ts:esm -- scripts/execution/run.mts report:domain-impact",
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
@@ -10766,6 +10769,9 @@ export const EXECUTION = {
   'verify:8.3-closure-artifact': 'scripts/verify-8-3-closure-artifact.mts',
   'verify:cherry-diff-artifact': 'scripts/verify-cherry-diff-artifact.mts',
   'verify:repo-closure': 'scripts/verify-repo-closure.mts',
+  'verify:preflight': 'scripts/preflight.mts',
+  'verify:full': 'scripts/verify-full.mts',
+  'generate:config-snapshot': 'scripts/generate-config-snapshot.mts',
   'report:domain-impact': 'scripts/domain-impact.mts',
 } as const;
 

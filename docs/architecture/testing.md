@@ -19,7 +19,7 @@ Prisma is replaced by the mock in `scripts/lib/` through a loader, so nothing un
 | --- | --- | --- |
 | FAST | one file: `TZ=UTC npm run ts:esm -- --import ./scripts/lib/loaders/config.loader.mjs --import ./scripts/lib/loaders/prisma-mock.register.mjs -r tsconfig-paths/register tests/node/<file>` | that file only |
 | DOMAIN | `npm run report:domain-impact -- <changed paths>` prints the globs, then `npm run check:tests:node -- --filter=<glob,glob>` and `npm run check:tests:next -- --filter=<glob>` | the owning domain's registered tests. Output is labelled `FILTERED RUN`; never cite it as the gate |
-| FULL | `npm run check && npm test && npm run build` (what `npm run ci:verify` runs) | the authoritative contract. `check` = core guardrails + lint + typecheck (no tests); `npm test` runs every test once |
+| FULL | `npm run check && npm test && npm run build` (what `npm run ci:verify` runs; locally `npm run verify:full` adds preflight, a per-worktree lock, and a verified-tree record) | the authoritative contract. `check` = core guardrails + lint + typecheck (no tests); `npm test` runs every test once |
 | DB | `npm run test:db` with a real Postgres and applied migrations | schema constraints |
 
 Required environment for FULL locally: `CHERRY_TMP_ROOT` (an existing dir, mode 700) and `CHERRY_VINE_SIGNATURE_MODE=enforce` (the build asserts production config). Guardrails need `rg`, `git`, `node` on PATH.
