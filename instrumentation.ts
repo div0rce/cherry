@@ -7,5 +7,12 @@ export async function register(): Promise<void> {
   const { hasServerConfig } = await import('./lib/config/store.js');
   if (hasServerConfig()) return;
   const { initConfigFromEnv } = await import('./lib/config/init.js');
-  initConfigFromEnv(process.env);
+  try {
+    initConfigFromEnv(process.env);
+  } catch (error: unknown) {
+    // An invalid environment (e.g. production without CHERRY_VINE_SIGNATURE_MODE=enforce) must
+    // not take down routes that never read config; those that do keep failing with
+    // "ServerConfig not initialized". The cause is logged once here.
+    console.error('[cherry] server config init failed; config-dependent routes will fail:', error);
+  }
 }
