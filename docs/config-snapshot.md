@@ -10989,38 +10989,31 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
   "lib/autopilot/engineDecisionId.ts": {
     "effects": [
       "crypto",
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/autopilot/service.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/bank/csv-dev-provider.ts": {
     "effects": [
-      "fs",
-      "time"
+      "fs"
     ],
     "source": "legacy",
     "tier": "boundary-time"
   },
   "lib/bank/ingest.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/bank/user-link.ts": {
     "effects": [
@@ -11036,48 +11029,33 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "source": "legacy",
     "tier": "persistence-only"
   },
-  "lib/buckets/periods.ts": {
-    "effects": [
-      "time"
-    ],
-    "source": "legacy",
-    "tier": "boundary-time"
-  },
   "lib/buckets/regimes.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/daily-state/runDailyForUser.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/dashboard.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/demo-seeder.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/dev/dev-user.ts": {
     "effects": [
@@ -11093,13 +11071,6 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     ],
     "source": "legacy",
     "tier": "persistence-only"
-  },
-  "lib/evaluator/regime-buckets.ts": {
-    "effects": [
-      "time"
-    ],
-    "source": "legacy",
-    "tier": "boundary-time"
   },
   "lib/evaluator/stats.ts": {
     "effects": [
@@ -11125,12 +11096,10 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
   },
   "lib/income/monthly.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/ingest/bank-transactions.ts": {
     "effects": [
@@ -11174,13 +11143,6 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
     "source": "legacy",
     "tier": "persistence-only"
   },
-  "lib/schemas/bank-ingest.ts": {
-    "effects": [
-      "time"
-    ],
-    "source": "legacy",
-    "tier": "boundary-time"
-  },
   "lib/sessions/confirm-service.ts": {
     "effects": [
       "prisma"
@@ -11204,12 +11166,10 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
   },
   "lib/unified-activity.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/user-context.ts": {
     "effects": [
@@ -11228,12 +11188,10 @@ export const GUARDRAIL_NAMES = Object.freeze(Object.keys(GUARDRAILS) as Guardrai
   },
   "lib/vine/run-recommendation.ts": {
     "effects": [
-      "prisma",
-      "time"
+      "prisma"
     ],
     "source": "legacy",
-    "tier": "legacy-combo",
-    "expiresBy": "2026-06-01"
+    "tier": "persistence-only"
   },
   "lib/vine/security.ts": {
     "effects": [

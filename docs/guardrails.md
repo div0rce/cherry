@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-31
+Last updated: 2026-10-16
 
 # Guardrails
 
@@ -307,9 +307,11 @@ guaranteed to remain stable across different `engineVersion` values. Consumers m
 
 ### Guardrail 10 — Side-Effect Expiration
 
-- `legacy-combo` allowlist entries require `expiresBy: YYYY-MM-DD`.
-- CI fails when expired, removed, or increased.
-- Guardrail checks: `check:side-effects:diff`.
+- `check:side-effects` scans library modules outside the runtime adapters for effects: Prisma access, clock reads (`Date.now()`, `new Date()` with no arguments, or `new Date(...spread)`; `new Date(value)` is a pure conversion, not an effect), `process.env`, fs, fetch, crypto, randomness, Next request helpers. Every hit must be declared in the side-effects allowlist with `source: legacy`.
+- Tiers: `persistence-only` (Prisma, no clock), `boundary-time` (clock or other effects, no Prisma), `legacy-combo` (Prisma and a clock read in the same module).
+- `legacy-combo` entries require `expiresBy: YYYY-MM-DD`. `check:side-effects:diff` fails when an entry is expired, when entries or effects grow, and when an allowlist change does not reduce the number of legacy entries.
+- The expiry epoch is the HEAD commit date (guardrails may not read the wall clock), so run `npm run check:side-effects:diff` after committing, not only on the working tree.
+- Guardrail checks: `check:side-effects`, `check:side-effects:diff`. Both have a node regression test that runs them against fixture roots.
 
 ## Domain: Engine & Authority Safety
 
