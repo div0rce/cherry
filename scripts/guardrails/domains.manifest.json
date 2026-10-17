@@ -611,6 +611,7 @@
       "description": "User-facing app shell, shared components, client API helpers.",
       "owns": [
         "app/\\(user\\)/**",
+        "app/page.tsx",
         "app/layout.tsx",
         "app/providers.tsx",
         "components/**",
