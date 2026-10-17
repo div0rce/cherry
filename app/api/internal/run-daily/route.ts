@@ -8,9 +8,10 @@ import { parseJsonBody } from '../../../../lib/validation.js';
 import { DailyStateSource } from '@prisma/client';
 import { runDailyForUser } from '../../../../lib/daily-state/runDailyForUser.js';
 
+// Runs for the signed-in user only. There is deliberately no `userId` field: any signed-in user
+// could otherwise write DailyState for someone else. Batch runs use /api/internal/run-daily-all.
 const RunDailySchema = z
   .object({
-    userId: z.string().min(1).optional(),
     date: z.string().optional(),
   })
   .strict();
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parsed = await parseJsonBody(req, RunDailySchema);
     if (parsed.ok !== true) return parsed.response;
 
-    const targetUserId = parsed.data.userId ?? userIdFromContext;
+    const targetUserId = userIdFromContext;
     const targetDateRaw = parsed.data.date;
     const targetDate =
       typeof targetDateRaw === 'string' && targetDateRaw.length > 0
