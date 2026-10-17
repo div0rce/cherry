@@ -26,6 +26,7 @@
     "data/**/*.ts",
     "data/**/*.json",
     "proxy.ts",
+    "instrumentation.ts",
     "next-env.d.ts",
     "next.config.ts",
     "tailwind.config.ts"
