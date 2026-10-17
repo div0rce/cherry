@@ -16,7 +16,15 @@ export const MIN_FREE_BYTES = 1024 ** 3;
 export const LOCK_NAME = 'cherry-full-gate.lock';
 export const LOG_NAME = 'cherry-full-gate.log';
 
-const GIT_IN_PROGRESS = ['index.lock', 'rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD'];
+const GIT_IN_PROGRESS = [
+  'index.lock',
+  'rebase-merge',
+  'rebase-apply',
+  'MERGE_HEAD',
+  'CHERRY_PICK_HEAD',
+  'REVERT_HEAD',
+  'BISECT_LOG',
+];
 const PackageManagerSchema = z.object({ packageManager: z.string() }).passthrough();
 
 function errorCode(error: unknown): unknown {
@@ -39,43 +47,53 @@ function isAlive(pid: number): boolean {
   }
 }
 
-// ponytail: pid liveness only; a reused pid makes a stale lock look held. The message prints the
-// lock path so it can be deleted by hand.
-export function lockHolder(lockFile: string): number | null {
+export type LockState = { pid: number; alive: boolean } | null;
+
+export function readLock(lockFile: string): LockState {
   if (!fs.existsSync(lockFile)) return null;
   const pid = Number(fs.readFileSync(lockFile, 'utf8').trim());
-  return Number.isInteger(pid) && pid > 0 && isAlive(pid) ? pid : null;
+  return { pid, alive: Number.isInteger(pid) && pid > 0 && isAlive(pid) };
 }
 
-// Atomic create; a lock left by a dead process is reclaimed once.
+// Atomic create, never reclaimed automatically: two runs that both saw a dead holder could otherwise
+// each delete the other's fresh lock. A stale lock is reported by preflight and removed by hand.
 export function acquireLock(lockFile: string): boolean {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      fs.writeFileSync(lockFile, `${process.pid}\n`, { flag: 'wx' });
-      return true;
-    } catch (error: unknown) {
-      if (errorCode(error) !== 'EEXIST') throw error;
-      if (lockHolder(lockFile) !== null) return false;
-      fs.rmSync(lockFile, { force: true });
-    }
+  try {
+    fs.writeFileSync(lockFile, `${process.pid}\n`, { flag: 'wx' });
+    return true;
+  } catch (error: unknown) {
+    if (errorCode(error) === 'EEXIST') return false;
+    throw error;
   }
-  return false;
 }
 
-// The committed tree when nothing is modified or untracked; null otherwise. Dirty runs are never
-// recorded, so a recorded pass names exactly the source that was verified.
+function commitOf(root: string, ref: string): string {
+  const result = runTool('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: root });
+  return result.ok ? result.stdout.trim() : '-';
+}
+
+// What ci:verify reads from git: the working tree (must be clean, untracked files included whatever
+// status.showUntrackedFiles says), HEAD's history (HEAD~1 diffs, commit messages), and merge-bases
+// with origin/main and main. Null when the tree is dirty: dirty runs are never recorded.
 // ponytail: gitignored inputs (.env*, node_modules) are not in the key; pass --force after changing them.
-export function cleanTree(root: string): string | null {
-  const status = runTool('git', ['status', '--porcelain'], { cwd: root });
+export function gateKey(root: string): string | null {
+  const status = runTool('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: root });
   if (!status.ok || status.stdout.trim().length > 0) return null;
-  const tree = runTool('git', ['rev-parse', 'HEAD^{tree}'], { cwd: root });
-  return tree.ok ? tree.stdout.trim() : null;
+  const head = commitOf(root, 'HEAD');
+  if (head === '-') return null;
+  return `${head} ${commitOf(root, 'origin/main')} ${commitOf(root, 'main')} ${process.version}`;
 }
 
-// Log lines are "<tree> <node version> pass|fail".
+// Log lines are "<HEAD> <origin/main> <main> <node> pass|fail"; the latest line for a key wins, so a
+// failed --force run cancels an earlier pass.
 export function hasPassed(logFile: string, key: string): boolean {
   if (!fs.existsSync(logFile)) return false;
-  return fs.readFileSync(logFile, 'utf8').split('\n').includes(`${key} pass`);
+  const latest = fs
+    .readFileSync(logFile, 'utf8')
+    .split('\n')
+    .filter((line) => line.startsWith(`${key} `))
+    .at(-1);
+  return latest === `${key} pass`;
 }
 
 function toolVersion(root: string, tool: string): string | null {
@@ -123,9 +141,14 @@ export function preflightProblems(root: string): string[] {
     }
   }
   const lockFile = gitPath(root, LOCK_NAME);
-  const holder = lockHolder(lockFile);
-  if (holder !== null) {
-    problems.push(`a FULL run (pid ${holder}) already holds ${lockFile}; wait for it.`);
+  const lock = readLock(lockFile);
+  if (lock?.alive === true) {
+    problems.push(`a FULL run (pid ${lock.pid}) already holds ${lockFile}; wait for it.`);
+  } else if (lock !== null) {
+    problems.push(
+      `stale lock ${lockFile} from pid ${lock.pid}, which is not running. Confirm no ` +
+        '`npm run ci:verify` is still running in this worktree, then delete the file.'
+    );
   }
 
   return problems;

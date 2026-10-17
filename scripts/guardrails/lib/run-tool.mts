@@ -24,6 +24,7 @@ export type SpawnToolOptions = {
   cwd?: string;
   env?: NodeJS.ProcessEnv;
   stdio?: Parameters<typeof spawn>[2]['stdio'];
+  detached?: boolean;
 };
 
 const INTERNAL_ERROR = 'GUARDRAIL_INTERNAL_ERROR';
@@ -149,5 +150,6 @@ export function spawnTool(
     cwd: options.cwd,
     env: options.env,
     stdio: options.stdio ?? 'pipe',
+    detached: options.detached ?? false,
   });
 }
