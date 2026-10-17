@@ -165,7 +165,8 @@
       ],
       "tests": [
         "tests/node/config-injection.test.ts",
-        "tests/node/no-env-smoke.test.ts"
+        "tests/node/no-env-smoke.test.ts",
+        "tests/node/config-store-process-wide.test.ts"
       ],
       "docs": [
         "docs/env-policy.md"
