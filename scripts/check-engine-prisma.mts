@@ -25,8 +25,8 @@ const TARGETS = [
 ];
 const IGNORE = ['**/__tests__/**', '**/__mocks__/**', '**/.tmp/**'];
 
-// Import patterns run against raw source (string literals survive); usage patterns run against
-// comment/string-stripped source. `import type` from @prisma/client is allowed (types only).
+// Import patterns run against comment-stripped source (string literals survive); usage patterns
+// run against comment/string-stripped source. `import type` from @prisma/client is allowed (types only).
 // `LOADS` covers side-effect imports, dynamic imports and require calls. The lib/prisma pattern matches
 // any specifier ending in `/prisma` (e.g. '../prisma.js'), since engine and authority are siblings
 // of lib/prisma.ts and import it relatively.
@@ -47,7 +47,9 @@ const USAGE_PATTERNS: Array<{ message: string; regex: RegExp }> = [
   { message: 'calls getPrisma()', regex: /\bgetPrisma\s*\(/ },
 ];
 
-function stripForScan(content: string): string {
+// Blanks comments always and string contents unless keepStrings (import patterns need the
+// specifier text; usage patterns must not match inside strings).
+function stripForScan(content: string, keepStrings: boolean): string {
   let result = '';
   let inSingle = false;
   let inDouble = false;
@@ -103,30 +105,30 @@ function stripForScan(content: string): string {
 
     if (!inDouble && !inTemplate && char === "'" && prevChar !== '\\') {
       inSingle = !inSingle;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
     if (!inSingle && !inTemplate && char === '"' && prevChar !== '\\') {
       inDouble = !inDouble;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
     if (!inSingle && !inDouble && char === '`' && prevChar !== '\\') {
       inTemplate = !inTemplate;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
     if (inTemplate && char === '`' && prevChar !== '\\') {
       inTemplate = false;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
 
-    if (inSingle || inDouble || inTemplate) {
+    if ((inSingle || inDouble || inTemplate) && !keepStrings) {
       result += char === '\n' ? '\n' : ' ';
     } else {
       result += char;
@@ -139,12 +141,13 @@ function stripForScan(content: string): string {
 
 function scanFile(filePath: string): Violation[] {
   const content = fs.readFileSync(filePath, 'utf8');
-  const sanitized = stripForScan(content);
+  const commentFree = stripForScan(content, true);
+  const sanitized = stripForScan(content, false);
   const relative = path.normalize(path.relative(ROOT, filePath));
   const violations: Violation[] = [];
 
   const scans: Array<{ text: string; patterns: Array<{ message: string; regex: RegExp }> }> = [
-    { text: content, patterns: IMPORT_PATTERNS },
+    { text: commentFree, patterns: IMPORT_PATTERNS },
     { text: sanitized, patterns: USAGE_PATTERNS },
   ];
   for (const { text, patterns } of scans) {

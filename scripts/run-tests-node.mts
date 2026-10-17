@@ -28,13 +28,19 @@ const testFiles = fg
   .sort();
 
 // --filter=<glob>[,<glob>] narrows the run (DOMAIN-level verification). Never authoritative:
-// the FULL gate is `npm run check && npm test && npm run build`.
-const filterArg = process.argv.find((arg) => arg.startsWith('--filter='));
+// the FULL gate is `npm run check && npm test && npm run build`. Commas inside {a,b} stay part
+// of the glob, and every --filter= argument counts (npm runs scripts through a shell, which
+// brace-expands --filter=a/{b,c} into two arguments).
+const filterGlobs = process.argv
+  .filter((arg) => arg.startsWith('--filter='))
+  .flatMap((arg) => arg.slice('--filter='.length).split(/,(?![^{]*\})/))
+  .filter((glob) => glob.length > 0);
+const filterArg = filterGlobs.length > 0 ? filterGlobs : undefined;
 const filteredFiles =
   filterArg === undefined
     ? testFiles
     : fg
-        .sync(filterArg.slice('--filter='.length).split(',').filter((glob) => glob.length > 0), {
+        .sync(filterArg, {
           cwd: repoRoot,
           absolute: true,
           ignore: ['**/__mocks__/**', 'tests/fixtures/**', 'tests/db/**'],
