@@ -6,6 +6,7 @@ import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { hasText } from '../../lib/text.js';
 import { logGuardrailEvent } from '../../lib/log.js';
+import { ROUTES } from '../../lib/routes.js';
 
 type SignInCardProps = {
   errorCode?: string;
@@ -19,7 +20,7 @@ const errorMessages: Record<string, string> = {
 
 export function SignInCard({
   errorCode,
-  callbackUrl = '/cards',
+  callbackUrl = ROUTES.user.app,
 }: SignInCardProps): JSX.Element {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

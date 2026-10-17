@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies, headers } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { fetchApiResult } from '../../../lib/api/fetch-json.js';
 import type { ApiResult } from '../../../lib/api/result.js';
 import { AppError } from '../../../lib/errors.js';
@@ -78,6 +79,9 @@ Rationale:
 */
 export async function requireUserContext(): Promise<UserContextResponse> {
   const result = await fetchFromApi<UserContextResponse>('/api/user/context');
+  if (result.ok !== true && result.error === 'UNAUTHORIZED') {
+    redirect('/signin');
+  }
   if (result.ok !== true) {
     throw new AppError('UNAUTHORIZED', 'Unauthorized', 401);
   }
