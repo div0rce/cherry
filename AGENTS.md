@@ -1,190 +1,113 @@
 Status: Active
-Last updated: 2026-01-29
+Last updated: 2026-09-22
 
-# Cherry Agents — Canonical Operating Guide
+# Cherry Agents — Operating Contract
 
-This file is the operating contract for humans and agents working in this repo. It is authoritative after CI/workflows and guardrail registries. If something conflicts, fix the lower authority, not the higher.
+The single operating contract for humans and agents working in this repo. It is navigational: it tells you what must never change, where things live, how to verify, and how to hand off. Detail lives in the linked docs, never duplicated here.
 This guide defers to docs/doctrine.md for all execution invariants and enforcement rules.
 
-## Authority Ladder (highest to lowest)
+## Authority ladder (highest to lowest)
 1. `package.json` scripts + `.github/workflows/*` (actual behavior)
-2. Guardrail registries and tests (`scripts/guardrails/*`, `tests/guardrails/*`)
-3. `AGENTS.md` (this file)
-4. `docs/*` (specs and explanations)
-5. Everything else (notes, drafts, marketing)
+2. Guardrail registries and tests (`scripts/guardrails/*`, `tests/node/guardrails/*`)
+3. `AGENTS.md` (this file) and the scoped `AGENTS.md` files in `app/api/` and `scripts/`, and `docs/architecture/engine-rules.md` for the engine
+4. `docs/doctrine.md`, then `docs/architecture/*`, then the rest of `docs/*`
+5. Everything else
 
-## Product Identity and Legal Guardrails (non-negotiable)
-- Cherry is a real-time spending copilot, not a card, proxy, processor, or payment terminal.
-- Cherry never fronts transactions, holds funds, or touches payment rails.
-- Cherry Vine is a context beacon (merchant + amount + timestamp), not a reader or terminal.
-- Cherry Pass is a storeCard-style advisory pass; it is not a payment instrument.
-- Recommendation sessions and Cherry Points are advisory and sandboxed.
+If two levels conflict, fix the lower one. `CLAUDE.md`, `.github/copilot-instructions.md`, and `CONTRIBUTING.md` point here and add nothing.
 
-Forbidden framings: “fronting card,” “proxy BIN,” “tap to pay with Cherry,” “Cherry terminal,” “payment card.”
+## What Cherry is (never changes)
+- Cherry is a real-time spending copilot: Observe → Evaluate → Recommend → Reward. It is not a card, proxy, processor, or payment terminal, and never fronts transactions, holds funds, or touches payment rails.
+- Cherry Vine is a context beacon (merchant + amount + timestamp). Cherry Pass is a storeCard-style advisory pass. Recommendation sessions and Cherry Points are advisory and sandboxed.
+- Forbidden framings: "fronting card", "proxy BIN", "tap to pay with Cherry", "Cherry terminal", "payment card". Full text: `docs/legal-constraints.md`, `docs/cherry-vision.md`.
 
-## Current behavior (enforced / in code)
-- Core loop: Observe → Evaluate → Recommend → Reward.
-- `/api/scan` runs the engine and logs a `DecisionEvent` for telemetry; it does not create sessions or ledger rows.
-- Sessions + ledger persistence happen via `/api/sessions` and confirm/verify flows.
-- Vine ingest (`/api/vine/order`) is dev-only and context-only; no payment rails.
-- Wallet pass (`/api/wallet/cherry-pass`) returns 501 unless fully configured and explicitly enabled.
-- Engine is deterministic and pure: it consumes `EngineState` + `EngineContext` and emits ranked decisions.
-
-## Determinism and Time Injection
-- Do not call `Date.now()` or `new Date()` in `lib/engine/*` or `lib/authority/*`.
-- Time enters at boundaries (API routes, adapters) and is passed in as `nowMs`.
-- Guardrails enforce deterministic core behavior.
-
-## SSR / Rendering Determinism
-- Server components must not call `Date.now()`, `Math.random()`, or locale-dependent formatting.
-- Pages must render from a single data snapshot; no structural changes on hydration.
-- Empty/data states must share a stable outer container.
-
-## Data and DB Boundaries
-- Prisma client must only be instantiated in `lib/prisma.ts` and consumed by runtime adapters.
-- Engine and authority logic must not import Prisma or `@prisma/client`.
-- Zod schemas live in `lib/schemas/*`; parse via `parseJsonBody` from `lib/validation.ts`.
-- Stateful API routes must use `withUser` and return `401` for unauthenticated requests.
-- Bank ingest invariants:
-  - `BankTransaction.id` is internal and never set from ingest data.
-  - Idempotency key is `(userId, externalId)` only.
-  - All ingest writes go through `upsertBankTransactions`.
-
-## Bucket Runtime Invariants
-- Bucket math must flow through `lib/buckets-runtime.ts`.
-- Authoritative fields: `budgetAmount`, `spentCents`.
-- Derived only: `committedCents`, `remainingCents`.
-- `currentAmount` is legacy-mirror only; never authoritative.
-
-## Offline Evaluator (hard boundary)
-- Evaluator code is read-only with respect to Sessions, Ledger, Buckets.
-- Outputs are diagnostic only and must never affect user-facing decisions.
-- Must call `assertOfflineEvaluatorModelsReady()` before DB access.
-- Gate execution behind `CHERRY_OFFLINE_EVALUATOR_ENABLED`.
-- Never hard-code runIds; derive via `defaultRunIdForUser(userId, now)`.
-
-## Guardrails Policy
-- Guardrails are registered in `scripts/guardrails/registry.mts` and must run via `npm run check`.
-- Guardrails are unaddressable by path; run them only via `npm run check`.
-- Guardrails must be deterministic and side-effect free; no network or DB I/O.
-- Do not weaken guardrail severity or bypass guardrail tests.
-
-## DB Truth Surface (hard boundary)
-- DB truth scripts and DB tests may assert only: existence, impossibility, conservation.
-- Allowed: constraint exists, duplicate key fails, FK missing parent fails, NOT NULL fails, count stays 1.
-- Forbidden: preferred outcomes, query plans, performance targets, business logic behaviors, ordering.
-- Rule of thumb: if the DB could allow multiple valid outcomes, do not assert a preference in DB truth.
-
-## Script Runner Contract
-- Repo is ESM by extension. `.mts` is allowed only under `scripts/`.
-- `.mts` scripts must be run via `npm run ts:esm -- <script>`.
-- `.ts` files under `scripts/` must not use ESM syntax.
-- Script imports must use runtime extensions (`.js`/`.mjs`/`.cjs`); no `@/` aliases.
-
-## CI Truth and DB Posture
-- `.github/workflows/ci.yml` runs `npm ci` then `npm run ci:verify`.
-- Tests run with Prisma mocked; CI green does not fully prove DB behavior.
-- `.github/workflows/env-checks.yml` provisions Postgres and runs `check:env` plus `test:db`.
-
-## Change Protocol
-- Keep API handlers thin; move domain logic into `lib/`.
-- Use `safeSolveDecisionForWorld` / `safeSolveDecisionForUser` for engine decisions.
-- For schema changes:
-  - `npx prisma format`
-  - `npx prisma migrate dev --name <desc>`
-  - `npx prisma generate`
-  - Run `npm run check`, `npm test`, and `npm run build`.
-- For docs: add `Status` + `Last updated`, split Current vs Future, add Related docs.
-
-## GitHub / PR Operating Rule
-From now on, the agent must not treat direct commits to `main` as the normal workflow.
-
-The default development flow is:
-
-1. Start from updated `main`.
-2. Create a focused branch.
-3. Implement the requested change on that branch.
-4. Run the relevant verification commands.
-5. Commit the change with a clear conventional commit message.
-6. Push the branch.
-7. Open or prepare a pull request into `main`.
-8. Do not merge unless explicitly instructed.
-
-Canonical command flow:
+## Where things live
+Read `docs/architecture/index.md` (2 minutes), then the one page you need. The map is machine-readable in `scripts/guardrails/domains.manifest.json` and enforced by `check:domain-boundaries`.
 
 ```bash
-git checkout main
-git pull --ff-only
-git checkout -b <type>/<short-description>
-
-# implement changes
-
-git status --short
-npm run check
-npm test
-npm run build
-
-git add .
-git commit -m "<type>: <summary>"
-git push -u origin <type>/<short-description>
+npm run report:domain-impact -- <path...>   # owner domain, allowed imports, dependents, tests, docs, invariants
+npm run report:domain-impact                # same for everything changed vs main
 ```
 
-The pull request must include:
+Layers, top to bottom, imports flow downward only (`docs/architecture/dependency-rules.md`):
+- surface: `app/(user)`, `app/(dev)`, `components/`
+- service: `app/api/<x>/route.ts` + `lib/<x>/` per capability (sessions, evaluation, autopilot, vine, wallet, buckets, cards, bank, income, daily-state, evaluator, identity, observability)
+- runtime: `lib/adapters/runtime/` (the `World`), `lib/prisma.ts`
+- core: `lib/engine/`, `lib/authority/`, `lib/accounting/`, `lib/adapters/*.ts`, `lib/schemas/`, `lib/config/`, shared helpers
 
+## Hard invariants (enforced by guardrails unless marked "documented")
+- Engine and authority are pure: no `Date`, no Prisma, no HTTP. Time enters at routes as `nowMs`. `EngineInput` (`lib/engine/input/EngineInput.ts`) is the only input contract. Engine-sensitive changes need a version bump in `lib/engine/version.ts` plus a separate `chore(engine-freeze)` commit; an engine feature freeze is active (`docs/engine-roadmap.md`). See `docs/architecture/engine-rules.md`.
+- Guardrail scripts never import `lib/**`; they read source text.
+- Prisma is instantiated only in `lib/prisma.ts`. Engine/authority may not import it. Services may import it directly today; runtime adapters are the target (documented).
+- Money is integer cents. Bucket math flows through `lib/buckets-runtime.ts`; `budgetAmount` and `spentCents` are authoritative, `committedCents`/`remainingCents` derived, `currentAmount` legacy mirror (documented).
+- Routes: auth via `resolveUserContext` (or the `withUser` wrapper, used by 9 routes), body via `parseJsonBody` + a `lib/schemas/*` Zod schema, then one service call. `/api/scan` is stateless (engine + `DecisionEvent` only). Sessions and ledger persist only via `/api/sessions` and its confirm/verify. See `app/api/AGENTS.md`.
+- Bank ingest: `BankTransaction.id` never comes from input; idempotency key is `(userId, externalId)`; all writes go through `upsertBankTransactions` (documented).
+- Offline evaluator is read-only over Sessions/Ledger/Buckets, gated by `CHERRY_OFFLINE_EVALUATOR_ENABLED`, must call `assertOfflineEvaluatorModelsReady()`, derives runIds via `defaultRunIdForUser` (documented).
+- DB truth tests assert only existence, impossibility, conservation. Never preferred outcomes, ordering, or performance.
+- Server components: no `Date.now()`, `Math.random()`, or locale formatting; one data snapshot per render.
+- Scripts: `.mts` only under `scripts/`, run via `npm run ts:esm -- <script>`, registered in `scripts/execution/registry.mts` or `scripts/guardrails/registry.mts`. See `scripts/AGENTS.md`.
+- Never weaken a guardrail, its severity, or its fixtures without changing the matching test in `tests/node/guardrails/` on purpose.
+
+## Bootstrap
+```bash
+nvm use                               # Node 24.15.0 (.nvmrc); engine-strict is on
+npm ci                                # postinstall: patch-package + prisma generate
+export CHERRY_TMP_ROOT="$HOME/.cherry-tmp"; mkdir -p "$CHERRY_TMP_ROOT"; chmod 700 "$CHERRY_TMP_ROOT"
+export CHERRY_VINE_SIGNATURE_MODE=enforce   # build asserts production config without it
+```
+`rg`, `git`, `node` must be on PATH. `npm run dev` needs `DATABASE_URL` (predev runs `check:db-ready`). Env contract: `.env.example`, `docs/env-policy.md`; never commit `.env*`.
+
+## Verification levels
+| Level | Command | Use |
+| --- | --- | --- |
+| FAST | one test file (command in `docs/architecture/testing.md`) | while editing |
+| DOMAIN | `npm run report:domain-impact`, then `npm run check:tests:node -- --filter=<globs>` / `npm run check:tests:next -- --filter=<globs>` | before the full gate; output is labelled FILTERED and is not evidence of correctness |
+| FULL | `npm run check && npm test && npm run build` | required before every commit you push; identical to `npm run ci:verify` |
+| DB | `npm run test:db` (real Postgres) | schema or migration changes |
+
+`check` = core guardrails + lint + typecheck + `tests/node` + `tests/next`. `npm test` runs every `tests/**/*.test.*` except `tests/db`. Tests run with Prisma mocked; CI green does not prove DB behavior. CI (`.github/workflows/ci.yml`) runs `check:guardrails`, `check:tests:node`, `check:tests:next`, then `ci:verify`; `env-checks.yml` adds Postgres, migrations, `check:env`, `test:db`.
+
+## Schema changes
+`npx prisma format && npx prisma migrate dev --name <desc> && npx prisma generate`, then FULL and DB levels. Follow `docs/schema-evolution.md` (`check:schema-evolution`, `check:schema-breaking-plan`). Coordinate migrations; two agents must not add migrations in parallel.
+
+## Workflow (default for all repo work)
+```bash
+git checkout main && git pull --ff-only
+git checkout -b <type>/<short-description>      # feat/ fix/ chore/ docs/
+# implement; keep to one coherent change; no unrelated cleanup
+npm run check && npm test && npm run build
+git add . && git commit -m "<type>(<scope>): <summary>"
+git push -u origin <type>/<short-description>
+```
+- Never commit to `main`. Never merge unless explicitly told; prefer squash and merge when asked.
+- If the tree is dirty before you start, inspect it and do not overwrite unrelated changes.
+- Reuse an existing branch only if it matches the task.
+- Never skip verification silently. If it fails, stop and report the failure with output.
+- Commit message prefixes with meaning to guardrails: `engine:`, `guardrails:`, `docs:`, `tests:`, `chore(engine-freeze):` are checked by `check:change-isolation` when `CHERRY_COMMIT_MESSAGE` is set; conventional `feat(scope):`/`fix(scope):`/`chore:` are used everywhere else.
+
+PR body:
 ```md
 ## Summary
 - what changed
-
 ## Testing
-- commands run
-- results
-
+- commands run, results (paste failures verbatim)
 ## Risk
-- changed domains
-- possible regressions
+- domains touched (from report:domain-impact), possible regressions
 ```
 
-Hard rules:
+## Parallel agents
+- One task = one branch = one domain where possible. Shared contracts (`lib/schemas/*`, `lib/engine/input/*`, `domains.manifest.json`, guardrail registries, `prisma/schema.prisma`, `engine-freeze.policy.json`) are serialized: agree the contract change first, land it, then parallelize consumers.
+- Use separate worktrees or clones; never share a working tree.
+- A task boundary states: objective, inputs, owned files, allowed dependencies, constraints, acceptance criteria, verification, expected output.
 
-- Never commit directly to `main` unless the user explicitly says to.
-- Never merge a PR unless the user explicitly says to.
-- Never skip verification silently.
-- If verification fails, stop and report the failure.
-- If the working tree is dirty before starting, inspect it first and do not overwrite unrelated user changes.
-- If a branch already exists, reuse it only if it matches the requested task; otherwise create a new branch.
-- Each PR should represent one coherent change. Do not bundle unrelated fixes.
-- Prefer `squash and merge` when the user later asks to merge.
+## Definition of done and handoff
+Done means: the change is on a pushed branch; FULL verification ran and passed (or the exact failure is reported); docs that describe changed behavior are updated (`Status` + `Last updated`, Current vs Future sections); domain manifest updated if files were added; a PR is opened or prepared with the body above; nothing merged.
+Unfinished work: leave the branch pushed, list in the PR body what is done, what is not, what blocked you, and the next command to run.
 
-This is now the default operating model for all future repo work.
-
-## PR Checklist (what each command proves)
-- `npm run check` → guardrails + lint + typecheck are green.
-- `npm test` → unit/guardrail tests green (Prisma mocked by loader).
-- `npm run build` → Next.js build passes.
-- `npm run ci:verify` → mirrors CI entrypoint.
-- If schema changed: migrations apply and Prisma client is regenerated.
-
-## Drift Policy
-- If docs conflict with code, update docs to match reality unless legal constraints require a code fix.
-- If code conflicts with legal constraints, fix code and add guardrail/tests rather than weakening docs.
-- Do not update guardrail fixtures unless you also update the corresponding tests intentionally.
-
-## Product-Ready Definition (Cherry terms)
-Cherry is product-ready for a pilot when:
-- Engine decisions are deterministic and stable across core surfaces.
-- Sessions + ledger lifecycle is reliable (no double-award, clear pending/posted rules).
-- Vine and Wallet remain advisory-only and correctly gated.
-- Observability (DecisionEvent logging, guardrails) is in place and CI is green.
-
-## Future/Target Behavior (explicitly speculative)
-- Full bank ingest verification and automated ledger posting beyond current stubs.
-- Enforced Vine signature lifecycle and expanded device coverage.
-- Marketing and user-facing surfaces under `app/(marketing)` and richer user shell routes.
+## Drift policy
+- Docs conflict with code: fix the docs, unless legal constraints require a code fix.
+- Code conflicts with legal constraints: fix the code and add a guardrail or test.
+- Guardrail weaker than documented: fix the guardrail, not the doc.
 
 ## Related docs
-- `docs/legal-constraints.md`
-- `docs/cherry-vision.md`
-- `docs/ci-and-guardrails.md`
-- `docs/guardrails.md`
-- `docs/script-standards.md`
-- `docs/repo-structure.md`
+- `docs/architecture/index.md`, `docs/doctrine.md`, `docs/legal-constraints.md`, `docs/cherry-vision.md`
+- `docs/ci-and-guardrails.md`, `docs/guardrails.md`, `docs/script-standards.md`, `docs/schema-evolution.md`

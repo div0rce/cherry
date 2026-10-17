@@ -23,7 +23,6 @@ workspace/
 
 # misc
 .DS_Store
-*.pem
 cookies.txt
 
 # editor settings
@@ -56,6 +55,9 @@ certs/
 *.pem
 *.pkpass
 
+.evidence/*
+!.evidence/.gitkeep
+
 # Local temp + Node compile cache
 .tmp/
 .cherry-tmp/
@@ -68,6 +70,5 @@ paste.txt
 abandoned_subsystems.md
 api_inventory.md
 architecture_map.md
-scripts/audit/full-checkout-audit.mts
 workspace_audit.md
 repo_index.json
