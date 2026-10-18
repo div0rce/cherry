@@ -23,6 +23,83 @@ type AutopilotPurchaseFormProps = {
   onSimulate: () => void;
 };
 
+function AmountField({
+  spec,
+  amount,
+  onAmountChange,
+}: {
+  spec: AutopilotUiSpec;
+  amount: number | null;
+  onAmountChange: (value: number | null) => void;
+}): JSX.Element {
+  return (
+          <div>
+      <label
+        className="text-xs font-medium text-[#0F172A]"
+        htmlFor="autopilot-amount"
+      >
+        {spec.form.amountLabel}
+      </label>
+      <div className="mt-1 flex items-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 focus-within:border-[#C21733] focus-within:ring-2 focus-within:ring-[#C21733]/30">
+        <span className="text-sm text-[#94A3B8]">$</span>
+        <input
+          id="autopilot-amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          inputMode="decimal"
+          value={amount ?? ""}
+          onChange={(e) =>
+            onAmountChange(
+              e.target.value !== "" ? Number(e.target.value) : null
+            )
+          }
+          placeholder={spec.form.amountPlaceholder}
+          required
+          className="ml-2 w-full bg-transparent text-sm text-[#0F172A] placeholder:text-[#CBD5E1] focus-visible:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+function TimingField({
+  spec,
+  timing,
+  onTimingChange,
+}: {
+  spec: AutopilotUiSpec;
+  timing: Timing;
+  onTimingChange: (value: Timing) => void;
+}): JSX.Element {
+  const helperText = spec.form.timingOptions.find((option) => option.value === timing)?.helper;
+  return (
+    <div className="space-y-1">
+      <span id="autopilot-timing-label" className="text-xs font-medium text-[#0F172A]">
+        {spec.form.timingLabel}
+      </span>
+      <div role="group" aria-labelledby="autopilot-timing-label" className="inline-flex items-center rounded-full bg-[#F8FAFC] p-1 text-[11px]">
+        {spec.form.timingOptions.map((option, index) => (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={timing === option.value}
+            onClick={() => onTimingChange(option.value as Timing)}
+            className={`rounded-full px-3 py-1 font-medium transition-all ${
+              timing === option.value ? 'bg-white text-[#0F172A] shadow-sm' : 'text-[#64748B]'
+            } ${index > 0 ? 'ml-1' : ''}`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {typeof helperText === 'string' && helperText.trim() !== '' ? (
+        <p className="text-[10px] text-[#94A3B8]">{helperText}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function AutopilotPurchaseForm({
   uiSpec,
   amount,
@@ -54,33 +131,7 @@ export function AutopilotPurchaseForm({
         </div>
 
         <div className="mt-4 space-y-4">
-          <div>
-            <label
-              className="text-xs font-medium text-[#0F172A]"
-              htmlFor="autopilot-amount"
-            >
-              {spec.form.amountLabel}
-            </label>
-            <div className="mt-1 flex items-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 focus-within:border-[#C21733] focus-within:ring-2 focus-within:ring-[#C21733]/30">
-              <span className="text-sm text-[#94A3B8]">$</span>
-              <input
-                id="autopilot-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                inputMode="decimal"
-                value={amount ?? ""}
-                onChange={(e) =>
-                  onAmountChange(
-                    e.target.value !== "" ? Number(e.target.value) : null
-                  )
-                }
-                placeholder={spec.form.amountPlaceholder}
-                required
-                className="ml-2 w-full bg-transparent text-sm text-[#0F172A] placeholder:text-[#CBD5E1] focus-visible:outline-none"
-              />
-            </div>
-          </div>
+          <AmountField spec={spec} amount={amount} onAmountChange={onAmountChange} />
 
           <div>
             <label
@@ -121,34 +172,7 @@ export function AutopilotPurchaseForm({
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-[#0F172A]">
-              {spec.form.timingLabel}
-            </label>
-            <div className="inline-flex items-center rounded-full bg-[#F8FAFC] p-1 text-[11px]">
-              {spec.form.timingOptions.map((option, index) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => onTimingChange(option.value as Timing)}
-                  className={`rounded-full px-3 py-1 font-medium transition-all ${
-                    timing === option.value
-                      ? 'bg-white text-[#0F172A] shadow-sm'
-                      : 'text-[#64748B]'
-                  } ${index > 0 ? 'ml-1' : ''}`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            {(() => {
-              const helperText = spec.form.timingOptions.find((option) => option.value === timing)?.helper;
-              if (typeof helperText !== 'string' || helperText.trim() === '') {
-                return null;
-              }
-              return <p className="text-[10px] text-[#94A3B8]">{helperText}</p>;
-            })()}
-          </div>
+          <TimingField spec={spec} timing={timing} onTimingChange={onTimingChange} />
 
           <div className="pt-2">
             <button

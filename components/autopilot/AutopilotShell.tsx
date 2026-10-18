@@ -32,6 +32,10 @@ function invariant(condition: boolean, message: string): asserts condition {
   }
 }
 
+function isPositiveAmount(value: number | null): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
 export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Element {
   invariant(uiSpec.form.categoryOptions.length > 0, 'Autopilot UI spec missing category options');
   invariant(uiSpec.form.timingOptions.length > 0, 'Autopilot UI spec missing timing options');
@@ -54,12 +58,12 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
   const [simulationError, setSimulationError] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  const hasAmount = typeof amount === "number" && Number.isFinite(amount) && amount > 0;
+  const hasAmount = isPositiveAmount(amount);
   const hasMerchant = merchant.trim().length > 0;
   const canSimulate = hasAmount && hasMerchant;
 
   const handleSimulate = async (): Promise<void> => {
-    if (!canSimulate || amount === null || !Number.isFinite(amount)) return;
+    if (!canSimulate || !isPositiveAmount(amount)) return;
     const summary: AutopilotPurchaseSummary = {
       amount,
       merchant: merchant.trim(),
