@@ -182,7 +182,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "2.11.3",
-    "@prisma/client": "^6.19.0",
+    "@prisma/client": "^7.10.0",
     "@radix-ui/react-slot": "^1.2.4",
     "@simplewebauthn/server": "^9.0.3",
     "@simplewebauthn/types": "^9.0.1",
