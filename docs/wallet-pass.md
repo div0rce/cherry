@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-02
+Last updated: 2026-10-16
 
 # Cherry Wallet Pass (Apple Wallet)
 
@@ -9,6 +9,7 @@ Refer to `docs/legal-constraints.md` for hard guardrails. The pass is loyalty/ad
 - `GET /api/wallet/cherry-pass` returns 501 unless the feature flag is enabled and all Apple Wallet env vars are present.
 - When gated, no filesystem or cert access occurs.
 - When fully configured, a `storeCard` `.pkpass` is generated via `lib/wallet/cherryPass.ts`.
+- The pass is a static snapshot: user name, posted Cherry Points balance, tagline, and a QR deep link. It declares no `webServiceURL` or `authenticationToken`, because Cherry runs no pass-update web service; a placeholder URL would send device registrations to whoever controls that domain.
 
 ## Status and Positioning
 - **Feature type:** Non-payment `storeCard` loyalty trigger (not a payment card, not a proxy BIN).
@@ -51,7 +52,7 @@ Refer to `docs/legal-constraints.md` for hard guardrails. The pass is loyalty/ad
 
 ## Future/Target behavior (explicitly speculative)
 - Keep the gating; enable with `CHERRY_WALLET_PASS_ENABLED=true` and full env.
-- Pass payload: user name, Cherry Points snapshot (placeholder), tagline “Scan Cherry before you pay,” QR/URL into the session flow.
+- Live pass updates would need a real, authenticated pass-update web service (device registration, per-pass random tokens, push). Add `webServiceURL` and `authenticationToken` only together with it.
 - Consider adding deep link/App Clip URL when infrastructure is available.
 
 ## Related docs

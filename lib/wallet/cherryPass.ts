@@ -40,29 +40,19 @@ type CherryPassPayload = {
 const TINY_RED_PNG_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9YxKqW0AAAAASUVORK5CYII=';
 
-export async function generateCherryPass(
+// Static snapshot pass. There is deliberately no `webServiceURL`/`authenticationToken`: Cherry runs
+// no pass-update web service, and a placeholder URL would send device registrations (with the
+// token) to whoever controls that domain. Add both together only with a real, authenticated service.
+export function buildCherryPassDefinition(
   payload: CherryPassPayload,
-  walletConfig?: WalletCertificateConfig
-): Promise<Buffer> {
-  const config = walletConfig ?? getServerConfig().wallet;
-
-  if (config.enabled !== true) {
-    throw new Error(
-      '[Cherry Wallet] Apple Wallet is not configured. Missing certs/ENV. This feature is disabled until Apple Developer setup is complete.'
-    );
-  }
-
-  assertWalletConfig(config);
-
-  const cert = fs.readFileSync(path.resolve(config.certPath as string));
-  const wwdr = fs.readFileSync(path.resolve(config.wwdrCertPath as string));
-  const authToken = payload.userId.slice(0, 32);
-  const authenticationToken = authToken !== '' ? authToken : 'cherry-token';
-
-  const passDefinition = {
+  config: Pick<WalletCertificateConfig, 'passTypeId' | 'teamId' | 'orgName' | 'passDescription'>
+): Record<string, unknown> {
+  return {
     formatVersion: 1,
     passTypeIdentifier: config.passTypeId,
-    serialNumber: `${payload.userId}-${payload.cherryPoints}`,
+    // Stable per user: Wallet replaces a pass with the same serial, so re-downloading after the
+    // balance changes updates the card instead of adding a second one.
+    serialNumber: payload.userId,
     teamIdentifier: config.teamId,
     organizationName: config.orgName,
     description: config.passDescription,
@@ -93,14 +83,31 @@ export async function generateCherryPass(
         },
       ],
     },
-    webServiceURL: 'https://your-cherry-domain.com/api/pass-updates',
-    authenticationToken,
     barcode: {
       format: 'PKBarcodeFormatQR',
       message: `cherry://user/${payload.userId}`,
       messageEncoding: 'iso-8859-1',
     },
   };
+}
+
+export async function generateCherryPass(
+  payload: CherryPassPayload,
+  walletConfig?: WalletCertificateConfig
+): Promise<Buffer> {
+  const config = walletConfig ?? getServerConfig().wallet;
+
+  if (config.enabled !== true) {
+    throw new Error(
+      '[Cherry Wallet] Apple Wallet is not configured. Missing certs/ENV. This feature is disabled until Apple Developer setup is complete.'
+    );
+  }
+
+  assertWalletConfig(config);
+
+  const cert = fs.readFileSync(path.resolve(config.certPath as string));
+  const wwdr = fs.readFileSync(path.resolve(config.wwdrCertPath as string));
+  const passDefinition = buildCherryPassDefinition(payload, config);
 
   const options = {
     wwdr,
