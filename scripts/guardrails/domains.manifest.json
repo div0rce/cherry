@@ -532,7 +532,8 @@
       ],
       "tests": [
         "tests/node/alertPolicy.test.js",
-        "tests/node/type/daily-state.types.test.ts"
+        "tests/node/type/daily-state.types.test.ts",
+        "tests/next/internal-run-daily*.test.ts"
       ],
       "docs": [
         "docs/daily-state.md"

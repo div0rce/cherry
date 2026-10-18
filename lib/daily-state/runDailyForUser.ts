@@ -1,5 +1,6 @@
-// Advisory-only DailyState kernel runner.
-// Do not add auth, spend, alerts, UI coupling, or mutations beyond the DailyState row.
+// Advisory-only DailyState kernel runner. Writes the user's DailyState row, rolls their buckets
+// into the current period (ensureBucketFresh) and may record an AlertEvent. It never touches
+// sessions or the ledger. Do not add auth, spend, or UI coupling here.
 import { createHash } from 'crypto';
 import { DailyStateStatus, Prisma } from '@prisma/client';
 import type { DailyState, DailyStateSource } from '@prisma/client';
@@ -8,8 +9,14 @@ import { ensureBucketFresh } from '../buckets/ensure-fresh.js';
 import { toBucketRuntime } from '../buckets-runtime.js';
 import { processDailyStateAlert } from '../alerts/processDailyStateAlert.js';
 import { logError } from '../logger.js';
-import { asAppError } from '../errors.js';
+import { AppError, asAppError } from '../errors.js';
 import { getServerConfig } from '../config/store.js';
+
+// A future date would roll every bucket into a future period and persist spentCents = 0,
+// wiping the current period's spend. Callers pass the boundary clock as nowMs.
+export function isFutureUtcDay(date: Date, nowMs: number): boolean {
+  return startOfUtcDay(date).getTime() > startOfUtcDay(new Date(nowMs)).getTime();
+}
 
 function startOfUtcDay(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -26,13 +33,17 @@ export async function runDailyForUser(params: {
   userId: string;
   date: Date;
   source: DailyStateSource;
+  nowMs: number;
   engineVersion?: string | null;
 }): Promise<{
   status: DailyStateStatus;
   inputsVersion: string | null;
   engineVersion: string | null;
 }> {
-  const { userId, date, source, engineVersion: engineVersionOverride } = params;
+  const { userId, date, source, nowMs, engineVersion: engineVersionOverride } = params;
+  if (isFutureUtcDay(date, nowMs)) {
+    throw new AppError('VALIDATION', 'DailyState date must not be in the future', 400);
+  }
   const { engineVersion } = getServerConfig();
   const resolvedEngineVersion = engineVersionOverride ?? engineVersion;
   const targetDate = startOfUtcDay(date);
