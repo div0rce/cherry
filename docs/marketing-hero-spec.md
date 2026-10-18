@@ -1,10 +1,17 @@
 Status: Draft
-Last updated: 2026-01-03
+Last updated: 2026-10-17
 
 # Cherry Marketing Hero Spec
 
 ## Current behavior
-- No marketing page is implemented yet; `app/(marketing)` is empty. This document is a forward-looking spec only.
+- The landing page is `app/page.tsx` (not `app/(marketing)`). It does not use this spec's copy verbatim, because several lines conflict with `docs/legal-constraints.md` and with the product as built:
+  - "Spend smarter automatically" and "closes that gap automatically" conflict with the advisory-only rule and the ban on "automatic payment".
+  - "Cherry picks the right card for every purchase" conflicts with Home's ban on "best card".
+  - "zero setup" and "No Setup Required" are false: onboarding needs a card, a reward rule, and a bucket.
+  - "private, local spending model" is false: state is stored server-side.
+  - The "Used by power spenders" proof bar, the $200–$800 loss figure, and the testimonials are unvalidated.
+  - "Free" pricing is not decided.
+- The shipped copy states only implemented behavior. Whether to adopt any of the lines above is an owner decision. Terms, privacy policy, and a support contact are not published; they need owner or legal content.
 
 ## Future/Target behavior (explicitly speculative)
 - Swap the mock animation for a live Lottie/MP4 tied to real engine traces.
