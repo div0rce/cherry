@@ -399,12 +399,68 @@ async function runScanMappingFallback() {
   assert.equal(body.degradation, null);
 }
 
+async function postScan(payload) {
+  const { POST } = require('../../app/api/scan/route');
+  const res = await POST({ json: async () => payload });
+  return { status: res.status, text: await res.text() };
+}
+
+async function runScanMissingMerchant() {
+  mockNextServer();
+  setupScanMocks({ engineOk: true });
+  resetRouteCache();
+  const res = await postScan({ merchantName: '', expectedAmountCents: 1000 });
+  assert.equal(res.status, 400);
+  assert.equal(
+    res.text,
+    JSON.stringify({
+      error: 'Validation failed',
+      issues: [{ path: ['merchantName'], message: 'Too small: expected string to have >=1 characters' }],
+    })
+  );
+}
+
+async function runScanUnauthorized() {
+  mockNextServer();
+  setupScanMocks({ engineOk: true });
+  const { AppError } = require('../../lib/errors');
+  mockModule('../../lib/user-context', {
+    resolveUserContext: async () => {
+      throw new AppError('UNAUTHORIZED', 'nope', 401);
+    },
+  });
+  resetRouteCache();
+  const res = await postScan({ merchantName: 'Test' });
+  assert.equal(res.status, 401);
+  assert.equal(res.text, JSON.stringify({ error: 'Unauthorized' }));
+}
+
+async function runScanEngineThrows() {
+  mockNextServer();
+  setupScanMocks({ engineOk: true });
+  mockModule('../../lib/engine-state', {
+    fromPrismaUserToEngineState: async () => {
+      throw new Error('boom');
+    },
+  });
+  resetRouteCache();
+  const res = await postScan({ merchantName: 'Test', expectedAmountCents: 1000, category: 'DINING' });
+  assert.equal(res.status, 500);
+  assert.equal(
+    res.text,
+    JSON.stringify({ error: 'Failed to evaluate scan', authority: authorityDecisionStub })
+  );
+}
+
 async function run() {
   await runScanOk();
   await runScanEngineFailure();
   await runScanNonCardNeutral();
   await runScanDegradedFallback();
   await runScanMappingFallback();
+  await runScanMissingMerchant();
+  await runScanUnauthorized();
+  await runScanEngineThrows();
   console.warn('api-scan user-context: ok');
 }
 
