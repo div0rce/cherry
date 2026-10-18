@@ -1,5 +1,5 @@
 diff --git a/node_modules/@auth/core/providers/nodemailer.d.ts b/node_modules/@auth/core/providers/nodemailer.d.ts
-index 5294d09..31998c8 100644
+index 5294d09..3070cbc 100644
 --- a/node_modules/@auth/core/providers/nodemailer.d.ts
 +++ b/node_modules/@auth/core/providers/nodemailer.d.ts
 @@ -14,7 +14,7 @@ export interface NodemailerConfig extends EmailConfig {
@@ -12,7 +12,7 @@ index 5294d09..31998c8 100644
          theme: Theme;
          request: Request;
 diff --git a/node_modules/@auth/core/providers/oauth.d.ts b/node_modules/@auth/core/providers/oauth.d.ts
-index f439feb..f82aa7b 100644
+index f439feb..59fe083 100644
 --- a/node_modules/@auth/core/providers/oauth.d.ts
 +++ b/node_modules/@auth/core/providers/oauth.d.ts
 @@ -1,4 +1,4 @@
@@ -103,7 +103,7 @@ index f439feb..f82aa7b 100644
      checks: OIDCConfig<Profile>["checks"];
      idToken: OIDCConfig<Profile>["idToken"];
 diff --git a/node_modules/@auth/core/types.d.ts b/node_modules/@auth/core/types.d.ts
-index acef0b8..1031117 100644
+index acef0b8..3d15ad9 100644
 --- a/node_modules/@auth/core/types.d.ts
 +++ b/node_modules/@auth/core/types.d.ts
 @@ -52,10 +52,17 @@
