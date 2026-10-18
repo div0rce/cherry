@@ -259,7 +259,7 @@ function positiveDelta(best: number | null, runnerUp: number | null): number | n
 
 function resolveCardLabel(state: EngineState, cardId: string | undefined): string | null {
   const matchedCard = state.cards.find((card) => card.id === cardId);
-  if (matchedCard && matchedCard.label != null) return matchedCard.label;
+  if (matchedCard !== undefined && matchedCard.label != null) return matchedCard.label;
   return cardId != null ? cardId : null;
 }
 
