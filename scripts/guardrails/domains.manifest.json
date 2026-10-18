@@ -273,7 +273,8 @@
         "tests/node/bucket*.test.js",
         "tests/node/buckets-periods.test.js",
         "tests/node/category-preference-enum.test.js",
-        "tests/node/bucket-rollover-conditional.test.ts"
+        "tests/node/bucket-rollover-conditional.test.ts",
+        "tests/next/api-buckets.validation.test.js"
       ],
       "docs": [
         "docs/buckets-rollover-plan.md"
