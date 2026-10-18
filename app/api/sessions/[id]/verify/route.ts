@@ -11,9 +11,25 @@ import {
 import { verifySessionFromSignal } from '../../../../../lib/verification/verify-session.js';
 import { asAppError, isUnauthorized } from '../../../../../lib/errors.js';
 import { auth } from '../../../../../lib/auth.js';
+import type { VerificationResult } from '../../../../../lib/verification/types.js';
 
 const hasText = (value?: string | null): value is string =>
   value !== undefined && value !== null && value !== '';
+
+function verificationFailureResponse(
+  result: Extract<VerificationResult, { ok: false }>
+): NextResponse {
+  if (result.reason === 'NOT_FOUND') {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+  }
+  if (result.reason === 'FINALIZED') {
+    return NextResponse.json(
+      { error: 'Session already finalized', sessionStatus: result.sessionStatus },
+      { status: 400 }
+    );
+  }
+  return NextResponse.json({ error: result.message ?? result.reason }, { status: 400 });
+}
 
 export async function POST(
   request: NextRequest,
@@ -60,16 +76,7 @@ export async function POST(
     });
 
     if (result.ok !== true) {
-      if (result.reason === 'NOT_FOUND') {
-        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
-      }
-      if (result.reason === 'FINALIZED') {
-        return NextResponse.json(
-          { error: 'Session already finalized', sessionStatus: result.sessionStatus },
-          { status: 400 }
-        );
-      }
-      return NextResponse.json({ error: result.message ?? result.reason }, { status: 400 });
+      return verificationFailureResponse(result);
     }
 
     return NextResponse.json({

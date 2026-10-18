@@ -74,21 +74,29 @@ export async function POST(
       message: outcome.message,
     });
   } catch (error: unknown) {
-    const appError = asAppError(error);
-    if (error instanceof SessionConfirmError) {
-      return NextResponse.json({ error: appError.message, code: error.code }, { status: error.status });
-    }
-    if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/sessions/[id]/confirm POST', {
-        userId,
-        mode,
-        meta: asLogMeta(error.meta),
-        err: error,
-      });
-    } else {
-      logInvariant('Error in api/sessions/[id]/confirm POST', { userId, mode, err: appError });
-      logError('Error in /api/sessions/[id]/confirm POST', appError);
-    }
-    return NextResponse.json({ error: 'Failed to confirm session' }, { status: 500 });
+    return confirmErrorResponse(error, userId, mode);
   }
+}
+
+function confirmErrorResponse(
+  error: unknown,
+  userId: string | null,
+  mode: string | null
+): NextResponse {
+  const appError = asAppError(error);
+  if (error instanceof SessionConfirmError) {
+    return NextResponse.json({ error: appError.message, code: error.code }, { status: error.status });
+  }
+  if (isPrismaP2003(error)) {
+    logInvariant('P2003 in api/sessions/[id]/confirm POST', {
+      userId,
+      mode,
+      meta: asLogMeta(error.meta),
+      err: error,
+    });
+  } else {
+    logInvariant('Error in api/sessions/[id]/confirm POST', { userId, mode, err: appError });
+    logError('Error in /api/sessions/[id]/confirm POST', appError);
+  }
+  return NextResponse.json({ error: 'Failed to confirm session' }, { status: 500 });
 }

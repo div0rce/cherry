@@ -27,6 +27,75 @@ type IncomingRewardRule = {
 
 type ParsedRule = { category: RewardCategory; multiplier: number; capAmount: number | null };
 
+type RuleResult = { ok: true; rule: ParsedRule } | { ok: false; message: string };
+
+function resolveNumericMultiplier(multiplier: unknown, percent: unknown): number | null {
+  if (multiplier != null) return Number(multiplier);
+  if (percent != null) return Number(percent) / 100;
+  return null;
+}
+
+function isValidCap(capAmountCents: unknown): boolean {
+  if (capAmountCents == null) return true;
+  return typeof capAmountCents === 'number' && capAmountCents > 0;
+}
+
+function normalizeRuleCategory(category: string | undefined): { ok: true; value: RewardCategory } | { ok: false; message: string } {
+  if (!hasText(category)) {
+    return { ok: false, message: 'Each reward rule needs a category string' };
+  }
+  const normalizedCategory = category.toUpperCase() as RewardCategory;
+  if (!ALLOWED_CATEGORIES.includes(normalizedCategory)) {
+    return {
+      ok: false,
+      message: `Invalid category "${category}". Allowed: ${ALLOWED_CATEGORIES.join(', ')}`,
+    };
+  }
+  return { ok: true, value: normalizedCategory };
+}
+
+function rewardValueError(
+  category: string,
+  numericMultiplier: number | null,
+  capAmountCents: unknown
+): string | null {
+  if (numericMultiplier === null) {
+    return `Reward rule for ${category} needs multiplier or cashbackPercent`;
+  }
+  if (!Number.isFinite(numericMultiplier) || numericMultiplier <= 0) {
+    return `Reward rule for ${category} has invalid multiplier`;
+  }
+  if (!isValidCap(capAmountCents)) {
+    return `Reward rule for ${category} has invalid capAmountCents`;
+  }
+  return null;
+}
+
+function parseRewardRule(rule: unknown): RuleResult {
+  if (typeof rule !== 'object' || rule === null) {
+    return { ok: false, message: 'Each reward rule must be an object' };
+  }
+  const { category, multiplier, cashbackPercent, capAmountCents } = rule as IncomingRewardRule;
+  // Accept both camel variants for percent.
+  const percent = cashbackPercent ?? (rule as { cashBackPercent?: number }).cashBackPercent;
+
+  const normalized = normalizeRuleCategory(category);
+  if (!normalized.ok) return normalized;
+
+  const numericMultiplier = resolveNumericMultiplier(multiplier, percent);
+  const valueError = rewardValueError(category ?? '', numericMultiplier, capAmountCents);
+  if (valueError !== null) return { ok: false, message: valueError };
+
+  return {
+    ok: true,
+    rule: {
+      category: normalized.value,
+      multiplier: numericMultiplier as number,
+      capAmount: capAmountCents ?? null,
+    },
+  };
+}
+
 function parseRewardRules(rawRules: unknown): {
   ok: true;
   rules: ParsedRule[];
@@ -40,63 +109,10 @@ function parseRewardRules(rawRules: unknown): {
   }
 
   const parsed: ParsedRule[] = [];
-
-  for (const rule of rawRules) {
-    if (typeof rule !== 'object' || rule === null) {
-      return { ok: false, message: 'Each reward rule must be an object' };
-    }
-    const { category, multiplier, cashbackPercent, capAmountCents } = rule as IncomingRewardRule;
-    // Accept both camel variants for percent.
-    const percent =
-      cashbackPercent ??
-      (typeof rule === 'object' && rule !== null
-        ? (rule as { cashBackPercent?: number }).cashBackPercent
-        : undefined);
-
-    if (!hasText(category)) {
-      return { ok: false, message: 'Each reward rule needs a category string' };
-    }
-    const normalizedCategory = category.toUpperCase();
-    if (!ALLOWED_CATEGORIES.includes(normalizedCategory as RewardCategory)) {
-      return {
-        ok: false,
-        message: `Invalid category "${category}". Allowed: ${ALLOWED_CATEGORIES.join(', ')}`,
-      };
-    }
-
-    const hasMultiplier = multiplier != null;
-    const hasPercent = percent != null;
-    if (!hasMultiplier && !hasPercent) {
-      return {
-        ok: false,
-        message: `Reward rule for ${category} needs multiplier or cashbackPercent`,
-      };
-    }
-
-    const numericMultiplier = hasMultiplier ? Number(multiplier) : Number(percent) / 100;
-
-    if (!Number.isFinite(numericMultiplier) || numericMultiplier <= 0) {
-      return {
-        ok: false,
-        message: `Reward rule for ${category} has invalid multiplier`,
-      };
-    }
-
-    if (
-      capAmountCents != null &&
-      (typeof capAmountCents !== 'number' || capAmountCents <= 0)
-    ) {
-      return {
-        ok: false,
-        message: `Reward rule for ${category} has invalid capAmountCents`,
-      };
-    }
-
-    parsed.push({
-      category: normalizedCategory as RewardCategory,
-      multiplier: numericMultiplier,
-      capAmount: capAmountCents ?? null,
-    });
+  for (const rawRule of rawRules) {
+    const result = parseRewardRule(rawRule);
+    if (!result.ok) return { ok: false, message: result.message };
+    parsed.push(result.rule);
   }
 
   return { ok: true, rules: parsed };
@@ -168,24 +184,62 @@ async function handlePOST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json(card, { status: 201 });
   } catch (error: unknown) {
-    asAppError(error);
-    if (error instanceof PrismaClientKnownRequestError && error.code === 'P2025') {
-      return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
-    }
-    if (isPrismaP2003(error)) {
-      logInvariant('Card FK violation during create', {
+    return createCardErrorResponse(error, userId, mode);
+  }
+}
+
+function isRecordNotFound(error: unknown): boolean {
+  return error instanceof PrismaClientKnownRequestError && error.code === 'P2025';
+}
+
+function createCardErrorResponse(error: unknown, userId: string, mode: string | null): NextResponse {
+  asAppError(error);
+  if (isRecordNotFound(error)) {
+    return NextResponse.json({ error: 'User not found for card creation' }, { status: 404 });
+  }
+  if (isPrismaP2003(error)) {
+    logInvariant('Card FK violation during create', {
+      userId,
+      mode,
+      meta: asLogMeta(error.meta),
+      err: error,
+    });
+    return NextResponse.json(
+      { error: 'User foreign key violation while creating card' },
+      { status: 500 }
+    );
+  }
+  return NextResponse.json({ error: 'Failed to create card' }, { status: 500 });
+}
+
+async function deleteCard(
+  cardId: string,
+  userId: string,
+  mode: string | null
+): Promise<NextResponse> {
+  try {
+    await prisma.simulatedTransaction.updateMany({
+      where: { chosenCardId: cardId, userId },
+      data: { chosenCardId: null },
+    });
+
+    await prisma.card.delete({
+      where: { id: cardId },
+    });
+  } catch (err: unknown) {
+    const appError = asAppError(err);
+    if (isPrismaP2003(err)) {
+      logInvariant('Card FK violation during delete', {
         userId,
         mode,
-        meta: asLogMeta(error.meta),
-        err: error,
+        meta: asLogMeta(err.meta),
+        err,
       });
-      return NextResponse.json(
-        { error: 'User foreign key violation while creating card' },
-        { status: 500 }
-      );
+      return new NextResponse('User foreign key violation while deleting card', { status: 500 });
     }
-    return NextResponse.json({ error: 'Failed to create card' }, { status: 500 });
+    throw appError;
   }
+  return new NextResponse(null, { status: 204 });
 }
 
 async function handleDELETE(request: NextRequest): Promise<NextResponse> {
@@ -212,30 +266,7 @@ async function handleDELETE(request: NextRequest): Promise<NextResponse> {
       return new NextResponse('Card not found for user', { status: 404 });
     }
 
-    try {
-      await prisma.simulatedTransaction.updateMany({
-        where: { chosenCardId: card.id, userId },
-        data: { chosenCardId: null },
-      });
-
-      await prisma.card.delete({
-        where: { id: card.id },
-      });
-    } catch (err: unknown) {
-      const appError = asAppError(err);
-      if (isPrismaP2003(err)) {
-        logInvariant('Card FK violation during delete', {
-          userId,
-          mode,
-          meta: asLogMeta(err.meta),
-          err,
-        });
-        return new NextResponse('User foreign key violation while deleting card', { status: 500 });
-      }
-      throw appError;
-    }
-
-    return new NextResponse(null, { status: 204 });
+    return await deleteCard(card.id, userId, mode);
   } catch (error: unknown) {
     const appError = asAppError(error);
     if (isUnauthorized(appError)) {

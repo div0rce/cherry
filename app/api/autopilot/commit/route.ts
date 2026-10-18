@@ -11,6 +11,35 @@ import { auth } from '../../../../lib/auth.js';
 
 const AUTOPILOT_COMMIT_V2_ENABLED = process.env['AUTOPILOT_COMMIT_V2'] === 'true';
 
+function classifyServiceError(caught: AutopilotServiceError) {
+  if (caught.code === 'DECISION_BLOCKED' || caught.code === 'CARD_MISMATCH') {
+    return { kind: 'DECISION_BLOCKED', severity: 'hard' } as const;
+  }
+  if (caught.status >= 500) {
+    return { kind: 'ENGINE_ERROR', severity: 'soft' } as const;
+  }
+  return { kind: 'INPUT_INVALID', severity: 'hard' } as const;
+}
+
+function serviceErrorResponse(
+  caught: AutopilotServiceError,
+  message: string,
+  userId: string | null,
+  requestTimestamp: string
+): NextResponse {
+  const { kind, severity } = classifyServiceError(caught);
+  logGuardrailEvent({
+    surface: 'autopilot',
+    userId,
+    kind,
+    severity,
+    reason: caught.code,
+    timestamp: requestTimestamp,
+    timestampSource: 'boundary',
+  });
+  return NextResponse.json({ error: message, code: caught.code }, { status: caught.status });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestNow = new Date();
   const requestTimestamp = requestNow.toISOString();
@@ -46,26 +75,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (caught: unknown) {
     const appError = asAppError(caught);
     if (caught instanceof AutopilotServiceError) {
-      const kind =
-        caught.code === 'DECISION_BLOCKED' || caught.code === 'CARD_MISMATCH'
-          ? 'DECISION_BLOCKED'
-          : caught.status >= 500
-            ? 'ENGINE_ERROR'
-            : 'INPUT_INVALID';
-      const severity = kind === 'DECISION_BLOCKED' ? 'hard' : caught.status >= 500 ? 'soft' : 'hard';
-      logGuardrailEvent({
-        surface: 'autopilot',
-        userId,
-        kind,
-        severity,
-        reason: caught.code,
-        timestamp: requestTimestamp,
-        timestampSource: 'boundary',
-      });
-      return NextResponse.json(
-        { error: appError.message, code: caught.code },
-        { status: caught.status }
-      );
+      return serviceErrorResponse(caught, appError.message, userId, requestTimestamp);
     }
 
     if (isUnauthorized(appError)) {

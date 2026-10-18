@@ -39,33 +39,61 @@ function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: D
   return { start, end };
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ bucketId: string }> }
-): Promise<NextResponse> {
-  let userId: string | null = null;
-  let mode: string | null = null;
+type BucketUser = { userId: string; mode: string | null };
 
+async function resolveBucketUser(verb: 'PATCH' | 'DELETE'): Promise<BucketUser | NextResponse> {
   try {
     const ctx = await resolveUserContext({
       getSession: auth,
       requireAuth: true,
       allowLabDemo: false,
     });
-    userId = ctx.userId;
-    mode = ctx.mode;
+    return { userId: ctx.userId, mode: ctx.mode };
   } catch (error: unknown) {
     const appError = asAppError(error);
     if (isUnauthorized(appError)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    logError('Error resolving user context in api/buckets/[bucketId] PATCH', appError);
+    logError(`Error resolving user context in api/buckets/[bucketId] ${verb}`, appError);
     return new NextResponse('Failed to resolve user context', { status: 500 });
   }
+}
+
+function isBucketId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+function logBucketFailure(
+  error: unknown,
+  verb: 'PATCH' | 'DELETE',
+  { userId, mode }: BucketUser,
+  message: string
+): void {
+  const appError = asAppError(error);
+  if (isPrismaP2003(error)) {
+    logInvariant(`P2003 in api/buckets/[bucketId] ${verb}`, {
+      userId,
+      mode,
+      meta: asLogMeta(error.meta),
+      err: error,
+    });
+    return;
+  }
+  logInvariant(`Error in api/buckets/[bucketId] ${verb}`, { userId, mode, err: appError });
+  logError(message, appError);
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ bucketId: string }> }
+): Promise<NextResponse> {
+  const ctx = await resolveBucketUser('PATCH');
+  if (ctx instanceof NextResponse) return ctx;
+  const { userId, mode } = ctx;
 
   const { bucketId } = await params;
 
-  if (typeof bucketId !== 'string' || bucketId.length === 0) {
+  if (!isBucketId(bucketId)) {
     return new NextResponse('bucketId is required', { status: 400 });
   }
 
@@ -103,18 +131,7 @@ export async function PATCH(
 
     return NextResponse.json(toBucketRuntime(updated));
   } catch (error: unknown) {
-    const appError = asAppError(error);
-    if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/buckets/[bucketId] PATCH', {
-        userId,
-        mode,
-        meta: asLogMeta(error.meta),
-        err: error,
-      });
-    } else {
-      logInvariant('Error in api/buckets/[bucketId] PATCH', { userId, mode, err: appError });
-      logError('Error updating bucket', appError);
-    }
+    logBucketFailure(error, 'PATCH', { userId, mode }, 'Error updating bucket');
     return new NextResponse('Failed to update bucket', { status: 500 });
   }
 }
@@ -128,34 +145,13 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ bucketId: string }> }
 ): Promise<NextResponse> {
-  let userId: string | null = null;
-  let mode: string | null = null;
-
-  try {
-    const ctx = await resolveUserContext({
-      getSession: auth,
-      requireAuth: true,
-      allowLabDemo: false,
-    });
-    userId = ctx.userId;
-    mode = ctx.mode;
-  } catch (error: unknown) {
-    const appError = asAppError(error);
-    if (isUnauthorized(appError)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    logError('Error resolving user context in api/buckets/[bucketId] DELETE', appError);
-    return new NextResponse('Failed to resolve user context', { status: 500 });
-  }
+  const ctx = await resolveBucketUser('DELETE');
+  if (ctx instanceof NextResponse) return ctx;
+  const { userId, mode } = ctx;
 
   const { bucketId } = await params;
 
-  if (
-    bucketId === undefined ||
-    bucketId === null ||
-    typeof bucketId !== 'string' ||
-    bucketId === ''
-  ) {
+  if (!isBucketId(bucketId)) {
     return new NextResponse('bucketId is required', { status: 400 });
   }
 
@@ -173,18 +169,7 @@ export async function DELETE(
     });
     return new NextResponse(null, { status: 204 });
   } catch (error: unknown) {
-    const appError = asAppError(error);
-    if (isPrismaP2003(error)) {
-      logInvariant('P2003 in api/buckets/[bucketId] DELETE', {
-        userId,
-        mode,
-        meta: asLogMeta(error.meta),
-        err: error,
-      });
-    } else {
-      logInvariant('Error in api/buckets/[bucketId] DELETE', { userId, mode, err: appError });
-      logError('Error deleting bucket', appError);
-    }
+    logBucketFailure(error, 'DELETE', { userId, mode }, 'Error deleting bucket');
     return new NextResponse('Failed to delete bucket', { status: 500 });
   }
 }
