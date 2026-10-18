@@ -53,48 +53,31 @@ function coerceMaxCandidates(value: number | null | undefined): number | null {
   return Math.floor(value);
 }
 
+function finiteOrZero(value: number | null | undefined): number {
+  const finite = toFiniteNumber(value);
+  return finite !== null ? finite : 0;
+}
+
 function coerceWeights(raw: Partial<ObjectiveWeights> | null | undefined): EngineInputWeights | null {
   if (raw === null || raw === undefined) return null;
 
   const weights: EngineInputWeights = {
-    rewards: null,
-    runway: null,
-    debtRelief: null,
+    rewards: toFiniteNumber(raw.rewards),
+    runway: toFiniteNumber(raw.runway),
+    debtRelief: toFiniteNumber(raw.debtRelief),
   };
 
-  let hasAny = false;
-
-  if (typeof raw.rewards === 'number' && Number.isFinite(raw.rewards)) {
-    weights.rewards = raw.rewards;
-    hasAny = true;
-  }
-  if (typeof raw.runway === 'number' && Number.isFinite(raw.runway)) {
-    weights.runway = raw.runway;
-    hasAny = true;
-  }
-  if (typeof raw.debtRelief === 'number' && Number.isFinite(raw.debtRelief)) {
-    weights.debtRelief = raw.debtRelief;
-    hasAny = true;
-  }
-
-  if (hasAny) {
-    return weights;
-  }
-
-  return null;
+  const hasAny = [weights.rewards, weights.runway, weights.debtRelief].some(
+    (value) => value !== null
+  );
+  return hasAny ? weights : null;
 }
 
 function buildBuckets(state: EngineState): EngineInputBucket[] {
   return state.buckets.map((bucket) => {
     const limitCents = toFiniteNumber(bucket.limitCents);
-    const postedSpendCents =
-      typeof bucket.postedSpendCents === 'number' && Number.isFinite(bucket.postedSpendCents)
-        ? bucket.postedSpendCents
-        : 0;
-    const pendingSpendCents =
-      typeof bucket.pendingSpendCents === 'number' && Number.isFinite(bucket.pendingSpendCents)
-        ? bucket.pendingSpendCents
-        : 0;
+    const postedSpendCents = finiteOrZero(bucket.postedSpendCents);
+    const pendingSpendCents = finiteOrZero(bucket.pendingSpendCents);
 
     return {
       id: bucket.id,
@@ -110,10 +93,7 @@ function buildBuckets(state: EngineState): EngineInputBucket[] {
 
 function buildDebts(state: EngineState): EngineInputDebt[] {
   return getDebtAccounts(state.debts).map((debt) => {
-    const balanceCents =
-      typeof debt.balanceCents === 'number' && Number.isFinite(debt.balanceCents)
-        ? debt.balanceCents
-        : 0;
+    const balanceCents = finiteOrZero(debt.balanceCents);
     const creditLimitCents = toFiniteNumber(debt.creditLimitCents);
     const rawApr = toFiniteNumber(debt.aprPercent);
     const aprPercent = rawApr !== null && rawApr >= 0 ? rawApr : 0;
@@ -145,43 +125,48 @@ function buildCards(state: EngineState): EngineInputCard[] {
   });
 }
 
+function findDebtByCardLabel(
+  card: EngineState['cards'][number],
+  debts: readonly DebtAccount[]
+): DebtAccount | undefined {
+  if (card.creditLimitCents === null || card.creditLimitCents === undefined) return undefined;
+  if (!hasNonEmptyString(card.label)) return undefined;
+  const label = card.label;
+  return debts.find((debt) => debt.type === 'CREDIT_CARD' && debt.name === label);
+}
+
+function linkedDebtIdForCard(
+  card: EngineState['cards'][number],
+  debts: readonly DebtAccount[]
+): string | undefined {
+  if (card.isCredit !== true) return undefined;
+  if (hasNonEmptyString(card.linkedDebtId)) return card.linkedDebtId;
+  return findDebtByCardLabel(card, debts)?.id;
+}
+
 function buildDebtCardLinks(state: EngineState): EngineInputDebtCardLink[] {
   const links: EngineInputDebtCardLink[] = [];
   const debts = getDebtAccounts(state.debts);
 
   for (const card of state.cards) {
-    if (card.isCredit !== true) continue;
-    if (hasNonEmptyString(card.linkedDebtId)) {
-      links.push({ cardId: card.id, debtId: card.linkedDebtId });
-      continue;
-    }
-    if (card.creditLimitCents === null || card.creditLimitCents === undefined) continue;
-    if (!hasNonEmptyString(card.label)) continue;
-
-    let matched: DebtAccount | undefined;
-    for (const debt of debts) {
-      if (debt.type !== 'CREDIT_CARD') continue;
-      if (debt.name !== card.label) continue;
-      matched = debt;
-      break;
-    }
-
-    if (matched === undefined) continue;
-
-    links.push({ cardId: card.id, debtId: matched.id });
+    const debtId = linkedDebtIdForCard(card, debts);
+    if (debtId === undefined) continue;
+    links.push({ cardId: card.id, debtId });
   }
 
   return links;
 }
 
+function hasOptions(
+  options: LegacyEngineAdapterOptions | null | undefined
+): options is LegacyEngineAdapterOptions {
+  return options !== null && options !== undefined;
+}
+
 export function fromLegacy(input: LegacyEngineAdapterInput): EngineInput {
   const options = input.options;
-  const maxCandidates =
-    options !== null && options !== undefined
-      ? coerceMaxCandidates(options.maxCandidates)
-      : null;
-  const weightsOverride =
-    options !== null && options !== undefined ? coerceWeights(options.weightsOverride) : null;
+  const maxCandidates = hasOptions(options) ? coerceMaxCandidates(options.maxCandidates) : null;
+  const weightsOverride = hasOptions(options) ? coerceWeights(options.weightsOverride) : null;
 
   const cash = getCashState(input.state.cash);
   const liquidCents = cash != null ? toFiniteNumber(cash.liquidCents) : null;

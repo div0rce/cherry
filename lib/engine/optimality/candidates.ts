@@ -1,5 +1,5 @@
 import type { EngineContext, EngineState } from '../types.js';
-import { candidateKey, normalizeCandidate } from './normalize.js';
+import { CANDIDATE_FIELDS, candidateKey, normalizeCandidate } from './normalize.js';
 
 export const candidateSpaceVersion = 'candidates_v1' as const;
 
@@ -64,15 +64,6 @@ export type Bounds = Readonly<{
 function candidateSignature(candidate: Candidate): string {
   return candidateKey(candidate);
 }
-
-const CANDIDATE_FIELDS: Readonly<Record<Candidate['type'], readonly string[]>> = {
-  USE_CARD: ['cardId'],
-  USE_CARD_WITH_PAYDOWN: ['cardId', 'debtId', 'paydownAmountCents', 'paydownScheduledDateMs'],
-  PAY_DOWN_DEBT: ['debtId', 'paydownAmountCents', 'paydownScheduledDateMs'],
-  DELAY_PURCHASE: ['delayDays'],
-  SWITCH_MERCHANT: ['altMerchantName', 'altMerchantCategoryKey'],
-  REJECT_PURCHASE: [],
-};
 
 function candidatesEqual(a: Candidate, b: Candidate): boolean {
   if (a.type !== b.type) return false;
