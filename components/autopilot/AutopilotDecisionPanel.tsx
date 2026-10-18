@@ -1,5 +1,5 @@
 import React, { type JSX } from 'react';
-import { Button, ButtonLink } from '../ui/Button.js';
+import { ButtonLink } from '../ui/Button.js';
 import { AutopilotMonthImpactBar } from './AutopilotMonthImpactBar.js';
 import type { AutopilotPurchaseSummary } from './AutopilotShell.js';
 import type { AutopilotSimulationResult } from '../../lib/autopilot/runSimulation.js';
@@ -171,7 +171,11 @@ export function AutopilotDecisionPanel({
             <span>{simulationResult.monthImpactTitle}</span>
             <span>{simulationResult.rewardStrengthLabel}</span>
           </div>
-          <AutopilotMonthImpactBar segments={simulationResult.impactSegments} />
+          {simulationResult.impactSegments.length > 0 ? (
+            <AutopilotMonthImpactBar segments={simulationResult.impactSegments} />
+          ) : (
+            <p className="text-xs text-slate-500">No bucket covers this purchase yet, so there is no month impact to show.</p>
+          )}
           <div className="space-y-1">
             {simulationResult.impactNotes.map((note) => (
               <p key={note} className="text-[11px] text-slate-600">
@@ -210,10 +214,7 @@ export function AutopilotDecisionPanel({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="lg">{simulationResult.ctaPrimary ?? 'Use this card'}</Button>
-        <Button variant="secondary" size="lg">
-          {simulationResult.ctaSecondary ?? 'See alternatives'}
-        </Button>
+        {/* No action buttons: commit is not user-facing before Phase 3 (docs/autopilot-master-spec.md). */}
         <ButtonLink href="#autopilot-reasons" variant="ghost" size="sm">
           Why?
         </ButtonLink>

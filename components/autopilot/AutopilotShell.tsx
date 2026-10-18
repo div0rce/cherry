@@ -104,7 +104,7 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
         </div>
       </header>
 
-      <main className="grid gap-6 lg:grid-cols-[1fr_1.15fr]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr]">
         <section className="lg:sticky lg:top-6">
           <AutopilotPurchaseForm
             uiSpec={uiSpec}
@@ -131,7 +131,7 @@ export function AutopilotShell({ uiSpec }: { uiSpec: AutopilotUiSpec }): JSX.Ele
             simulationError={simulationError}
           />
         </section>
-      </main>
+      </div>
     </div>
   );
 }

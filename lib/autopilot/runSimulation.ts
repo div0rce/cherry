@@ -92,27 +92,6 @@ function clampPercentage(value: number): number {
   return Math.max(0, Math.min(100, Number(value.toFixed(1))));
 }
 
-function ensureImpactSegments(
-  input: AutopilotSimulationResult['impactSegments'],
-  fallbackSegments: AutopilotPreviewOutput['ui']['impact']['fallbackSegments']
-): AutopilotSimulationResult['impactSegments'] {
-  if (input.length === 3) return input;
-  const fallback: AutopilotSimulationResult['impactSegments'] = [
-    { label: fallbackSegments.usedLabel, percentage: 30, color: 'bg-[#FECACA]' },
-    { label: fallbackSegments.remainingLabel, percentage: 50, color: 'bg-[#DCFCE7]' },
-    { label: fallbackSegments.otherLabel, percentage: 20, color: 'bg-[#E2E8F0]' },
-  ];
-  const padded = [...input];
-  while (padded.length < 3) {
-    const nextSegment = fallback[padded.length];
-    if (nextSegment === undefined) {
-      break;
-    }
-    padded.push(nextSegment);
-  }
-  return padded.slice(0, 3);
-}
-
 function buildImpactSegments(preview: AutopilotPreviewOutput): AutopilotSimulationResult['impactSegments'] {
   const bucketName = preview.bucketImpact?.name ?? null;
   const hasBucketName = typeof bucketName === 'string' && bucketName.trim().length > 0;
@@ -131,24 +110,16 @@ function buildImpactSegments(preview: AutopilotPreviewOutput): AutopilotSimulati
     const usedPct = clampPercentage((usedCents / total) * 100);
     const remainingPct = clampPercentage((remainingCents / total) * 100);
     const otherPct = clampPercentage(100 - usedPct - remainingPct);
-    return ensureImpactSegments(
-      [
-        { label: bucketUsedLabel, percentage: usedPct, color: 'bg-[#FECACA]' },
-        { label: bucketRemainingLabel, percentage: remainingPct, color: 'bg-[#DCFCE7]' },
-        { label: otherLabel, percentage: otherPct, color: 'bg-[#E2E8F0]' },
-      ],
-      preview.ui.impact.fallbackSegments
-    );
+    return [
+      { label: bucketUsedLabel, percentage: usedPct, color: 'bg-[#FECACA]' },
+      { label: bucketRemainingLabel, percentage: remainingPct, color: 'bg-[#DCFCE7]' },
+      { label: otherLabel, percentage: otherPct, color: 'bg-[#E2E8F0]' },
+    ];
   }
 
-  return ensureImpactSegments(
-    [
-      { label: bucketUsedLabel, percentage: 30, color: 'bg-[#FECACA]' },
-      { label: bucketRemainingLabel, percentage: 50, color: 'bg-[#DCFCE7]' },
-      { label: otherLabel, percentage: 20, color: 'bg-[#E2E8F0]' },
-    ],
-    preview.ui.impact.fallbackSegments
-  );
+  // No bucket data: show nothing rather than invented percentages (this used to render a fixed
+  // 30/50/20 split as if it were the user's month).
+  return [];
 }
 
 function mapStatusToState(preview: AutopilotPreviewOutput): 'recommended' | 'warning' {
@@ -265,7 +236,7 @@ function mapPreviewToSimulationResult(
       feesAvoided: 0,
       riskNote: warningNote,
     },
-    impactSegments: ensureImpactSegments(impactSegments, preview.ui.impact.fallbackSegments),
+    impactSegments,
     impactNotes,
     rewardStrength,
     categoryLabel,
