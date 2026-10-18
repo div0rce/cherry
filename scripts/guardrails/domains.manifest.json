@@ -378,7 +378,8 @@
         "tests/next/api-simulate*.test.*",
         "tests/node/scan-client-state.test.js",
         "tests/node/simulation-adapter.test.js",
-        "tests/node/simulate-response-schema.test.js"
+        "tests/node/simulate-response-schema.test.js",
+        "tests/next/user-merchants-route.test.ts"
       ],
       "docs": [
         "docs/api.md"

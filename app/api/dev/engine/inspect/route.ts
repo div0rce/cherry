@@ -7,7 +7,7 @@ import { safeSolveDecisionForWorld } from '../../../../../lib/engine/run.js';
 import { fromPrismaUserToEngineState } from '../../../../../lib/engine-state.js';
 import { buildPrismaWorld } from '../../../../../lib/adapters/runtime/world.prisma.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
-import { asAppError } from '../../../../../lib/errors.js';
+import { asAppError, isUnauthorized } from '../../../../../lib/errors.js';
 import { auth } from '../../../../../lib/auth.js';
 
 const InspectRequestSchema = z
@@ -88,6 +88,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error: unknown) {
     const appError = asAppError(error);
+    if (isUnauthorized(appError)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const message = appError.message ?? 'Engine inspect failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }
