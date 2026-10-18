@@ -1,19 +1,22 @@
+// Autopilot's swipe entry point: loads the user's engine state through the Prisma-backed
+// lib/engine-state.ts, then runs the pure solver. It lives outside lib/engine so the engine barrel
+// stays free of Prisma.
 import type { RewardCategory } from '../enums.js';
 import { hasText } from '../text.js';
 import { isPositiveNumber } from '../numbers.js';
 import { resolveScanCategory } from '../scan-helpers.js';
-import { buildEngineContext } from './context.js';
+import { buildEngineContext } from '../engine/context.js';
 import { fromPrismaUserToEngineState } from '../engine-state.js';
-import { safeSolveDecisionForWorld } from './run.js';
-import type { EngineDecision, EngineState } from './types.js';
-import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from './public-types.js';
+import { safeSolveDecisionForWorld } from '../engine/run.js';
+import type { EngineDecision, EngineState } from '../engine/types.js';
+import type { AutopilotDecision, AutopilotDecisionKind, SwipeInput } from '../engine/public-types.js';
 import type { World } from '../adapters/world.js';
-import { getRewardSemanticsForCardSpend } from './reward-semantics.js';
+import { getRewardSemanticsForCardSpend } from '../engine/reward-semantics.js';
 import {
   deriveEngineDegradation,
   deriveUnresolvableCreditLiabilityWarningText,
   type EngineDegradation,
-} from './degradation.js';
+} from '../engine/degradation.js';
 
 const SUPPORTED_ACTIONS: EngineDecision['action']['type'][] = ['USE_CARD', 'USE_CARD_WITH_PAYDOWN'];
 

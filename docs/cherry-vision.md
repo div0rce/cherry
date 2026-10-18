@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-10-17
 
 # Cherry Vision & Product Identity
 
@@ -14,7 +14,7 @@ Runtime status note:
 Where this lives in the repo today:
 - Advisory entry: `/api/scan` in `app/api/scan/route.ts` runs the engine and records a `DecisionEvent` for telemetry. It does not create sessions or ledger entries.
 - Persisted flow: `/api/sessions` + `/api/sessions/[id]/confirm|verify` backed by `RecommendationSession` and `CherryPointLedger` in `prisma/schema.prisma`. Bucket spend is incremented on confirm after `ensureBucketFresh` rollover.
-- Engine: `lib/engine/solver.ts` (`solveDecision` + `safeSolveDecisionForUser`) with invariants in `lib/engine-invariants.ts`; legacy shim lives in `lib/engine/legacy.ts`.
+- Engine: `lib/engine/solver.ts` (`solveDecision` + `safeSolveDecisionForUser`) with invariants in `lib/engine-invariants.ts`; legacy shim lives in `lib/legacy-engine.ts`.
 - Vine context ingest (dev-only): `/api/vine/order` + simulator UI `/vine-simulator`.
 - Wallet pass scaffold: `/api/wallet/cherry-pass` (501 until Apple certs).
 
@@ -702,7 +702,7 @@ Similarly, “Cherry Vine becomes a payment terminal” is not on the roadmap; i
 - Deterministic core: `EngineState + EngineContext → ranked actions + projections`, exposed via `solveDecision`/`safeSolveDecisionForUser` (`lib/engine/solver.ts`).
 - All public and Vine-triggered evaluations route through `safeSolveDecisionForWorld` (a wrapper around `safeSolveDecisionForUser` with a World-injected runtime); no alternate solver path is authoritative.
 - Canonical types live in `lib/engine/types.ts` (`NormalizedCard`, `RewardRule`, `Bucket`, `DebtAccount`, `UserConstraints`); guardrails live in `lib/engine/guardrails.ts`; context/state builders in `lib/engine/context.ts`.
-- Legacy compatibility (`runEngine`, card/bucket verdicts) sits in `lib/engine/legacy.ts` until all surfaces migrate.
+- Legacy compatibility (`runEngine`, card/bucket verdicts) sits in `lib/legacy-engine.ts` until all surfaces migrate.
 - `/api/simulate`, `/api/scan`, and `/api/sessions` all wrap the engine through `safeSolveDecisionForUser` for graceful failures while mapping back to legacy response shapes.
 - Scoring: bounded heuristic scoring over `rewards`, `runway`, and `debtRelief`. `rewards` is monetary only; raw issuer points remain non-monetary unless explicitly valued by runtime truth. Per-user weights come from `engineObjectiveProfile` + optional JSON overrides on `User`; invalid/unknown values clamp to balanced defaults and never throw. External API shapes stay the same; only ranking adapts to the profile.
 

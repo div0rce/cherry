@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-09-22
+Last updated: 2026-10-17
 
 # Cherry System Overview
 
@@ -29,7 +29,7 @@ This file summarizes where those concepts live in code today and highlights gaps
   - Advisory-only: `/api/scan` in `app/api/scan/route.ts` runs the engine, allows `expectedAmountCents = 0`, and logs `DecisionEvent` telemetry but does not create sessions or ledger rows.
   - Context ingest: `/api/vine/order` (dev-only) accepts Vine terminal payloads or `OrderContext`, enforces freshness (~3 minutes), creates sessions, and logs authority decisions; simulator UI at `/vine-simulator`.
 - **Evaluate**
-  - Canonical engine: the solver in `lib/engine/solver.ts`, called by routes through `safeSolveDecisionForWorld` (`lib/engine/run.ts`) with an `EngineInput` built by `lib/engine/input/fromLegacy.ts`; the legacy MCC-aware engine (`lib/engine/legacy.ts`, `resolveCategory`) still supplies the response shape. Buckets are rolled in-memory and normalized via `lib/buckets-runtime.ts` before verdicts.
+  - Canonical engine: the solver in `lib/engine/solver.ts`, called by routes through `safeSolveDecisionForWorld` (`lib/engine/run.ts`) with an `EngineInput` built by `lib/engine/input/fromLegacy.ts`; the legacy MCC-aware engine (`lib/legacy-engine.ts`, `resolveCategory`) still supplies the response shape. Buckets are rolled in-memory and normalized via `lib/buckets-runtime.ts` before verdicts.
   - Zod schemas ensure typed inputs (`lib/schemas/*` + `parseJsonBody` in `lib/validation.ts`).
 - **Recommend**
   - Decisions flow back to clients (`ScanClient`, Vine simulator) with bucket/card verdicts and Cherry incentive offers; `RecommendationSession` stores verdicts, coverageMode, orderToken, expiry.

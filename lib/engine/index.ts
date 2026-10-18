@@ -12,7 +12,6 @@ export * from './degradation.js';
 export * from './scheduled-paydowns.js';
 export * from './temporal-response.js';
 export * from './public-types.js';
-export * from './public.js';
 export * from './horizon/index.js';
 export * from './uncertainty/index.js';
 export * from './explain/uncertainty.js';

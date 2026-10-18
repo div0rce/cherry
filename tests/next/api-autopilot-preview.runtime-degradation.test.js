@@ -59,7 +59,7 @@ function resetRouteCache() {
   for (const modulePath of [
     '../../app/api/autopilot/preview/route',
     '../../lib/autopilot/service',
-    '../../lib/engine/public',
+    '../../lib/autopilot/engine-decision',
     '../../lib/engine-state',
     '../../lib/adapters/runtime/engine-state.prisma',
   ]) {

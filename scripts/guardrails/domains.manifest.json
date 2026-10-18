@@ -643,21 +643,6 @@
   },
   "allowedViolations": [
     {
-      "from": "lib/engine/legacy.ts",
-      "to": "lib/legacy-engine.ts",
-      "reason": "Legacy engine facade re-exports the Prisma-backed runtime bridge; importing lib/engine.ts loads Prisma. Engine-freeze change; track as debt."
-    },
-    {
-      "from": "lib/engine/public.ts",
-      "to": "lib/engine-state.ts",
-      "reason": "Autopilot swipe entrypoint reaches Prisma engine-state loader through the engine barrel. Engine-freeze change; track as debt."
-    },
-    {
-      "from": "lib/engine/public.ts",
-      "to": "lib/scan-helpers.ts",
-      "reason": "Value cycle engine -> scan-helpers -> engine. Engine-freeze change; track as debt."
-    },
-    {
       "from": "lib/authority/replayAuthority.ts",
       "to": "lib/adapters/runtime/authority.replay.prisma.ts",
       "reason": "Pure module re-exports a runtime implementation. No importers; candidate for deletion."

@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-10-17
 
 # Autopilot Engine Adapter (UI ↔️ Backend)
 
@@ -17,7 +17,7 @@ Repo/location primers:
 - Backend entry: `/api/autopilot/preview` (App Router route).
 - Validation: `lib/validation/autopilot/preview.ts` (input + output schemas; single source).
 - Service wrapper: `lib/autopilot/service.ts#getAutopilotPreview` (engine orchestration + DTO mapping).
-- Engine entry: `lib/engine/public.getAutopilotDecisionForUserSwipe` (solver wrapper).
+- Engine entry: `lib/autopilot/engine-decision.getAutopilotDecisionForUserSwipe` (solver wrapper).
 
 ## Current behavior (enforced / in code)
 - `/api/autopilot/preview` is read-only; adapter maps preview output to `AutopilotSimulationResult`.

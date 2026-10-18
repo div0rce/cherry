@@ -16,7 +16,7 @@ function mockModule(modulePath, exports) {
 }
 
 function resetModules() {
-  const targets = ['../../lib/autopilot/service', '../../lib/engine/public', '../../lib/prisma', '../../lib/metrics/autopilot', '../../lib/log'];
+  const targets = ['../../lib/autopilot/service', '../../lib/autopilot/engine-decision', '../../lib/prisma', '../../lib/metrics/autopilot', '../../lib/log'];
   for (const target of targets) {
     try {
       const resolved = requireModule.resolve(target);
@@ -36,7 +36,7 @@ async function runTimeoutTest() {
   mockModule(requireModule.resolve('../../lib/log'), {
     logInvariantViolation: () => {},
   });
-  mockModule(requireModule.resolve('../../lib/engine/public'), {
+  mockModule(requireModule.resolve('../../lib/autopilot/engine-decision'), {
     getAutopilotDecisionForUserSwipe: async () => new Promise(() => {}),
   });
   mockModule(requireModule.resolve('../../lib/prisma'), {

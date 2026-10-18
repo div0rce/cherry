@@ -74,9 +74,6 @@ Query it: `npm run report:domain-impact -- <path...>` prints the domain, allowed
 - `evaluator`: Gate on CHERRY_OFFLINE_EVALUATOR_ENABLED; call assertOfflineEvaluatorModelsReady() first; derive runId via defaultRunIdForUser
 
 ## Known cross-domain debt (allowlisted in the manifest; remove the entry when fixed)
-- `lib/engine/legacy.ts` -> `lib/legacy-engine.ts`: Legacy engine facade re-exports the Prisma-backed runtime bridge; importing lib/engine.ts loads Prisma. Engine-freeze change; track as debt.
-- `lib/engine/public.ts` -> `lib/engine-state.ts`: Autopilot swipe entrypoint reaches Prisma engine-state loader through the engine barrel. Engine-freeze change; track as debt.
-- `lib/engine/public.ts` -> `lib/scan-helpers.ts`: Value cycle engine -> scan-helpers -> engine. Engine-freeze change; track as debt.
 - `lib/authority/replayAuthority.ts` -> `lib/adapters/runtime/authority.replay.prisma.ts`: Pure module re-exports a runtime implementation. No importers; candidate for deletion.
 - `lib/adapters/runtime/authority.prisma.ts`, `engine-state.prisma.ts` -> `lib/buckets/periods.ts`, `lib/buckets-runtime.ts`; `legacy-engine.prisma.ts` -> `lib/buckets/periods.ts`: Runtime loader applies pure bucket math (type-only Prisma imports). Exact edge only; runtime may not import other service code. Move bucket math to a core domain to retire.
 

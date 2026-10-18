@@ -12,7 +12,7 @@ import {
 } from '@prisma/client';
 import type { RewardCategory } from '@prisma/client';
 import type { AutopilotDecision } from '../engine/public-types.js';
-import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from '../engine/public.js';
+import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from './engine-decision.js';
 import { deriveUnresolvableCreditLiabilityWarningText } from '../engine/degradation.js';
 import { logInvariantViolation } from '../log.js';
 import { prisma } from '../prisma.js';

@@ -37,7 +37,7 @@ function resetModules() {
   const targets = [
     '../../lib/autopilot/service',
     '../../lib/autopilot/engineDecisionId',
-    '../../lib/engine/public',
+    '../../lib/autopilot/engine-decision',
     '../../lib/prisma',
     '../../lib/scan-helpers',
     '../../lib/log',
@@ -306,7 +306,7 @@ async function runUpsertIdempotencySuite() {
     logInvariantViolation: () => {},
     logGuardrailEvent: () => {},
   });
-  mockModule(requireModule.resolve('../../lib/engine/public'), {
+  mockModule(requireModule.resolve('../../lib/autopilot/engine-decision'), {
     getAutopilotDecisionForUserSwipe: async () => ({
       kind: 'OK',
       cardId: 'card-1',
@@ -508,7 +508,7 @@ async function runTransitionalCommitDoesNotPostBucketSpendSuite() {
     logInvariantViolation: () => {},
     logGuardrailEvent: () => {},
   });
-  mockModule(requireModule.resolve('../../lib/engine/public'), {
+  mockModule(requireModule.resolve('../../lib/autopilot/engine-decision'), {
     getAutopilotDecisionForUserSwipe: async () => ({
       kind: 'OK',
       cardId: 'card-1',

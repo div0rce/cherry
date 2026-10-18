@@ -1,10 +1,9 @@
 export * from './engine/index.js';
-export {
-  runEngine,
-  evaluateTransaction,
-  resolveCategory,
-  type EngineDecision as LegacyEngineDecision,
-  type LegacyEngineInput,
-  type CategoryCoverageMode,
-  type EvaluateTransactionResult,
-} from './engine/legacy.js';
+// Types only: the legacy engine's runtime (runEngine, evaluateTransaction, resolveCategory) lives in
+// lib/legacy-engine.ts and is Prisma-backed, so it is imported from there, never through this barrel.
+export type {
+  EngineDecision as LegacyEngineDecision,
+  LegacyEngineInput,
+  CategoryCoverageMode,
+  EvaluateTransactionResult,
+} from './legacy-engine.js';

@@ -20,7 +20,7 @@ function mockModule(modulePath, exports) {
 
 function resetModules() {
   const targets = [
-    '../../lib/engine/public',
+    '../../lib/autopilot/engine-decision',
     '../../lib/engine/context',
     '../../lib/engine/run',
     '../../lib/engine/solver',
@@ -203,7 +203,7 @@ async function runOkDecision() {
   resetModules();
   setupMocks({ state, engineResult });
   const { getAutopilotDecisionForUserSwipe } =
-    requireModule('../../lib/engine/public');
+    requireModule('../../lib/autopilot/engine-decision');
 
   const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
@@ -251,7 +251,7 @@ async function runBlockedDecision() {
   resetModules();
   setupMocks({ state, engineResult });
   const { getAutopilotDecisionForUserSwipe } =
-    requireModule('../../lib/engine/public');
+    requireModule('../../lib/autopilot/engine-decision');
 
   const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
@@ -296,7 +296,7 @@ async function runFallbackDecision() {
   resetModules();
   setupMocks({ state, engineResult });
   const { getAutopilotDecisionForUserSwipe } =
-    requireModule('../../lib/engine/public');
+    requireModule('../../lib/autopilot/engine-decision');
 
   const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
@@ -359,7 +359,7 @@ async function runOkDecisionWithDegradation() {
 
   resetModules();
   setupMocks({ state, engineResult });
-  const { getAutopilotDecisionForUserSwipe } = requireModule('../../lib/engine/public');
+  const { getAutopilotDecisionForUserSwipe } = requireModule('../../lib/autopilot/engine-decision');
   const result = await getAutopilotDecisionForUserSwipe(world, {
     userId: 'user-1',
     merchant: 'Debit Cafe',

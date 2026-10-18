@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '../../../lib/prisma.js';
-import { getAutopilotDecisionForUserSwipe } from '../../../lib/engine.js';
+import { getAutopilotDecisionForUserSwipe } from '../../../lib/autopilot/engine-decision.js';
 import { resolveUserContext } from '../../../lib/user-context.js';
 import { logGuardrailEvent } from '../../../lib/log.js';
 import { parseJsonBody } from '../../../lib/validation.js';
