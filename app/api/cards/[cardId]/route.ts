@@ -8,8 +8,9 @@ import { resolveUserContext, isPrismaP2003 } from '../../../../lib/user-context.
 import { logInvariant } from '../../../../lib/logging.js';
 import { asAppError, asLogMeta } from '../../../../lib/errors.js';
 import { auth } from '../../../../lib/auth.js';
+import { withAuthErrors } from '../../../../lib/with-user.js';
 
-export async function PATCH(
+async function handlePATCH(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
@@ -64,3 +65,5 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update card' }, { status: 500 });
   }
 }
+
+export const PATCH = withAuthErrors(handlePATCH);

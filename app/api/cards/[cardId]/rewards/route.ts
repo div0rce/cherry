@@ -18,6 +18,7 @@ import { isPositiveNumber } from '../../../../../lib/numbers.js';
 import { logGuardrailEvent } from '../../../../../lib/log.js';
 import { parseJsonBody } from '../../../../../lib/validation.js';
 import { auth } from '../../../../../lib/auth.js';
+import { withAuthErrors } from '../../../../../lib/with-user.js';
 
 /**
  * Fetch the card for the current user to prevent cross-user access and give a
@@ -40,7 +41,7 @@ async function assertCardForUser(cardId: string, userId: string) {
  *
  * Lists reward rules for a given card (demo user scoped).
  */
-export async function GET(
+async function handleGET(
   _request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
@@ -98,7 +99,7 @@ export async function GET(
  * }
  */
 
-export async function POST(
+async function handlePOST(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
@@ -204,7 +205,7 @@ export async function POST(
  *   rewardRuleId: string
  * }
  */
-export async function DELETE(
+async function handleDELETE(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
@@ -317,7 +318,7 @@ export async function DELETE(
  *   capAmountCents?: number | null
  * }
  */
-export async function PATCH(
+async function handlePATCH(
   request: NextRequest,
   { params }: { params: Promise<{ cardId: string }> }
 ): Promise<NextResponse> {
@@ -425,3 +426,8 @@ export async function PATCH(
     throw appError;
   }
 }
+
+export const GET = withAuthErrors(handleGET);
+export const POST = withAuthErrors(handlePOST);
+export const DELETE = withAuthErrors(handleDELETE);
+export const PATCH = withAuthErrors(handlePATCH);

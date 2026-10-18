@@ -12,9 +12,9 @@ export async function apiHandler<T>(
     return Response.json(result);
   } catch (err: unknown) {
     const error = asAppError(err);
-    return Response.json(
-      { error: error.code, message: error.message },
-      { status: error.status }
-    );
+    // ponytail: 5xx messages can carry internals (a Prisma error included the database host),
+    // so clients get a generic message. Log the detail here once shared may import logging.
+    const message = error.status >= 500 ? 'Internal error' : error.message;
+    return Response.json({ error: error.code, message }, { status: error.status });
   }
 }

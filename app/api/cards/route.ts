@@ -11,6 +11,7 @@ import { logInvariant } from '../../../lib/logging.js';
 import { resolveUserContext, isPrismaP2003 } from '../../../lib/user-context.js';
 import { asAppError, isUnauthorized, asLogMeta } from '../../../lib/errors.js';
 import { auth } from '../../../lib/auth.js';
+import { withAuthErrors } from '../../../lib/with-user.js';
 
 const ALLOWED_CATEGORIES = Object.values(RewardCategory);
 
@@ -101,7 +102,7 @@ function parseRewardRules(rawRules: unknown): {
   return { ok: true, rules: parsed };
 }
 
-export async function GET(_request: NextRequest): Promise<NextResponse> {
+async function handleGET(_request: NextRequest): Promise<NextResponse> {
   const { userId } = await resolveUserContext({
     getSession: auth,
     requireAuth: true,
@@ -117,7 +118,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
   return NextResponse.json(cards);
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+async function handlePOST(request: NextRequest): Promise<NextResponse> {
   const { userId, mode } = await resolveUserContext({
     getSession: auth,
     requireAuth: true,
@@ -187,7 +188,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
+async function handleDELETE(request: NextRequest): Promise<NextResponse> {
   const { userId, mode } = await resolveUserContext({
     getSession: auth,
     requireAuth: true,
@@ -243,3 +244,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     return new NextResponse('Failed to delete card', { status: 500 });
   }
 }
+
+export const GET = withAuthErrors(handleGET);
+export const POST = withAuthErrors(handlePOST);
+export const DELETE = withAuthErrors(handleDELETE);
