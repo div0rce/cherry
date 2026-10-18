@@ -233,7 +233,7 @@ export default async function OnboardingPage({
   const missingParam = typeof rawMissing === 'string' ? rawMissing : '';
   const highlightedMissing = toMissingKey(missingParam);
 
-  const userContext = await requireUserContext();
+  const userContext = await requireUserContext('/app/onboarding');
   const prereqResponse = await fetchFromApi<{
     prereqs: AutopilotPrereqs;
     missing: 'cards' | 'rules' | 'buckets' | null;

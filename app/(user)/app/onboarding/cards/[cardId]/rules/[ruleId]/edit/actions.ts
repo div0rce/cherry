@@ -78,7 +78,7 @@ export async function updateRewardRule(
     };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
@@ -114,7 +114,7 @@ export async function deleteRewardRule(
     return { status: 'error', message: 'Rule id is required.', fieldErrors };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'DELETE',
     headers: { 'content-type': 'application/json' },

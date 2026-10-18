@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 
 export default async function HistoryPage(): Promise<JSX.Element> {
-  await requireUserContext();
+  await requireUserContext('/history');
 
   return (
     <div className="space-y-4 pb-8">

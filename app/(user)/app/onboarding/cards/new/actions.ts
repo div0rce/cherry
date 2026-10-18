@@ -63,7 +63,7 @@ export async function createCard(
   const hasNetwork = typeof networkInput === 'string' && networkInput.trim().length > 0;
   const network = hasNetwork ? networkInput.trim().toUpperCase() : 'OTHER';
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<{ id?: string }>('/api/cards', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

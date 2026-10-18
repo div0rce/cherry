@@ -69,7 +69,7 @@ export async function createRewardRule(
     };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

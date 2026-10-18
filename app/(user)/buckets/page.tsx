@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 
 export default async function BucketsPage(): Promise<JSX.Element> {
-  await requireUserContext();
+  await requireUserContext('/buckets');
 
   return (
     <div className="space-y-4 pb-8">

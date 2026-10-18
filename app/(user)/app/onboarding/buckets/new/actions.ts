@@ -52,7 +52,7 @@ export async function createBucket(
     };
   }
 
-  await requireUserContext();
+  await requireUserContext('/app/onboarding');
   const now = resolveExplicitNow(formData.get('now'));
   const response = await fetchFromApi<unknown>('/api/buckets', {
     method: 'POST',

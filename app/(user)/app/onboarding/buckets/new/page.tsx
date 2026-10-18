@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 
 export default async function NewBucketPage(): Promise<JSX.Element> {
-  await requireUserContext();
+  await requireUserContext('/app/onboarding/buckets/new');
 
   return (
     <main className="min-h-screen bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">

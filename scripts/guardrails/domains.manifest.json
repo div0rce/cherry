@@ -611,6 +611,7 @@
       "description": "User-facing app shell, shared components, client API helpers.",
       "owns": [
         "app/\\(user\\)/**",
+        "app/page.tsx",
         "app/layout.tsx",
         "app/providers.tsx",
         "components/**",
@@ -628,7 +629,8 @@
       "tests": [
         "tests/next/home-screen-authority.test.tsx",
         "tests/node/home-ui-contract.test.ts",
-        "tests/next/client-api.test.js"
+        "tests/next/client-api.test.js",
+        "tests/next/require-user-context-redirect.test.ts"
       ],
       "docs": [
         "docs/information-architecture.md",

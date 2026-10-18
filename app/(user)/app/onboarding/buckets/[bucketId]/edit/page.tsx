@@ -18,7 +18,7 @@ export default async function EditBucketPage({
 }): Promise<JSX.Element | null> {
   const resolvedParams = params instanceof Promise ? await params : params;
   const { bucketId } = resolvedParams;
-  await requireUserContext();
+  await requireUserContext(`/app/onboarding/buckets/${bucketId}/edit`);
   const response = await fetchFromApi<
     Array<{
       id: string;

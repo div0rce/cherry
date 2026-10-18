@@ -8,7 +8,7 @@ import { AutopilotEntry } from '../_components/AutopilotEntry.js';
 export const dynamic = 'force-dynamic';
 
 export default async function AutopilotPage(): Promise<JSX.Element> {
-  await requireUserContext();
+  await requireUserContext('/app/autopilot');
   const prereqResponse = await fetchFromApi<{
     prereqs: AutopilotPrereqs;
     missing: 'cards' | 'rules' | 'buckets' | null;
