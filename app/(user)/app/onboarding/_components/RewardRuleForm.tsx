@@ -1,10 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import type { JSX, ReactNode } from 'react';
 import type { ActionState } from '../_lib/form-state.js';
-import { initialActionState } from '../_lib/form-state.js';
-import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers.js';
+import { FieldError, OptionalHidden, errorsFor, useFormAction, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers.js';
 
 const CATEGORY_OPTIONS = [
   { value: 'DINING', label: 'Dining' },
@@ -27,6 +25,21 @@ type RewardRuleFormProps = {
   footerSlot?: ReactNode;
 };
 
+function ruleDefaults(values: RewardRuleFormProps['defaultValues']): {
+  defaultRateKind: 'cashback' | 'points';
+  defaultRateValue: string;
+  defaultScope: 'BASE' | 'CATEGORY';
+} {
+  const cashback = values?.cashbackPercent;
+  const multiplier = values?.multiplier;
+  const rate = hasNumber(cashback) ? cashback : hasNumber(multiplier) ? multiplier : null;
+  return {
+    defaultRateKind: hasNumber(cashback) ? 'cashback' : 'points',
+    defaultRateValue: rate === null ? '' : String(rate),
+    defaultScope: (values?.category ?? 'OTHER') === 'OTHER' ? 'BASE' : 'CATEGORY',
+  };
+}
+
 export function RewardRuleForm({
   action,
   cardId,
@@ -34,26 +47,14 @@ export function RewardRuleForm({
   submitLabel,
   footerSlot,
 }: RewardRuleFormProps): JSX.Element {
-  const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
-    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
-    initialActionState
-  );
+  const [state, formAction, pending] = useFormAction(action);
 
-  const hasCashback = hasNumber(defaultValues?.cashbackPercent);
-  const hasMultiplier = hasNumber(defaultValues?.multiplier);
-  const defaultRateKind = hasCashback ? 'cashback' : 'points';
-  const defaultRateValue = hasCashback
-    ? String(defaultValues?.cashbackPercent ?? '')
-    : hasMultiplier
-      ? String(defaultValues?.multiplier ?? '')
-      : '';
-  const defaultScope = (defaultValues?.category ?? 'OTHER') === 'OTHER' ? 'BASE' : 'CATEGORY';
-  const ruleIdValue = typeof defaultValues?.ruleId === 'string' ? defaultValues.ruleId : null;
+  const { defaultRateKind, defaultRateValue, defaultScope } = ruleDefaults(defaultValues);
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <input type="hidden" name="cardId" value={cardId} />
-      {ruleIdValue !== null ? <input type="hidden" name="ruleId" value={ruleIdValue} /> : null}
+      <OptionalHidden name="ruleId" value={defaultValues?.ruleId} />
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
@@ -62,7 +63,7 @@ export function RewardRuleForm({
             <option value="BASE">Base (catch-all)</option>
             <option value="CATEGORY">Specific category</option>
           </select>
-          <FieldError errors={state.fieldErrors?.['scope'] ?? []} />
+          <FieldError errors={errorsFor(state, 'scope')} />
         </div>
         <div className="space-y-2">
           <label htmlFor="field-category" className="block text-sm font-semibold text-[#0f172a]">Category</label>
@@ -78,7 +79,7 @@ export function RewardRuleForm({
               </option>
             ))}
           </select>
-          <FieldError errors={state.fieldErrors?.['category'] ?? []} />
+          <FieldError errors={errorsFor(state, 'category')} />
         </div>
       </div>
 
@@ -95,7 +96,7 @@ export function RewardRuleForm({
               Cash back (%)
             </label>
           </div>
-          <FieldError errors={state.fieldErrors?.['rateKind'] ?? []} />
+          <FieldError errors={errorsFor(state, 'rateKind')} />
         </div>
         <div className="space-y-2">
           <label htmlFor="field-rateValue" className="block text-sm font-semibold text-[#0f172a]">Rate</label>
@@ -109,7 +110,7 @@ export function RewardRuleForm({
             defaultValue={defaultRateValue}
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.['rateValue'] ?? []} />
+          <FieldError errors={errorsFor(state, 'rateValue')} />
         </div>
       </div>
 
