@@ -17,7 +17,7 @@ jobs:
       CHERRY_VINE_SIGNATURE_MODE: "enforce"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
