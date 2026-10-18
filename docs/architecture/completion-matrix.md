@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-10-17
+Last updated: 2026-10-18
 
 # Completion Matrix
 
@@ -85,9 +85,17 @@ Status values:
 | Dependabot config | `.github/dependabot.yml` (#51) | done |
 | Superseded Dependabot PRs #24–#28 | — | close after merge |
 
-## 8. Code health (CodeScene, fresh analysis 2026-10-17)
-295 production files: 137 at 10, 67 at 9.0–9.9, 40 below 9, 51 not scorable (type-only modules). The lowest are `lib/engine/objective.ts` (6.02), `lib/autopilot/service.ts` (6.81), `lib/buckets/regimes.ts` (6.89), and `lib/accounting/ledger.ts` (6.98).
-Status: **open**. Engine files need behavior-identical refactors under the engine-freeze protocol.
+## 8. Code health (CodeScene, fresh analysis 2026-10-18 on the #54 branch)
+| Item | Evidence | Status |
+| --- | --- | --- |
+| Baseline (2026-10-17) | 295 files: 137 at 10, 67 at 9.0–9.9, 40 below 9, 51 not scorable | — |
+| Non-engine production code | #53: accounting, autopilot, buckets/income, sessions/verification/daily-state/bank ingest, all API routes, platform modules, UI. Golden and characterization tests were written first and pass on the original and the refactored code. | done |
+| Engine and authority (22 files) | #54, under the freeze protocol (v9 → v10). Replay hash unchanged; fingerprints identical across 1,692 engine cases and 30,240 authority cases. | done |
+| `lib/engine/uncertainty/types.ts`, `app/api/scan/route.ts` | #55 | see #55 |
+| After #54 | 299 files: 225 at 10, 52 not scorable (type-only modules), the rest below 10. Every file below 10 is dev-console code (`app/(dev)/**`, components only they import, `app/api/dev/**`), except the two in #55. | — |
+| Scope decision | Dev-console code returns 403 in production (#48), so it is treated as outside "supported production code". Bringing it to 10 too is an owner decision. | owner decision |
+| Duplicate components | `components/layout/EmptyState` vs `components/ui/empty-state`, and `components/layout/Panel` vs `components/ui/panel` (dev-only users) | open, dev scope |
+| Dead code | `components/empty-state-card.tsx` deleted (#55); the ledger and onboarding de-duplication is in #53 | done |
 
 ## 9. Operations
 | Item | Evidence | Status |
@@ -98,7 +106,7 @@ Status: **open**. Engine files need behavior-identical refactors under the engin
 | Recovery | runbook | partial |
 
 ## Owner decisions (consolidated)
-1. Merge the stack (#32–#51).
+1. Merge the stack (#32–#55).
 2. Bank CSV history purge.
 3. Terms, privacy policy, support contact content.
 4. Hero-spec claims ("automatically", "zero setup", pricing "free", proof points).
@@ -109,3 +117,5 @@ Status: **open**. Engine files need behavior-identical refactors under the engin
 9. Duplicate CI test pass (guardrail change).
 10. Dismiss the @simplewebauthn alerts as not reachable.
 11. Vercel sign-in or bypass token for preview checks; set `AUTH_SECRET` and the other env vars.
+12. Whether dev-console code must also reach Code Health 10 (currently scoped out: 403 in production).
+13. Add the CodeScene workflow instructions to `AGENTS.md` (CodeScene suggests it; not done without approval).
