@@ -19,6 +19,44 @@ export type {
   EvaluateTransactionResult,
 } from '../../legacy-engine-types.js';
 
+const MERCHANT_CATEGORY_PATTERNS: readonly [RegExp, RewardCategory][] = [
+  [/air|flight|airline|airport/, RewardCategory.AIR_TRAVEL],
+  [/hotel|inn|motel|resort|lodge/, RewardCategory.HOTEL],
+  [/uber|lyft|taxi|ride/, RewardCategory.TRAVEL],
+  [/grocery|market|supermarket/, RewardCategory.GROCERIES],
+  [/restaurant|diner|cafe|food|grill|bbq|pizza|burger/, RewardCategory.DINING],
+  [/gas|fuel|petro|shell|exxon|chevron|bp/, RewardCategory.GAS],
+  [/stream|subscription|netflix|spotify|hulu|disney|apple tv/, RewardCategory.ENTERTAINMENT],
+];
+
+function isIntegerCode(value?: number | null): value is number {
+  return Number.isInteger(value);
+}
+
+function isBlankCategory(category?: string | RewardCategory | null): category is null | undefined | '' {
+  return category === null || category === undefined || category === '';
+}
+
+async function categoryFromMcc(mccCode?: number | null): Promise<RewardCategory | null> {
+  if (!isIntegerCode(mccCode)) return null;
+  const mapping = await prisma.mccToRewardCategory.findFirst({
+    where: { mccCode, isDefault: true },
+  });
+  return mapping === null ? null : mapping.category;
+}
+
+function categoryFromExplicit(category?: string | RewardCategory | null): RewardCategory | null {
+  if (isBlankCategory(category)) return null;
+  const upper = String(category).trim().toUpperCase();
+  return (Object.values(RewardCategory) as string[]).includes(upper) ? (upper as RewardCategory) : null;
+}
+
+function categoryFromMerchant(merchantName?: string | null): RewardCategory {
+  const merchant = merchantName?.toLowerCase() ?? '';
+  const match = MERCHANT_CATEGORY_PATTERNS.find(([pattern]) => pattern.test(merchant));
+  return match === undefined ? RewardCategory.OTHER : match[1];
+}
+
 export async function resolveCategory(input: {
   mccCode?: number | null;
   category?: string | RewardCategory | null;
@@ -26,32 +64,11 @@ export async function resolveCategory(input: {
 }): Promise<RewardCategory> {
   assertPrismaReady(prisma);
   const { mccCode, category, merchantName } = input;
-
-  if (mccCode !== null && mccCode !== undefined && Number.isInteger(mccCode)) {
-    const mapping = await prisma.mccToRewardCategory.findFirst({
-      where: { mccCode, isDefault: true },
-    });
-    if (mapping !== null) return mapping.category;
-  }
-
-  if (category !== null && category !== undefined && category !== '') {
-    const upper = String(category).trim().toUpperCase();
-    if ((Object.values(RewardCategory) as string[]).includes(upper)) {
-      return upper as RewardCategory;
-    }
-  }
-
-  const merchant = merchantName?.toLowerCase() ?? '';
-  if (/air|flight|airline|airport/.test(merchant)) return RewardCategory.AIR_TRAVEL;
-  if (/hotel|inn|motel|resort|lodge/.test(merchant)) return RewardCategory.HOTEL;
-  if (/uber|lyft|taxi|ride/.test(merchant)) return RewardCategory.TRAVEL;
-  if (/grocery|market|supermarket/.test(merchant)) return RewardCategory.GROCERIES;
-  if (/restaurant|diner|cafe|food|grill|bbq|pizza|burger/.test(merchant))
-    return RewardCategory.DINING;
-  if (/gas|fuel|petro|shell|exxon|chevron|bp/.test(merchant)) return RewardCategory.GAS;
-  if (/stream|subscription|netflix|spotify|hulu|disney|apple tv/.test(merchant))
-    return RewardCategory.ENTERTAINMENT;
-  return RewardCategory.OTHER;
+  return (
+    (await categoryFromMcc(mccCode)) ??
+    categoryFromExplicit(category) ??
+    categoryFromMerchant(merchantName)
+  );
 }
 
 function deriveOverallVerdict(
@@ -109,6 +126,30 @@ async function getCategoryCoverage(
   return { coverageMode: 'UNCONFIGURED', buckets: [] };
 }
 
+type RewardRuleLike = { category: RewardCategory; multiplier: number | null };
+
+function cardMultiplier(rewardRules: readonly RewardRuleLike[], category: RewardCategory): number {
+  const exactRule = rewardRules.find((r) => r.category === category);
+  const fallbackRule = rewardRules.find(
+    (r) =>
+      r.category === RewardCategory.GENERAL_MERCHANDISE ||
+      r.category === RewardCategory.OTHER
+  );
+  const rule = exactRule ?? fallbackRule;
+  return rule?.multiplier ?? 1;
+}
+
+function isBetterCard(
+  multiplier: number,
+  bestMultiplier: number,
+  cardId: string,
+  bestCard: { id: string } | null
+): boolean {
+  if (multiplier > bestMultiplier) return true;
+  if (multiplier !== bestMultiplier || bestCard === null) return false;
+  return cardId < bestCard.id;
+}
+
 async function resolveBestCardForTransaction(input: {
   userId: string;
   category: RewardCategory;
@@ -132,20 +173,8 @@ async function resolveBestCardForTransaction(input: {
   let bestMultiplier = 0;
 
   for (const card of cards) {
-    const exactRule = card.rewardRules.find((r) => r.category === input.category);
-    const fallbackRule = card.rewardRules.find(
-      (r) =>
-        r.category === RewardCategory.GENERAL_MERCHANDISE ||
-        r.category === RewardCategory.OTHER
-    );
-
-    const rule = exactRule ?? fallbackRule;
-    const multiplier = rule?.multiplier ?? 1;
-
-    if (
-      multiplier > bestMultiplier ||
-      (multiplier === bestMultiplier && bestCard !== null && card.id < bestCard.id)
-    ) {
+    const multiplier = cardMultiplier(card.rewardRules, input.category);
+    if (isBetterCard(multiplier, bestMultiplier, card.id, bestCard)) {
       bestCard = card;
       bestMultiplier = multiplier;
     }
@@ -177,14 +206,57 @@ async function resolveBestCardForTransaction(input: {
   };
 }
 
-export async function runEngine(input: LegacyEngineInput): Promise<EngineDecision> {
-  if (input.amountCents == null || Number.isNaN(input.amountCents) || input.amountCents < 0) {
+function isMissingNumber(value: number | null | undefined): value is null | undefined {
+  return value == null || Number.isNaN(value);
+}
+
+function assertRunEngineInput(input: LegacyEngineInput): void {
+  if (isMissingNumber(input.amountCents) || input.amountCents < 0) {
     throw new Error('amountCents must be a non-negative integer');
   }
-
-  if (input.nowMs == null || Number.isNaN(input.nowMs)) {
+  if (isMissingNumber(input.nowMs)) {
     throw new Error('runEngine requires explicit `nowMs`');
   }
+}
+
+function budgetVerdict(
+  remainingAfter: number,
+  budgetAmount: number
+): EngineDecision['budget']['verdict'] {
+  if (remainingAfter < 0) return 'BREAKS_BUDGET';
+  if (remainingAfter < budgetAmount * 0.1) return 'BORDERLINE';
+  return 'HEALTHY';
+}
+
+function computeBudgetInfo(
+  coverageMode: CategoryCoverageMode,
+  freshBuckets: Bucket[],
+  amountCents: number
+): EngineDecision['budget'] {
+  if (coverageMode !== 'BUDGETED' || freshBuckets.length === 0) {
+    return { verdict: 'UNCONFIGURED', coverageMode, hasBucket: false };
+  }
+  // Simple selection: earliest created bucket for the category.
+  const target = freshBuckets[0] as Bucket;
+  const spendingAfter = target.spentCents + amountCents;
+  const remainingAfter = target.budgetAmount - spendingAfter;
+  return {
+    verdict: budgetVerdict(remainingAfter, target.budgetAmount),
+    coverageMode,
+    hasBucket: true,
+    bucketId: target.id,
+    name: target.name,
+    limitCents: target.budgetAmount,
+    spentBeforeCents: target.spentCents,
+    spentAfterCents: spendingAfter,
+    remainingAfterCents: remainingAfter,
+    strictMode: target.strictMode,
+    wouldExceed: remainingAfter < 0,
+  };
+}
+
+export async function runEngine(input: LegacyEngineInput): Promise<EngineDecision> {
+  assertRunEngineInput(input);
   assertPrismaReady(prisma);
   const now = new Date(input.nowMs);
 
@@ -196,41 +268,7 @@ export async function runEngine(input: LegacyEngineInput): Promise<EngineDecisio
 
   const { coverageMode, buckets } = await getCategoryCoverage(input.userId, category);
   const freshBuckets = buckets.map((b) => applyInMemoryRollover(b, now));
-
-  let budgetInfo: EngineDecision['budget'] = {
-    verdict: 'UNCONFIGURED',
-    coverageMode,
-    hasBucket: false,
-  };
-
-  if (coverageMode === 'BUDGETED' && freshBuckets.length > 0) {
-    // Simple selection: earliest created bucket for the category.
-    const target = freshBuckets[0] as Bucket;
-    const spendingAfter = target.spentCents + input.amountCents;
-    const remainingAfter = target.budgetAmount - spendingAfter;
-    const wouldExceed = remainingAfter < 0;
-
-    const verdict =
-      remainingAfter < 0
-        ? 'BREAKS_BUDGET'
-        : remainingAfter < target.budgetAmount * 0.1
-          ? 'BORDERLINE'
-          : 'HEALTHY';
-
-    budgetInfo = {
-      verdict,
-      coverageMode,
-      hasBucket: true,
-      bucketId: target.id,
-      name: target.name,
-      limitCents: target.budgetAmount,
-      spentBeforeCents: target.spentCents,
-      spentAfterCents: spendingAfter,
-      remainingAfterCents: remainingAfter,
-      strictMode: target.strictMode,
-      wouldExceed,
-    };
-  }
+  const budgetInfo = computeBudgetInfo(coverageMode, freshBuckets, input.amountCents);
 
   const cardInfo = await resolveBestCardForTransaction({
     userId: input.userId,
