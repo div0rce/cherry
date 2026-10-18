@@ -1,4 +1,5 @@
 import {
+  type Prisma,
   CherryPointLedgerStatus,
   LedgerAnomalyCode,
   RecommendationStatus,
@@ -56,7 +57,10 @@ type ConfirmSessionParams = {
   mode?: string | null;
   allowZeroPoints?: boolean;
   now: Date;
+  // Extra writes that must commit or roll back together with the claim (Autopilot's commit row).
+  inTransaction?: (tx: Prisma.TransactionClient) => Promise<void>;
 };
+
 
 export async function confirmRecommendationSession({
   sessionId,
@@ -65,6 +69,7 @@ export async function confirmRecommendationSession({
   mode = null,
   allowZeroPoints = false,
   now,
+  inTransaction,
 }: ConfirmSessionParams): Promise<ConfirmSessionResult> {
   const session = await prisma.recommendationSession.findFirst({
     where: { id: sessionId, userId },
@@ -170,7 +175,9 @@ export async function confirmRecommendationSession({
 
   await prisma.$transaction(async (tx) => {
     const updatedSession = await tx.recommendationSession.updateMany({
-      where: { id: session.id, userId },
+      // Re-checked inside the transaction: the status checks above run outside it, so two
+      // concurrent confirms could otherwise both claim.
+      where: { id: session.id, userId, status: RecommendationStatus.RECOMMENDED, confirmedAmountCents: null },
       data: {
         status: RecommendationStatus.CLAIMED,
         verificationStatus: VerificationStatus.PENDING,
@@ -184,14 +191,17 @@ export async function confirmRecommendationSession({
     });
 
     if (updatedSession.count === 0) {
-      throw new SessionConfirmError('Session update failed due to user scoping', 400, 'SESSION_SCOPE_ERROR');
+      // Found and claimable a moment ago, so another request claimed it first.
+      throw new SessionConfirmError('Session already claimed', 400, 'SESSION_ALREADY_CLAIMED');
     }
 
     if (freshBucket !== null && hasText(session.recommendedBucketId)) {
       const bucketUpdate = await tx.bucket.updateMany({
         where: { id: freshBucket.id, userId },
+        // Atomic increment: a read-modify-write here lost one purchase's spend when two sessions
+        // on the same bucket were confirmed at the same time.
         data: {
-          spentCents: (freshBucket.spentCents ?? 0) + spendAmount,
+          spentCents: { increment: spendAmount },
         },
       });
       if (bucketUpdate.count === 0) {
@@ -213,6 +223,10 @@ export async function confirmRecommendationSession({
         expiresAt: null,
       },
     });
+
+    if (inTransaction !== undefined) {
+      await inTransaction(tx);
+    }
   });
 
   await autoVerifySession(session.id);

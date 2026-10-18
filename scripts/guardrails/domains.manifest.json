@@ -272,7 +272,8 @@
       "tests": [
         "tests/node/bucket*.test.js",
         "tests/node/buckets-periods.test.js",
-        "tests/node/category-preference-enum.test.js"
+        "tests/node/category-preference-enum.test.js",
+        "tests/node/bucket-rollover-conditional.test.ts"
       ],
       "docs": [
         "docs/buckets-rollover-plan.md"
@@ -414,7 +415,8 @@
         "tests/next/api-sessions*.test.*",
         "tests/node/sessions-bucket-reversal.test.js",
         "tests/node/verification-session.test.js",
-        "tests/node/idempotency.test.ts"
+        "tests/node/idempotency.test.ts",
+        "tests/node/session-confirm-atomic.test.ts"
       ],
       "docs": [
         "docs/verification-flow.md",

@@ -682,6 +682,13 @@ export async function commitAutopilotDecisionV2(
       mode: 'AUTOPILOT',
       allowZeroPoints: true,
       now: evaluation.occurredAt,
+      // Same transaction as the claim: a failure here no longer leaves a claimed session with a
+      // ledger row but no commit row (which made every retry fail).
+      inTransaction: async (tx) => {
+        await tx.autopilotCommit.create({
+          data: { userId, decisionId: evaluation.decisionId, sessionId: session.id },
+        });
+      },
     });
   } catch (error: unknown) {
     const appError = asAppError(error);
@@ -696,21 +703,13 @@ export async function commitAutopilotDecisionV2(
     throw appError;
   }
 
-  const createdCommit = await prisma.autopilotCommit.create({
-    data: {
-      userId,
-      decisionId: evaluation.decisionId,
-      sessionId: session.id,
-    },
-  });
-
   const runtimeBucket =
     session.recommendedBucketId !== null
       ? await ensureBucketFresh(session.recommendedBucketId, evaluation.occurredAt)
       : null;
 
   return {
-    decisionId: createdCommit.decisionId,
+    decisionId: evaluation.decisionId,
     sessionId: session.id,
     bucket: runtimeBucket ? toBucketRuntime(runtimeBucket) : null,
     status: 'created',
