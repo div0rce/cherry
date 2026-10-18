@@ -13,7 +13,8 @@ export function resolveExplicitNow(raw: unknown): Date {
   if (typeof raw === 'string') {
     const trimmed = raw.trim();
     if (trimmed !== '') {
-      const parsed = new Date(trimmed);
+      // Form fields carry epoch milliseconds as a digit string; new Date('1792...') is Invalid Date.
+      const parsed = /^\d+$/.test(trimmed) ? new Date(Number(trimmed)) : new Date(trimmed);
       if (!Number.isNaN(parsed.getTime())) {
         return parsed;
       }

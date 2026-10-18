@@ -34,7 +34,11 @@ export function BucketForm({
   footerSlot,
 }: BucketFormProps): JSX.Element {
   const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
-    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
+    async (prevState, formData) => {
+      // Server actions take an explicit `now`; this wrapper runs on the client, the time boundary.
+      formData.set('now', String(Math.round(performance.timeOrigin + performance.now())));
+      return (await action(prevState, formData)) ?? initialActionState;
+    },
     initialActionState
   );
 
@@ -47,8 +51,9 @@ export function BucketForm({
       {bucketIdValue !== null ? <input type="hidden" name="bucketId" value={bucketIdValue} /> : null}
 
       <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#0f172a]">Bucket name</label>
+        <label htmlFor="field-name" className="block text-sm font-semibold text-[#0f172a]">Bucket name</label>
         <input
+          id="field-name"
           name="name"
           defaultValue={defaultValues?.name ?? ''}
           placeholder="Dining monthly"
@@ -60,8 +65,9 @@ export function BucketForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Budget limit (USD)</label>
+          <label htmlFor="field-budgetAmount" className="block text-sm font-semibold text-[#0f172a]">Budget limit (USD)</label>
           <input
+            id="field-budgetAmount"
             type="number"
             name="budgetAmount"
             min="1"
@@ -73,8 +79,9 @@ export function BucketForm({
           <FieldError errors={state.fieldErrors?.['budgetAmount'] ?? []} />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Category</label>
+          <label htmlFor="field-category" className="block text-sm font-semibold text-[#0f172a]">Category</label>
           <select
+            id="field-category"
             name="category"
             defaultValue={defaultValues?.category ?? 'DINING'}
             className={inputClasses}
@@ -90,8 +97,9 @@ export function BucketForm({
       </div>
 
       <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#0f172a]">Period</label>
+        <label htmlFor="field-period" className="block text-sm font-semibold text-[#0f172a]">Period</label>
         <select
+          id="field-period"
           name="period"
           defaultValue={defaultValues?.period ?? 'MONTHLY'}
           className={inputClasses}
