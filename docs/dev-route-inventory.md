@@ -1,9 +1,9 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-10-17
 
 # Dev Route Inventory
 
-Policy: `(user)` routes are user-facing only; `(dev)` routes are dev console only and gated (middleware on `/dev/*` and `/api/dev/*`).
+Policy: `(user)` routes are user-facing only; `(dev)` routes are dev console only and gated (`proxy.ts` matches every `(dev)` page and `/api/dev/*`; 403 in production unless `CHERRY_DEV_SHELL_ENABLED=true`).
 Invariant: Dev routes may read, simulate, and replay state; they must not mutate user-facing financial state (buckets, ledger, sessions) except via explicit admin tools guarded under `/admin`.
 
 ## Current behavior (enforced / in code)
