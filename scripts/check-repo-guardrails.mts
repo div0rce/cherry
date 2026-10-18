@@ -291,7 +291,6 @@ const SILENT_DEFAULT_TOKENS = [
 ];
 const MONEY_FLOAT_ALLOWLIST = new Map([
   ['lib/dashboard.ts', 'TEMP: UI aggregation, not core math'],
-  ['lib/simulation.ts', 'TEMP: legacy sim, migrate to Cents'],
   ['lib/unified-activity.ts', 'TEMP: reporting layer'],
   ['lib/evaluator/offline-history.ts', 'TEMP: legacy stats'],
   ['lib/evaluator/stats.ts', 'TEMP: legacy stats'],

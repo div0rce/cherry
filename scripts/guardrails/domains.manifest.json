@@ -358,7 +358,6 @@
         "lib/scan-helpers.ts",
         "lib/scan-types.ts",
         "lib/scan-client-state.ts",
-        "lib/simulation.ts",
         "lib/simulation-adapter.ts",
         "lib/mccCategoryMapper.ts"
       ],
@@ -617,11 +616,9 @@
         "app/providers.tsx",
         "components/**",
         "lib/ui/**",
-        "lib/ui.ts",
         "lib/client/**",
         "lib/home/**",
         "lib/dashboard.ts",
-        "lib/history.ts",
         "proxy.ts"
       ],
       "mayImport": [
