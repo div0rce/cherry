@@ -206,6 +206,9 @@ api_inventory.md
 architecture_map.md
 workspace_audit.md
 repo_index.json
+
+# Claude Code agent worktrees (each has its own checkout and node_modules)
+.claude/worktrees/
 ```
 
 ```text
