@@ -8,24 +8,9 @@ type SendEmailParams = {
   reason: AlertReason;
 };
 
+// ponytail: placeholder, no email transport yet, so nothing is sent. Compose the subject and
+// body from params when a transport is added (git history has the earlier draft copy). Never log
+// the recipient address or the user's balance.
 export async function sendEmailAlert(params: SendEmailParams): Promise<void> {
-  const { to, status, safeToSpendCents, reason } = params;
-
-  const subject = `Cherry status update: ${status}`;
-  const safeDollars =
-    safeToSpendCents === null || Number.isNaN(safeToSpendCents)
-      ? 'Unknown'
-      : `$${(safeToSpendCents / 100).toFixed(0)}`;
-
-  const reasonText =
-    reason === 'SAFE_TO_TIGHT'
-      ? 'One or more essential buckets are nearing exhaustion.'
-      : 'Essential budgets are exhausted; risk is elevated.';
-
-  const body = `Status: ${status}
-Safe to spend today: ${safeDollars}
-Reason: ${reasonText}`;
-
-  // Placeholder: real email transport would plug in here.
-  logInfo('daily_state_email_sent', { to, subject, body });
+  logInfo('daily_state_email_placeholder', { status: params.status, reason: params.reason });
 }
