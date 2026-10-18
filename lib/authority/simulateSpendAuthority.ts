@@ -375,7 +375,7 @@ function requestedCounterfactualsFor(
   params: SimulateSpendParams,
   amountCents: number
 ): CounterfactualAuthorityRequest[] {
-  if (params.counterfactuals && params.counterfactuals.length > 0) {
+  if (params.counterfactuals != null && params.counterfactuals.length > 0) {
     return params.counterfactuals;
   }
   return [{ amountCents: Math.max(0, Math.floor(amountCents * 0.8)) }, { delayDays: 3 }];
