@@ -43,7 +43,6 @@ const INTERNAL_TRANSFER_KEYWORDS = ['TRANSFER', 'XFER', 'MOVE MONEY', 'TO SAVING
 const SIDE_GIG_KEYWORDS = ['UBER', 'LYFT', 'ETSY', 'SHOPIFY', 'SQUARE', 'CASH APP', 'TASKRABBIT', 'DOORDASH', 'INSTACART'];
 const P2P_KEYWORDS = ['ZELLE', 'VENMO', 'VEN MO', 'CASH APP', 'CASHAPP', 'APPLE CASH', 'PAYPAL', 'PAY PAL'];
 const SERVICE_MEMO_KEYWORDS = ['CUT', 'HAIR', 'BARBER', 'NAIL', 'NAILS', 'WAX', 'CLEAN', 'RENT', 'LESSON', 'TUTOR', 'TRAINING'];
-const REPAYMENT_MEMO_KEYWORDS = ['UBER', 'DINNER', 'FOOD', 'REIMBURSE', 'PAYBACK', 'SPLIT', 'VENMO REQUEST'];
 
 function toIncomeEnum(kind: IncomeKind): BankTransactionIncomeKind {
   switch (kind) {
@@ -220,7 +219,7 @@ function classifyP2PKind(tx: ClassifiableTx, stats?: CounterpartyStats): P2PKind
   const direction = directionOf(tx);
   const serviceLike = looksLikePseudoMerchant(stats, direction) || txMentions(tx, SERVICE_MEMO_KEYWORDS);
   if (direction === 'credit') return classifyP2PCredit(tx, stats, serviceLike);
-  // repayment memos and the default both resolve to P2P_REPAYMENT_OUT
+  // repayment memos (UBER, DINNER, SPLIT, ...) and the default both resolve to P2P_REPAYMENT_OUT
   return serviceLike ? 'P2P_PSEUDO_MERCHANT_OUT' : 'P2P_REPAYMENT_OUT';
 }
 
