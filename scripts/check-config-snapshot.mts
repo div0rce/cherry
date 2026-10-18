@@ -382,7 +382,8 @@ function main(): void {
   const tsconfigFiles = fg.sync('**/tsconfig*.json', {
     cwd: ROOT,
     dot: true,
-    ignore: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/build/**'],
+    // .claude/worktrees holds other checkouts (agent worktrees), not this repo's config.
+    ignore: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/build/**', '.claude/worktrees/**'],
   }).map((file) => normalizePath(file));
 
   const workflowFiles = fg.sync('.github/workflows/*.{yml,yaml}', {
