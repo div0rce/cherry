@@ -139,95 +139,76 @@ function expandPreExistingStateEvents(
     .filter((event): event is SimulationEvent => event !== null);
 }
 
+function purchaseEvent(
+  cardId: string | null | undefined,
+  amountCents: number,
+  effectiveAtMs: number
+): SimulationEvent[] {
+  if (!hasPositiveNumber(amountCents) || !hasNonEmptyString(cardId)) return [];
+  return [
+    {
+      kind: 'USE_CARD_PURCHASE',
+      cardId,
+      amountCents,
+      effectiveAtMs,
+      sourceClassOrder: 2,
+      sourceSequence: 0,
+      eventSequenceWithinAction: 0,
+    },
+  ];
+}
+
+function paydownEvent(
+  normalizedAction: NormalizedSimulationAction,
+  nowMs: number,
+  eventSequenceWithinAction: number
+): SimulationEvent[] {
+  const { action, timing } = normalizedAction;
+  if (!isPresentEffective(timing, nowMs)) return [];
+  if (!hasPositiveNumber(action.paydownAmountCents)) return [];
+  return [
+    {
+      kind: 'PAYDOWN',
+      debtId: action.debtId === undefined ? null : action.debtId,
+      amountCents: action.paydownAmountCents,
+      effectiveAtMs: timing.effectiveAtMs,
+      sourceClassOrder: 2,
+      sourceSequence: 0,
+      eventSequenceWithinAction,
+    },
+  ];
+}
+
+type CandidateEventInput = {
+  state: EngineState;
+  ctx: EngineContext;
+  normalizedAction: NormalizedSimulationAction;
+  amountCents: number;
+};
+
+const CANDIDATE_EVENT_EXPANDERS: Partial<
+  Record<EngineAction['type'], (input: CandidateEventInput) => SimulationEvent[]>
+> = {
+  USE_CARD: ({ normalizedAction, amountCents }) =>
+    purchaseEvent(normalizedAction.action.cardId, amountCents, normalizedAction.timing.effectiveAtMs),
+  USE_CARD_WITH_PAYDOWN: ({ ctx, normalizedAction, amountCents }) => [
+    ...purchaseEvent(normalizedAction.action.cardId, amountCents, ctx.nowMs),
+    ...paydownEvent(normalizedAction, ctx.nowMs, 1),
+  ],
+  PAY_DOWN_DEBT: ({ ctx, normalizedAction }) => paydownEvent(normalizedAction, ctx.nowMs, 0),
+  SWITCH_MERCHANT: ({ state, ctx, amountCents }) =>
+    purchaseEvent(pickBestCashOrDebitCard(state), amountCents, ctx.nowMs),
+};
+
 function expandCandidateActionEvents(
   state: EngineState,
   ctx: EngineContext,
   normalizedAction: NormalizedSimulationAction
 ): SimulationEvent[] {
-  const { action, timing } = normalizedAction;
   const amountCents = ctx.amountCents == null ? 0 : ctx.amountCents;
-  const events: SimulationEvent[] = [];
-
-  switch (action.type) {
-    case 'USE_CARD':
-      if (hasPositiveNumber(amountCents) && hasNonEmptyString(action.cardId)) {
-        events.push({
-          kind: 'USE_CARD_PURCHASE',
-          cardId: action.cardId,
-          amountCents,
-          effectiveAtMs: timing.effectiveAtMs,
-          sourceClassOrder: 2,
-          sourceSequence: 0,
-          eventSequenceWithinAction: 0,
-        });
-      }
-      break;
-    case 'USE_CARD_WITH_PAYDOWN':
-      if (hasPositiveNumber(amountCents) && hasNonEmptyString(action.cardId)) {
-        events.push({
-          kind: 'USE_CARD_PURCHASE',
-          cardId: action.cardId,
-          amountCents,
-          effectiveAtMs: ctx.nowMs,
-          sourceClassOrder: 2,
-          sourceSequence: 0,
-          eventSequenceWithinAction: 0,
-        });
-      }
-      if (
-        isPresentEffective(timing, ctx.nowMs) &&
-        hasPositiveNumber(action.paydownAmountCents)
-      ) {
-        events.push({
-          kind: 'PAYDOWN',
-          debtId: action.debtId === undefined ? null : action.debtId,
-          amountCents: action.paydownAmountCents,
-          effectiveAtMs: timing.effectiveAtMs,
-          sourceClassOrder: 2,
-          sourceSequence: 0,
-          eventSequenceWithinAction: 1,
-        });
-      }
-      break;
-    case 'PAY_DOWN_DEBT':
-      if (
-        isPresentEffective(timing, ctx.nowMs) &&
-        hasPositiveNumber(action.paydownAmountCents)
-      ) {
-        events.push({
-          kind: 'PAYDOWN',
-          debtId: action.debtId === undefined ? null : action.debtId,
-          amountCents: action.paydownAmountCents,
-          effectiveAtMs: timing.effectiveAtMs,
-          sourceClassOrder: 2,
-          sourceSequence: 0,
-          eventSequenceWithinAction: 0,
-        });
-      }
-      break;
-    case 'SWITCH_MERCHANT': {
-      const syntheticCardId = pickBestCashOrDebitCard(state);
-      if (hasPositiveNumber(amountCents) && hasNonEmptyString(syntheticCardId)) {
-        events.push({
-          kind: 'USE_CARD_PURCHASE',
-          cardId: syntheticCardId,
-          amountCents,
-          effectiveAtMs: ctx.nowMs,
-          sourceClassOrder: 2,
-          sourceSequence: 0,
-          eventSequenceWithinAction: 0,
-        });
-      }
-      break;
-    }
-    case 'DELAY_PURCHASE':
-    case 'REJECT_PURCHASE':
-      break;
-    default:
-      break;
-  }
-
-  return events;
+  const expand = CANDIDATE_EVENT_EXPANDERS[normalizedAction.action.type];
+  if (expand === undefined) return [];
+  return expand({ state, ctx, normalizedAction, amountCents });
 }
 
 function compareSimulationEvents(a: SimulationEvent, b: SimulationEvent): number {
@@ -243,57 +224,75 @@ function compareSimulationEvents(a: SimulationEvent, b: SimulationEvent): number
   return a.eventSequenceWithinAction - b.eventSequenceWithinAction;
 }
 
-function reduceSimulationEvent(params: {
+type SimulationReduceParams = {
   state: EngineState;
   ctx: EngineContext;
   event: SimulationEvent;
   buckets: EngineState['buckets'];
   debts: EngineState['debts'];
   projectedLiquid: number | null;
-}): number | null {
-  const { state, ctx, event, buckets, debts } = params;
+};
 
-  switch (event.kind) {
-    case 'USE_CARD_PURCHASE': {
-      if (!hasNonEmptyString(event.cardId) || !hasPositiveNumber(event.amountCents)) {
-        return params.projectedLiquid;
-      }
+function applyBucketSpend(params: SimulationReduceParams, amountCents: number): void {
+  const bucketId = pickBucketForContext(params.state, params.ctx);
+  if (!hasNonEmptyString(bucketId)) return;
+  const bucket = params.buckets.find((candidate) => candidate.id === bucketId);
+  if (bucket === undefined) return;
+  bucket.pendingSpendCents += amountCents;
+  recomputeBucketBalance(bucket);
+}
 
-      const bucketId = pickBucketForContext(state, ctx);
-      if (hasNonEmptyString(bucketId)) {
-        const bucket = buckets.find((candidate) => candidate.id === bucketId);
-        if (bucket !== undefined) {
-          bucket.pendingSpendCents += event.amountCents;
-          recomputeBucketBalance(bucket);
-        }
-      }
-
-      const card = state.cards.find((candidate) => candidate.id === event.cardId);
-      if (card === undefined) return params.projectedLiquid;
-
-      if (card.isCredit === true) {
-        const linkedDebt = findLinkedDebt(debts, card.linkedDebtId);
-        if (linkedDebt !== undefined) {
-          linkedDebt.balanceCents += event.amountCents;
-        }
-        return params.projectedLiquid;
-      }
-
-      return reduceProjectedLiquid(params.projectedLiquid, event.amountCents);
-    }
-    case 'PAYDOWN': {
-      if (!hasNonEmptyString(event.debtId) || !hasPositiveNumber(event.amountCents)) {
-        return params.projectedLiquid;
-      }
-      const debt = getDebtAccounts(debts).find((candidate) => candidate.id === event.debtId);
-      if (debt === undefined) return params.projectedLiquid;
-      const delta = Math.min(debt.balanceCents, event.amountCents);
-      debt.balanceCents -= delta;
-      return reduceProjectedLiquid(params.projectedLiquid, delta);
-    }
-    default:
-      return params.projectedLiquid;
+function applyCreditCardSpend(
+  debts: EngineState['debts'],
+  linkedDebtId: string | null | undefined,
+  amountCents: number
+): void {
+  const linkedDebt = findLinkedDebt(debts, linkedDebtId);
+  if (linkedDebt !== undefined) {
+    linkedDebt.balanceCents += amountCents;
   }
+}
+
+function reducePurchaseEvent(
+  params: SimulationReduceParams,
+  event: Extract<SimulationEvent, { kind: 'USE_CARD_PURCHASE' }>
+): number | null {
+  if (!hasNonEmptyString(event.cardId) || !hasPositiveNumber(event.amountCents)) {
+    return params.projectedLiquid;
+  }
+
+  applyBucketSpend(params, event.amountCents);
+
+  const card = params.state.cards.find((candidate) => candidate.id === event.cardId);
+  if (card === undefined) return params.projectedLiquid;
+
+  if (card.isCredit === true) {
+    applyCreditCardSpend(params.debts, card.linkedDebtId, event.amountCents);
+    return params.projectedLiquid;
+  }
+
+  return reduceProjectedLiquid(params.projectedLiquid, event.amountCents);
+}
+
+function reducePaydownEvent(
+  params: SimulationReduceParams,
+  event: Extract<SimulationEvent, { kind: 'PAYDOWN' }>
+): number | null {
+  if (!hasNonEmptyString(event.debtId) || !hasPositiveNumber(event.amountCents)) {
+    return params.projectedLiquid;
+  }
+  const debt = getDebtAccounts(params.debts).find((candidate) => candidate.id === event.debtId);
+  if (debt === undefined) return params.projectedLiquid;
+  const delta = Math.min(debt.balanceCents, event.amountCents);
+  debt.balanceCents -= delta;
+  return reduceProjectedLiquid(params.projectedLiquid, delta);
+}
+
+function reduceSimulationEvent(params: SimulationReduceParams): number | null {
+  const { event } = params;
+  if (event.kind === 'USE_CARD_PURCHASE') return reducePurchaseEvent(params, event);
+  if (event.kind === 'PAYDOWN') return reducePaydownEvent(params, event);
+  return params.projectedLiquid;
 }
 
 function pickBestCashOrDebitCard(state: EngineState): NormalizedCardId | undefined {

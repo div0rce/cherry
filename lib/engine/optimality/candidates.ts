@@ -65,50 +65,51 @@ function candidateSignature(candidate: Candidate): string {
   return candidateKey(candidate);
 }
 
+const CANDIDATE_FIELDS: Readonly<Record<Candidate['type'], readonly string[]>> = {
+  USE_CARD: ['cardId'],
+  USE_CARD_WITH_PAYDOWN: ['cardId', 'debtId', 'paydownAmountCents', 'paydownScheduledDateMs'],
+  PAY_DOWN_DEBT: ['debtId', 'paydownAmountCents', 'paydownScheduledDateMs'],
+  DELAY_PURCHASE: ['delayDays'],
+  SWITCH_MERCHANT: ['altMerchantName', 'altMerchantCategoryKey'],
+  REJECT_PURCHASE: [],
+};
+
 function candidatesEqual(a: Candidate, b: Candidate): boolean {
   if (a.type !== b.type) return false;
-  switch (a.type) {
-    case 'USE_CARD':
-      return b.type === 'USE_CARD' && a.cardId === b.cardId;
-    case 'USE_CARD_WITH_PAYDOWN':
-      return (
-        b.type === 'USE_CARD_WITH_PAYDOWN' &&
-        a.cardId === b.cardId &&
-        a.debtId === b.debtId &&
-        a.paydownAmountCents === b.paydownAmountCents &&
-        a.paydownScheduledDateMs === b.paydownScheduledDateMs
-      );
-    case 'PAY_DOWN_DEBT':
-      return (
-        b.type === 'PAY_DOWN_DEBT' &&
-        a.debtId === b.debtId &&
-        a.paydownAmountCents === b.paydownAmountCents &&
-        a.paydownScheduledDateMs === b.paydownScheduledDateMs
-      );
-    case 'DELAY_PURCHASE':
-      return b.type === 'DELAY_PURCHASE' && a.delayDays === b.delayDays;
-    case 'SWITCH_MERCHANT':
-      return (
-        b.type === 'SWITCH_MERCHANT' &&
-        a.altMerchantName === b.altMerchantName &&
-        a.altMerchantCategoryKey === b.altMerchantCategoryKey
-      );
-    case 'REJECT_PURCHASE':
-      return true;
-    default:
-      return false;
+  if (!Object.prototype.hasOwnProperty.call(CANDIDATE_FIELDS, a.type)) return false;
+  const fieldsA = a as Readonly<Record<string, unknown>>;
+  const fieldsB = b as Readonly<Record<string, unknown>>;
+  return CANDIDATE_FIELDS[a.type].every((field) => fieldsA[field] === fieldsB[field]);
+}
+
+type PaydownBounds = {
+  debtIds: readonly (string | null)[];
+  paydownAmountCents: readonly (number | null)[];
+  paydownScheduledDateMs: readonly (number | null)[];
+};
+
+type PaydownCombo = {
+  debtId: string | null;
+  paydownAmountCents: number | null;
+  paydownScheduledDateMs: number | null;
+};
+
+function forEachPaydownCombo(bounds: PaydownBounds, visit: (combo: PaydownCombo) => void): void {
+  for (const debtId of bounds.debtIds) {
+    for (const paydownAmountCents of bounds.paydownAmountCents) {
+      for (const paydownScheduledDateMs of bounds.paydownScheduledDateMs) {
+        visit({ debtId, paydownAmountCents, paydownScheduledDateMs });
+      }
+    }
   }
 }
 
-export function enumerateCandidatesBounded(
-  _state: EngineState,
-  _ctx: EngineContext,
-  bounds: Bounds
-): readonly Candidate[] {
+type PushCandidate = (candidate: Candidate) => void;
+
+function createCandidateCollector(): { candidates: Candidate[]; push: PushCandidate } {
   const candidates: Candidate[] = [];
   const seen = new Map<string, Candidate>();
-
-  const pushCandidate = (candidate: Candidate): void => {
+  const push = (candidate: Candidate): void => {
     const normalized = normalizeCandidate(candidate);
     const signature = candidateSignature(normalized);
     const existing = seen.get(signature);
@@ -121,47 +122,44 @@ export function enumerateCandidatesBounded(
     seen.set(signature, normalized);
     candidates.push(normalized);
   };
+  return { candidates, push };
+}
 
+function pushCardCandidates(bounds: Bounds, push: PushCandidate): void {
   for (const cardId of bounds.useCard.cardIds) {
-    pushCandidate({ type: 'USE_CARD', cardId });
+    push({ type: 'USE_CARD', cardId });
   }
 
   for (const cardId of bounds.useCardWithPaydown.cardIds) {
-    for (const debtId of bounds.useCardWithPaydown.debtIds) {
-      for (const paydownAmountCents of bounds.useCardWithPaydown.paydownAmountCents) {
-        for (const paydownScheduledDateMs of bounds.useCardWithPaydown.paydownScheduledDateMs) {
-          pushCandidate({
-            type: 'USE_CARD_WITH_PAYDOWN',
-            cardId,
-            debtId,
-            paydownAmountCents,
-            paydownScheduledDateMs,
-          });
-        }
-      }
-    }
+    forEachPaydownCombo(bounds.useCardWithPaydown, (combo) => {
+      push({
+        type: 'USE_CARD_WITH_PAYDOWN',
+        cardId,
+        debtId: combo.debtId,
+        paydownAmountCents: combo.paydownAmountCents,
+        paydownScheduledDateMs: combo.paydownScheduledDateMs,
+      });
+    });
   }
 
-  for (const debtId of bounds.payDownDebt.debtIds) {
-    for (const paydownAmountCents of bounds.payDownDebt.paydownAmountCents) {
-      for (const paydownScheduledDateMs of bounds.payDownDebt.paydownScheduledDateMs) {
-        pushCandidate({
-          type: 'PAY_DOWN_DEBT',
-          debtId,
-          paydownAmountCents,
-          paydownScheduledDateMs,
-        });
-      }
-    }
-  }
+  forEachPaydownCombo(bounds.payDownDebt, (combo) => {
+    push({
+      type: 'PAY_DOWN_DEBT',
+      debtId: combo.debtId,
+      paydownAmountCents: combo.paydownAmountCents,
+      paydownScheduledDateMs: combo.paydownScheduledDateMs,
+    });
+  });
+}
 
+function pushNonCardCandidates(bounds: Bounds, push: PushCandidate): void {
   for (const delayDays of bounds.delayPurchase.delayDays) {
-    pushCandidate({ type: 'DELAY_PURCHASE', delayDays });
+    push({ type: 'DELAY_PURCHASE', delayDays });
   }
 
   for (const altMerchantName of bounds.switchMerchant.altMerchantNames) {
     for (const altMerchantCategoryKey of bounds.switchMerchant.altMerchantCategoryKeys) {
-      pushCandidate({
+      push({
         type: 'SWITCH_MERCHANT',
         altMerchantName,
         altMerchantCategoryKey,
@@ -170,15 +168,25 @@ export function enumerateCandidatesBounded(
   }
 
   if (bounds.rejectPurchase.enabled) {
-    pushCandidate({ type: 'REJECT_PURCHASE' });
+    push({ type: 'REJECT_PURCHASE' });
   }
+}
 
-  candidates.sort((a, b) => {
-    const keyA = candidateKey(a);
-    const keyB = candidateKey(b);
-    if (keyA === keyB) return 0;
-    return keyA < keyB ? -1 : 1;
-  });
+function compareCandidateKeys(a: Candidate, b: Candidate): number {
+  const keyA = candidateKey(a);
+  const keyB = candidateKey(b);
+  if (keyA === keyB) return 0;
+  return keyA < keyB ? -1 : 1;
+}
 
+export function enumerateCandidatesBounded(
+  _state: EngineState,
+  _ctx: EngineContext,
+  bounds: Bounds
+): readonly Candidate[] {
+  const { candidates, push } = createCandidateCollector();
+  pushCardCandidates(bounds, push);
+  pushNonCardCandidates(bounds, push);
+  candidates.sort(compareCandidateKeys);
   return candidates;
 }
