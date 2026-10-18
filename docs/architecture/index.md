@@ -26,6 +26,7 @@ Dependency direction is downward only. `scripts/guardrails/domains.manifest.json
 - `data-flow.md` — scan, session create/confirm/verify, Vine order, Autopilot preview/commit, traced through the layers.
 - `engine-rules.md` — engine-specific rules for agents: freeze, version bumps, purity, file map.
 - `testing.md` — test layout, runners, the FAST / DOMAIN / FULL verification levels, and how to run one file.
+- `completion-matrix.md` — release-readiness matrix: audiences, lifecycle states, journeys, website, security, dependencies, code health, operations, each with evidence and its environment; consolidated owner decisions.
 - `decisions/` — architecture decision records.
 
 ## Finding the owner of a file
