@@ -217,6 +217,7 @@
       "tests": [
         "tests/node/engine-state.prisma.test.js",
         "tests/node/engine-world.test.ts",
+        "tests/node/legacy-engine.prisma.test.js",
         "tests/node/guardrails/prisma-adapter-totality.test.ts"
       ],
       "docs": [
