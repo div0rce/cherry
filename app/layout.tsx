@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Cherry',
-  description: 'Real-time spending copilot with distinct user and dev shells.',
+  description: 'Cherry is a spending copilot: before you buy, it recommends which of your cards to use. It never moves money.',
 };
 
 export default function RootLayout({

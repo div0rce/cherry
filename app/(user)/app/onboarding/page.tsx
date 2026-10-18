@@ -258,7 +258,7 @@ export default async function OnboardingPage({
   const hasMissingLabel = typeof missingLabel === 'string' && missingLabel.length > 0;
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">
+    <div className="bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">
       <div className="mx-auto max-w-6xl px-4 py-10 space-y-8">
         <header className="space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#ff4d6d]">
@@ -320,6 +320,6 @@ export default async function OnboardingPage({
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

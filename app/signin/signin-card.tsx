@@ -26,6 +26,7 @@ export function SignInCard({
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [linkSentTo, setLinkSentTo] = useState<string | null>(null);
   // Which providers this deployment has (credentials is dev-only; Google and Email depend on
   // env). undefined while loading, null if the lookup failed.
   const [providers, setProviders] = useState<Record<string, unknown> | null | undefined>(undefined);
@@ -61,7 +62,13 @@ export function SignInCard({
         return;
       }
       setSubmitting(true);
-      await signIn('email', { email: email.trim(), callbackUrl });
+      const sent = await signIn('email', { email: email.trim(), callbackUrl, redirect: false });
+      setSubmitting(false);
+      if (hasText(sent?.error)) {
+        setStatus('We could not send a sign-in link. Check the address and try again.');
+        return;
+      }
+      setLinkSentTo(email.trim());
       return;
     }
 
@@ -102,22 +109,30 @@ export function SignInCard({
       return;
     }
 
-    if (hasText(result?.url)) {
-      window.location.href = result.url;
-    }
+    window.location.href = hasText(result?.url) ? result.url : callbackUrl;
   }
 
   return (
     <div className="rounded-2xl border border-white/5 bg-white/5 p-6 shadow-2xl backdrop-blur">
       <div className="space-y-1">
-        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Welcome back</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-pink-200">Welcome</p>
         <h2 className="text-2xl font-semibold text-white">Sign in to Cherry</h2>
         <p className="text-sm text-slate-300">Continue to your cards and buckets.</p>
       </div>
 
       {(hasText(error) || hasText(status)) && (
-        <div className="mt-4 rounded-lg border border-red-500/40 bg-red-900/30 px-3 py-2 text-sm text-red-100">
+        <div role="alert" className="mt-4 rounded-lg border border-red-500/40 bg-red-900/30 px-3 py-2 text-sm text-red-100">
           {hasText(error) ? error : status}
+        </div>
+      )}
+
+      {providers === undefined && (
+        <p className="mt-4 text-sm text-slate-300" aria-live="polite">Loading sign-in options…</p>
+      )}
+
+      {hasText(linkSentTo) && (
+        <div role="status" className="mt-4 rounded-lg border border-emerald-400/40 bg-emerald-900/30 px-3 py-2 text-sm text-emerald-100">
+          Check your email. We sent a sign-in link to {linkSentTo}. You can close this tab.
         </div>
       )}
 
@@ -125,11 +140,13 @@ export function SignInCard({
         <p className="mt-4 text-sm text-slate-300">No sign-in method is configured for this environment.</p>
       )}
 
-      {(usesPassword || usesEmailLink) && (
+      {(usesPassword || usesEmailLink) && !hasText(linkSentTo) && (
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-200">Email</label>
+            <label htmlFor="signin-email" className="text-sm font-medium text-slate-200">Email</label>
             <input
+              id="signin-email"
+              autoComplete="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -142,9 +159,11 @@ export function SignInCard({
           {usesPassword && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-200">Password</label>
+                <label htmlFor="signin-password" className="text-sm font-medium text-slate-200">Password</label>
                 <button
                   type="button"
+                  aria-pressed={showPassword}
+                  aria-controls="signin-password"
                   onClick={() => setShowPassword((v) => !v)}
                   className="text-xs text-pink-200 hover:text-pink-100"
                 >
@@ -152,6 +171,8 @@ export function SignInCard({
                 </button>
               </div>
               <input
+                id="signin-password"
+                autoComplete="current-password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -179,7 +200,7 @@ export function SignInCard({
           <SocialButtons callbackUrl={callbackUrl} showDivider={usesPassword || usesEmailLink} />
         )}
         <p className="text-[11px] text-slate-500">
-          By continuing you agree to the Cherry Terms and Privacy Policy.
+          Cherry is a spending copilot, not a card. It recommends; it never moves money or touches your payments.
         </p>
       </div>
     </div>

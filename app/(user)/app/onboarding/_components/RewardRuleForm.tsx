@@ -57,16 +57,17 @@ export function RewardRuleForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Scope</label>
-          <select name="scope" defaultValue={defaultScope} className={inputClasses}>
+          <label htmlFor="field-scope" className="block text-sm font-semibold text-[#0f172a]">Scope</label>
+          <select id="field-scope" name="scope" defaultValue={defaultScope} className={inputClasses}>
             <option value="BASE">Base (catch-all)</option>
             <option value="CATEGORY">Specific category</option>
           </select>
           <FieldError errors={state.fieldErrors?.['scope'] ?? []} />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Category</label>
+          <label htmlFor="field-category" className="block text-sm font-semibold text-[#0f172a]">Category</label>
           <select
+            id="field-category"
             name="category"
             defaultValue={defaultValues?.category ?? 'OTHER'}
             className={inputClasses}
@@ -83,8 +84,8 @@ export function RewardRuleForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Reward type</label>
-          <div className="grid grid-cols-2 gap-2">
+          <span id="group-reward-type" className="block text-sm font-semibold text-[#0f172a]">Reward type</span>
+          <div role="radiogroup" aria-labelledby="group-reward-type" className="grid grid-cols-2 gap-2">
             <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#0f172a]">
               <input type="radio" name="rateKind" value="points" defaultChecked={defaultRateKind === 'points'} />
               Points (x)
@@ -97,8 +98,9 @@ export function RewardRuleForm({
           <FieldError errors={state.fieldErrors?.['rateKind'] ?? []} />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Rate</label>
+          <label htmlFor="field-rateValue" className="block text-sm font-semibold text-[#0f172a]">Rate</label>
           <input
+            id="field-rateValue"
             type="number"
             name="rateValue"
             min="0"

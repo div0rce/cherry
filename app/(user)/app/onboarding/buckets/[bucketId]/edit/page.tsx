@@ -40,7 +40,7 @@ export default async function EditBucketPage({
   }
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">
+    <div className="bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">
       <div className="mx-auto max-w-3xl px-4 py-10 space-y-6">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-2">
@@ -74,6 +74,6 @@ export default async function EditBucketPage({
           }
         />
       </div>
-    </main>
+    </div>
   );
 }
