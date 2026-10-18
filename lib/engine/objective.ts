@@ -230,223 +230,287 @@ function pushWeightedComponent(
 function basisPoints(delta: number): number {
   return delta * 10_000;
 }
+export type ObjectiveProjections = {
+  buckets: BucketProjection[];
+  debt: DebtProjection[];
+  cash: CashProjection;
+};
 
-function buildObjective(
-  state: EngineState,
-  ctx: EngineContext,
-  action: EngineAction,
-  projections: {
-    buckets: BucketProjection[];
-    debt: DebtProjection[];
-    cash: CashProjection;
-  },
-  weights: ObjectiveWeights
-): ObjectiveBuildResult {
-  const normalizedWeights = normalizeObjectiveWeights(weights);
-  const scoreComponents: ObjectiveComponent[] = [];
-  const components: ObjectiveComponentScores = {
-    rewards: 0,
-    runway: 0,
-    debtRelief: 0,
-  };
+export type ObjectiveScenario = {
+  state: EngineState;
+  ctx: EngineContext;
+  action: EngineAction;
+  projections: ObjectiveProjections;
+};
 
-  // 1) Reward estimate. Points are explicitly valued before entering the objective.
-  if (
-    (action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    hasNonEmptyString(action.cardId) &&
-    hasNonZeroNumber(ctx.amountCents)
-  ) {
-    const card = state.cards.find((c) => c.id === action.cardId);
-    if (card !== undefined) {
-      const rewardSemantics = getRewardSemanticsForCardSpend({
-        card,
-        amountCents: ctx.amountCents,
-        merchantCategoryKey: ctx.merchantCategoryKey,
-      });
-      if (rewardSemantics?.rewardUnit === 'cashback_cents') {
-        const rewardValueCents = centsToUtilityCents(centsOrZero(rewardSemantics.rewardValueCents));
-        components.rewards = Number(rewardValueCents);
-        pushWeightedComponent(scoreComponents, {
-          key: 'reward_value',
-          kind: 'reward_value',
-          rawUtilityCents: rewardValueCents,
-          weight: normalizedWeights.rewards,
-          interpretation:
-            'Cashback reward value converted at face value into objectiveUtilityCents and multiplied by the rewards preference weight.',
-        });
-      } else if (rewardSemantics?.rewardUnit === 'issuer_points') {
-        const rewardPoints =
-          rewardSemantics.rewardPoints == null ? 0 : rewardSemantics.rewardPoints;
-        const rewardValueCents = rewardPointsToUtilityCents(rewardPoints);
-        components.rewards = Number(rewardValueCents);
-        pushWeightedComponent(scoreComponents, {
-          key: 'reward_point_value',
-          kind: 'reward_value',
-          rawUtilityCents: rewardValueCents,
-          weight: normalizedWeights.rewards,
-          interpretation:
-            'Issuer points converted through REWARD_POINT_VALUE_CENTS into objectiveUtilityCents and multiplied by the rewards preference weight.',
-        });
-      }
-    }
+type ObjectiveAccumulator = {
+  scoreComponents: ObjectiveComponent[];
+  components: ObjectiveComponentScores;
+  weights: ObjectiveWeights;
+};
+
+function isCardSpendAction(action: EngineAction): boolean {
+  if (action.type === 'USE_CARD') return true;
+  return action.type === 'USE_CARD_WITH_PAYDOWN';
+}
+
+function isPaydownAction(action: EngineAction): boolean {
+  if (action.type === 'PAY_DOWN_DEBT') return true;
+  return action.type === 'USE_CARD_WITH_PAYDOWN';
+}
+
+function paydownAmountOf(action: EngineAction): number | null {
+  if (!isPaydownAction(action)) return null;
+  return hasNonZeroNumber(action.paydownAmountCents) ? action.paydownAmountCents : null;
+}
+
+function addCashbackReward(acc: ObjectiveAccumulator, rewardValueCentsInput?: number | null): void {
+  const rewardValueCents = centsToUtilityCents(centsOrZero(rewardValueCentsInput));
+  acc.components.rewards = Number(rewardValueCents);
+  pushWeightedComponent(acc.scoreComponents, {
+    key: 'reward_value',
+    kind: 'reward_value',
+    rawUtilityCents: rewardValueCents,
+    weight: acc.weights.rewards,
+    interpretation:
+      'Cashback reward value converted at face value into objectiveUtilityCents and multiplied by the rewards preference weight.',
+  });
+}
+
+function addIssuerPointsReward(acc: ObjectiveAccumulator, rewardPointsInput?: number | null): void {
+  const rewardPoints = rewardPointsInput == null ? 0 : rewardPointsInput;
+  const rewardValueCents = rewardPointsToUtilityCents(rewardPoints);
+  acc.components.rewards = Number(rewardValueCents);
+  pushWeightedComponent(acc.scoreComponents, {
+    key: 'reward_point_value',
+    kind: 'reward_value',
+    rawUtilityCents: rewardValueCents,
+    weight: acc.weights.rewards,
+    interpretation:
+      'Issuer points converted through REWARD_POINT_VALUE_CENTS into objectiveUtilityCents and multiplied by the rewards preference weight.',
+  });
+}
+
+function findRewardCard(scenario: ObjectiveScenario): EngineState['cards'][number] | undefined {
+  const { state, ctx, action } = scenario;
+  if (!isCardSpendAction(action)) return undefined;
+  if (!hasNonEmptyString(action.cardId)) return undefined;
+  if (!hasNonZeroNumber(ctx.amountCents)) return undefined;
+  return state.cards.find((c) => c.id === action.cardId);
+}
+
+// 1) Reward estimate. Points are explicitly valued before entering the objective.
+function addRewardComponent(acc: ObjectiveAccumulator, scenario: ObjectiveScenario): void {
+  const card = findRewardCard(scenario);
+  if (card === undefined) return;
+  const rewardSemantics = getRewardSemanticsForCardSpend({
+    card,
+    amountCents: scenario.ctx.amountCents,
+    merchantCategoryKey: scenario.ctx.merchantCategoryKey,
+  });
+  if (rewardSemantics?.rewardUnit === 'cashback_cents') {
+    addCashbackReward(acc, rewardSemantics.rewardValueCents);
+  } else if (rewardSemantics?.rewardUnit === 'issuer_points') {
+    addIssuerPointsReward(acc, rewardSemantics.rewardPoints);
   }
+}
 
-  // 2) Runway: bounded heuristic pressure for essential liquidity margin.
+function countsTowardEssentialMargin(bucket: EngineState['buckets'][number]): boolean {
+  if (!hasKnownBucketEssentiality(bucket)) return false;
+  if (!isBucketEssential(bucket)) return false;
+  return bucket.limitCents != null;
+}
+
+function sumEssentialMarginUtilityCents(scenario: ObjectiveScenario): number {
   let essentialMarginUtilityCents = 0;
-  const capabilities = getEngineCapabilities(state);
-  if (capabilities.essentiality.available === true) {
-    for (const proj of projections.buckets) {
-      const bucket = state.buckets.find((b) => b.id === proj.bucketId);
-      if (bucket === undefined) continue;
-      if (
-        hasKnownBucketEssentiality(bucket) &&
-        isBucketEssential(bucket) &&
-        bucket.limitCents != null
-      ) {
-        essentialMarginUtilityCents += proj.projectedRemainingCents;
-      }
+  for (const proj of scenario.projections.buckets) {
+    const bucket = scenario.state.buckets.find((b) => b.id === proj.bucketId);
+    if (bucket === undefined) continue;
+    if (countsTowardEssentialMargin(bucket)) {
+      essentialMarginUtilityCents += proj.projectedRemainingCents;
     }
   }
-  if (essentialMarginUtilityCents !== 0) {
-    components.runway += essentialMarginUtilityCents;
-    pushWeightedComponent(scoreComponents, {
-      key: 'essential_margin_runway',
-      kind: 'liquidity_pressure',
-      rawUtilityCents: utilityCents(essentialMarginUtilityCents),
-      weight: normalizedWeights.runway,
-      interpretation:
-        'Bounded non-utility heuristic for projected essential bucket margin, multiplied by the runway preference weight.',
-      boundedHeuristic: true,
-    });
-  }
+  return essentialMarginUtilityCents;
+}
 
-  // 3) Debt relief: bounded utility-adjusted contribution with explicit constants.
-  let utilizationReliefUtilityCents = 0;
-  let balanceReliefUtilityCents = 0;
+// 2) Runway: bounded heuristic pressure for essential liquidity margin.
+function addRunwayComponent(
+  acc: ObjectiveAccumulator,
+  scenario: ObjectiveScenario,
+  capabilities: ReturnType<typeof getEngineCapabilities>
+): void {
+  const essentialMarginUtilityCents =
+    capabilities.essentiality.available === true ? sumEssentialMarginUtilityCents(scenario) : 0;
+  if (essentialMarginUtilityCents === 0) return;
+  acc.components.runway += essentialMarginUtilityCents;
+  pushWeightedComponent(acc.scoreComponents, {
+    key: 'essential_margin_runway',
+    kind: 'liquidity_pressure',
+    rawUtilityCents: utilityCents(essentialMarginUtilityCents),
+    weight: acc.weights.runway,
+    interpretation:
+      'Bounded non-utility heuristic for projected essential bucket margin, multiplied by the runway preference weight.',
+    boundedHeuristic: true,
+  });
+}
+
+function currentUtilizationOf(debt: ReturnType<typeof getDebtAccounts>[number]): number | null {
+  const limit = debt.creditLimitCents;
+  if (limit == null) return null;
+  if (!(limit > 0)) return null;
+  return debt.balanceCents / limit;
+}
+
+function utilizationDeltaOf(
+  projectedUtilization: number | null | undefined,
+  currentUtil: number | null,
+  utilizationAvailable: boolean
+): number | null {
+  if (!utilizationAvailable) return null;
+  if (projectedUtilization == null) return null;
+  if (currentUtil == null) return null;
+  return currentUtil - projectedUtilization;
+}
+
+type DebtReliefTotals = {
+  utilizationReliefUtilityCents: number;
+  balanceReliefUtilityCents: number;
+};
+
+function sumDebtRelief(
+  scenario: ObjectiveScenario,
+  capabilities: ReturnType<typeof getEngineCapabilities>
+): DebtReliefTotals {
+  const totals: DebtReliefTotals = { utilizationReliefUtilityCents: 0, balanceReliefUtilityCents: 0 };
+  const debts = getDebtAccounts(scenario.state.debts);
+  const utilizationAvailable = capabilities.utilization.available === true;
+  for (const proj of scenario.projections.debt) {
+    const debt = debts.find((d) => d.id === proj.debtId);
+    if (debt === undefined) continue;
+    const utilizationDelta = utilizationDeltaOf(
+      proj.projectedUtilization,
+      currentUtilizationOf(debt),
+      utilizationAvailable
+    );
+    if (utilizationDelta !== null) {
+      totals.utilizationReliefUtilityCents +=
+        basisPoints(utilizationDelta) * UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT;
+    } else {
+      const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
+      totals.balanceReliefUtilityCents +=
+        balanceDelta * DEBT_BALANCE_RELIEF_UTILITY_CENTS_PER_DEBT_CENT;
+    }
+  }
+  return totals;
+}
+
+// 3) Debt relief: bounded utility-adjusted contribution with explicit constants.
+function addDebtReliefComponent(
+  acc: ObjectiveAccumulator,
+  scenario: ObjectiveScenario,
+  capabilities: ReturnType<typeof getEngineCapabilities>
+): void {
+  const totals: DebtReliefTotals =
+    capabilities.debt.available === true
+      ? sumDebtRelief(scenario, capabilities)
+      : { utilizationReliefUtilityCents: 0, balanceReliefUtilityCents: 0 };
   let paydownActionUtilityCents = 0;
-  const debts = getDebtAccounts(state.debts);
-  if (capabilities.debt.available === true) {
-    for (const proj of projections.debt) {
-      const debt = debts.find((d) => d.id === proj.debtId);
-      if (debt === undefined) continue;
-      const currentUtil =
-        debt.creditLimitCents !== null &&
-        debt.creditLimitCents !== undefined &&
-        debt.creditLimitCents > 0
-          ? debt.balanceCents / debt.creditLimitCents
-          : null;
-
-      if (
-        capabilities.utilization.available === true &&
-        proj.projectedUtilization != null &&
-        currentUtil != null
-      ) {
-        utilizationReliefUtilityCents +=
-          basisPoints(currentUtil - proj.projectedUtilization) *
-          UTILIZATION_RELIEF_UTILITY_CENTS_PER_BASIS_POINT;
-      } else {
-        const balanceDelta = debt.balanceCents - proj.projectedBalanceCents;
-        balanceReliefUtilityCents +=
-          balanceDelta * DEBT_BALANCE_RELIEF_UTILITY_CENTS_PER_DEBT_CENT;
-      }
-    }
-  }
-
-  if (
-    (action.type === 'PAY_DOWN_DEBT' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    action.paydownAmountCents !== null &&
-    action.paydownAmountCents !== undefined &&
-    !Number.isNaN(action.paydownAmountCents) &&
-    action.paydownAmountCents !== 0
-  ) {
+  if (paydownAmountOf(scenario.action) !== null) {
     paydownActionUtilityCents += PAYDOWN_ACTION_BONUS_UTILITY_CENTS;
   }
   const debtRelief =
-    utilizationReliefUtilityCents + balanceReliefUtilityCents + paydownActionUtilityCents;
-  if (debtRelief !== 0) {
-    components.debtRelief = Number(utilityCents(debtRelief));
-    pushWeightedComponent(scoreComponents, {
-      key: 'debt_relief',
-      kind: 'debt_relief',
-      rawUtilityCents: utilityCents(debtRelief),
-      weight: normalizedWeights.debtRelief,
-      interpretation:
-        'Debt relief converted through explicit utilization and balance-relief utility constants, then multiplied by the debt-relief preference weight.',
-      boundedHeuristic: true,
-    });
-  }
+    totals.utilizationReliefUtilityCents +
+    totals.balanceReliefUtilityCents +
+    paydownActionUtilityCents;
+  if (debtRelief === 0) return;
+  acc.components.debtRelief = Number(utilityCents(debtRelief));
+  pushWeightedComponent(acc.scoreComponents, {
+    key: 'debt_relief',
+    kind: 'debt_relief',
+    rawUtilityCents: utilityCents(debtRelief),
+    weight: acc.weights.debtRelief,
+    interpretation:
+      'Debt relief converted through explicit utilization and balance-relief utility constants, then multiplied by the debt-relief preference weight.',
+    boundedHeuristic: true,
+  });
+}
 
-  if (action.type === 'DELAY_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
-    const delayPenalty = -0.01 * ctx.amountCents;
-    components.runway += delayPenalty;
-    pushWeightedComponent(scoreComponents, {
-      key: 'delay_purchase_liquidity_pressure',
-      kind: 'liquidity_pressure',
-      rawUtilityCents: utilityCents(delayPenalty),
-      weight: normalizedWeights.runway,
-      interpretation:
-        'Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.',
-      boundedHeuristic: true,
-    });
-  }
+type PurchasePenaltySpec = {
+  rate: number;
+  key: string;
+  interpretation: string;
+};
 
-  if (action.type === 'REJECT_PURCHASE' && hasNonZeroNumber(ctx.amountCents)) {
-    const rejectPenalty = -0.05 * ctx.amountCents;
-    components.runway += rejectPenalty;
-    pushWeightedComponent(scoreComponents, {
-      key: 'reject_purchase_liquidity_pressure',
-      kind: 'liquidity_pressure',
-      rawUtilityCents: utilityCents(rejectPenalty),
-      weight: normalizedWeights.runway,
-      interpretation:
-        'Bounded non-utility penalty used to represent the friction of rejecting the purchase while protecting constraints.',
-      boundedHeuristic: true,
-    });
-  }
+const PURCHASE_PENALTIES: Partial<Record<EngineAction['type'], PurchasePenaltySpec>> = {
+  DELAY_PURCHASE: {
+    rate: -0.01,
+    key: 'delay_purchase_liquidity_pressure',
+    interpretation:
+      'Bounded non-utility penalty used to discourage fragile near-term liquidity outcomes from delaying the purchase.',
+  },
+  REJECT_PURCHASE: {
+    rate: -0.05,
+    key: 'reject_purchase_liquidity_pressure',
+    interpretation:
+      'Bounded non-utility penalty used to represent the friction of rejecting the purchase while protecting constraints.',
+  },
+};
 
-  const objectiveUtilityCents = sumObjectiveUtility(scoreComponents);
+function addPurchasePenaltyComponent(acc: ObjectiveAccumulator, scenario: ObjectiveScenario): void {
+  const spec = PURCHASE_PENALTIES[scenario.action.type];
+  if (spec === undefined) return;
+  const amountCents = scenario.ctx.amountCents;
+  if (!hasNonZeroNumber(amountCents)) return;
+  const penalty = spec.rate * amountCents;
+  acc.components.runway += penalty;
+  pushWeightedComponent(acc.scoreComponents, {
+    key: spec.key,
+    kind: 'liquidity_pressure',
+    rawUtilityCents: utilityCents(penalty),
+    weight: acc.weights.runway,
+    interpretation: spec.interpretation,
+    boundedHeuristic: true,
+  });
+}
+
+function buildObjective(scenario: ObjectiveScenario, weights: ObjectiveWeights): ObjectiveBuildResult {
+  const acc: ObjectiveAccumulator = {
+    scoreComponents: [],
+    components: {
+      rewards: 0,
+      runway: 0,
+      debtRelief: 0,
+    },
+    weights: normalizeObjectiveWeights(weights),
+  };
+
+  addRewardComponent(acc, scenario);
+  const capabilities = getEngineCapabilities(scenario.state);
+  addRunwayComponent(acc, scenario, capabilities);
+  addDebtReliefComponent(acc, scenario, capabilities);
+  addPurchasePenaltyComponent(acc, scenario);
+
+  const objectiveUtilityCents = sumObjectiveUtility(acc.scoreComponents);
   return {
     objectiveUtilityCents,
-    scoreComponents,
-    components,
-    weights: normalizedWeights,
+    scoreComponents: acc.scoreComponents,
+    components: acc.components,
+    weights: acc.weights,
   };
 }
 
-// Main scoring function that returns a scalar + human-readable reasons.
-export function scoreDecision(
-  state: EngineState,
-  ctx: EngineContext,
-  action: EngineAction,
-  projections: {
-    buckets: BucketProjection[];
-    debt: DebtProjection[];
-    cash: CashProjection;
-  },
-  weights?: ObjectiveWeights
-): {
-  score: number;
-  objectiveUtilityCents: UtilityCents;
-  scoreUnit: typeof OBJECTIVE_SCORE_UNIT;
-  scoreComponents: readonly ObjectiveComponent[];
-  reasons: string[];
-  components: ObjectiveComponentScores;
-  weights: ObjectiveWeights;
-} {
-  const resolvedWeights = weights == null ? getObjectiveWeightsForState(state) : weights;
-  const objective = buildObjective(state, ctx, action, projections, resolvedWeights);
+function cardSpendRewardSemantics(scenario: ObjectiveScenario) {
+  const { state, ctx, action } = scenario;
+  if (!isCardSpendAction(action) || !hasNonEmptyString(action.cardId)) return null;
+  return getRewardSemanticsForCardSpend({
+    card: state.cards.find((card) => card.id === action.cardId),
+    amountCents: ctx.amountCents,
+    merchantCategoryKey: ctx.merchantCategoryKey,
+  });
+}
 
-  const reasons: string[] = [];
-  const rewardSemantics =
-    (action.type === 'USE_CARD' || action.type === 'USE_CARD_WITH_PAYDOWN') &&
-    hasNonEmptyString(action.cardId)
-      ? getRewardSemanticsForCardSpend({
-          card: state.cards.find((card) => card.id === action.cardId),
-          amountCents: ctx.amountCents,
-          merchantCategoryKey: ctx.merchantCategoryKey,
-        })
-      : null;
-
+function pushRewardReason(reasons: string[], scenario: ObjectiveScenario): void {
+  const rewardSemantics = cardSpendRewardSemantics(scenario);
   const rewardValueCents = centsOrZero(rewardSemantics?.rewardValueCents);
   const rewardPoints = rewardSemantics?.rewardPoints != null ? rewardSemantics.rewardPoints : 0;
 
@@ -460,42 +524,56 @@ export function scoreDecision(
       `Estimated issuer point objective value: $${formatCentsAsDollars(pointUtilityCents)} using REWARD_POINT_VALUE_CENTS.`
     );
   }
+}
 
-  if (objective.components.runway !== 0) {
-    reasons.push(
-      'Applied bounded liquidity-pressure heuristic in objectiveUtilityCents.'
-    );
+function pushComponentReasons(reasons: string[], components: ObjectiveComponentScores): void {
+  if (components.runway !== 0) {
+    reasons.push('Applied bounded liquidity-pressure heuristic in objectiveUtilityCents.');
   }
-
-  if (objective.components.debtRelief !== 0) {
-    reasons.push(
-      'Applied bounded debt-relief contribution through documented utility constants.'
-    );
+  if (components.debtRelief !== 0) {
+    reasons.push('Applied bounded debt-relief contribution through documented utility constants.');
   }
+}
 
-  if (
-    (action.type === 'USE_CARD_WITH_PAYDOWN' || action.type === 'PAY_DOWN_DEBT') &&
-    action.paydownAmountCents !== null &&
-    action.paydownAmountCents !== undefined &&
-    !Number.isNaN(action.paydownAmountCents) &&
-    action.paydownAmountCents !== 0
-  ) {
-    reasons.push(
-      `Includes a paydown of ${formatCentsAsDollars(action.paydownAmountCents)} toward debt.`
-    );
+const ACTION_TYPE_REASONS: Partial<Record<EngineAction['type'], string>> = {
+  SWITCH_MERCHANT: 'Suggests an alternate merchant in the same category to save cost.',
+  REJECT_PURCHASE: 'Recommends skipping this purchase to protect constraints.',
+};
+
+function pushActionReasons(reasons: string[], action: EngineAction): void {
+  const paydownAmountCents = paydownAmountOf(action);
+  if (paydownAmountCents !== null) {
+    reasons.push(`Includes a paydown of ${formatCentsAsDollars(paydownAmountCents)} toward debt.`);
   }
-
   if (action.type === 'DELAY_PURCHASE' && hasNonZeroNumber(action.delayDays)) {
     reasons.push(`Delays purchase by ${action.delayDays} day(s) to reduce near-term risk.`);
   }
-
-  if (action.type === 'SWITCH_MERCHANT') {
-    reasons.push('Suggests an alternate merchant in the same category to save cost.');
+  const typeReason = ACTION_TYPE_REASONS[action.type];
+  if (typeReason !== undefined) {
+    reasons.push(typeReason);
   }
+}
 
-  if (action.type === 'REJECT_PURCHASE') {
-    reasons.push('Recommends skipping this purchase to protect constraints.');
-  }
+// Main scoring function that returns a scalar + human-readable reasons.
+export function scoreDecision(
+  scenario: ObjectiveScenario,
+  weights?: ObjectiveWeights
+): {
+  score: number;
+  objectiveUtilityCents: UtilityCents;
+  scoreUnit: typeof OBJECTIVE_SCORE_UNIT;
+  scoreComponents: readonly ObjectiveComponent[];
+  reasons: string[];
+  components: ObjectiveComponentScores;
+  weights: ObjectiveWeights;
+} {
+  const resolvedWeights = weights == null ? getObjectiveWeightsForState(scenario.state) : weights;
+  const objective = buildObjective(scenario, resolvedWeights);
+
+  const reasons: string[] = [];
+  pushRewardReason(reasons, scenario);
+  pushComponentReasons(reasons, objective.components);
+  pushActionReasons(reasons, scenario.action);
 
   return {
     score: objective.objectiveUtilityCents,
@@ -509,14 +587,7 @@ export function scoreDecision(
 }
 
 export function scoreAction(
-  state: EngineState,
-  ctx: EngineContext,
-  action: EngineAction,
-  projections: {
-    buckets: BucketProjection[];
-    debt: DebtProjection[];
-    cash: CashProjection;
-  },
+  scenario: ObjectiveScenario,
   weights: ObjectiveWeights
 ): {
   score: number;
@@ -525,7 +596,7 @@ export function scoreAction(
   scoreComponents: readonly ObjectiveComponent[];
   components: ObjectiveComponentScores;
 } {
-  const objective = buildObjective(state, ctx, action, projections, weights);
+  const objective = buildObjective(scenario, weights);
   return {
     score: objective.objectiveUtilityCents,
     objectiveUtilityCents: objective.objectiveUtilityCents,
