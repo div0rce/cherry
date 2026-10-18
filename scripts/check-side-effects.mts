@@ -5,6 +5,7 @@ import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { parseJson } from './guardrails/lib/read-json.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
+import { resolveRootArg } from './lib/root-arg.mjs';
 import { asIsoDate, type IsoDateString } from '../lib/util/iso-date.js';
 
 ensureTsEsm();
@@ -33,7 +34,7 @@ type AllowlistEntryRaw = {
   expiresBy?: string | undefined;
 };
 
-const ROOT = process.cwd();
+const ROOT = resolveRootArg(process.argv);
 const PREFIX = 'check:side-effects';
 const FIX = 'Declare side effects in scripts/side-effects.allowlist.json or remove them.';
 const TARGET = path.join(ROOT, 'lib');
@@ -60,7 +61,10 @@ const SIDE_EFFECT_PATTERNS: Record<string, RegExp> = {
   next_revalidate: /\brevalidatePath\s*\(/,
   next_headers: /\bheaders\s*\(/,
   next_cookies: /\bcookies\s*\(/,
-  time: /\bnew Date\s*\(|\bDate\.now\s*\(/,
+  // A clock read is `Date.now()` or `new Date()` with no arguments. `new Date(value)` is a pure
+  // conversion of a supplied timestamp and is not a side effect. A spread (`new Date(...args)`)
+  // may be empty, so it counts as a clock read.
+  time: /\bnew Date\s*\(\s*(?:\)|\.\.\.)|\bDate\.now\s*\(/,
   random: /\bMath\.random\s*\(/,
 };
 

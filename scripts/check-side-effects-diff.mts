@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { parseJson } from './guardrails/lib/read-json.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
+import { resolveRootArg } from './lib/root-arg.mjs';
 import { runTool } from './guardrails/lib/run-tool.mjs';
 import { asIsoDate, type IsoDateString } from '../lib/util/iso-date.js';
 
@@ -28,7 +29,7 @@ type AllowlistEntryRaw = {
   expiresBy?: string | undefined;
 };
 
-const ROOT = process.cwd();
+const ROOT = resolveRootArg(process.argv);
 const PREFIX = 'check:side-effects:diff';
 const FIX = 'Update scripts/side-effects.allowlist.json or remove new side effects.';
 const ALLOWLIST_PATH = path.join(ROOT, 'scripts', 'side-effects.allowlist.json');
@@ -130,7 +131,7 @@ function loadCurrentAllowlist(): Record<string, AllowlistEntry> {
 }
 
 function loadPreviousAllowlist(): Record<string, AllowlistEntry> | null {
-  const result = runTool('git', ['show', 'HEAD~1:scripts/side-effects.allowlist.json']);
+  const result = runTool('git', ['show', 'HEAD~1:scripts/side-effects.allowlist.json'], { cwd: ROOT });
   if (result.exitCode !== 0) {
     return null;
   }
@@ -175,7 +176,7 @@ function resolveEpochMs(): number {
     }
     return parsed > 1_000_000_000_000 ? Math.trunc(parsed) : Math.trunc(parsed * 1000);
   }
-  const gitEpochResult = runTool('git', ['log', '-1', '--format=%ct']);
+  const gitEpochResult = runTool('git', ['log', '-1', '--format=%ct'], { cwd: ROOT });
   if (gitEpochResult.exitCode !== 0) {
     guardrailFail('Unable to determine epoch from git log');
   }
@@ -260,8 +261,11 @@ function main(): void {
     if (prevEntry.source !== currEntry.source) {
       sourceChanges += 1;
     }
+    // An entry may drop expiresBy only by leaving the legacy-combo tier (its clock read is gone);
+    // the tier itself is verified against detected effects by check:side-effects.
     if (
       prevEntry.tier === 'legacy-combo' &&
+      currEntry.tier === 'legacy-combo' &&
       prevEntry.expiresBy !== undefined &&
       currEntry.expiresBy === undefined
     ) {
