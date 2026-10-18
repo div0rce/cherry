@@ -184,9 +184,11 @@
     "@auth/prisma-adapter": "2.11.3",
     "@prisma/client": "^6.19.0",
     "@radix-ui/react-slot": "^1.2.4",
+    "@simplewebauthn/server": "^9.0.3",
+    "@simplewebauthn/types": "^9.0.1",
     "@tailwindcss/oxide": "4.1.18",
     "class-variance-authority": "^0.7.1",
-    "csv-parse": "^6.1.0",
+    "csv-parse": "^7.0.3",
     "lightningcss": "1.24.1",
     "next": "^16.3.8",
     "next-auth": "5.0.0-beta.32",
@@ -206,8 +208,6 @@
     }
   },
   "devDependencies": {
-    "@simplewebauthn/server": "^9.0.3",
-    "@simplewebauthn/types": "^9.0.1",
     "@tailwindcss/language-server": "^0.14.29",
     "@tailwindcss/postcss": "^4",
     "@types/cookie": "^0.6.0",
@@ -227,7 +227,7 @@
     "tailwindcss": "^4",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "4.19.2",
+    "tsx": "4.20.6",
     "typescript": "^5"
   }
 }
