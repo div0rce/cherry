@@ -1,38 +1,18 @@
 import type { BucketPeriod } from '@prisma/client';
+import { parseInstant } from '../../lib/util/instant.js';
 
 type ResolveNowOptions = { allowImplicit?: boolean };
 
 export function resolveNow(raw: unknown, options?: ResolveNowOptions): Date {
-  if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
-    return raw;
+  const parsed = parseInstant(raw);
+  if (parsed !== null) return parsed;
+  if (options?.allowImplicit !== true) {
+    throw new Error('Implicit time is forbidden. Thread `now` explicitly from boundary.');
   }
-
-  if (typeof raw === 'number' && Number.isFinite(raw)) {
-    const parsed = new Date(raw);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed;
-    }
+  if ((process.env.NODE_ENV ?? 'development') === 'production') {
+    throw new Error('Implicit time is forbidden in production. Thread `now` explicitly from boundary.');
   }
-
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
-    if (trimmed !== '') {
-      // Form fields carry epoch milliseconds as a digit string; new Date('1792...') is Invalid Date.
-      const parsed = /^\d+$/.test(trimmed) ? new Date(Number(trimmed)) : new Date(trimmed);
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed;
-      }
-    }
-  }
-
-  if (options?.allowImplicit === true) {
-    if ((process.env.NODE_ENV ?? 'development') === 'production') {
-      throw new Error('Implicit time is forbidden in production. Thread `now` explicitly from boundary.');
-    }
-    return new Date();
-  }
-
-  throw new Error('Implicit time is forbidden. Thread `now` explicitly from boundary.');
+  return new Date();
 }
 
 export function getPeriodWindow(period: BucketPeriod, now: Date): { start: Date; end: Date } {
