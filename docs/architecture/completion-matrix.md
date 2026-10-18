@@ -10,7 +10,7 @@ The single record of release readiness. Every row cites its evidence and labels 
 - **CI:** GitHub Actions.
 - **prod:** a Vercel deployment.
 
-No row has prod evidence yet. Audiences, journeys, and rules come only from the cited docs.
+No row has prod evidence yet: the production deployment (`main` @ `fff4bb5`) built and deployed successfully, but Vercel Authentication protects it, so runtime checks need owner access. Audiences, journeys, and rules come only from the cited docs.
 
 Status values:
 - `done`: verified, with evidence.
@@ -77,13 +77,13 @@ Status values:
 ## 7. Dependencies
 | Item | Evidence | Status |
 | --- | --- | --- |
-| ~95 of 98 Dependabot alerts fixed by the stack | #33; agent sweep | done once merged |
+| ~95 of 98 Dependabot alerts fixed by the stack | merged; 2 open alerts remain on `main` (2026-10-18) | done |
 | esbuild (via tsx), csv-parse | #51 | done |
 | @simplewebauthn/server 9 (alerts #99, #100) | `@auth/core` peer pins `^9`; WebAuthn is never configured, so the code path is unused | **owner decision**: dismiss as not reachable, or wait for Auth.js |
 | node-forge, passkit-generator (npm audit) | no fix published | watch |
 | Dev tooling highs (eslint-config-next, patch-package, prisma CLI) | major-only fixes | open: major upgrades |
 | Dependabot config | `.github/dependabot.yml` (#51) | done |
-| Superseded Dependabot PRs #24–#28 | — | close after merge |
+| Superseded Dependabot PRs #24–#28 | closed 2026-10-18 | done |
 
 ## 8. Code health (CodeScene, fresh analysis 2026-10-18 on the #54 branch)
 | Item | Evidence | Status |
@@ -106,7 +106,7 @@ Status values:
 | Recovery | runbook | partial |
 
 ## Owner decisions (consolidated)
-1. Merge the stack (#32–#55).
+1. ~~Merge the stack (#32–#55).~~ Done 2026-10-18 (merge commits). `main` CI, CodeQL, env-checks, and the Vercel production deploy were green at `fff4bb5`. Dependabot dropped from 98 open alerts to 2 (the @simplewebauthn pair, item 10). #24–#28 closed as superseded.
 2. Bank CSV history purge.
 3. Terms, privacy policy, support contact content.
 4. Hero-spec claims ("automatically", "zero setup", pricing "free", proof points).
