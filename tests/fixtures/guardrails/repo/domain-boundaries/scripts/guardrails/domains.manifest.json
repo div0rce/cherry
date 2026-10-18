@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "description": "fixture",
+  "domains": {
+    "a": { "layer": "core", "description": "a", "owns": ["lib/a/**"], "mayImport": [], "tests": [], "docs": [] },
+    "b": { "layer": "core", "description": "b", "owns": ["lib/b/**"], "mayImport": ["a"], "tests": [], "docs": [] }
+  },
+  "allowedViolations": []
+}

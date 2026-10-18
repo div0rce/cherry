@@ -46,7 +46,7 @@ Last updated: 2026-01-29
 ### 1.2 Allowed flow
 
 legacy state/context
-  -> fromLegacy (quarantine; time + DB allowed)
+  -> fromLegacy (adapter; receives already-loaded state and nowMs; no Date, no DB — check:engine-date and check:engine-prisma cover all of lib/engine/**)
   -> EngineInput (frozen, versioned)
   -> validateEngineInput (total, pure)
   -> solver (pure)
@@ -68,7 +68,7 @@ legacy state/context
 
 ### 2.1 Hard rule
 
-Guardrail environment may not import runtime modules. Ever.
+Guardrail environment may not import runtime modules, except the explicit allowlist in check:environment-import-integrity (brand registry, iso-date, config lock, authority invariants).
 
 Implication:
 - Guardrails must not import from lib/**.

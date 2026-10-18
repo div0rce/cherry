@@ -1,5 +1,5 @@
 Status: Draft
-Last updated: 2026-01-18
+Last updated: 2026-09-22
 
 # Engine ↔ Ledger Boundary
 
@@ -54,7 +54,7 @@ Last updated: 2026-01-18
 - A8 — Monotonic ordering / time correctness
   - Property tests (`tests/node/accounting/property.spec.ts`).
   - DB semantics tests (`tests/db/semantics/time-monotonicity.test.ts`).
-  - Engine boundary test (`tests/engine-accounting-time-order.test.ts`).
+  - Engine boundary test (`tests/node/engine-accounting-time-order.test.ts`).
 - A9 — Materialized == replayed
   - Replay test (`tests/node/accounting/replay-equals-materialized.spec.ts`).
   - DB semantics tests (`tests/db/semantics/accounting-replay.test.ts`).

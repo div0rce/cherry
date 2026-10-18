@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-04-27
+Last updated: 2026-09-22
 
 ## What Cherry Is
 Cherry is a **real-time spending copilot**. It observes context (merchant, amount, user budgets/cards), runs an engine, recommends the right card and budget impact, and offers Cherry Points for following advice. Cherry:
@@ -26,7 +26,7 @@ Canonical docs: `docs/cherry-vision.md`, `docs/legal-constraints.md`, `docs/cher
 ## Stack and Layout
 - Next.js 16 (App Router), React 19, Tailwind tokens in `app/globals.css`.
 - Server-first pages under `app/`; client components marked with `"use client"`.
-- Auth: NextAuth (PrismaAdapter) with `with-user` guard on APIs.
+- Auth: NextAuth (PrismaAdapter); routes resolve the user via `resolveUserContext` (`lib/user-context.ts`) or the `withUser` wrapper.
 - Data: Postgres via Prisma (`prisma/schema.prisma`).
 - Core flows:
   - `/scan` (dev UI) → `/api/scan` for advisory preview, then `/api/sessions` to create a recommendation session.
@@ -120,7 +120,7 @@ Also available via UI: `/scan`, `/sessions`, `/vine-simulator`, `/admin`.
 - `CherryPointLedger` — Cherry Points movements (PENDING/POSTED/REVOKED) tied to sessions; anomalies flagged.
 - MCC mapping tables: `MerchantCategory`, `MccToRewardCategory`.
 
-Always import Prisma from `@/lib/prisma` and validate inputs with Zod schemas in `lib/schemas/*` plus `parseJsonBody` from `lib/validation.ts`.
+Import Prisma only from `lib/prisma.ts` (relative import with `.js` extension; there is no `@/` alias) and validate inputs with Zod schemas in `lib/schemas/*` plus `parseJsonBody` from `lib/validation.ts`. Architecture map: `docs/architecture/index.md`.
 
 ---
 

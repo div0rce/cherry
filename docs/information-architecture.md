@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-09-22
 
 # Information Architecture
 
@@ -31,7 +31,7 @@ Cherry’s surfaces are intentionally split into three buckets so marketing, pro
 - **Owner:** Devtools/Infra.
 
 ## Grouping rule (authoritative)
-- Any route under `app/(dev)` must be gated by dev middleware.
+- Any route under `app/(dev)` must be gated by `proxy.ts`. Today its matcher covers `/dev/:path*` and `/api/dev/:path*`; `/scan`, `/simulate`, `/sessions`, `/admin`, `/vine-simulator`, `/activity`, `/bank-simulator` are not matched (gap).
 - Any route under `app/(user)` must not import dev-only modules or expose dev tooling.
 - `app/(marketing)` must not import auth-required server actions.
 

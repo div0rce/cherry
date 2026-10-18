@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-04-26
+Last updated: 2026-09-22
 
 # CI and guardrails
 
@@ -8,8 +8,9 @@ Last updated: 2026-04-26
 ### Pipeline
 - Runs on every push to `main` and all PRs via `.github/workflows/ci.yml`.
 - Steps (fail-fast):
-  1) `npm ci` (postinstall runs `prisma generate`)
-  2) `npm run ci:verify` (composite truth gate: check + build)
+  1) `npm ci` (postinstall runs `patch-package` and `prisma generate`)
+  2) `npm run check:guardrails`, `npm run check:tests:node`, `npm run check:tests:next` (early, granular failure)
+  3) `npm run ci:verify` (composite truth gate: check + test + build; `check:ci-must-run-check` requires it to be the last command)
 - Optional env lane (`.github/workflows/env-checks.yml`) provisions Postgres and runs:
   - `npx prisma generate`
   - `npx prisma migrate deploy`

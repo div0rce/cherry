@@ -1,119 +1,47 @@
 Status: Active
-Last updated: 2026-01-03
+Last updated: 2026-09-22
 
 # Cherry Repository Structure
 
-Use this as the source of truth for where things live and where new code should go. See `AGENTS.md` for operating rules and `docs/legal-constraints.md` for product guardrails.
+Where things live and where new code goes. Domain ownership (which capability owns which files) is in `docs/architecture/domains.md`; this page is the directory view.
 
 ## Current behavior (enforced / in code)
-- App Router routes are grouped under `app/(dev)`, `app/(user)`, and `app/(marketing)` with API routes in `app/api`.
-- The engine lives in `lib/engine.ts` and `lib/engine/*` with invariants in `lib/engine-invariants.ts`.
-- Prisma is only instantiated in `lib/prisma.ts` and consumed by adapters and API routes.
-- Scripts are kept under `scripts/` and executed via the `ts:esm` runner.
+- App Router routes are grouped under `app/(dev)` and `app/(user)`, with API routes in `app/api` and the sign-in card in `app/signin`. There is no `app/(marketing)` group yet.
+- Imports are relative with a `.js` extension; there is no `@/` path alias (`check:repo-guardrails` rejects it).
+- Prisma is instantiated only in `lib/prisma.ts`.
+- Scripts live under `scripts/` as `.mts` and run via `npm run ts:esm`; there is no `dist-scripts/` build output.
 
-## Top-Level Overview (curated)
 ```
 .
-├─ app/              # Next.js App Router UI + API entrypoints
-│  ├─ (dev)/(user)/(marketing)  # route groups for console, user app, and marketing
-│  └─ api/           # REST-ish handlers (scan, sessions, vine, wallet, admin, etc.)
-├─ components/       # Shared UI components (client/server as needed)
-├─ lib/              # Shared domain logic (engine, validation, enums, vine, wallet, auth helpers)
-├─ prisma/           # Database schema and migrations
-├─ scripts/          # Source scripts (ingest, seed, audit)
-├─ dist-scripts/     # Built script artifacts (keep generated outputs here)
-├─ data/             # MCC and other ingest inputs
-├─ docs/             # Product + technical docs (vision, vine, wallet, API, agents, audits, structure)
-├─ public/           # Static assets served by Next.js
-├─ types/            # Shared TypeScript types
-├─ .github/          # GitHub meta (e.g., copilot instructions)
-├─ Config files      # tsconfig*.json, eslint.config.mjs, next.config.ts, package*.json, postcss.config.mjs
-└─ .vscode/          # Editor settings (optional)
+├─ app/              # Next.js App Router: (dev) console, (user) shell, api/ route handlers, layout/providers
+├─ components/       # Shared UI (components/ui primitives, autopilot, simulations, layout, user)
+├─ lib/              # Domain logic; see docs/architecture/domains.md for ownership
+│  ├─ engine/        #   pure decision engine (core)
+│  ├─ authority/, accounting/, adapters/{contracts,*.ts}, schemas/, config/   # core
+│  ├─ adapters/runtime/, prisma.ts                                            # runtime
+│  └─ sessions/, vine/, wallet/, autopilot/, buckets/, bank/, income/, evaluator/, ...  # services
+├─ prisma/           # schema.prisma + migrations
+├─ scripts/          # guardrails (check-*.mts, guardrails/), execution scripts (execution/), loaders (lib/)
+├─ tests/            # node/ next/ db/ fixtures/ replay/ (+ legacy top-level copies, see docs/architecture/testing.md)
+├─ data/             # MCC inputs, dev bank CSV fixture
+├─ docs/             # architecture/ (start), doctrine, guardrails, product docs
+├─ types/            # global d.ts and compat shims (types/compat/README.md)
+├─ patches/          # patch-package patches (allowlisted in scripts/vendor-shims.allowlist.json)
+├─ public/           # static assets
+└─ proxy.ts          # dev-route gate (/dev/*, /api/dev/*)
 ```
 
-## Directory Purposes, Do/Don’t
-
-### app/
-- **Purpose:** All UI routes and API route handlers (Next.js App Router). This is the entrypoint for Observe/Recommend surfaces and API boundaries.
-- **Put here:** Route files (`page.tsx`, `layout.tsx`), server components, client components for route-specific UI, API `route.ts` handlers.
-- **Do NOT put:** Heavy domain logic (belongs in `lib/`), scripts, Prisma client instantiation (use `@/lib/prisma`).
-
-### components/
-- **Purpose:** Reusable UI blocks shared across routes.
-- **Put here:** Presentational components, shared client/server components that aren’t route-specific.
-- **Do NOT put:** Business logic, API helpers, data access.
-
-### lib/
-- **Purpose:** Shared domain logic and helpers.
-- **Put here:** Engine (`lib/engine.ts`, `lib/engine/*`, `lib/engine-invariants.ts`), enums, validation schemas, auth helpers (`with-user`, `auth`), vine helpers (`lib/vine/*`), wallet helpers (`lib/wallet/*`), points/verification helpers.
-- **Do NOT put:** Route handlers, Prisma client instantiation outside `lib/prisma`.
-
-### prisma/
-- **Purpose:** Database schema/migrations.
-- **Put here:** `schema.prisma`, migration folders, Prisma scripts under `prisma/scripts/` if needed.
-- **Do NOT move:** `schema.prisma` out of this directory.
-
-### scripts/
-- **Purpose:** Source scripts for maintenance/ingest/seed/audit.
-- **Put here:** TS/JS scripts run via npm scripts (e.g., ingest MCC, seed demo, audit integrity).
-- **Do NOT put:** Built artifacts (those belong in `dist-scripts/`).
-
-### dist-scripts/
-- **Purpose:** Generated/build outputs for scripts.
-- **Put here:** Compiled script artifacts if needed for deployment/runtime.
-- **Do NOT edit** by hand; treat as build output.
-
-### data/
-- **Purpose:** Input datasets (e.g., MCC TSV/PDF/JSON).
-- **Put here:** MCC sources and similar static inputs for ingest scripts.
-- **Do NOT put:** Generated outputs (those go to `dist-scripts/` or `data/mcc` outputs as appropriate).
-
-### docs/
-- **Purpose:** Canonical documentation.
-- **Contains:** Product identity (cherry-vision), hardware (cherry-vine), wallet pass, API reference, agent guidance, audits (core-loop-audit), repo structure/plan.
-- **Do NOT put:** Code, migrations, or scripts.
-
-### public/
-- **Purpose:** Static assets served by Next.js.
-- **Put here:** Images, icons, fonts, manifest files.
-- **Do NOT put:** Sensitive data or server code.
-
-### types/
-- **Purpose:** Shared TypeScript declarations.
-- **Put here:** Global types that don’t fit elsewhere.
-- **Do NOT put:** Business logic or React components.
-
-### .github/
-- **Purpose:** GitHub-specific config (actions, copilot instructions).
-- **Do NOT put:** App code.
-
-### Config files
-- **Purpose:** Tooling configuration (Next.js, TypeScript, ESLint, PostCSS, package scripts).
-- **Do NOT duplicate** conflicting configs; update central ones when structure changes.
-
-## Mapping to Cherry’s Product Model
-- **Observe/Recommend surfaces:** `app/` (UI routes like `/scan`, `/vine-simulator`, APIs like `/api/scan`, `/api/vine/order`).
-- **Evaluate (engine):** `lib/engine.ts` + invariants, enums, validation in `lib/schemas/*` and `lib/validation.ts` helpers.
-- **Reward (sessions/ledger):** `app/api/sessions/*` entrypoints backed by `lib` helpers and Prisma models (`RecommendationSession`, `CherryPointLedger`).
-- **Vine context:** `lib/vine/*`, `app/api/vine/order`, UI `/vine-simulator`.
-- **Wallet pass scaffold:** `lib/wallet/*`, `app/api/wallet/cherry-pass`.
-- **Data/model:** `prisma/` schema + migrations, seeded via `scripts/`.
-- **Docs:** `docs/` contains identity, hardware, wallet, API, and audit references to align code with product constraints.
-
-## Conventions for New Code
-- Keep API route handlers thin; push logic into `lib/`.
-- Use `@/lib/prisma` for DB access; no new Prisma clients elsewhere.
-- Validate inputs with Zod schemas in `lib/schemas/*` (and `lib/validation/autopilot/*` for Autopilot).
-- Place new scripts in `scripts/` (source) and build to `dist-scripts/` only if needed.
-- Keep docs in `docs/`; add cross-links when adding new surfaces.
-- Maintain Next.js App Router patterns (server-first; mark client components explicitly).
+## Conventions for new code
+- API handlers stay thin; logic goes into the owning `lib/<domain>/` module. Add the route to that domain's `owns` in `scripts/guardrails/domains.manifest.json`.
+- Validate with Zod schemas in `lib/schemas/*` via `parseJsonBody`.
+- Server-first components; interactive parts in a sibling `client.tsx` with `'use client'`.
+- New scripts: register in `scripts/execution/registry.mts` (see `scripts/AGENTS.md`).
+- Use `git mv` when relocating files and update the manifest in the same change.
 - Preserve public API paths unless intentionally versioned.
-- Use `git mv` for any relocations to keep history, and update path aliases/imports accordingly.
 
 ## Future/Target behavior (explicitly speculative)
-- Route groups may be reorganized as the dev console and user surfaces evolve; update this file alongside `docs/repo-structure-plan.md`.
+- A marketing surface under `app/(marketing)` when it lands (`docs/information-architecture.md`).
+- Services reach Prisma only through `lib/adapters/runtime` stores.
 
 ## Related docs
-- `AGENTS.md`
-- `docs/repo-structure-plan.md`
-- `docs/ci-and-guardrails.md`
+- `AGENTS.md`, `docs/architecture/index.md`, `docs/ci-and-guardrails.md`, `docs/information-architecture.md`

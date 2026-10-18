@@ -1,0 +1,685 @@
+{
+  "version": 1,
+  "description": "Domain ownership and allowed dependency direction for lib/, app/, components/. Checked by check:domain-boundaries. Type-only imports are not checked. Every source file under the scanned roots must be owned by exactly one domain.",
+  "domains": {
+    "shared": {
+      "layer": "core",
+      "description": "Pure helpers with no domain knowledge (errors, enums, text, numbers, money, ids, invariants, routes).",
+      "owns": [
+        "lib/errors.ts",
+        "lib/enums.ts",
+        "lib/text.ts",
+        "lib/numbers.ts",
+        "lib/money.ts",
+        "lib/ids.ts",
+        "lib/invariants.ts",
+        "lib/routes.ts",
+        "lib/formatCurrency.ts",
+        "lib/server-determinism-fixture.ts",
+        "lib/util/**",
+        "lib/api/**",
+        "types/**",
+        "lib/mcc.ts"
+      ],
+      "mayImport": [],
+      "tests": [
+        "tests/node/idempotency*.test.ts",
+        "tests/node/identity-determinism.test.ts"
+      ],
+      "docs": []
+    },
+    "schemas": {
+      "layer": "core",
+      "description": "Zod request/response contracts and the parseJsonBody boundary helper.",
+      "owns": [
+        "lib/schemas/**",
+        "lib/validation.ts"
+      ],
+      "mayImport": [
+        "shared"
+      ],
+      "tests": [
+        "tests/node/simulate-response-schema.test.js",
+        "tests/node/recommendation-temporal-schema.test.ts"
+      ],
+      "docs": [
+        "docs/zod-style.md",
+        "docs/api.md"
+      ]
+    },
+    "adapters-contracts": {
+      "layer": "core",
+      "description": "Pure TypeScript port interfaces (Clock, Logger, Digest, Entropy, stores, World). No implementations.",
+      "owns": [
+        "lib/adapters/*.ts",
+        "lib/adapters/contracts/**"
+      ],
+      "mayImport": [
+        "shared"
+      ],
+      "tests": [
+        "tests/node/adapters-contracts.test.ts"
+      ],
+      "docs": [
+        "docs/adapters.md"
+      ]
+    },
+    "engine": {
+      "layer": "core",
+      "description": "Deterministic decision engine: EngineInput contract, solver, objective, candidates, horizon, uncertainty. No time, no DB.",
+      "owns": [
+        "lib/engine/**",
+        "lib/engine.ts",
+        "lib/engine-invariants.ts"
+      ],
+      "mayImport": [
+        "shared",
+        "adapters-contracts",
+        "accounting"
+      ],
+      "tests": [
+        "tests/node/engine*.test.*",
+        "tests/node/engine/**",
+        "tests/node/objective-utility.test.ts"
+      ],
+      "docs": [
+        "docs/architecture/engine-rules.md",
+        "docs/doctrine.md",
+        "docs/engine-roadmap.md",
+        "docs/engine-freeze.md",
+        "docs/engine-time-semantics.md",
+        "docs/engine-optimality/status.md",
+        "docs/simulation/objective-semantics.md"
+      ],
+      "invariants": [
+        "No Date/Date.now (check:engine-date)",
+        "No Prisma (check:engine-prisma)",
+        "EngineInput is the only input contract (check:engine-input-boundary)",
+        "Behavior/input/candidate/accounting version bumps + chore(engine-freeze) commit (check:engine-version-gates, check:engine-version-bump, check:engine-freeze)"
+      ]
+    },
+    "accounting": {
+      "layer": "core",
+      "description": "Double-entry ledger model and engine accounting proof.",
+      "owns": [
+        "lib/accounting/**"
+      ],
+      "mayImport": [
+        "shared",
+        "engine"
+      ],
+      "tests": [
+        "tests/node/accounting/**",
+        "tests/node/engine-accounting-*.test.ts"
+      ],
+      "docs": [
+        "docs/accounting-axioms.md",
+        "docs/accounting/invariants.md",
+        "docs/engine-ledger-boundary.md"
+      ],
+      "invariants": [
+        "check:accounting-invariants",
+        "check:no-mutation",
+        "check:replay-equals-materialized"
+      ]
+    },
+    "authority": {
+      "layer": "core",
+      "description": "Pure spend admissibility decisions and verdict policy.",
+      "owns": [
+        "lib/authority/**",
+        "lib/policy/**",
+        "lib/guards/**"
+      ],
+      "mayImport": [
+        "shared",
+        "adapters-contracts"
+      ],
+      "tests": [
+        "tests/node/authority/**",
+        "tests/node/authority-invariants.test.ts",
+        "tests/node/policy-totality.test.ts",
+        "tests/node/decision-event-recording.test.ts"
+      ],
+      "docs": [
+        "docs/authority-v1.md",
+        "docs/decision-event-ledger.md"
+      ],
+      "invariants": [
+        "check:authority-lint",
+        "check:authority-invariants",
+        "check:engine-date",
+        "check:engine-prisma"
+      ]
+    },
+    "config": {
+      "layer": "core",
+      "description": "Typed, frozen server/public config loaded once at the boundary.",
+      "owns": [
+        "lib/config/**",
+        "lib/base-url.ts"
+      ],
+      "mayImport": [
+        "shared"
+      ],
+      "tests": [
+        "tests/node/config-injection.test.ts",
+        "tests/node/no-env-smoke.test.ts"
+      ],
+      "docs": [
+        "docs/env-policy.md"
+      ],
+      "invariants": [
+        "check:config",
+        "check:config-init",
+        "check:config-lock"
+      ]
+    },
+    "persistence": {
+      "layer": "runtime",
+      "description": "The single Prisma client instance.",
+      "owns": [
+        "lib/prisma.ts"
+      ],
+      "mayImport": [
+        "config"
+      ],
+      "tests": [
+        "tests/db/**"
+      ],
+      "docs": [
+        "docs/schema-evolution.md",
+        "docs/storage-doctrine.md"
+      ]
+    },
+    "adapters-runtime": {
+      "layer": "runtime",
+      "description": "Concrete World wiring (Prisma stores, system clock, entropy, logger) and Prisma-backed engine/authority bridges.",
+      "owns": [
+        "lib/adapters/runtime/**",
+        "app/api/_clock.ts",
+        "lib/engine-state.ts",
+        "lib/legacy-engine.ts",
+        "lib/legacy-engine-types.ts",
+        "lib/replay/**"
+      ],
+      "mayImport": [
+        "shared",
+        "adapters-contracts",
+        "engine",
+        "authority",
+        "accounting",
+        "persistence",
+        "config"
+      ],
+      "tests": [
+        "tests/node/engine-state.prisma.test.js",
+        "tests/node/engine-world.test.ts",
+        "tests/node/guardrails/prisma-adapter-totality.test.ts"
+      ],
+      "docs": [
+        "docs/adapters.md",
+        "docs/engine-state.md"
+      ]
+    },
+    "identity": {
+      "layer": "service",
+      "description": "NextAuth wiring, user context resolution, withUser guard.",
+      "owns": [
+        "lib/auth.ts",
+        "lib/with-user.ts",
+        "lib/user-context.ts",
+        "lib/identity/**",
+        "lib/dev/**",
+        "app/api/auth/**",
+        "app/api/user/context/**",
+        "app/signin/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "config",
+        "observability"
+      ],
+      "tests": [
+        "tests/next/user-context*.test.*",
+        "tests/next/*.user-context.test.*"
+      ],
+      "docs": [
+        "docs/architecture/auth.md"
+      ]
+    },
+    "buckets": {
+      "layer": "service",
+      "description": "Budget buckets: balance math, period rollover, regimes, freshness.",
+      "owns": [
+        "lib/buckets-runtime.ts",
+        "lib/buckets/**",
+        "lib/category-preferences.ts",
+        "app/api/buckets/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "schemas",
+        "identity",
+        "config",
+        "observability",
+        "income"
+      ],
+      "tests": [
+        "tests/node/bucket*.test.js",
+        "tests/node/buckets-periods.test.js",
+        "tests/node/category-preference-enum.test.js"
+      ],
+      "docs": [
+        "docs/buckets-rollover-plan.md"
+      ],
+      "invariants": [
+        "Balance math only via lib/buckets-runtime.ts; budgetAmount/spentCents authoritative, currentAmount legacy mirror"
+      ]
+    },
+    "cards": {
+      "layer": "service",
+      "description": "Cards and reward rules CRUD.",
+      "owns": [
+        "app/api/cards/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "schemas",
+        "identity",
+        "observability"
+      ],
+      "tests": [
+        "tests/next/api-rewards.validation.test.js"
+      ],
+      "docs": [
+        "docs/api.md"
+      ]
+    },
+    "income": {
+      "layer": "service",
+      "description": "Income and P2P classification over bank transactions; income regimes.",
+      "owns": [
+        "lib/income/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence"
+      ],
+      "tests": [
+        "tests/node/income-*.test.js"
+      ],
+      "docs": [
+        "docs/income-regimes.md"
+      ]
+    },
+    "bank": {
+      "layer": "service",
+      "description": "Bank transaction ingest (idempotent on (userId, externalId)) and dev CSV provider.",
+      "owns": [
+        "lib/bank/**",
+        "lib/ingest/**",
+        "app/api/dev/bank/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "schemas",
+        "identity",
+        "config",
+        "observability",
+        "buckets",
+        "income"
+      ],
+      "tests": [
+        "tests/node/bank-ingest*.test.js"
+      ],
+      "docs": [
+        "docs/bank-ingest-notes.md"
+      ],
+      "invariants": [
+        "All ingest writes go through upsertBankTransactions; BankTransaction.id never set from ingest data"
+      ]
+    },
+    "evaluation": {
+      "layer": "service",
+      "description": "Advisory scan/simulate surfaces: MCC resolution, engine invocation, decision-event telemetry. Stateless with respect to sessions and ledger.",
+      "owns": [
+        "app/api/scan/**",
+        "app/api/simulate/**",
+        "app/api/simulations/**",
+        "app/api/mccs/**",
+        "app/api/user/merchants/**",
+        "lib/scan-helpers.ts",
+        "lib/scan-types.ts",
+        "lib/scan-client-state.ts",
+        "lib/simulation.ts",
+        "lib/simulation-adapter.ts",
+        "lib/mccCategoryMapper.ts"
+      ],
+      "mayImport": [
+        "shared",
+        "schemas",
+        "engine",
+        "authority",
+        "adapters-runtime",
+        "persistence",
+        "identity",
+        "buckets",
+        "config",
+        "observability"
+      ],
+      "tests": [
+        "tests/next/api-scan*.test.*",
+        "tests/next/api-simulate*.test.*",
+        "tests/node/scan-client-state.test.js",
+        "tests/node/simulation-adapter.test.js",
+        "tests/node/simulate-response-schema.test.js"
+      ],
+      "docs": [
+        "docs/api.md"
+      ]
+    },
+    "sessions": {
+      "layer": "service",
+      "description": "Recommendation sessions, confirm/verify lifecycle, Cherry Points ledger, verification stubs.",
+      "owns": [
+        "lib/sessions/**",
+        "lib/verification/**",
+        "lib/points.ts",
+        "lib/idempotency.ts",
+        "app/api/sessions/**",
+        "app/api/dev/pending-sessions/**",
+        "app/api/dev/verification/**"
+      ],
+      "mayImport": [
+        "shared",
+        "schemas",
+        "engine",
+        "authority",
+        "adapters-runtime",
+        "persistence",
+        "identity",
+        "buckets",
+        "config",
+        "observability",
+        "evaluation"
+      ],
+      "tests": [
+        "tests/next/api-sessions*.test.*",
+        "tests/node/sessions-bucket-reversal.test.js",
+        "tests/node/verification-session.test.js",
+        "tests/node/idempotency.test.ts"
+      ],
+      "docs": [
+        "docs/verification-flow.md",
+        "docs/decision-event-ledger.md"
+      ],
+      "invariants": [
+        "Confirm increments Bucket.spentCents once per session; ledger rows PENDING -> POSTED/REVOKED only via verify"
+      ]
+    },
+    "vine": {
+      "layer": "service",
+      "description": "Cherry Vine context beacon ingest (merchant + amount + timestamp). Never a payment device.",
+      "owns": [
+        "lib/vine/**",
+        "app/api/vine/**"
+      ],
+      "mayImport": [
+        "shared",
+        "schemas",
+        "engine",
+        "authority",
+        "adapters-runtime",
+        "persistence",
+        "identity",
+        "config",
+        "observability",
+        "sessions",
+        "evaluation"
+      ],
+      "tests": [
+        "tests/node/vine-*.test.js",
+        "tests/next/api-vine-order*.test.js",
+        "tests/next/vine-order-security.test.js",
+        "tests/node/run-recommendation.user-context.test.js"
+      ],
+      "docs": [
+        "docs/cherry-vine.md",
+        "docs/vine-security.md"
+      ]
+    },
+    "wallet": {
+      "layer": "service",
+      "description": "Cherry Pass storeCard scaffold; returns 501 unless fully configured and enabled.",
+      "owns": [
+        "lib/wallet/**",
+        "app/api/wallet/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "identity",
+        "config",
+        "observability"
+      ],
+      "tests": [
+        "tests/node/wallet-pass-config.test.js"
+      ],
+      "docs": [
+        "docs/wallet-pass.md"
+      ]
+    },
+    "autopilot": {
+      "layer": "service",
+      "description": "Autopilot preview/commit flow and simulation orchestration on top of the engine.",
+      "owns": [
+        "lib/autopilot/**",
+        "app/api/autopilot/**",
+        "lib/metrics/**",
+        "lib/validation/autopilot/**"
+      ],
+      "mayImport": [
+        "shared",
+        "schemas",
+        "engine",
+        "authority",
+        "adapters-runtime",
+        "persistence",
+        "identity",
+        "buckets",
+        "config",
+        "observability",
+        "sessions",
+        "evaluation"
+      ],
+      "tests": [
+        "tests/node/autopilot-*.test.*",
+        "tests/next/api-autopilot*.test.*",
+        "tests/next/autopilot-*.test.*",
+        "tests/node/onboarding-prereqs.test.ts"
+      ],
+      "docs": [
+        "docs/autopilot-master-spec.md",
+        "docs/autopilot-engine-adapter.md"
+      ]
+    },
+    "daily-state": {
+      "layer": "service",
+      "description": "Daily state computation and alerting.",
+      "owns": [
+        "lib/daily-state/**",
+        "lib/alerts/**",
+        "app/api/daily-state/**",
+        "app/api/internal/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "identity",
+        "config",
+        "observability",
+        "buckets",
+        "autopilot",
+        "schemas"
+      ],
+      "tests": [
+        "tests/node/alertPolicy.test.js",
+        "tests/node/type/daily-state.types.test.ts"
+      ],
+      "docs": [
+        "docs/daily-state.md"
+      ]
+    },
+    "evaluator": {
+      "layer": "service",
+      "description": "Offline engine evaluator. Read-only over Sessions/Ledger/Buckets; writes only HistoricalEngineEvaluation.",
+      "owns": [
+        "lib/evaluator/**"
+      ],
+      "mayImport": [
+        "shared",
+        "engine",
+        "persistence",
+        "buckets",
+        "income",
+        "adapters-runtime"
+      ],
+      "tests": [
+        "tests/node/offline-evaluator-*.test.js"
+      ],
+      "docs": [
+        "docs/offline-evaluator.md"
+      ],
+      "invariants": [
+        "Gate on CHERRY_OFFLINE_EVALUATOR_ENABLED; call assertOfflineEvaluatorModelsReady() first; derive runId via defaultRunIdForUser"
+      ]
+    },
+    "observability": {
+      "layer": "service",
+      "description": "Logging, metrics, activity feeds, health and admin stats.",
+      "owns": [
+        "lib/logger.ts",
+        "lib/log.ts",
+        "lib/logging.ts",
+        "lib/activity/**",
+        "lib/unified-activity.ts",
+        "lib/admin/**",
+        "app/api/activity/**",
+        "app/api/health/**",
+        "app/api/admin/**"
+      ],
+      "mayImport": [
+        "shared",
+        "persistence",
+        "identity",
+        "config",
+        "bank"
+      ],
+      "tests": [],
+      "docs": [
+        "docs/decision-event-ledger.md"
+      ]
+    },
+    "dev-tools": {
+      "layer": "surface",
+      "description": "Dev-only console pages, seeding, and inspection routes. Never shipped to users.",
+      "owns": [
+        "app/\\(dev\\)/**",
+        "app/api/seed-demo/**",
+        "app/api/dev/engine/**",
+        "lib/demo-seeder.ts"
+      ],
+      "mayImport": [
+        "*"
+      ],
+      "tests": [],
+      "docs": [
+        "docs/dev-route-inventory.md",
+        "docs/dev-ui-parity.md"
+      ]
+    },
+    "ui": {
+      "layer": "surface",
+      "description": "User-facing app shell, shared components, client API helpers.",
+      "owns": [
+        "app/\\(user\\)/**",
+        "app/layout.tsx",
+        "app/providers.tsx",
+        "components/**",
+        "lib/ui/**",
+        "lib/ui.ts",
+        "lib/client/**",
+        "lib/home/**",
+        "lib/dashboard.ts",
+        "lib/history.ts",
+        "proxy.ts"
+      ],
+      "mayImport": [
+        "*"
+      ],
+      "tests": [
+        "tests/next/home-screen-authority.test.tsx",
+        "tests/node/home-ui-contract.test.ts",
+        "tests/next/client-api.test.js"
+      ],
+      "docs": [
+        "docs/information-architecture.md",
+        "docs/routes-map.md",
+        "docs/shell-architecture.md",
+        "docs/home-ui-contract.md"
+      ]
+    }
+  },
+  "allowedViolations": [
+    {
+      "from": "lib/engine/legacy.ts",
+      "to": "lib/legacy-engine.ts",
+      "reason": "Legacy engine facade re-exports the Prisma-backed runtime bridge; importing lib/engine.ts loads Prisma. Engine-freeze change; track as debt."
+    },
+    {
+      "from": "lib/engine/public.ts",
+      "to": "lib/engine-state.ts",
+      "reason": "Autopilot swipe entrypoint reaches Prisma engine-state loader through the engine barrel. Engine-freeze change; track as debt."
+    },
+    {
+      "from": "lib/engine/public.ts",
+      "to": "lib/scan-helpers.ts",
+      "reason": "Value cycle engine -> scan-helpers -> engine. Engine-freeze change; track as debt."
+    },
+    {
+      "from": "lib/authority/replayAuthority.ts",
+      "to": "lib/adapters/runtime/authority.replay.prisma.ts",
+      "reason": "Pure module re-exports a runtime implementation. No importers; candidate for deletion."
+    },
+    {
+      "from": "lib/adapters/runtime/authority.prisma.ts",
+      "to": "lib/buckets/periods.ts",
+      "reason": "Runtime loader applies pure bucket math (type-only Prisma imports). Exact edge only; runtime may not import other service code. Move bucket math to a core domain to retire."
+    },
+    {
+      "from": "lib/adapters/runtime/authority.prisma.ts",
+      "to": "lib/buckets-runtime.ts",
+      "reason": "Runtime loader applies pure bucket math (type-only Prisma imports). Exact edge only; runtime may not import other service code. Move bucket math to a core domain to retire."
+    },
+    {
+      "from": "lib/adapters/runtime/engine-state.prisma.ts",
+      "to": "lib/buckets/periods.ts",
+      "reason": "Runtime loader applies pure bucket math (type-only Prisma imports). Exact edge only; runtime may not import other service code. Move bucket math to a core domain to retire."
+    },
+    {
+      "from": "lib/adapters/runtime/engine-state.prisma.ts",
+      "to": "lib/buckets-runtime.ts",
+      "reason": "Runtime loader applies pure bucket math (type-only Prisma imports). Exact edge only; runtime may not import other service code. Move bucket math to a core domain to retire."
+    },
+    {
+      "from": "lib/adapters/runtime/legacy-engine.prisma.ts",
+      "to": "lib/buckets/periods.ts",
+      "reason": "Runtime loader applies pure bucket math (type-only Prisma imports). Exact edge only; runtime may not import other service code. Move bucket math to a core domain to retire."
+    }
+  ]
+}

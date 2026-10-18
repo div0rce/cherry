@@ -157,7 +157,6 @@ workspace/
 
 # misc
 .DS_Store
-*.pem
 cookies.txt
 
 # editor settings
@@ -190,6 +189,9 @@ certs/
 *.pem
 *.pkpass
 
+.evidence/*
+!.evidence/.gitkeep
+
 # Local temp + Node compile cache
 .tmp/
 .cherry-tmp/
@@ -202,7 +204,6 @@ paste.txt
 abandoned_subsystems.md
 api_inventory.md
 architecture_map.md
-scripts/audit/full-checkout-audit.mts
 workspace_audit.md
 repo_index.json
 ```
@@ -9603,6 +9604,7 @@ export default nextConfig;
     "verify:cherry-diff-artifact": "npm run ts:esm -- scripts/execution/run.mts verify:cherry-diff-artifact",
     "verify:8.3-closure-artifact": "npm run ts:esm -- scripts/execution/run.mts verify:8.3-closure-artifact",
     "verify:repo-closure": "npm run ts:esm -- scripts/execution/run.mts verify:repo-closure",
+    "report:domain-impact": "npm run ts:esm -- scripts/execution/run.mts report:domain-impact",
     "check:routes": "npm run ts:esm -- scripts/guardrails/run.mts check:routes",
     "check:engine-freeze": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-freeze",
     "check:engine-input-boundary": "npm run ts:esm -- scripts/guardrails/run.mts check:engine-input-boundary",
@@ -9672,6 +9674,7 @@ export default nextConfig;
     "check:accounting-proof-coverage": "npm run ts:esm -- scripts/guardrails/run.mts check:accounting-proof-coverage",
     "check:replay-equals-materialized": "npm run ts:esm -- scripts/guardrails/run.mts check:replay-equals-materialized",
     "check:no-mutation": "npm run ts:esm -- scripts/guardrails/run.mts check:no-mutation",
+    "check:domain-boundaries": "npm run ts:esm -- scripts/guardrails/run.mts check:domain-boundaries",
     "check:implicit-boolean": "npm run ts:esm -- scripts/guardrails/run.mts check:implicit-boolean",
     "check:branded-literal": "npm run ts:esm -- scripts/guardrails/run.mts check:branded-literal",
     "check:guardrail-self": "npm run ts:esm -- scripts/guardrails/run.mts check:guardrail-self",
@@ -10671,6 +10674,7 @@ export const EXECUTION = {
   'verify:8.3-closure-artifact': 'scripts/verify-8-3-closure-artifact.mts',
   'verify:cherry-diff-artifact': 'scripts/verify-cherry-diff-artifact.mts',
   'verify:repo-closure': 'scripts/verify-repo-closure.mts',
+  'report:domain-impact': 'scripts/domain-impact.mts',
 } as const;
 
 export type ExecutionName = keyof typeof EXECUTION;
@@ -10929,6 +10933,7 @@ export const GUARDRAILS = Object.freeze({
   'check:accounting-proof-coverage': ACCOUNTING_PROOF_COVERAGE_PATH,
   'check:replay-equals-materialized': REPLAY_EQUALS_MATERIALIZED_PATH,
   'check:no-mutation': NO_MUTATION_PATH,
+  'check:domain-boundaries': `${CHECK_PATH_BASE}domain-boundaries.mts`,
 } as const);
 
 export type GuardrailName = keyof typeof GUARDRAILS;

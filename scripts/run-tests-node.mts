@@ -27,11 +27,35 @@ const testFiles = fg
   })
   .sort();
 
-if (testFiles.length === 0) {
+// --filter=<glob>[,<glob>] narrows the run (DOMAIN-level verification). Never authoritative:
+// the FULL gate is `npm run check && npm test && npm run build`. Commas inside {a,b} stay part
+// of the glob, and every --filter= argument counts (npm runs scripts through a shell, which
+// brace-expands --filter=a/{b,c} into two arguments).
+const filterGlobs = process.argv
+  .filter((arg) => arg.startsWith('--filter='))
+  .flatMap((arg) => arg.slice('--filter='.length).split(/,(?![^{]*\})/))
+  .filter((glob) => glob.length > 0);
+const filterArg = filterGlobs.length > 0 ? filterGlobs : undefined;
+const filteredFiles =
+  filterArg === undefined
+    ? testFiles
+    : fg
+        .sync(filterArg, {
+          cwd: repoRoot,
+          absolute: true,
+          ignore: ['**/__mocks__/**', 'tests/fixtures/**', 'tests/db/**'],
+        })
+        .filter((file) => testFiles.includes(file))
+        .sort();
+if (filterArg !== undefined) {
+  process.stdout.write(`FILTERED RUN (${filteredFiles.length}/${testFiles.length} files); not a substitute for the full gate\n`);
+}
+
+if (filteredFiles.length === 0) {
   fail(PREFIX, 'No Node tests found under tests/node/**/*.test.{js,ts,tsx}', { fix: FIX });
 }
 
-for (const file of testFiles) {
+for (const file of filteredFiles) {
   process.stdout.write(`RUN ${path.relative(repoRoot, file)}\n`);
   const result = runTsEsm(
     file,

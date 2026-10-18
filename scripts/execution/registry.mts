@@ -35,6 +35,7 @@ export const EXECUTION = {
   'verify:8.3-closure-artifact': 'scripts/verify-8-3-closure-artifact.mts',
   'verify:cherry-diff-artifact': 'scripts/verify-cherry-diff-artifact.mts',
   'verify:repo-closure': 'scripts/verify-repo-closure.mts',
+  'report:domain-impact': 'scripts/domain-impact.mts',
 } as const;
 
 export type ExecutionName = keyof typeof EXECUTION;

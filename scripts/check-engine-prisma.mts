@@ -4,6 +4,7 @@ import fg from 'fast-glob';
 import { ensureTsEsm } from './lib/ensure-ts-esm.mjs';
 import { asMessage } from './guardrails/lib/error.mjs';
 import { fail } from './guardrails/lib/fail.mjs';
+import { resolveRootArg } from './lib/root-arg.mjs';
 
 ensureTsEsm();
 
@@ -15,7 +16,7 @@ type Violation = {
   message: string;
 };
 
-const ROOT = process.cwd();
+const ROOT = resolveRootArg(process.argv);
 const PREFIX = 'check:engine-prisma';
 const FIX = 'Remove Prisma usage from engine code and use adapters instead.';
 const TARGETS = [
@@ -24,16 +25,31 @@ const TARGETS = [
 ];
 const IGNORE = ['**/__tests__/**', '**/__mocks__/**', '**/.tmp/**'];
 
-const PATTERNS: Array<{ message: string; regex: RegExp }> = [
-  { message: "imports '@prisma/client'", regex: /\bfrom\s+['"]@prisma\/client['"]/ },
-  { message: "requires '@prisma/client'", regex: /\brequire\s*\(\s*['"]@prisma\/client['"]\s*\)/ },
-  { message: "imports '@/lib/prisma'", regex: /\bfrom\s+['"]@\/lib\/prisma['"]/ },
-  { message: "requires '@/lib/prisma'", regex: /\brequire\s*\(\s*['"]@\/lib\/prisma['"]\s*\)/ },
+// Import patterns run against comment-stripped source (string literals survive); usage patterns
+// run against comment/string-stripped source. `import type` from @prisma/client is allowed (types only).
+// `LOADS` covers side-effect imports, dynamic imports and require calls. The lib/prisma pattern matches
+// any specifier ending in `/prisma` (e.g. '../prisma.js'), since engine and authority are siblings
+// of lib/prisma.ts and import it relatively.
+const LOADS = String.raw`(?:^\s*import\s+|\bimport\s*\(\s*|\brequire\s*\(\s*)`;
+const IMPORT_PATTERNS: Array<{ message: string; regex: RegExp }> = [
+  {
+    message: "value-imports '@prisma/client'",
+    regex: /^\s*(?:import|export)\s+(?!type\b)[^;]*?\bfrom\s+['"]@prisma\/client['"]/m,
+  },
+  { message: "loads '@prisma/client'", regex: new RegExp(`${LOADS}['"]@prisma/client['"]`, 'm') },
+  {
+    message: 'imports lib/prisma',
+    regex: new RegExp(String.raw`(?:\bfrom\s+|${LOADS})['"][^'"]*/prisma(?:\.[cm]?[jt]s)?['"]`, 'm'),
+  },
+];
+const USAGE_PATTERNS: Array<{ message: string; regex: RegExp }> = [
   { message: 'uses prisma client', regex: /\bprisma\s*\./ },
   { message: 'calls getPrisma()', regex: /\bgetPrisma\s*\(/ },
 ];
 
-function stripForScan(content: string): string {
+// Blanks comments always and string contents unless keepStrings (import patterns need the
+// specifier text; usage patterns must not match inside strings).
+function stripForScan(content: string, keepStrings: boolean): string {
   let result = '';
   let inSingle = false;
   let inDouble = false;
@@ -89,30 +105,30 @@ function stripForScan(content: string): string {
 
     if (!inDouble && !inTemplate && char === "'" && prevChar !== '\\') {
       inSingle = !inSingle;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
     if (!inSingle && !inTemplate && char === '"' && prevChar !== '\\') {
       inDouble = !inDouble;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
     if (!inSingle && !inDouble && char === '`' && prevChar !== '\\') {
       inTemplate = !inTemplate;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
     if (inTemplate && char === '`' && prevChar !== '\\') {
       inTemplate = false;
-      result += ' ';
+      result += keepStrings ? char : ' ';
       prevChar = char;
       continue;
     }
 
-    if (inSingle || inDouble || inTemplate) {
+    if ((inSingle || inDouble || inTemplate) && !keepStrings) {
       result += char === '\n' ? '\n' : ' ';
     } else {
       result += char;
@@ -125,14 +141,20 @@ function stripForScan(content: string): string {
 
 function scanFile(filePath: string): Violation[] {
   const content = fs.readFileSync(filePath, 'utf8');
-  const sanitized = stripForScan(content);
+  const commentFree = stripForScan(content, true);
+  const sanitized = stripForScan(content, false);
   const relative = path.normalize(path.relative(ROOT, filePath));
   const violations: Violation[] = [];
 
-  for (const pattern of PATTERNS) {
-    const index = sanitized.search(pattern.regex);
-    if (index !== -1) {
-      const slice = sanitized.slice(0, index);
+  const scans: Array<{ text: string; patterns: Array<{ message: string; regex: RegExp }> }> = [
+    { text: commentFree, patterns: IMPORT_PATTERNS },
+    { text: sanitized, patterns: USAGE_PATTERNS },
+  ];
+  for (const { text, patterns } of scans) {
+    for (const pattern of patterns) {
+      const index = text.search(pattern.regex);
+      if (index === -1) continue;
+      const slice = text.slice(0, index);
       const line = slice.split('\n').length;
       const lastNewline = slice.lastIndexOf('\n');
       const col = lastNewline === -1 ? index + 1 : index - lastNewline;
