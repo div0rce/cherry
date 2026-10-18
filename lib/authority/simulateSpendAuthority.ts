@@ -167,72 +167,98 @@ function computeInputsVersion(
   return digest.sha256(payload);
 }
 
+type ReasonRule = {
+  code: AuthorityReason;
+  detail: (ctx: EvaluationContext) => string | null;
+};
+
+function isVerificationPending(ctx: EvaluationContext): boolean {
+  if (ctx.pendingSessions > 0) return true;
+  return ctx.pendingPoints > 0;
+}
+
+function isBucketBufferLow(bucket: AuthorityBucket | null): boolean {
+  if (bucket === null) return false;
+  return bucket.remainingCents > 0 && bucket.remainingCents <= 2000;
+}
+
+function isEssentialBufferLow(ctx: EvaluationContext): boolean {
+  if (ctx.dailyStateStatus === 'TIGHT') return true;
+  return isBucketBufferLow(ctx.bucket);
+}
+
+function isAmountSpike(ctx: EvaluationContext): boolean {
+  const remainingBaseline = ctx.bucket?.remainingCents ?? ctx.safeToSpendCents ?? null;
+  if (remainingBaseline === null) return false;
+  if (!(remainingBaseline > 0)) return false;
+  return ctx.amountCents >= Math.max(Math.floor(remainingBaseline * 0.75), 5_000);
+}
+
+const DAILY_STATE_DETAILS: Partial<Record<DailyStateStatus, string>> = {
+  RISKY: 'DailyState is risky; simulator recommends caution.',
+  TIGHT: 'DailyState is tight; simulator suggests extra care.',
+};
+
+function essentialBufferDetail(ctx: EvaluationContext): string | null {
+  if (!isEssentialBufferLow(ctx)) return null;
+  const remaining = ctx.bucket?.remainingCents ?? ctx.safeToSpendCents ?? 0;
+  return `Essential buffer is low (~${Math.max(0, Math.floor(remaining))} cents remaining).`;
+}
+
+function detailWhen(condition: boolean, detail: string): string | null {
+  return condition ? detail : null;
+}
+
+const REASON_RULES: readonly ReasonRule[] = [
+  {
+    code: AuthorityReason.CATEGORY_RESTRICTED,
+    detail: (ctx) =>
+      detailWhen(
+        ctx.categoryPreferenceMode === 'UNBUDGETED',
+        'Category is restricted in preferences; simulator would flag this spend.'
+      ),
+  },
+  {
+    code: AuthorityReason.DAILY_STATE_RISKY,
+    detail: (ctx) => {
+      const detail = DAILY_STATE_DETAILS[ctx.dailyStateStatus];
+      return detail === undefined ? null : detail;
+    },
+  },
+  {
+    code: AuthorityReason.BUCKET_EXHAUSTED,
+    detail: (ctx) =>
+      detailWhen(
+        ctx.bucket !== null && ctx.bucket.remainingCents <= 0,
+        'Category bucket is exhausted; simulator would flag this spend.'
+      ),
+  },
+  {
+    code: AuthorityReason.VERIFICATION_PENDING,
+    detail: (ctx) =>
+      detailWhen(isVerificationPending(ctx), 'Verification is pending; simulator warns before new spend.'),
+  },
+  {
+    code: AuthorityReason.ESSENTIAL_BUFFER_LOW,
+    detail: essentialBufferDetail,
+  },
+  {
+    code: AuthorityReason.AMOUNT_SPIKE,
+    detail: (ctx) =>
+      detailWhen(isAmountSpike(ctx), 'Amount looks like a spike relative to available buffer.'),
+  },
+];
+
 function evaluateReasons(ctx: EvaluationContext): SimulatedAuthorityReason[] {
   const reasons: SimulatedAuthorityReason[] = [];
-  const remainingBaseline = ctx.bucket?.remainingCents ?? ctx.safeToSpendCents ?? null;
-  const categoryRestricted = ctx.categoryPreferenceMode === 'UNBUDGETED';
-  const bucketExhausted = ctx.bucket !== null && ctx.bucket.remainingCents <= 0;
-  const verificationPending = ctx.pendingSessions > 0 || ctx.pendingPoints > 0;
-  const essentialBufferLow =
-    ctx.dailyStateStatus === 'TIGHT' ||
-    (ctx.bucket !== null && ctx.bucket.remainingCents > 0 && ctx.bucket.remainingCents <= 2000);
-  const amountSpike =
-    remainingBaseline !== null &&
-    remainingBaseline > 0 &&
-    ctx.amountCents >= Math.max(Math.floor(remainingBaseline * 0.75), 5_000);
 
-  if (categoryRestricted) {
+  for (const rule of REASON_RULES) {
+    const detail = rule.detail(ctx);
+    if (detail === null) continue;
     reasons.push({
-      code: AuthorityReason.CATEGORY_RESTRICTED,
-      severity: getReasonSeverity(AuthorityReason.CATEGORY_RESTRICTED, ctx.surface),
-      detail: 'Category is restricted in preferences; simulator would flag this spend.',
-    });
-  }
-
-  if (ctx.dailyStateStatus === 'RISKY') {
-    reasons.push({
-      code: AuthorityReason.DAILY_STATE_RISKY,
-      severity: getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, ctx.surface),
-      detail: 'DailyState is risky; simulator recommends caution.',
-    });
-  } else if (ctx.dailyStateStatus === 'TIGHT') {
-    reasons.push({
-      code: AuthorityReason.DAILY_STATE_RISKY,
-      severity: getReasonSeverity(AuthorityReason.DAILY_STATE_RISKY, ctx.surface),
-      detail: 'DailyState is tight; simulator suggests extra care.',
-    });
-  }
-
-  if (bucketExhausted) {
-    reasons.push({
-      code: AuthorityReason.BUCKET_EXHAUSTED,
-      severity: getReasonSeverity(AuthorityReason.BUCKET_EXHAUSTED, ctx.surface),
-      detail: 'Category bucket is exhausted; simulator would flag this spend.',
-    });
-  }
-
-  if (verificationPending) {
-    reasons.push({
-      code: AuthorityReason.VERIFICATION_PENDING,
-      severity: getReasonSeverity(AuthorityReason.VERIFICATION_PENDING, ctx.surface),
-      detail: 'Verification is pending; simulator warns before new spend.',
-    });
-  }
-
-  if (essentialBufferLow) {
-    const remaining = ctx.bucket?.remainingCents ?? ctx.safeToSpendCents ?? 0;
-    reasons.push({
-      code: AuthorityReason.ESSENTIAL_BUFFER_LOW,
-      severity: getReasonSeverity(AuthorityReason.ESSENTIAL_BUFFER_LOW, ctx.surface),
-      detail: `Essential buffer is low (~${Math.max(0, Math.floor(remaining))} cents remaining).`,
-    });
-  }
-
-  if (amountSpike) {
-    reasons.push({
-      code: AuthorityReason.AMOUNT_SPIKE,
-      severity: getReasonSeverity(AuthorityReason.AMOUNT_SPIKE, ctx.surface),
-      detail: 'Amount looks like a spike relative to available buffer.',
+      code: rule.code,
+      severity: getReasonSeverity(rule.code, ctx.surface),
+      detail,
     });
   }
 
@@ -258,61 +284,62 @@ function buildExplanation(reasons: SimulatedAuthorityReason[]): string {
   return top ? top.detail : 'Simulator could not derive an explanation.';
 }
 
-export async function simulateSpendAuthorityFromSnapshot(
-  params: SimulateSpendParams,
-  options: {
-    nowMs: number;
-    engineVersion: string | null;
-    snapshot: AuthoritySnapshot;
-    digest: Digest;
-  }
-): Promise<AuthorityDecision> {
+type SnapshotOptions = {
+  nowMs: number;
+  engineVersion: string | null;
+  snapshot: AuthoritySnapshot;
+  digest: Digest;
+};
+
+function assertSnapshotOptions(options: SnapshotOptions): string {
   if (options.nowMs == null || Number.isNaN(options.nowMs)) {
     throw new Error('simulateSpendAuthorityFromSnapshot requires explicit `nowMs`');
   }
   if (options.engineVersion == null || options.engineVersion === '') {
     throw new Error('simulateSpendAuthorityFromSnapshot requires explicit `engineVersion`');
   }
+  return options.engineVersion;
+}
 
-  const amountCents = Math.max(0, Math.floor(params.amountCents));
+function buildAuthorityInputs(
+  params: SimulateSpendParams,
+  snapshot: AuthoritySnapshot,
+  amountCents: number
+): AuthorityInputs {
+  return {
+    userId: params.userId,
+    amountCents,
+    category: params.category,
+    surface: params.surface,
+    dailyState: snapshot.dailyState
+      ? {
+          status: snapshot.dailyState.status,
+          safeToSpendCents: snapshot.dailyState.safeToSpendCents ?? null,
+          inputsVersion: snapshot.dailyState.inputsVersion ?? null,
+        }
+      : null,
+    categoryPreferenceMode: snapshot.categoryPreferenceMode ?? null,
+    pendingSessions: snapshot.pendingSessions,
+    pendingPoints: snapshot.pendingPoints,
+    counterfactuals: params.counterfactuals ?? [],
+    buckets: snapshot.buckets.map((bucket) => ({
+      id: bucket.id,
+      category: bucket.category,
+      budgetAmount: bucket.budgetAmount,
+      remainingCents: bucket.remainingCents,
+      strictMode: bucket.strictMode,
+      periodEndMs: bucket.periodEndMs,
+    })),
+  };
+}
 
-  const snapshot = options.snapshot;
-  const pendingPoints = snapshot.pendingPoints;
-  const runtimeBuckets = snapshot.buckets;
-  const categoryBucket =
-    runtimeBuckets.find((bucket) => bucket.category === params.category) ?? null;
-
-  const inputsVersion = computeInputsVersion(
-    {
-      userId: params.userId,
-      amountCents,
-      category: params.category,
-      surface: params.surface,
-      dailyState: snapshot.dailyState
-        ? {
-            status: snapshot.dailyState.status,
-            safeToSpendCents: snapshot.dailyState.safeToSpendCents ?? null,
-            inputsVersion: snapshot.dailyState.inputsVersion ?? null,
-          }
-        : null,
-      categoryPreferenceMode: snapshot.categoryPreferenceMode ?? null,
-      pendingSessions: snapshot.pendingSessions,
-      pendingPoints,
-      counterfactuals: params.counterfactuals ?? [],
-      buckets: runtimeBuckets.map((bucket) => ({
-        id: bucket.id,
-        category: bucket.category,
-        budgetAmount: bucket.budgetAmount,
-        remainingCents: bucket.remainingCents,
-        strictMode: bucket.strictMode,
-        periodEndMs: bucket.periodEndMs,
-      })),
-    },
-    options.engineVersion,
-    options.digest
-  );
-
-  const ctx: EvaluationContext = {
+function buildEvaluationContext(
+  params: SimulateSpendParams,
+  snapshot: AuthoritySnapshot,
+  amountCents: number,
+  categoryBucket: AuthorityBucket | null
+): EvaluationContext {
+  return {
     amountCents,
     category: params.category,
     bucket: categoryBucket,
@@ -320,58 +347,106 @@ export async function simulateSpendAuthorityFromSnapshot(
     safeToSpendCents: snapshot.dailyState?.safeToSpendCents ?? null,
     categoryPreferenceMode: snapshot.categoryPreferenceMode ?? null,
     pendingSessions: snapshot.pendingSessions,
-    pendingPoints,
+    pendingPoints: snapshot.pendingPoints,
     delayDays: 0,
     surface: params.surface,
   };
+}
 
+type EvaluatedOutcome = {
+  reasons: SimulatedAuthorityReason[];
+  severity: number;
+  verdict: SimulatedAuthorityVerdict;
+  explanation: string;
+};
+
+function evaluateOutcome(ctx: EvaluationContext): EvaluatedOutcome {
   const reasons = evaluateReasons(ctx);
   const severity = reasons.reduce((acc, r) => Math.max(acc, r.severity), 0);
-  const verdict = computeVerdict(severity);
-  const explanation = buildExplanation(reasons);
+  return {
+    reasons,
+    severity,
+    verdict: computeVerdict(severity),
+    explanation: buildExplanation(reasons),
+  };
+}
 
-  const requestedCounterfactuals =
-    params.counterfactuals && params.counterfactuals.length > 0
-      ? params.counterfactuals
-      : [
-          { amountCents: Math.max(0, Math.floor(amountCents * 0.8)) },
-          { delayDays: 3 },
-        ];
+function requestedCounterfactualsFor(
+  params: SimulateSpendParams,
+  amountCents: number
+): CounterfactualAuthorityRequest[] {
+  if (params.counterfactuals && params.counterfactuals.length > 0) {
+    return params.counterfactuals;
+  }
+  return [{ amountCents: Math.max(0, Math.floor(amountCents * 0.8)) }, { delayDays: 3 }];
+}
 
-  const counterfactuals: CounterfactualAuthorityResult[] = requestedCounterfactuals.map(
-    (adjustment) => {
-      const adjustedBucket =
-        adjustment.bucketId != null
-          ? runtimeBuckets.find((bucket) => bucket.id === adjustment.bucketId) ?? categoryBucket
-          : categoryBucket;
-      const adjustedCtx: EvaluationContext = {
-        ...ctx,
-        amountCents: adjustment.amountCents ?? amountCents,
-        bucket: adjustedBucket,
-        delayDays: adjustment.delayDays ?? 0,
-        surface: params.surface,
-      };
-      const cfReasons = evaluateReasons(adjustedCtx);
-      const cfSeverity = cfReasons.reduce((acc, r) => Math.max(acc, r.severity), 0);
-      const cfVerdict = computeVerdict(cfSeverity);
-      return {
-        adjustment,
-        verdict: cfVerdict,
-        severity: cfSeverity,
-        reasons: cfReasons,
-        explanation: buildExplanation(cfReasons),
-      };
-    }
+function adjustedBucketFor(
+  adjustment: CounterfactualAuthorityRequest,
+  runtimeBuckets: AuthorityBucket[],
+  categoryBucket: AuthorityBucket | null
+): AuthorityBucket | null {
+  if (adjustment.bucketId == null) return categoryBucket;
+  return runtimeBuckets.find((bucket) => bucket.id === adjustment.bucketId) ?? categoryBucket;
+}
+
+function evaluateCounterfactual(
+  adjustment: CounterfactualAuthorityRequest,
+  ctx: EvaluationContext,
+  buckets: { runtimeBuckets: AuthorityBucket[]; categoryBucket: AuthorityBucket | null }
+): CounterfactualAuthorityResult {
+  const adjustedCtx: EvaluationContext = {
+    ...ctx,
+    amountCents: adjustment.amountCents ?? ctx.amountCents,
+    bucket: adjustedBucketFor(adjustment, buckets.runtimeBuckets, buckets.categoryBucket),
+    delayDays: adjustment.delayDays ?? 0,
+    surface: ctx.surface,
+  };
+  const outcome = evaluateOutcome(adjustedCtx);
+  return {
+    adjustment,
+    verdict: outcome.verdict,
+    severity: outcome.severity,
+    reasons: outcome.reasons,
+    explanation: outcome.explanation,
+  };
+}
+
+export async function simulateSpendAuthorityFromSnapshot(
+  params: SimulateSpendParams,
+  options: SnapshotOptions
+): Promise<AuthorityDecision> {
+  const engineVersion = assertSnapshotOptions(options);
+
+  const amountCents = Math.max(0, Math.floor(params.amountCents));
+
+  const snapshot = options.snapshot;
+  const runtimeBuckets = snapshot.buckets;
+  const categoryBucket =
+    runtimeBuckets.find((bucket) => bucket.category === params.category) ?? null;
+
+  const inputsVersion = computeInputsVersion(
+    buildAuthorityInputs(params, snapshot, amountCents),
+    engineVersion,
+    options.digest
   );
+
+  const ctx = buildEvaluationContext(params, snapshot, amountCents, categoryBucket);
+  const outcome = evaluateOutcome(ctx);
+
+  const counterfactuals: CounterfactualAuthorityResult[] = requestedCounterfactualsFor(
+    params,
+    amountCents
+  ).map((adjustment) => evaluateCounterfactual(adjustment, ctx, { runtimeBuckets, categoryBucket }));
 
   const decision: SimulatedAuthorityDecision = {
     version: authorityVersion,
-    verdict,
-    severity,
-    reasons,
-    explanation,
+    verdict: outcome.verdict,
+    severity: outcome.severity,
+    reasons: outcome.reasons,
+    explanation: outcome.explanation,
     inputsVersion,
-    engineVersion: options.engineVersion,
+    engineVersion,
     counterfactuals,
   };
 
