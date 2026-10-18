@@ -23,6 +23,18 @@ export type AppliedBucketResult = {
   bucketLimitCents: number | null;
 };
 
+function emptyResult(regimeId: string | null = null): AppliedBucketResult {
+  return { regimeId, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
+}
+
+function usageBps(spentCents: number, limit: number): number | null {
+  return limit > 0 ? Math.round((spentCents / limit) * 10000) : null;
+}
+
+function isZeroCredit(tx: ClassifiedBankTransaction, delta: number): boolean {
+  return delta === 0 && (tx.direction ?? '').toLowerCase() === 'credit';
+}
+
 export class RegimeBucketTracker {
   private regimes: HistoricalIncomeRegime[];
 
@@ -63,40 +75,41 @@ export class RegimeBucketTracker {
     return created;
   }
 
+  private findTemplate(regimeId: string, bucketKey: string): HistoricalBucketTemplate | undefined {
+    const templates = this.templatesByRegime.get(regimeId);
+    if (templates === undefined) return undefined;
+    return templates.get(bucketKey) ?? templates.get(REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES);
+  }
+
   apply(tx: ClassifiedBankTransaction): AppliedBucketResult {
     const date = tx.postedAt ?? tx.occurredAt;
     if (date == null) {
-      return { regimeId: null, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
+      return emptyResult();
     }
     const regimeId = this.findRegimeIdForDate(date);
-    if (regimeId === null || regimeId === undefined || regimeId === '') {
-      return { regimeId: null, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
-    }
-
-    const templates = this.templatesByRegime.get(regimeId);
-    if (templates === undefined || templates.size === 0) {
-      return { regimeId, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
+    if (regimeId === null || regimeId === '') {
+      return emptyResult();
     }
 
     const bucketKey = inferBucketKeyForTransaction(tx);
-    const template = templates.get(bucketKey) ?? templates.get(REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES);
+    const template = this.findTemplate(regimeId, bucketKey);
     if (template === undefined) {
-      return { regimeId, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
+      return emptyResult(regimeId);
     }
 
     const monthKey = monthStart(date).toISOString();
     const state = this.getBucketState(regimeId, monthKey, bucketKey, template.monthlyLimitCents);
     const before = state.spentCents;
     const limit = state.limitCents > 0 ? state.limitCents : template.monthlyLimitCents;
-    const usageBeforeBps = limit > 0 ? Math.round((before / limit) * 10000) : null;
+    const usageBeforeBps = usageBps(before, limit);
 
     const delta = deriveBucketDeltaCents(tx);
-    if (delta === 0 && (tx.direction ?? '').toLowerCase() === 'credit') {
-      return { regimeId, bucketKey: null, usageBeforeBps: null, usageAfterBps: null, bucketLimitCents: null };
+    if (isZeroCredit(tx, delta)) {
+      return emptyResult(regimeId);
     }
     const after = Math.max(0, before + delta);
     state.spentCents = after;
-    const usageAfterBps = limit > 0 ? Math.round((after / limit) * 10000) : null;
+    const usageAfterBps = usageBps(after, limit);
 
     return {
       regimeId,

@@ -3,30 +3,46 @@ import type { BankIngestConfig } from '../config/server.js';
 import { getServerConfig } from '../config/store.js';
 import type { PrismaClient } from '@prisma/client';
 
+type DevIngestUser = { id: string; email: string | null };
+
+function isNonBlank(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '';
+}
+
+async function findRequiredUser(
+  prisma: PrismaClient,
+  where: { id: string } | { email: string },
+  notFoundMessage: string
+): Promise<DevIngestUser> {
+  const user = await prisma.user.findUnique({ where });
+  if (user === null) {
+    throw new Error(notFoundMessage);
+  }
+  return { id: user.id, email: user.email ?? null };
+}
+
 export async function getDevIngestUser(
   prisma: PrismaClient,
   bankIngestConfig?: BankIngestConfig
-): Promise<{ id: string; email: string | null }> {
+): Promise<DevIngestUser> {
   const config = bankIngestConfig ?? getServerConfig().bankIngest;
   const envUserId = config.userId;
   const envEmail = config.userEmail;
 
-  const hasEnvUserId = typeof envUserId === 'string' && envUserId.trim() !== '';
-  if (hasEnvUserId) {
-    const user = await prisma.user.findUnique({ where: { id: envUserId } });
-    if (user === null) {
-      throw new Error(`BANK_INGEST_USER_ID="${envUserId}" not found. Sign in or set BANK_INGEST_USER_EMAIL.`);
-    }
-    return { id: user.id, email: user.email ?? null };
+  if (isNonBlank(envUserId)) {
+    return findRequiredUser(
+      prisma,
+      { id: envUserId },
+      `BANK_INGEST_USER_ID="${envUserId}" not found. Sign in or set BANK_INGEST_USER_EMAIL.`
+    );
   }
 
-  const hasEnvEmail = typeof envEmail === 'string' && envEmail.trim() !== '';
-  if (hasEnvEmail) {
-    const user = await prisma.user.findUnique({ where: { email: envEmail } });
-    if (user === null) {
-      throw new Error(`BANK_INGEST_USER_EMAIL="${envEmail}" not found. Sign in or correct the email.`);
-    }
-    return { id: user.id, email: user.email ?? null };
+  if (isNonBlank(envEmail)) {
+    return findRequiredUser(
+      prisma,
+      { email: envEmail },
+      `BANK_INGEST_USER_EMAIL="${envEmail}" not found. Sign in or correct the email.`
+    );
   }
 
   // Fallback to lab user (warn).

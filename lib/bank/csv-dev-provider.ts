@@ -15,6 +15,22 @@ export type CsvDevTransaction = {
   rawLines: string[];
 };
 
+function optionalField(row: Record<string, string>, key: string): string | null {
+  const value = row[key];
+  return value !== undefined && value !== '' ? value : null;
+}
+
+async function parseRawLines(row: Record<string, string>): Promise<string[]> {
+  try {
+    const rawLinesJson = optionalField(row, 'raw_lines_json') ?? '[]';
+    const parsed: unknown = await new Response(rawLinesJson).json();
+    return Array.isArray(parsed) ? parsed.map((line) => String(line)) : [];
+  } catch (error: unknown) {
+    void error;
+    return [];
+  }
+}
+
 export async function parseCsvDevFile(filePath: string): Promise<CsvDevTransaction[]> {
   const raw = await fs.readFile(filePath, 'utf8');
   const records = parse(raw, {
@@ -30,31 +46,13 @@ export async function parseCsvDevFile(filePath: string): Promise<CsvDevTransacti
     const directionRaw = row['direction'] ?? '';
     const direction: 'debit' | 'credit' =
       directionRaw.toLowerCase() === 'credit' ? 'credit' : 'debit';
-    const accountLast4Raw = row['account_last4'];
-    const accountLast4 =
-      accountLast4Raw !== undefined && accountLast4Raw !== '' ? String(accountLast4Raw) : null;
-    const sourceStatementRaw = row['source_file'];
-    const sourceStatement =
-      sourceStatementRaw !== undefined && sourceStatementRaw !== '' ? sourceStatementRaw : null;
-    const statementStartRaw = row['statement_start'];
-    const statementStart =
-      statementStartRaw !== undefined && statementStartRaw !== '' ? statementStartRaw : null;
-    const statementEndRaw = row['statement_end'];
-    const statementEnd =
-      statementEndRaw !== undefined && statementEndRaw !== '' ? statementEndRaw : null;
-    const sectionRaw = row['section'];
-    const section = sectionRaw !== undefined && sectionRaw !== '' ? sectionRaw : null;
-    let rawLines: string[] = [];
-    try {
-      const rawLinesJson = row['raw_lines_json'] !== undefined && row['raw_lines_json'] !== ''
-        ? row['raw_lines_json']
-        : '[]';
-      const parsed: unknown = await new Response(rawLinesJson).json();
-      rawLines = Array.isArray(parsed) ? parsed.map((line) => String(line)) : [];
-    } catch (error: unknown) {
-      void error;
-      rawLines = [];
-    }
+    const accountLast4Raw = optionalField(row, 'account_last4');
+    const accountLast4 = accountLast4Raw !== null ? String(accountLast4Raw) : null;
+    const sourceStatement = optionalField(row, 'source_file');
+    const statementStart = optionalField(row, 'statement_start');
+    const statementEnd = optionalField(row, 'statement_end');
+    const section = optionalField(row, 'section');
+    const rawLines = await parseRawLines(row);
 
     return {
       postedDate,
