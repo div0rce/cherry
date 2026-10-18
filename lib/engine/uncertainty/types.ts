@@ -31,22 +31,20 @@ export function hasUncertaintyShapeIntent(value: unknown): value is Record<strin
   return isRecord(value) && 'distribution' in value;
 }
 
+// One shape check per distribution kind; unknown kinds are not numeric distributions.
+const DISTRIBUTION_SHAPES: Record<string, (value: Record<string, unknown>) => boolean> = {
+  point: (value) => typeof value['value'] === 'number',
+  normal: (value) => typeof value['mean'] === 'number' && typeof value['std'] === 'number',
+  lognormal: (value) => typeof value['mu'] === 'number' && typeof value['sigma'] === 'number',
+  discrete: (value) => Array.isArray(value['values']) && Array.isArray(value['probs']),
+};
+
 export function isNumericDistribution(value: unknown): value is NumericDistribution {
   if (!isRecord(value)) return false;
-  if (typeof value['kind'] !== 'string') return false;
-
-  switch (value['kind']) {
-    case 'point':
-      return typeof value['value'] === 'number';
-    case 'normal':
-      return typeof value['mean'] === 'number' && typeof value['std'] === 'number';
-    case 'lognormal':
-      return typeof value['mu'] === 'number' && typeof value['sigma'] === 'number';
-    case 'discrete':
-      return Array.isArray(value['values']) && Array.isArray(value['probs']);
-    default:
-      return false;
-  }
+  const kind = value['kind'];
+  if (typeof kind !== 'string' || !Object.hasOwn(DISTRIBUTION_SHAPES, kind)) return false;
+  const matches = DISTRIBUTION_SHAPES[kind];
+  return matches !== undefined && matches(value);
 }
 
 export function isUncertainNumber(value: unknown): value is UncertainNumber {
