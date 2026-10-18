@@ -51,10 +51,17 @@ function directionOf(tx: Pick<ClassifiedBankTransaction, 'direction'>): 'credit'
   return normalized.toLowerCase() === 'credit' ? 'credit' : 'debit';
 }
 
+function firstPresent<T>(values: Array<T | null | undefined>): T | null {
+  for (const value of values) {
+    if (value != null) return value;
+  }
+  return null;
+}
+
 function descriptionTextOf(
   tx: Pick<ClassifiedBankTransaction, 'description' | 'rawDescription' | 'merchantName'>,
 ): string {
-  const value = tx.description ?? tx.rawDescription ?? tx.merchantName;
+  const value = firstPresent([tx.description, tx.rawDescription, tx.merchantName]);
   const normalized = typeof value === 'string' ? value : '';
   return normalized.toUpperCase();
 }
@@ -105,11 +112,19 @@ function inferBucketKeyForTransaction(tx: ClassifiedBankTransaction): string {
   if (tx.p2pKind === 'P2P_REPAYMENT_OUT') return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
   if (tx.p2pKind === 'P2P_PSEUDO_MERCHANT_OUT') return inferPseudoMerchantBucket(tx);
   const mccBucket = typeof tx.mcc === 'number' ? MCC_BUCKETS.get(tx.mcc) : undefined;
-  return mccBucket ?? inferBucketFromDescription(tx);
+  return mccBucket !== undefined ? mccBucket : inferBucketFromDescription(tx);
 }
 
 function monthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function bucketMonthMap(spend: Map<string, Map<string, number>>, bucketKey: string): Map<string, number> {
+  const existing = spend.get(bucketKey);
+  if (existing !== undefined) return existing;
+  const created = new Map<string, number>();
+  spend.set(bucketKey, created);
+  return created;
 }
 
 function bucketSpendByMonth(
@@ -117,7 +132,7 @@ function bucketSpendByMonth(
   regime: IncomeRegimeDraft,
 ): Map<string, Map<string, number>> {
   const monthKeys = new Set(regime.months.map((m) => monthStart(m).toISOString()));
-  const fallbackDate: Date | null | undefined = regime.startMonth ?? regime.months[0] ?? regime.endMonth;
+  const fallbackDate = firstPresent([regime.startMonth, regime.months[0], regime.endMonth]);
   if (fallbackDate == null) {
     throw new Error('bucket-regime: missing fallback date');
   }
@@ -125,12 +140,12 @@ function bucketSpendByMonth(
   for (const tx of txs) {
     const delta = deriveBucketDeltaCents(tx);
     if (delta === 0) continue;
-    const alignedKey = monthStart(tx.postedAt ?? tx.occurredAt ?? fallbackDate).toISOString();
+    const timestamp = firstPresent([tx.postedAt, tx.occurredAt]);
+    const alignedKey = monthStart(timestamp === null ? fallbackDate : timestamp).toISOString();
     if (!monthKeys.has(alignedKey)) continue;
     const bucketKey = inferBucketKeyForTransaction(tx);
-    const bucketMap = spend.get(bucketKey) ?? new Map<string, number>();
+    const bucketMap = bucketMonthMap(spend, bucketKey);
     bucketMap.set(alignedKey, getMapNumberOrZero(bucketMap, alignedKey) + delta);
-    spend.set(bucketKey, bucketMap);
   }
   return spend;
 }
@@ -306,13 +321,21 @@ function regimeToDraft(regime: HistoricalIncomeRegime): IncomeRegimeDraft {
   };
 }
 
+function draftsFor(
+  templatesByRegime: Record<string, BucketTemplateDraft[]>,
+  regime: HistoricalIncomeRegime,
+): BucketTemplateDraft[] {
+  const drafts = templatesByRegime[regime.id];
+  return drafts == null ? [] : drafts;
+}
+
 function buildTemplateCreations(
   userId: string,
   regimes: HistoricalIncomeRegime[],
   templatesByRegime: Record<string, BucketTemplateDraft[]>,
 ) {
   return regimes.flatMap((regime) =>
-    (templatesByRegime[regime.id] ?? []).map((draft) =>
+    draftsFor(templatesByRegime, regime).map((draft) =>
       prisma.historicalBucketTemplate.create({
         data: {
           userId,
