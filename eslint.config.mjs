@@ -108,6 +108,8 @@ export default defineConfig([
   globalIgnores([
     '.tmp/**',
     '.next/**',
+    // Agent worktrees are other checkouts of this repo, linted in their own checkout.
+    '.claude/worktrees/**',
     'out/**',
     'build/**',
     'tests/fixtures/**',

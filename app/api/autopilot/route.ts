@@ -17,6 +17,58 @@ const AutopilotRequestSchema = z
   })
   .strict();
 
+type SwipeDecision = Awaited<ReturnType<typeof getAutopilotDecisionForUserSwipe>>;
+
+function logInputInvalid(userId: string, timestamp: string, detail?: { field: string }): void {
+  logGuardrailEvent({
+    surface: 'autopilot',
+    userId,
+    kind: 'INPUT_INVALID',
+    severity: 'soft',
+    ...(detail !== undefined ? { detail } : {}),
+    timestamp,
+    timestampSource: 'boundary',
+  });
+}
+
+function isPositiveFinite(value: number): boolean {
+  return Number.isFinite(value) && value > 0;
+}
+
+function resolveCardName(
+  decision: SwipeDecision,
+  cards: Array<{ id: string; nickname: string | null }>
+): string | null {
+  if (decision.cardId === null) return null;
+  return cards.find((card) => card.id === decision.cardId)?.nickname ?? null;
+}
+
+function resolveRationale(decision: SwipeDecision): string {
+  return decision.kind === 'OK'
+    ? decision.userFacingMessage
+    : 'No specific recommendation available. You can still choose any card.';
+}
+
+function centsToDollarsOrNull(cents: number | null | undefined): number | null {
+  return cents == null ? null : cents / 100;
+}
+
+async function resolveBucketDelta(
+  decision: SwipeDecision,
+  userId: string
+): Promise<{ name: string | null; limitCents: number | null; remainingCents: number | null } | null> {
+  if (decision.bucketDelta === null) return null;
+  const bucket = await prisma.bucket.findUnique({
+    where: { id: decision.bucketDelta.bucketId, userId },
+    select: { name: true, budgetAmount: true },
+  });
+  return {
+    name: bucket?.name ?? null,
+    limitCents: bucket?.budgetAmount ?? null,
+    remainingCents: decision.bucketDelta.newRemainingCents ?? null,
+  };
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const requestNow = new Date();
   const requestNowMs = requestNow.getTime();
@@ -32,29 +84,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const parsed = await parseJsonBody(request, AutopilotRequestSchema);
     if (parsed.ok !== true) {
-      logGuardrailEvent({
-        surface: 'autopilot',
-        userId,
-        kind: 'INPUT_INVALID',
-        severity: 'soft',
-        timestamp: requestTimestamp,
-        timestampSource: 'boundary',
-      });
+      logInputInvalid(userId, requestTimestamp);
       return NextResponse.json({ message: 'Invalid request' }, { status: parsed.response.status });
     }
 
     const { merchant, amount } = parsed.data;
     const amountCents = Math.round(amount * 100);
-    if (!Number.isFinite(amountCents) || amountCents <= 0) {
-      logGuardrailEvent({
-        surface: 'autopilot',
-        userId,
-        kind: 'INPUT_INVALID',
-        severity: 'soft',
-        detail: { field: 'amount' },
-        timestamp: requestTimestamp,
-        timestampSource: 'boundary',
-      });
+    if (!isPositiveFinite(amountCents)) {
+      logInputInvalid(userId, requestTimestamp, { field: 'amount' });
       return NextResponse.json({ message: 'Amount must be positive.' }, { status: 400 });
     }
 
@@ -74,38 +111,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       nowMs: requestNowMs,
     });
 
-    const cardName =
-      decision.cardId !== null
-        ? cards.find((card) => card.id === decision.cardId)?.nickname ?? null
-        : null;
-
-    const rationale =
-      decision.kind === 'OK'
-        ? decision.userFacingMessage
-        : 'No specific recommendation available. You can still choose any card.';
-
-    let bucketDelta: { name: string | null; limitCents: number | null; remainingCents: number | null } | null =
-      null;
-    if (decision.bucketDelta !== null) {
-      const bucket = await prisma.bucket.findUnique({
-        where: { id: decision.bucketDelta.bucketId, userId },
-        select: { name: true, budgetAmount: true },
-      });
-      bucketDelta = {
-        name: bucket?.name ?? null,
-        limitCents: bucket?.budgetAmount ?? null,
-        remainingCents: decision.bucketDelta.newRemainingCents ?? null,
-      };
-    }
+    const bucketDelta = await resolveBucketDelta(decision, userId);
 
     return NextResponse.json({
-      cardName,
+      cardName: resolveCardName(decision, cards),
       cardId: decision.cardId,
-      rationale,
-      savingsDollars:
-        decision.expectedMonetaryBenefitCents == null
-          ? null
-          : decision.expectedMonetaryBenefitCents / 100,
+      rationale: resolveRationale(decision),
+      savingsDollars: centsToDollarsOrNull(decision.expectedMonetaryBenefitCents),
       issuerPointsDelta: decision.expectedPointsDelta,
       bucketDelta,
     });

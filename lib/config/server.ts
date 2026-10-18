@@ -41,10 +41,7 @@ function assertNonEmptyString(value: unknown, field: string): asserts value is s
 }
 
 function assertWalletConfig(config: WalletCertificateConfig): void {
-  if (typeof config.enabled !== 'boolean') {
-    throw new Error('ServerConfig.wallet.enabled must be boolean');
-  }
-
+  assertBoolean(config.enabled, 'wallet.enabled');
   if (!config.enabled) return;
 
   const maybeStrings = [
@@ -57,66 +54,64 @@ function assertWalletConfig(config: WalletCertificateConfig): void {
     config.wwdrCertPath,
   ];
 
-  const hasBadType = maybeStrings.some(
-    (value) => value !== undefined && value !== null && typeof value !== 'string'
-  );
-  if (hasBadType) {
+  if (!maybeStrings.every(isOptionalString)) {
     throw new Error('ServerConfig.wallet fields must be strings when provided');
   }
 }
 
-export function assertServerConfig(config: ServerConfig): ServerConfig {
-  if (typeof config.appBaseUrl !== 'string') {
+function assertAbsoluteBaseUrl(value: unknown): void {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (trimmed === '') {
     throw new Error('ServerConfig.appBaseUrl required');
   }
-  const trimmedBaseUrl = config.appBaseUrl.trim();
-  if (trimmedBaseUrl === '') {
-    throw new Error('ServerConfig.appBaseUrl required');
-  }
-  if (!/^https?:\/\//.test(trimmedBaseUrl)) {
+  if (!/^https?:\/\//.test(trimmed)) {
     throw new Error('ServerConfig.appBaseUrl must be absolute');
   }
+}
 
-  assertNonEmptyString(config.databaseUrl, 'databaseUrl');
-
-  if (!['development', 'test', 'production'].includes(config.environment)) {
-    throw new Error('ServerConfig.environment must be development | test | production');
+function assertBoolean(value: unknown, field: string): void {
+  if (typeof value !== 'boolean') {
+    throw new Error(`ServerConfig.${field} must be boolean`);
   }
+}
 
-  if (typeof config.enableDevTools !== 'boolean') {
-    throw new Error('ServerConfig.enableDevTools must be boolean');
+function assertOneOf(value: unknown, allowed: readonly string[], message: string): void {
+  if (typeof value !== 'string' || !allowed.includes(value)) {
+    throw new Error(message);
   }
+}
 
-  if (config.engineVersion !== null && typeof config.engineVersion !== 'string') {
-    throw new Error('ServerConfig.engineVersion must be string | null');
-  }
+const isAbsent = (value: unknown): boolean => value === undefined || value === null;
+const isOptionalString = (value: unknown): boolean => isAbsent(value) || typeof value === 'string';
+// Absent is allowed; present must be a non-blank string.
+const isOptionalNonBlankString = (value: unknown): boolean =>
+  isAbsent(value) || (typeof value === 'string' && value.trim() !== '');
 
-  if (config.vineSignatureMode !== 'off' && config.vineSignatureMode !== 'warn' && config.vineSignatureMode !== 'enforce') {
-    throw new Error('ServerConfig.vineSignatureMode must be off | warn | enforce');
-  }
-
-  assertVineSignatureModePolicy(config);
-
-  if (typeof config.offlineEvaluatorEnabled !== 'boolean') {
-    throw new Error('ServerConfig.offlineEvaluatorEnabled must be boolean');
-  }
-
-  if (
-    config.bankIngest.userId !== undefined &&
-    config.bankIngest.userId !== null &&
-    (typeof config.bankIngest.userId !== 'string' || config.bankIngest.userId.trim() === '')
-  ) {
+function assertBankIngest(bankIngest: ServerConfig['bankIngest']): void {
+  if (!isOptionalNonBlankString(bankIngest.userId)) {
     throw new Error('ServerConfig.bankIngest.userId must be string | null | undefined');
   }
-  if (
-    config.bankIngest.userEmail !== undefined &&
-    config.bankIngest.userEmail !== null &&
-    (typeof config.bankIngest.userEmail !== 'string' || config.bankIngest.userEmail.trim() === '')
-  ) {
+  if (!isOptionalNonBlankString(bankIngest.userEmail)) {
     throw new Error('ServerConfig.bankIngest.userEmail must be string | null | undefined');
   }
+}
 
+export function assertServerConfig(config: ServerConfig): ServerConfig {
+  assertAbsoluteBaseUrl(config.appBaseUrl);
+  assertNonEmptyString(config.databaseUrl, 'databaseUrl');
+  assertOneOf(
+    config.environment,
+    ['development', 'test', 'production'],
+    'ServerConfig.environment must be development | test | production'
+  );
+  assertBoolean(config.enableDevTools, 'enableDevTools');
+  if (!(config.engineVersion === null || typeof config.engineVersion === 'string')) {
+    throw new Error('ServerConfig.engineVersion must be string | null');
+  }
+  assertOneOf(config.vineSignatureMode, ['off', 'warn', 'enforce'], 'ServerConfig.vineSignatureMode must be off | warn | enforce');
+  assertVineSignatureModePolicy(config);
+  assertBoolean(config.offlineEvaluatorEnabled, 'offlineEvaluatorEnabled');
+  assertBankIngest(config.bankIngest);
   assertWalletConfig(config.wallet);
-
   return config;
 }

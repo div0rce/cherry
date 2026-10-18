@@ -50,10 +50,39 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   return runAll(parsed.data);
 }
 
+type RunTally = { processed: number; succeeded: number; failed: number };
+
+function resolveTargetDate(date: string | undefined, nowMs: number): Date {
+  if (typeof date === 'string' && date.length > 0) return new Date(date);
+  return new Date(nowMs);
+}
+
+async function runForUser(
+  userId: string,
+  targetDate: Date,
+  nowMs: number,
+  tally: RunTally
+): Promise<void> {
+  try {
+    await runDailyForUser({
+      userId,
+      date: targetDate,
+      source: DailyStateSource.NIGHTLY,
+      nowMs,
+    });
+    tally.succeeded += 1;
+  } catch (error: unknown) {
+    tally.failed += 1;
+    const appError = asAppError(error);
+    logError('daily_state_user_failed', { userId, err: appError });
+  } finally {
+    tally.processed += 1;
+  }
+}
+
 async function runAll(body: z.infer<typeof RunAllSchema>): Promise<NextResponse> {
   const nowMs = Date.now();
-  const targetDate =
-    typeof body.date === 'string' && body.date.length > 0 ? new Date(body.date) : new Date(nowMs);
+  const targetDate = resolveTargetDate(body.date, nowMs);
   if (!Number.isFinite(targetDate.getTime())) {
     return NextResponse.json({ error: 'invalid_date' }, { status: 400 });
   }
@@ -64,9 +93,7 @@ async function runAll(body: z.infer<typeof RunAllSchema>): Promise<NextResponse>
   const startedAt = nowMs;
 
   let cursor: string | null = null;
-  let processed = 0;
-  let succeeded = 0;
-  let failed = 0;
+  const tally: RunTally = { processed: 0, succeeded: 0, failed: 0 };
 
   for (;;) {
     const users: Array<{ id: string }> = await prisma.user.findMany({
@@ -79,27 +106,13 @@ async function runAll(body: z.infer<typeof RunAllSchema>): Promise<NextResponse>
     if (users.length === 0) break;
 
     for (const user of users) {
-      try {
-        await runDailyForUser({
-          userId: user.id,
-          date: targetDate,
-          source: DailyStateSource.NIGHTLY,
-          nowMs,
-        });
-        succeeded += 1;
-      } catch (error: unknown) {
-        failed += 1;
-        const appError = asAppError(error);
-        logError('daily_state_user_failed', { userId: user.id, err: appError });
-      } finally {
-        processed += 1;
-      }
+      await runForUser(user.id, targetDate, nowMs, tally);
     }
 
-    const lastUser: { id: string } | null =
-      users.length > 0 ? users[users.length - 1]! : null;
-    cursor = lastUser === null ? null : lastUser.id;
+    cursor = users[users.length - 1]!.id;
   }
+
+  const { processed, succeeded, failed } = tally;
 
   const durationMs = Date.now() - startedAt;
   logInfo('daily_state_nightly_complete', {

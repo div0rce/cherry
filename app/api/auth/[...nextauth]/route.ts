@@ -9,11 +9,16 @@ function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
+function hasDefaultExport(value: unknown): value is { default: unknown } {
+  if (typeof value !== 'object' || value === null) return false;
+  return 'default' in value;
+}
+
 function unwrapProvider(value: unknown): (...args: unknown[]) => unknown {
   let current = value;
   for (let i = 0; i < 2; i += 1) {
-    if (typeof current === 'object' && current !== null && 'default' in current) {
-      current = (current as { default: unknown }).default;
+    if (hasDefaultExport(current)) {
+      current = current.default;
       continue;
     }
     break;
@@ -106,11 +111,7 @@ export const authOptions = {
   },
   callbacks: {
     async session({ session, token }: SessionCallbackArgs): Promise<SessionShape> {
-      if (
-        session.user !== undefined &&
-        session.user !== null &&
-        hasNonEmptyString(token.sub)
-      ) {
+      if (session.user != null && hasNonEmptyString(token.sub)) {
         // expose user id to the client + server helpers
         session.user.id = token.sub;
       }

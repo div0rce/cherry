@@ -10,7 +10,7 @@ import {
   TransactionStatus,
   VerificationStatus,
 } from '@prisma/client';
-import type { RewardCategory } from '@prisma/client';
+import type { Prisma, RewardCategory } from '@prisma/client';
 import type { AutopilotDecision } from '../engine/public-types.js';
 import { getAutopilotDecisionForUserSwipe as runEngineAutopilot } from './engine-decision.js';
 import { deriveUnresolvableCreditLiabilityWarningText } from '../engine/degradation.js';
@@ -215,55 +215,58 @@ async function buildBucketImpact(
   };
 }
 
-async function evaluateAutopilot(
-  world: World,
-  userId: string,
-  input: AutopilotPreviewEngineContext,
-  options: { timeoutMs?: number; now: Date }
-): Promise<EvaluatedAutopilotContext> {
+function requireUser(userId: string): void {
   if (!hasText(userId)) {
     throw new AutopilotServiceError('User is required', 400, 'INVALID_USER');
   }
+}
 
-  const merchant = input.merchant.trim();
+function requireMerchant(rawMerchant: string): string {
+  const merchant = rawMerchant.trim();
   if (!hasText(merchant)) {
     throw new AutopilotServiceError('Merchant is required', 400, 'INVALID_MERCHANT');
   }
+  return merchant;
+}
 
-  const resolvedCategory: RewardCategory = await resolveScanCategory({
-    userId,
-    merchantName: merchant,
-    mccCode: null,
-    explicitCategory: input.category ?? null,
-  });
-
-  const amountCents = Math.round(input.amountCents);
+function requirePositiveAmountCents(rawAmountCents: number): number {
+  const amountCents = Math.round(rawAmountCents);
   if (!Number.isFinite(amountCents) || amountCents <= 0) {
     throw new AutopilotServiceError('Amount must be positive', 400, 'INVALID_AMOUNT');
   }
+  return amountCents;
+}
 
-  const occurredAt = parseOccurredAt(input.occurredAt, options.now);
-
-  const cards = await prisma.card.findMany({
+async function loadUserCards(userId: string): Promise<CardSummary[]> {
+  return await prisma.card.findMany({
     where: { userId },
     select: { id: true, nickname: true, issuer: true, network: true, isCredit: true },
     orderBy: { createdAt: 'asc' },
   });
-  const cardUniverseIds = cards.map((card) => card.id);
+}
 
-  let decision: AutopilotDecision;
+async function runEngineDecision(
+  world: World,
+  params: {
+    userId: string;
+    merchant: string;
+    amountCents: number;
+    cardUniverseIds: string[];
+    occurredAt: Date;
+  },
+  timeoutMs: number | undefined
+): Promise<AutopilotDecision> {
   try {
     const engineCall = runEngineAutopilot(world, {
-      userId,
-      merchant,
-      amountCents,
-      cardUniverseIds,
-      nowMs: occurredAt.getTime(),
+      userId: params.userId,
+      merchant: params.merchant,
+      amountCents: params.amountCents,
+      cardUniverseIds: params.cardUniverseIds,
+      nowMs: params.occurredAt.getTime(),
     });
-    decision =
-      typeof options.timeoutMs === 'number'
-        ? await withTimeout(engineCall, options.timeoutMs, 'ENGINE_TIMEOUT')
-        : await engineCall;
+    return typeof timeoutMs === 'number'
+      ? await withTimeout(engineCall, timeoutMs, 'ENGINE_TIMEOUT')
+      : await engineCall;
   } catch (error: unknown) {
     const appError = asAppError(error);
     if (error instanceof AutopilotServiceError) {
@@ -276,30 +279,33 @@ async function evaluateAutopilot(
       appError.message
     );
   }
+}
 
-  const status = mapKindToStatus(decision.kind);
-  const recommendedCard =
-    decision.cardId !== null ? cards.find((card) => card.id === decision.cardId) ?? null : null;
+function findRecommendedCard(
+  cards: CardSummary[],
+  cardId: AutopilotDecision['cardId']
+): CardSummary | null {
+  return cardId !== null ? cards.find((card) => card.id === cardId) ?? null : null;
+}
 
-  const bucketImpact = await buildBucketImpact(decision.bucketDelta, userId);
-  const stateSnapshot = await buildAutopilotStateSnapshot({
-    userId,
-    category: resolvedCategory,
-    effectiveAt: occurredAt,
-    cards,
-  });
-  const stateSnapshotHash = buildAutopilotStateSnapshotHash(stateSnapshot);
-  let engineDecisionId: string;
+function computeEngineDecisionIdOrThrow(params: {
+  userId: string;
+  amountCents: number;
+  merchant: string;
+  resolvedCategory: RewardCategory;
+  occurredAt: Date;
+  stateSnapshotHash: string;
+}): string {
   try {
-    engineDecisionId = computeEngineDecisionIdV1({
-      userId,
+    return computeEngineDecisionIdV1({
+      userId: params.userId,
       source: RecommendationSource.AUTOPILOT,
-      amountCents,
+      amountCents: params.amountCents,
       currency: 'USD',
-      merchantName: merchant,
-      category: resolvedCategory,
-      effectiveAt: occurredAt,
-      stateSnapshotHash,
+      merchantName: params.merchant,
+      category: params.resolvedCategory,
+      effectiveAt: params.occurredAt,
+      stateSnapshotHash: params.stateSnapshotHash,
     });
   } catch (error: unknown) {
     const appError = asAppError(error);
@@ -310,7 +316,9 @@ async function evaluateAutopilot(
       appError.message
     );
   }
+}
 
+function warnOnUnexpectedEngineDecisionIdPrefix(engineDecisionId: string, occurredAt: Date): void {
   if (!engineDecisionId.startsWith('edid_v1_')) {
     logInvariantViolation({
       surface: 'autopilot',
@@ -319,6 +327,56 @@ async function evaluateAutopilot(
       timestamp: occurredAt.toISOString(),
     });
   }
+}
+
+async function evaluateAutopilot(
+  world: World,
+  userId: string,
+  input: AutopilotPreviewEngineContext,
+  options: { timeoutMs?: number; now: Date }
+): Promise<EvaluatedAutopilotContext> {
+  requireUser(userId);
+  const merchant = requireMerchant(input.merchant);
+
+  const resolvedCategory: RewardCategory = await resolveScanCategory({
+    userId,
+    merchantName: merchant,
+    mccCode: null,
+    explicitCategory: input.category ?? null,
+  });
+
+  const amountCents = requirePositiveAmountCents(input.amountCents);
+  const occurredAt = parseOccurredAt(input.occurredAt, options.now);
+
+  const cards = await loadUserCards(userId);
+  const cardUniverseIds = cards.map((card) => card.id);
+
+  const decision = await runEngineDecision(
+    world,
+    { userId, merchant, amountCents, cardUniverseIds, occurredAt },
+    options.timeoutMs
+  );
+
+  const status = mapKindToStatus(decision.kind);
+  const recommendedCard = findRecommendedCard(cards, decision.cardId);
+
+  const bucketImpact = await buildBucketImpact(decision.bucketDelta, userId);
+  const stateSnapshot = await buildAutopilotStateSnapshot({
+    userId,
+    category: resolvedCategory,
+    effectiveAt: occurredAt,
+    cards,
+  });
+  const stateSnapshotHash = buildAutopilotStateSnapshotHash(stateSnapshot);
+  const engineDecisionId = computeEngineDecisionIdOrThrow({
+    userId,
+    amountCents,
+    merchant,
+    resolvedCategory,
+    occurredAt,
+    stateSnapshotHash,
+  });
+  warnOnUnexpectedEngineDecisionIdPrefix(engineDecisionId, occurredAt);
 
   return {
     merchant,
@@ -358,18 +416,84 @@ function deriveOverallVerdict(
   return OverallVerdict.GREEN;
 }
 
+
+type SessionVerdicts = {
+  budgetVerdict: BudgetVerdict;
+  cardVerdict: CardVerdict;
+  overallVerdict: OverallVerdict;
+};
+
+function deriveSessionVerdicts(evaluation: EvaluatedAutopilotContext): SessionVerdicts {
+  const budgetVerdict = deriveBudgetVerdict(evaluation.bucketImpact);
+  const overallVerdict = deriveOverallVerdict(evaluation.status, budgetVerdict);
+  const cardVerdict =
+    evaluation.recommendedCard === null ? CardVerdict.NO_CARD_DATA : CardVerdict.OPTIMAL;
+  return { budgetVerdict, cardVerdict, overallVerdict };
+}
+
+function toRecommendationVerdict(budgetVerdict: BudgetVerdict): RecommendationVerdict {
+  return budgetVerdict === BudgetVerdict.BREAKS_BUDGET
+    ? RecommendationVerdict.BREAKS_BUDGET
+    : RecommendationVerdict.HEALTHY;
+}
+
+function buildSessionRecommendationFields(evaluation: EvaluatedAutopilotContext): {
+  recommendedCardId: string | null;
+  recommendedBucketId: string | null;
+} {
+  return {
+    recommendedCardId: evaluation.recommendedCard?.id ?? null,
+    recommendedBucketId: evaluation.decision.bucketDelta?.bucketId ?? null,
+  };
+}
+
+function buildSessionCreateData(options: {
+  evaluation: EvaluatedAutopilotContext;
+  userId: string;
+  resolvedCategory: RewardCategory;
+  now: Date;
+  verdicts: SessionVerdicts;
+}) {
+  const { evaluation, userId, resolvedCategory, verdicts } = options;
+  return {
+    userId,
+    merchantName: evaluation.merchant,
+    mccCode: null,
+    category: resolvedCategory,
+    amountCents: evaluation.amountCents,
+    currency: 'USD',
+    deviceId: null,
+    storeId: null,
+    terminalId: null,
+    orderId: null,
+    orderToken: evaluation.engineDecisionId,
+    source: RecommendationSource.AUTOPILOT,
+    engineDecisionId: evaluation.engineDecisionId,
+    ...buildSessionRecommendationFields(evaluation),
+    confirmedAmountCents: null,
+    bucketSpendReversed: false,
+    verdict: toRecommendationVerdict(verdicts.budgetVerdict),
+    cherryPointsOffered: 0,
+    status: RecommendationStatus.RECOMMENDED,
+    expiresAt: new Date(options.now.getTime() + 15 * 60 * 1000),
+    verifiedAt: null,
+    rejectedAt: null,
+    ...verdicts,
+    coverageMode: CategoryCoverageModeDb.UNCONFIGURED,
+    verificationStatus: VerificationStatus.UNVERIFIED,
+    anomalyCode: SessionAnomalyCode.NONE,
+    anomalyDetails: null,
+  };
+}
+
 async function findOrCreateAutopilotSession(options: {
   evaluation: EvaluatedAutopilotContext;
   userId: string;
   resolvedCategory: RewardCategory;
   now: Date;
 }): Promise<{ id: string; recommendedBucketId: string | null }> {
-  const { evaluation, userId, resolvedCategory } = options;
-
-  const budgetVerdict = deriveBudgetVerdict(evaluation.bucketImpact);
-  const overallVerdict = deriveOverallVerdict(evaluation.status, budgetVerdict);
-  const cardVerdict =
-    evaluation.recommendedCard === null ? CardVerdict.NO_CARD_DATA : CardVerdict.OPTIMAL;
+  const { evaluation, userId } = options;
+  const verdicts = deriveSessionVerdicts(evaluation);
 
   if (!hasText(evaluation.engineDecisionId)) {
     throw new AutopilotServiceError('Invariant: missing engineDecisionId for AUTOPILOT', 500, 'MISSING_ENGINE_DECISION_ID');
@@ -384,48 +508,11 @@ async function findOrCreateAutopilotSession(options: {
       },
     },
     update: {
-      recommendedCardId: evaluation.recommendedCard?.id ?? null,
-      recommendedBucketId: evaluation.decision.bucketDelta?.bucketId ?? null,
-      budgetVerdict,
-      cardVerdict,
-      overallVerdict,
+      ...buildSessionRecommendationFields(evaluation),
+      ...verdicts,
       coverageMode: CategoryCoverageModeDb.UNCONFIGURED,
     },
-    create: {
-      userId,
-      merchantName: evaluation.merchant,
-      mccCode: null,
-      category: resolvedCategory,
-      amountCents: evaluation.amountCents,
-      currency: 'USD',
-      deviceId: null,
-      storeId: null,
-      terminalId: null,
-      orderId: null,
-      orderToken: evaluation.engineDecisionId,
-      source: RecommendationSource.AUTOPILOT,
-      engineDecisionId: evaluation.engineDecisionId,
-      recommendedCardId: evaluation.recommendedCard?.id ?? null,
-      recommendedBucketId: evaluation.decision.bucketDelta?.bucketId ?? null,
-      confirmedAmountCents: null,
-      bucketSpendReversed: false,
-      verdict:
-        budgetVerdict === BudgetVerdict.BREAKS_BUDGET
-          ? RecommendationVerdict.BREAKS_BUDGET
-          : RecommendationVerdict.HEALTHY,
-      cherryPointsOffered: 0,
-      status: RecommendationStatus.RECOMMENDED,
-      expiresAt: new Date(options.now.getTime() + 15 * 60 * 1000),
-      verifiedAt: null,
-      rejectedAt: null,
-      budgetVerdict,
-      cardVerdict,
-      overallVerdict,
-      coverageMode: CategoryCoverageModeDb.UNCONFIGURED,
-      verificationStatus: VerificationStatus.UNVERIFIED,
-      anomalyCode: SessionAnomalyCode.NONE,
-      anomalyDetails: null,
-    },
+    create: buildSessionCreateData({ ...options, verdicts }),
     select: { id: true, recommendedBucketId: true },
   });
 
@@ -503,22 +590,18 @@ function computeRewardStrengthLevel(
   return 1;
 }
 
-export async function getAutopilotPreview(
-  world: World,
-  userId: string,
-  input: AutopilotPreviewEngineContext,
-  options: { now: Date }
-): Promise<AutopilotPreviewOutput> {
-  // Preview: read-only engine wrapper (no bucket/session/ledger writes). Contract documented in docs/autopilot-master-spec.md.
-  const evaluation = await evaluateAutopilot(world, userId, input, {
-    timeoutMs: ENGINE_TIMEOUT_MS,
-    now: options.now,
-  });
+function assertOccurredAtNotAfterNow(occurredAt: Date, now: Date): void {
   // Invariant: authority time represents the economic event time,
   // which must never be after request-time.
-  if (evaluation.occurredAt.getTime() > options.now.getTime()) {
+  if (occurredAt.getTime() > now.getTime()) {
     throw new Error('Invariant violation: occurredAt > request now');
   }
+}
+
+async function simulateAndRecordPreviewAuthority(
+  userId: string,
+  evaluation: EvaluatedAutopilotContext
+): Promise<AutopilotPreviewOutput['authority']> {
   const authorityResult = await simulateSpendAuthority(
     {
       userId,
@@ -545,7 +628,13 @@ export async function getAutopilotPreview(
       decision: authorityDecision,
     });
   }
+  return authorityDecision;
+}
 
+function buildPreviewOutput(
+  evaluation: EvaluatedAutopilotContext,
+  authority: AutopilotPreviewOutput['authority']
+): AutopilotPreviewOutput {
   const explanation = buildExplanation(evaluation);
   const rewardStrengthLevel = computeRewardStrengthLevel(
     evaluation.expectedMonetaryBenefitCents,
@@ -554,7 +643,7 @@ export async function getAutopilotPreview(
   );
   const ui = buildPreviewUiBundle({ explanation, rewardStrengthLevel });
 
-  const preview: AutopilotPreviewOutput = {
+  return {
     decisionId: evaluation.decisionId,
     merchant: evaluation.merchant,
     amountCents: evaluation.amountCents,
@@ -565,10 +654,16 @@ export async function getAutopilotPreview(
     expectedPointsDelta: evaluation.expectedPointsDelta,
     bucketImpact: evaluation.bucketImpact,
     reasonCode: evaluation.decision.reasonCode,
-    authority: authorityDecision,
+    authority,
     ui,
   };
+}
 
+function validatePreviewOutput(
+  preview: AutopilotPreviewOutput,
+  userId: string,
+  occurredAt: Date
+): AutopilotPreviewOutput {
   const parsed = AutopilotPreviewOutputSchema.safeParse(preview);
   if (!parsed.success) {
     incrementCounter('autopilot_preview_invalid_output_total');
@@ -581,7 +676,7 @@ export async function getAutopilotPreview(
         reason: 'PREVIEW_OUTPUT_SCHEMA_MISMATCH',
         issues: parsed.error.format(),
       },
-      timestamp: evaluation.occurredAt.toISOString(),
+      timestamp: occurredAt.toISOString(),
     });
     throw new AutopilotServiceError('Invalid Autopilot preview output', 500, 'INVALID_PREVIEW_OUTPUT');
   }
@@ -591,23 +686,42 @@ export async function getAutopilotPreview(
       surface: 'autopilot',
       detail: 'Missing recommended card for ok Autopilot preview',
       data: { decisionId: parsed.data.decisionId },
-      timestamp: evaluation.occurredAt.toISOString(),
+      timestamp: occurredAt.toISOString(),
     });
   }
-
-  const durationMs = 0;
-  observeDuration('autopilot_preview_total_ms', durationMs, { status: parsed.data.status });
-
   return parsed.data;
 }
 
-export async function commitAutopilotDecisionV2(
+export async function getAutopilotPreview(
+  world: World,
+  userId: string,
+  input: AutopilotPreviewEngineContext,
+  options: { now: Date }
+): Promise<AutopilotPreviewOutput> {
+  // Preview: read-only engine wrapper (no bucket/session/ledger writes). Contract documented in docs/autopilot-master-spec.md.
+  const evaluation = await evaluateAutopilot(world, userId, input, {
+    timeoutMs: ENGINE_TIMEOUT_MS,
+    now: options.now,
+  });
+  assertOccurredAtNotAfterNow(evaluation.occurredAt, options.now);
+  const authorityDecision = await simulateAndRecordPreviewAuthority(userId, evaluation);
+
+  const preview = buildPreviewOutput(evaluation, authorityDecision);
+  const output = validatePreviewOutput(preview, userId, evaluation.occurredAt);
+
+  const durationMs = 0;
+  observeDuration('autopilot_preview_total_ms', durationMs, { status: output.status });
+
+  return output;
+}
+
+async function evaluateForCommit(
   world: World,
   userId: string,
   input: AutopilotCommitInput,
-  options: { now: Date }
-): Promise<AutopilotCommitResult> {
-  const evaluation = await evaluateAutopilot(
+  now: Date
+): Promise<EvaluatedAutopilotContext> {
+  return await evaluateAutopilot(
     world,
     userId,
     {
@@ -616,9 +730,14 @@ export async function commitAutopilotDecisionV2(
       occurredAt: input.occurredAt,
       category: input.category ?? ('OTHER' as AutopilotRewardCategory),
     },
-    { now: options.now }
+    { now }
   );
+}
 
+function requireCommittableCard(
+  evaluation: EvaluatedAutopilotContext,
+  input: AutopilotCommitInput
+): CardSummary {
   if (evaluation.decisionId !== input.decisionId) {
     throw new AutopilotServiceError('Decision fingerprint mismatch', 400, 'DECISION_MISMATCH');
   }
@@ -628,51 +747,37 @@ export async function commitAutopilotDecisionV2(
   }
 
   const recommendedCard = evaluation.recommendedCard;
-  if (recommendedCard === null) {
+  if (recommendedCard === null || recommendedCard.id !== input.cardId) {
     throw new AutopilotServiceError(
       'Card does not match the current recommendation',
       400,
       'CARD_MISMATCH'
     );
   }
+  return recommendedCard;
+}
 
-  if (recommendedCard.id !== input.cardId) {
-    throw new AutopilotServiceError(
-      'Card does not match the current recommendation',
-      400,
-      'CARD_MISMATCH'
-    );
-  }
+async function loadFreshRuntimeBucket(
+  bucketId: string | null | undefined,
+  occurredAt: Date
+): Promise<BucketRuntime | null> {
+  const runtimeBucket =
+    bucketId !== null && bucketId !== undefined
+      ? await ensureBucketFresh(bucketId, occurredAt)
+      : null;
+  return runtimeBucket ? toBucketRuntime(runtimeBucket) : null;
+}
 
-  const existingCommit = await prisma.autopilotCommit.findUnique({
-    where: { userId_decisionId: { userId, decisionId: evaluation.decisionId } },
-    include: { session: { select: { recommendedBucketId: true } } },
-  });
-
-  if (existingCommit !== null) {
-    const runtimeBucket =
-      existingCommit.session?.recommendedBucketId !== null &&
-      existingCommit.session?.recommendedBucketId !== undefined
-        ? await ensureBucketFresh(existingCommit.session.recommendedBucketId, evaluation.occurredAt)
-        : null;
-    return {
-      decisionId: evaluation.decisionId,
-      sessionId: existingCommit.sessionId,
-      bucket: runtimeBucket ? toBucketRuntime(runtimeBucket) : null,
-      status: 'already_exists',
-    };
-  }
-
-  const session = await findOrCreateAutopilotSession({
-    evaluation,
-    userId,
-    resolvedCategory: evaluation.resolvedCategory,
-    now: options.now,
-  });
-
+async function confirmAutopilotSession(params: {
+  sessionId: string;
+  userId: string;
+  evaluation: EvaluatedAutopilotContext;
+  recommendedCard: CardSummary;
+}): Promise<void> {
+  const { sessionId, userId, evaluation, recommendedCard } = params;
   try {
     await confirmRecommendationSession({
-      sessionId: session.id,
+      sessionId,
       userId,
       payload: {
         actualAmountCents: evaluation.amountCents,
@@ -686,7 +791,7 @@ export async function commitAutopilotDecisionV2(
       // ledger row but no commit row (which made every retry fail).
       inTransaction: async (tx) => {
         await tx.autopilotCommit.create({
-          data: { userId, decisionId: evaluation.decisionId, sessionId: session.id },
+          data: { userId, decisionId: evaluation.decisionId, sessionId },
         });
       },
     });
@@ -702,17 +807,120 @@ export async function commitAutopilotDecisionV2(
     }
     throw appError;
   }
+}
 
-  const runtimeBucket =
-    session.recommendedBucketId !== null
-      ? await ensureBucketFresh(session.recommendedBucketId, evaluation.occurredAt)
-      : null;
+export async function commitAutopilotDecisionV2(
+  world: World,
+  userId: string,
+  input: AutopilotCommitInput,
+  options: { now: Date }
+): Promise<AutopilotCommitResult> {
+  const evaluation = await evaluateForCommit(world, userId, input, options.now);
+  const recommendedCard = requireCommittableCard(evaluation, input);
+
+  const existingCommit = await prisma.autopilotCommit.findUnique({
+    where: { userId_decisionId: { userId, decisionId: evaluation.decisionId } },
+    include: { session: { select: { recommendedBucketId: true } } },
+  });
+
+  if (existingCommit !== null) {
+    return {
+      decisionId: evaluation.decisionId,
+      sessionId: existingCommit.sessionId,
+      bucket: await loadFreshRuntimeBucket(
+        existingCommit.session?.recommendedBucketId,
+        evaluation.occurredAt
+      ),
+      status: 'already_exists',
+    };
+  }
+
+  const session = await findOrCreateAutopilotSession({
+    evaluation,
+    userId,
+    resolvedCategory: evaluation.resolvedCategory,
+    now: options.now,
+  });
+
+  await confirmAutopilotSession({ sessionId: session.id, userId, evaluation, recommendedCard });
 
   return {
     decisionId: evaluation.decisionId,
     sessionId: session.id,
-    bucket: runtimeBucket ? toBucketRuntime(runtimeBucket) : null,
+    bucket: await loadFreshRuntimeBucket(session.recommendedBucketId, evaluation.occurredAt),
     status: 'created',
+  };
+}
+
+type CommitBucketState = {
+  bucketBefore: ReturnType<typeof computeBucketBalance> | null;
+  runtimeBucket: BucketRuntime | null;
+};
+
+async function loadCommitBucketState(
+  tx: Prisma.TransactionClient,
+  evaluation: EvaluatedAutopilotContext,
+  userId: string
+): Promise<CommitBucketState> {
+  const bucketDelta = evaluation.decision.bucketDelta;
+  if (bucketDelta === null) {
+    return { bucketBefore: null, runtimeBucket: null };
+  }
+
+  const freshBucket = await ensureBucketFresh(bucketDelta.bucketId, evaluation.occurredAt, tx);
+  if (freshBucket !== null && freshBucket.userId === userId) {
+    return {
+      bucketBefore: computeBucketBalance(freshBucket),
+      runtimeBucket: toBucketRuntime(freshBucket),
+    };
+  }
+
+  logInvariantViolation({
+    surface: 'autopilot',
+    detail: 'Bucket delta referenced missing or foreign bucket',
+    data: { bucketId: bucketDelta.bucketId, userId },
+    timestamp: evaluation.occurredAt.toISOString(),
+  });
+  return { bucketBefore: null, runtimeBucket: null };
+}
+
+function buildSimulatedTransactionBucketFields(
+  evaluation: EvaluatedAutopilotContext,
+  { bucketBefore, runtimeBucket }: CommitBucketState
+) {
+  return {
+    bucketId: runtimeBucket?.id ?? evaluation.decision.bucketDelta?.bucketId ?? null,
+    bucketName: runtimeBucket?.name ?? evaluation.bucketName ?? null,
+    bucketPeriod: runtimeBucket?.period ?? null,
+    bucketBeforeCents: bucketBefore?.remainingCents ?? null,
+    bucketAfterCents: evaluation.decision.bucketDelta?.newRemainingCents ?? null,
+    bucketLimitCents: runtimeBucket?.budgetAmount ?? null,
+  };
+}
+
+function resolveCommitCardLabel(recommendedCard: CardSummary, fallbackCardId: string): string {
+  return hasText(recommendedCard.nickname)
+    ? recommendedCard.nickname
+    : recommendedCard.id ?? fallbackCardId;
+}
+
+async function findExistingSimulatedCommit(
+  tx: Prisma.TransactionClient,
+  evaluation: EvaluatedAutopilotContext
+) {
+  const existing = await tx.simulatedTransaction.findUnique({
+    where: { id: evaluation.decisionId },
+  });
+  if (existing === null) return null;
+
+  const bucket =
+    typeof existing.bucketId === 'string'
+      ? await ensureBucketFresh(existing.bucketId, evaluation.occurredAt, tx)
+      : null;
+  return {
+    status: 'already_exists' as const,
+    transactionId: existing.id,
+    bucket: bucket ? toBucketRuntime(bucket) : null,
   };
 }
 
@@ -722,86 +930,15 @@ export async function commitAutopilotDecision(
   input: AutopilotCommitInput,
   options: { now: Date }
 ): Promise<AutopilotCommitResult> {
-  const evaluation = await evaluateAutopilot(
-    world,
-    userId,
-    {
-      merchant: input.merchant,
-      amountCents: input.amountCents,
-      occurredAt: input.occurredAt,
-      category: input.category ?? ('OTHER' as AutopilotRewardCategory),
-    },
-    { now: options.now }
-  );
-
-  if (evaluation.decisionId !== input.decisionId) {
-    throw new AutopilotServiceError('Decision fingerprint mismatch', 400, 'DECISION_MISMATCH');
-  }
-
-  if (evaluation.status !== 'ok') {
-    throw new AutopilotServiceError('Autopilot could not allow this swipe', 400, 'DECISION_BLOCKED');
-  }
-
-  const recommendedCard = evaluation.recommendedCard;
-  if (recommendedCard === null) {
-    throw new AutopilotServiceError(
-      'Card does not match the current recommendation',
-      400,
-      'CARD_MISMATCH'
-    );
-  }
-
-  if (recommendedCard.id !== input.cardId) {
-    throw new AutopilotServiceError(
-      'Card does not match the current recommendation',
-      400,
-      'CARD_MISMATCH'
-    );
-  }
-
-  const cardLabel = hasText(recommendedCard.nickname)
-    ? recommendedCard.nickname
-    : recommendedCard.id ?? input.cardId;
+  const evaluation = await evaluateForCommit(world, userId, input, options.now);
+  const recommendedCard = requireCommittableCard(evaluation, input);
+  const cardLabel = resolveCommitCardLabel(recommendedCard, input.cardId);
 
   const commitResult = await prisma.$transaction(async (tx) => {
-    const existing = await tx.simulatedTransaction.findUnique({
-      where: { id: evaluation.decisionId },
-    });
+    const existing = await findExistingSimulatedCommit(tx, evaluation);
+    if (existing !== null) return existing;
 
-    if (existing !== null) {
-      const bucket =
-        typeof existing.bucketId === 'string'
-          ? await ensureBucketFresh(existing.bucketId, evaluation.occurredAt, tx)
-          : null;
-      return {
-        status: 'already_exists' as const,
-        transactionId: existing.id,
-        bucket: bucket ? toBucketRuntime(bucket) : null,
-      };
-    }
-
-    let bucketBefore: ReturnType<typeof computeBucketBalance> | null = null;
-    let runtimeBucket: BucketRuntime | null = null;
-
-    if (evaluation.decision.bucketDelta !== null) {
-      const freshBucket = await ensureBucketFresh(
-        evaluation.decision.bucketDelta.bucketId,
-        evaluation.occurredAt,
-        tx
-      );
-
-      if (freshBucket !== null && freshBucket.userId === userId) {
-        bucketBefore = computeBucketBalance(freshBucket);
-        runtimeBucket = toBucketRuntime(freshBucket);
-      } else {
-        logInvariantViolation({
-          surface: 'autopilot',
-          detail: 'Bucket delta referenced missing or foreign bucket',
-          data: { bucketId: evaluation.decision.bucketDelta.bucketId, userId },
-          timestamp: evaluation.occurredAt.toISOString(),
-        });
-      }
-    }
+    const bucketState = await loadCommitBucketState(tx, evaluation, userId);
 
     const transaction = await tx.simulatedTransaction.create({
       data: {
@@ -810,12 +947,7 @@ export async function commitAutopilotDecision(
         amount: evaluation.amountCents,
         merchantName: evaluation.merchant,
         resolvedCategory: evaluation.resolvedCategory,
-        bucketId: runtimeBucket?.id ?? evaluation.decision.bucketDelta?.bucketId ?? null,
-        bucketName: runtimeBucket?.name ?? evaluation.bucketName ?? null,
-        bucketPeriod: runtimeBucket?.period ?? null,
-        bucketBeforeCents: bucketBefore?.remainingCents ?? null,
-        bucketAfterCents: evaluation.decision.bucketDelta?.newRemainingCents ?? null,
-        bucketLimitCents: runtimeBucket?.budgetAmount ?? null,
+        ...buildSimulatedTransactionBucketFields(evaluation, bucketState),
         chosenCardId: recommendedCard.id,
         chosenCardName: cardLabel,
         status: TransactionStatus.APPROVED,
@@ -824,7 +956,11 @@ export async function commitAutopilotDecision(
       },
     });
 
-    return { status: 'created' as const, transactionId: transaction.id, bucket: runtimeBucket };
+    return {
+      status: 'created' as const,
+      transactionId: transaction.id,
+      bucket: bucketState.runtimeBucket,
+    };
   });
 
   return {

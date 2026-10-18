@@ -53,37 +53,42 @@ function mapSessionStatus(status: RecommendationStatus): SessionStatus {
   }
 }
 
+const SESSION_STATUS_TO_DB: Record<SessionStatus, RecommendationStatus> = {
+  PENDING: 'RECOMMENDED',
+  ACTIVE: 'CLAIMED',
+  FINAL: 'VERIFIED',
+};
+
+const LEDGER_STATUS_FROM_DB: Record<CherryPointLedgerStatus, LedgerStatus> = {
+  PENDING: 'PENDING',
+  POSTED: 'POSTED',
+  REVOKED: 'VOID',
+};
+
+const LEDGER_STATUS_TO_DB: Record<LedgerStatus, CherryPointLedgerStatus> = {
+  PENDING: 'PENDING',
+  POSTED: 'POSTED',
+  VOID: 'REVOKED',
+};
+
 function mapSessionStatusToDb(status: SessionStatus): RecommendationStatus {
-  switch (status) {
-    case 'PENDING':
-      return 'RECOMMENDED';
-    case 'ACTIVE':
-      return 'CLAIMED';
-    case 'FINAL':
-      return 'VERIFIED';
-  }
+  return SESSION_STATUS_TO_DB[status];
 }
 
 function mapLedgerStatus(status: CherryPointLedgerStatus): LedgerStatus {
-  switch (status) {
-    case 'PENDING':
-      return 'PENDING';
-    case 'POSTED':
-      return 'POSTED';
-    case 'REVOKED':
-      return 'VOID';
-  }
+  return LEDGER_STATUS_FROM_DB[status];
 }
 
 function mapLedgerStatusToDb(status: LedgerStatus): CherryPointLedgerStatus {
-  switch (status) {
-    case 'PENDING':
-      return 'PENDING';
-    case 'POSTED':
-      return 'POSTED';
-    case 'VOID':
-      return 'REVOKED';
-  }
+  return LEDGER_STATUS_TO_DB[status];
+}
+
+const SESSION_SELECT = { id: true, userId: true, status: true, createdAt: true, updatedAt: true } as const;
+
+function omitKeys(metadata: unknown, keys: readonly string[]): Record<string, unknown> {
+  const rest: Record<string, unknown> = { ...((metadata ?? {}) as Record<string, unknown>) };
+  for (const key of keys) delete rest[key];
+  return rest;
 }
 
 function mapSessionRow(row: SessionRow): SessionRecord {
@@ -152,33 +157,24 @@ export function buildPrismaStores(prisma: PrismaClient): PrismaStores {
       return rows.map(mapSessionRow);
     },
     create: async (input: SessionCreateInput) => {
-      const metadata = (input.metadata ?? {}) as Record<string, unknown>;
-      const { user: _user, ...rest } = metadata;
-      void _user;
-      const data = rest as Prisma.RecommendationSessionUncheckedCreateInput;
+      const data = omitKeys(input.metadata, ['user']) as Prisma.RecommendationSessionUncheckedCreateInput;
       const created = await prisma.recommendationSession.create({
         data: {
           ...data,
           userId: input.userId,
           status: mapSessionStatusToDb(input.status),
         },
-        select: { id: true, userId: true, status: true, createdAt: true, updatedAt: true },
+        select: SESSION_SELECT,
       });
       return mapSessionRow(created);
     },
     update: async (id: string, input: SessionUpdateInput) => {
-      const metadata = (input.metadata ?? {}) as Record<string, unknown>;
-      const { user: _user, userId: _userId, ...rest } = metadata;
-      void _user;
-      void _userId;
-      const data = rest as Prisma.RecommendationSessionUncheckedUpdateInput;
+      const data = omitKeys(input.metadata, ['user', 'userId']) as Prisma.RecommendationSessionUncheckedUpdateInput;
+      const status = input.status !== undefined ? { status: mapSessionStatusToDb(input.status) } : {};
       const updated = await prisma.recommendationSession.update({
         where: { id },
-        data: {
-          ...data,
-          ...(input.status !== undefined ? { status: mapSessionStatusToDb(input.status) } : {}),
-        },
-        select: { id: true, userId: true, status: true, createdAt: true, updatedAt: true },
+        data: { ...data, ...status },
+        select: SESSION_SELECT,
       });
       return mapSessionRow(updated);
     },

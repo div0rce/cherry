@@ -143,6 +143,10 @@ async function runDeterminismSuite() {
   const id1 = computeId();
   const id2 = computeId();
   assert.equal(id1, id2, 'IDs should match for identical inputs');
+  assert.equal(
+    id1,
+    'edid_v1_3839bd447af509539eb8ecc0268481250b178197bd83e1e986d3992d29a42579',
+    'Golden engineDecisionId must not drift');
 
   const normalizedMerchantId = computeId({ merchant: '  test   shop ' });
   assert.equal(id1, normalizedMerchantId, 'Merchant normalization should preserve idempotency');

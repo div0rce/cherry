@@ -37,12 +37,157 @@ function isFinalStatus(status: RecommendationStatus): boolean {
   return false;
 }
 
-export async function verifySessionFromSignal(signal: VerificationSignal): Promise<VerificationResult> {
+type SessionRow = NonNullable<Awaited<ReturnType<typeof prisma.recommendationSession.findFirst>>>;
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type FreshBucket = Awaited<ReturnType<typeof ensureBucketFresh>>;
+type BucketReversal ={ bucketId: string; newSpentCents: number } | null;
+
+type VerificationOutcome = {
+  occurredAt: Date;
+  verified: boolean;
+  sessionStatus: typeof RecommendationStatus.VERIFIED | typeof RecommendationStatus.REJECTED;
+  ledgerStatus: typeof CherryPointLedgerStatus.POSTED | typeof CherryPointLedgerStatus.REVOKED;
+  anomalyCode: SessionAnomalyCode;
+};
+
+type VerificationContext = { session: SessionRow; userId: string; outcome: VerificationOutcome };
+
+const BUCKET_USER_MISMATCH = 'BUCKET_USER_MISMATCH' as const;
+
+function resolveSignalIds(signal: VerificationSignal): { sessionId: string; userId: string } | null {
   const sessionId = hasNonEmptyString(signal.sessionId) ? signal.sessionId : null;
   const userId = hasNonEmptyString(signal.userId) ? signal.userId : null;
-  if (sessionId === null || userId === null) {
+  if (sessionId === null || userId === null) return null;
+  return { sessionId, userId };
+}
+
+function signalMatchesSession(signal: VerificationSignal, session: SessionRow, occurredAt: Date): boolean {
+  const targetAmount =
+    session.confirmedAmountCents == null ? session.amountCents : session.confirmedAmountCents;
+  const signalAmount = signal.amountCents == null ? targetAmount : signal.amountCents;
+  const amountMatches = amountsMatch(signalAmount, targetAmount);
+  const timeMatches = Math.abs(occurredAt.getTime() - session.createdAt.getTime()) <= TIME_TOLERANCE_MS;
+  const merchantMatches = merchantsMatch(signal.merchantFingerprint, session.merchantName);
+  return amountMatches && timeMatches && merchantMatches;
+}
+
+function resolveAnomalyCode(verified: boolean, session: SessionRow): SessionAnomalyCode {
+  if (verified || session.anomalyCode !== SessionAnomalyCode.NONE) return session.anomalyCode;
+  return SessionAnomalyCode.VERIFICATION_CONFLICT;
+}
+
+function decideOutcome(signal: VerificationSignal, session: SessionRow): VerificationOutcome {
+  const occurredAt = signal.occurredAt == null ? session.createdAt : signal.occurredAt;
+  const inferredVerified = signalMatchesSession(signal, session, occurredAt);
+  const verified = signal.verified == null ? inferredVerified : signal.verified;
+  return {
+    occurredAt,
+    verified,
+    sessionStatus: verified ? RecommendationStatus.VERIFIED : RecommendationStatus.REJECTED,
+    ledgerStatus: verified ? CherryPointLedgerStatus.POSTED : CherryPointLedgerStatus.REVOKED,
+    anomalyCode: resolveAnomalyCode(verified, session),
+  };
+}
+
+async function planBucketReversal({
+  session,
+  userId,
+  outcome,
+}: VerificationContext): Promise<BucketReversal | typeof BUCKET_USER_MISMATCH> {
+  if (outcome.verified || !hasNonEmptyString(session.recommendedBucketId)) return null;
+  const freshBucket = await ensureBucketFresh(session.recommendedBucketId, outcome.occurredAt);
+  if (isForeignBucket(freshBucket, userId)) return BUCKET_USER_MISMATCH;
+  return computeBucketReversal(reversalInput(session, outcome.verified, freshBucket));
+}
+
+function isForeignBucket(freshBucket: FreshBucket | undefined, userId: string): boolean {
+  return freshBucket !== null && freshBucket !== undefined && freshBucket.userId !== userId;
+}
+
+function reversalInput(
+  session: SessionRow,
+  verified: boolean,
+  freshBucket: FreshBucket | undefined
+): Parameters<typeof computeBucketReversal>[0] {
+  return {
+    verified,
+    confirmedAmountCents: session.confirmedAmountCents == null ? null : session.confirmedAmountCents,
+    bucketSpendReversed: session.bucketSpendReversed == null ? false : session.bucketSpendReversed,
+    bucketId: freshBucket ? freshBucket.id : null,
+    currentBucketSpentCents: freshBucket ? freshBucket.spentCents : null,
+  };
+}
+
+async function updateSessionRow(
+  tx: TxClient,
+  { session, userId, outcome }: VerificationContext,
+  reversal: BucketReversal
+): Promise<void> {
+  const { verified, occurredAt } = outcome;
+  const updatedSession = await tx.recommendationSession.updateMany({
+    where: { id: session.id, userId },
+    data: {
+      status: outcome.sessionStatus,
+      verificationStatus: verified ? VerificationStatus.VERIFIED : VerificationStatus.FAILED,
+      anomalyCode: outcome.anomalyCode,
+      verifiedAt: verified ? occurredAt : null,
+      rejectedAt: verified ? null : occurredAt,
+      ...(reversal ? { bucketSpendReversed: true } : {}),
+    },
+  });
+
+  if (updatedSession.count === 0) {
+    throw new Error('Session update failed due to scoping');
+  }
+}
+
+async function settlePendingLedger(tx: TxClient, { session, userId, outcome }: VerificationContext): Promise<void> {
+  const { ledgerStatus, occurredAt, anomalyCode } = outcome;
+  const anomalous = anomalyCode !== SessionAnomalyCode.NONE;
+  await tx.cherryPointLedger.updateMany({
+    where: { sessionId: session.id, userId, status: CherryPointLedgerStatus.PENDING },
+    data: {
+      status: ledgerStatus,
+      postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? occurredAt : null,
+      revokedAt: ledgerStatus === CherryPointLedgerStatus.REVOKED ? occurredAt : null,
+      isAnomalous: anomalous,
+      anomalyCode: anomalous ? LedgerAnomalyCode.SESSION_ANOMALOUS : LedgerAnomalyCode.NONE,
+    },
+  });
+}
+
+async function applyBucketReversal(tx: TxClient, userId: string, reversal: BucketReversal): Promise<void> {
+  if (reversal === null) return;
+  const bucketUpdate = await tx.bucket.updateMany({
+    where: { id: reversal.bucketId, userId },
+    data: { spentCents: reversal.newSpentCents },
+  });
+  if (bucketUpdate.count === 0) {
+    throw new Error('Bucket update failed due to user scoping');
+  }
+}
+
+async function persistVerification(ctx: VerificationContext, reversal: BucketReversal): Promise<boolean> {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await updateSessionRow(tx, ctx, reversal);
+      await settlePendingLedger(tx, ctx);
+      await applyBucketReversal(tx, ctx.userId, reversal);
+    });
+    return true;
+  } catch (caught: unknown) {
+    const appError = asAppError(caught);
+    logError('verify_session_failed', { err: appError, sessionId: ctx.session.id, userId: ctx.userId });
+    return false;
+  }
+}
+
+export async function verifySessionFromSignal(signal: VerificationSignal): Promise<VerificationResult> {
+  const ids = resolveSignalIds(signal);
+  if (ids === null) {
     return { ok: false, reason: 'INVALID', message: 'sessionId and userId are required' };
   }
+  const { sessionId, userId } = ids;
 
   const session = await prisma.recommendationSession.findFirst({
     where: { id: sessionId, userId },
@@ -61,90 +206,17 @@ export async function verifySessionFromSignal(signal: VerificationSignal): Promi
     };
   }
 
-  const targetAmount =
-    session.confirmedAmountCents == null ? session.amountCents : session.confirmedAmountCents;
-  const signalAmount = signal.amountCents == null ? targetAmount : signal.amountCents;
-  const occurredAt = signal.occurredAt == null ? session.createdAt : signal.occurredAt;
-  const amountMatches = amountsMatch(signalAmount, targetAmount);
-  const timeMatches = Math.abs(occurredAt.getTime() - session.createdAt.getTime()) <= TIME_TOLERANCE_MS;
-  const merchantMatches = merchantsMatch(signal.merchantFingerprint, session.merchantName);
-
-  const inferredVerified = amountMatches && timeMatches && merchantMatches;
-  const verified = signal.verified == null ? inferredVerified : signal.verified;
-  const sessionStatus = verified ? RecommendationStatus.VERIFIED : RecommendationStatus.REJECTED;
-  const ledgerStatus = verified ? CherryPointLedgerStatus.POSTED : CherryPointLedgerStatus.REVOKED;
-  const anomalyCode =
-    verified || session.anomalyCode !== SessionAnomalyCode.NONE
-      ? session.anomalyCode
-      : SessionAnomalyCode.VERIFICATION_CONFLICT;
-
-  let reversalBucketUpdate: { bucketId: string; newSpentCents: number } | null = null;
-  const hasRecommendedBucketId = hasNonEmptyString(session.recommendedBucketId);
-  if (!verified && hasRecommendedBucketId) {
-    const recommendedBucketId = session.recommendedBucketId as string;
-    const freshBucket = await ensureBucketFresh(recommendedBucketId, occurredAt);
-    if (freshBucket !== null && freshBucket !== undefined && freshBucket.userId !== userId) {
-      return { ok: false, reason: 'INVALID', message: 'Bucket/user mismatch' };
-    }
-    reversalBucketUpdate = computeBucketReversal({
-      verified,
-      confirmedAmountCents:
-        session.confirmedAmountCents == null ? null : session.confirmedAmountCents,
-      bucketSpendReversed:
-        session.bucketSpendReversed == null ? false : session.bucketSpendReversed,
-      bucketId: freshBucket ? freshBucket.id : null,
-      currentBucketSpentCents: freshBucket ? freshBucket.spentCents : null,
-    });
+  const ctx: VerificationContext = { session, userId, outcome: decideOutcome(signal, session) };
+  const reversal = await planBucketReversal(ctx);
+  if (reversal === BUCKET_USER_MISMATCH) {
+    return { ok: false, reason: 'INVALID', message: 'Bucket/user mismatch' };
   }
 
-  try {
-    await prisma.$transaction(async (tx) => {
-      const updatedSession = await tx.recommendationSession.updateMany({
-        where: { id: session.id, userId },
-        data: {
-          status: sessionStatus,
-          verificationStatus: verified ? VerificationStatus.VERIFIED : VerificationStatus.FAILED,
-          anomalyCode,
-          verifiedAt: verified ? occurredAt : null,
-          rejectedAt: verified ? null : occurredAt,
-          ...(reversalBucketUpdate ? { bucketSpendReversed: true } : {}),
-        },
-      });
-
-      if (updatedSession.count === 0) {
-        throw new Error('Session update failed due to scoping');
-      }
-
-      await tx.cherryPointLedger.updateMany({
-        where: { sessionId: session.id, userId, status: CherryPointLedgerStatus.PENDING },
-        data: {
-          status: ledgerStatus,
-          postedAt: ledgerStatus === CherryPointLedgerStatus.POSTED ? occurredAt : null,
-          revokedAt: ledgerStatus === CherryPointLedgerStatus.REVOKED ? occurredAt : null,
-          isAnomalous: anomalyCode !== SessionAnomalyCode.NONE,
-          anomalyCode:
-            anomalyCode === SessionAnomalyCode.NONE
-              ? LedgerAnomalyCode.NONE
-              : LedgerAnomalyCode.SESSION_ANOMALOUS,
-        },
-      });
-
-      if (reversalBucketUpdate !== null) {
-        const bucketUpdate = await tx.bucket.updateMany({
-          where: { id: reversalBucketUpdate.bucketId, userId },
-          data: { spentCents: reversalBucketUpdate.newSpentCents },
-        });
-        if (bucketUpdate.count === 0) {
-          throw new Error('Bucket update failed due to user scoping');
-        }
-      }
-    });
-  } catch (caught: unknown) {
-    const appError = asAppError(caught);
-    logError('verify_session_failed', { err: appError, sessionId: session.id, userId });
+  if (!(await persistVerification(ctx, reversal))) {
     return { ok: false, reason: 'INVALID', message: 'Failed to verify session' };
   }
 
+  const { sessionStatus, ledgerStatus, verified } = ctx.outcome;
   return { ok: true, sessionStatus, ledgerStatus, reason: verified ? 'MATCHED' : 'FORCED' };
 }
 

@@ -41,43 +41,49 @@ export async function callApi<TResponse>(
 }
 
 function resolveRequestInput(input: RequestInfo | URL, baseUrl?: string): RequestInfo {
-  if (typeof input === 'string') {
-    if (isAbsoluteUrl(input)) return input;
-    return new URL(input, resolveBaseUrl(baseUrl)).toString();
-  }
-
-  if (input instanceof URL) {
-    return input.toString();
-  }
-
-  if (typeof Request !== 'undefined' && input instanceof Request) {
-    if (isAbsoluteUrl(input.url)) return input;
-    return new Request(new URL(input.url, resolveBaseUrl(baseUrl)), input);
-  }
-
+  if (typeof input === 'string') return resolveStringInput(input, baseUrl);
+  if (input instanceof URL) return input.toString();
+  if (isRequest(input)) return resolveRequestObject(input, baseUrl);
   return input;
 }
 
-function resolveBaseUrl(explicitBaseUrl?: string): string {
-  if (explicitBaseUrl !== undefined && explicitBaseUrl !== null && explicitBaseUrl !== '') {
-    return explicitBaseUrl;
-  }
-  if (
-    typeof window !== 'undefined' &&
-    typeof window.location !== 'undefined' &&
-    typeof window.location.origin === 'string' &&
-    window.location.origin !== ''
-  ) {
-    return window.location.origin;
-  }
+function resolveStringInput(input: string, baseUrl?: string): string {
+  if (isAbsoluteUrl(input)) return input;
+  return new URL(input, resolveBaseUrl(baseUrl)).toString();
+}
 
+function isRequest(input: RequestInfo): input is Request {
+  return typeof Request !== 'undefined' && input instanceof Request;
+}
+
+function resolveRequestObject(input: Request, baseUrl?: string): Request {
+  if (isAbsoluteUrl(input.url)) return input;
+  return new Request(new URL(input.url, resolveBaseUrl(baseUrl)), input);
+}
+
+function hasValue(value?: string | null): value is string {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function windowOrigin(): string | undefined {
+  if (typeof window === 'undefined' || typeof window.location === 'undefined') return undefined;
+  const origin: unknown = window.location.origin;
+  return typeof origin === 'string' && origin !== '' ? origin : undefined;
+}
+
+function configuredBaseUrl(): string | undefined {
   try {
     return getPublicConfig().appBaseUrl;
   } catch (error: unknown) {
     void error;
-    // fall through
+    return undefined;
   }
+}
 
+function resolveBaseUrl(explicitBaseUrl?: string): string {
+  if (hasValue(explicitBaseUrl)) return explicitBaseUrl;
+  const resolved = windowOrigin() ?? configuredBaseUrl();
+  if (resolved !== undefined) return resolved;
   throw new Error('API base URL is not configured; pass baseUrl or initialize PublicConfig at the boundary.');
 }
 

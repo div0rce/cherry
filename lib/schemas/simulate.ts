@@ -133,13 +133,18 @@ export const SimulateResponseSchema = z.union([
   }
 });
 
+function hasSegment(current: unknown, segment: string): current is Record<string, unknown> {
+  if (current == null || typeof current !== 'object') return false;
+  return segment in current;
+}
+
 function extractNestedString(
   value: unknown,
   path: string[]
 ): string | null {
   let current: unknown = value;
   for (const segment of path) {
-    if (current == null || typeof current !== 'object' || !(segment in current)) {
+    if (!hasSegment(current, segment)) {
       return null;
     }
     current = (current as Record<string, unknown>)[segment];

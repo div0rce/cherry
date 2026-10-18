@@ -2,30 +2,15 @@
 
 import { z } from 'zod';
 import { redirect } from 'next/navigation';
-import { RewardCategory } from '@prisma/client';
 import { fetchFromApi, requireUserContext } from '../../../../../../../_lib/api.js';
 import type { ActionState } from '../../../../../_lib/form-state.js';
-
-const ALLOWED_CATEGORIES = [
-  RewardCategory.DINING,
-  RewardCategory.GROCERIES,
-  RewardCategory.GAS,
-  RewardCategory.TRAVEL,
-  RewardCategory.OTHER,
-] as const satisfies ReadonlyArray<RewardCategory>;
-
-function isAllowedCategory(value: RewardCategory): value is (typeof ALLOWED_CATEGORIES)[number] {
-  return ALLOWED_CATEGORIES.includes(value as (typeof ALLOWED_CATEGORIES)[number]);
-}
+import { buildRulePayload, readRuleFields, ruleFields } from '../../../../../_lib/rule-input.js';
 
 const UpdateRuleSchema = z
   .object({
     cardId: z.string().trim().min(1, 'Card id is required'),
     ruleId: z.string().trim().min(1, 'Rule id is required'),
-    scope: z.enum(['BASE', 'CATEGORY']),
-    category: z.string().trim().min(1, 'Category is required'),
-    rateKind: z.enum(['points', 'cashback']),
-    rateValue: z.string().trim(),
+    ...ruleFields,
   })
   .strict();
 
@@ -36,14 +21,6 @@ const DeleteRuleSchema = z
   })
   .strict();
 
-function parseRate(raw: string): { value: number | null; error?: string } {
-  const parsed = Number.parseFloat(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return { value: null, error: 'Enter a positive reward rate.' };
-  }
-  return { value: parsed };
-}
-
 export async function updateRewardRule(
   _state: ActionState,
   formData: FormData
@@ -51,10 +28,7 @@ export async function updateRewardRule(
   const parsed = UpdateRuleSchema.safeParse({
     cardId: formData.get('cardId'),
     ruleId: formData.get('ruleId'),
-    scope: formData.get('scope'),
-    category: formData.get('category'),
-    rateKind: formData.get('rateKind'),
-    rateValue: formData.get('rateValue'),
+    ...readRuleFields(formData),
   });
 
   if (!parsed.success) {
@@ -62,32 +36,14 @@ export async function updateRewardRule(
     return { status: 'error', message: 'Fix the highlighted fields.', fieldErrors };
   }
 
-  const { value: rateValue, error } = parseRate(parsed.data.rateValue);
-  if (typeof error === 'string' || rateValue === null) {
-    return { status: 'error', message: error ?? null, fieldErrors: { rateValue: [error ?? 'Invalid rate'] } };
-  }
-
-  const categoryCandidate: RewardCategory =
-    parsed.data.scope === 'BASE' ? RewardCategory.OTHER : (parsed.data.category as RewardCategory);
-  const allowedCategory = isAllowedCategory(categoryCandidate) ? categoryCandidate : null;
-  if (allowedCategory === null) {
-    return {
-      status: 'error',
-      message: 'Choose a supported category.',
-      fieldErrors: { category: ['Choose a supported category.'] },
-    };
-  }
+  const built = buildRulePayload(parsed.data);
+  if (!built.ok) return built.state;
 
   await requireUserContext('/app/onboarding');
   const response = await fetchFromApi<unknown>(`/api/cards/${parsed.data.cardId}/rewards`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      rewardRuleId: parsed.data.ruleId,
-      category: allowedCategory,
-      multiplier: parsed.data.rateKind === 'points' ? rateValue : undefined,
-      cashbackPercent: parsed.data.rateKind === 'cashback' ? rateValue : undefined,
-    }),
+    body: JSON.stringify({ rewardRuleId: parsed.data.ruleId, ...built.payload }),
   });
   if (response.ok !== true && response.error === 'NOT_FOUND') {
     redirect('/app/onboarding?missing=rules');

@@ -11,11 +11,34 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date);
 }
 
-function normalize(value: Canonicalizable): unknown {
-  if (value === null) return null;
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return value;
+function isPrimitive(value: unknown): value is string | number | boolean {
+  const kind = typeof value;
+  return kind === 'string' || kind === 'number' || kind === 'boolean';
+}
+
+function isSerializableEntry([, v]: [string, unknown]): boolean {
+  return v !== undefined && typeof v !== 'function';
+}
+
+function compareKeys(a: string, b: string): number {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
+
+function normalizeObject(value: Record<string, unknown>): Record<string, unknown> {
+  const sorted = Object.entries(value)
+    .filter(isSerializableEntry)
+    .map(([k, v]) => [k, normalize(v as Canonicalizable)] as const)
+    .sort(([a], [b]) => compareKeys(a, b));
+  const result: Record<string, unknown> = {};
+  for (const [k, v] of sorted) {
+    result[k] = v;
   }
+  return result;
+}
+
+function normalize(value: Canonicalizable): unknown {
+  if (value === null || isPrimitive(value)) return value;
   if (value instanceof Date) {
     return value.toISOString();
   }
@@ -23,15 +46,7 @@ function normalize(value: Canonicalizable): unknown {
     return value.map((item) => normalize(item as Canonicalizable));
   }
   if (isPlainObject(value)) {
-    const entries = Object.entries(value).filter(([, v]) => v !== undefined && typeof v !== 'function');
-    const sorted = entries
-      .map(([k, v]) => [k, normalize(v as Canonicalizable)] as const)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    const result: Record<string, unknown> = {};
-    for (const [k, v] of sorted) {
-      result[k] = v;
-    }
-    return result;
+    return normalizeObject(value);
   }
 
   throw new Error('canonicalJson: unsupported value type');

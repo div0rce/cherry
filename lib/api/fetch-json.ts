@@ -35,6 +35,33 @@ async function safeReadJson(res: Response): Promise<unknown | null> {
   }
 }
 
+function isNonBlankString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function firstNonBlank(values: unknown[]): string | undefined {
+  return values.find(isNonBlankString) as string | undefined;
+}
+
+function errorFromResponse(response: Response, payload: unknown): AppError {
+  const fallbackMessage = isNonBlankString(response.statusText) ? response.statusText : 'Request failed';
+  const fallbackCode = codeForStatus(response.status);
+  const { code, message } = extractErrorPayload(payload, fallbackCode, fallbackMessage);
+  return new AppError(code, message, response.status, payload ?? undefined);
+}
+
+async function performRequest(
+  performFetch: Fetcher,
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  try {
+    return await performFetch(input, init);
+  } catch (err: unknown) {
+    throw asAppError(err);
+  }
+}
+
 function extractErrorPayload(
   payload: unknown,
   fallbackCode: AppErrorCode,
@@ -44,12 +71,7 @@ function extractErrorPayload(
     const maybeError = payload['error'];
     const maybeMessage = payload['message'];
     const code = isAppErrorCode(maybeError) ? maybeError : fallbackCode;
-    const message =
-      typeof maybeMessage === 'string' && maybeMessage.trim().length > 0
-        ? maybeMessage
-        : typeof maybeError === 'string' && maybeError.trim().length > 0
-          ? maybeError
-          : fallbackMessage;
+    const message = firstNonBlank([maybeMessage, maybeError]) ?? fallbackMessage;
     return { code, message };
   }
 
@@ -72,12 +94,7 @@ export async function fetchJSON<T>(
   fetcher?: Fetcher
 ): Promise<T> {
   const performFetch = resolveFetcher(fetcher);
-  let response: Response;
-  try {
-    response = await performFetch(input, init);
-  } catch (err: unknown) {
-    throw asAppError(err);
-  }
+  const response = await performRequest(performFetch, input, init);
 
   if (response.status === 204) {
     return undefined as T;
@@ -86,13 +103,7 @@ export async function fetchJSON<T>(
   const payload = await safeReadJson(response);
 
   if (response.ok !== true) {
-    const fallbackMessage =
-      typeof response.statusText === 'string' && response.statusText.trim().length > 0
-        ? response.statusText
-        : 'Request failed';
-    const fallbackCode = codeForStatus(response.status);
-    const { code, message } = extractErrorPayload(payload, fallbackCode, fallbackMessage);
-    throw new AppError(code, message, response.status, payload ?? undefined);
+    throw errorFromResponse(response, payload);
   }
 
   if (payload === null) {

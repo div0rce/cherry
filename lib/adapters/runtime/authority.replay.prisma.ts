@@ -40,24 +40,37 @@ function assertParamsFromEvent(event: DecisionEvent): SimulateSpendParams {
   };
 }
 
-async function loadDecisionEvent(lookup: ReplayLookup): Promise<DecisionEvent> {
-  if ('decisionEventId' in lookup && lookup.decisionEventId !== undefined && lookup.decisionEventId !== '') {
-    const found = await prisma.decisionEvent.findUnique({
-      where: { id: lookup.decisionEventId },
-    });
-    if (found === null) throw new Error('DecisionEvent not found');
-    return found;
-  }
+function requireFound(found: DecisionEvent | null): DecisionEvent {
+  if (found === null) throw new Error('DecisionEvent not found');
+  return found;
+}
 
-  if (lookup.userId === undefined || lookup.inputsVersion === undefined) {
+function decisionEventIdOf(lookup: ReplayLookup): string | undefined {
+  const id = 'decisionEventId' in lookup ? lookup.decisionEventId : undefined;
+  return id !== '' ? id : undefined;
+}
+
+async function loadLatestForUser(lookup: ReplayLookup): Promise<DecisionEvent> {
+  const { userId, inputsVersion } = lookup;
+  if (userId === undefined || inputsVersion === undefined) {
     throw new Error('userId and inputsVersion are required for lookup');
   }
   const found = await prisma.decisionEvent.findFirst({
-    where: { userId: lookup.userId, inputsVersion: lookup.inputsVersion },
+    where: { userId, inputsVersion },
     orderBy: { createdAt: 'desc' },
   });
-  if (found === null) throw new Error('DecisionEvent not found');
-  return found;
+  return requireFound(found);
+}
+
+async function loadDecisionEvent(lookup: ReplayLookup): Promise<DecisionEvent> {
+  const decisionEventId = decisionEventIdOf(lookup);
+  if (decisionEventId !== undefined) {
+    const found = await prisma.decisionEvent.findUnique({
+      where: { id: decisionEventId },
+    });
+    return requireFound(found);
+  }
+  return loadLatestForUser(lookup);
 }
 
 export async function replayAuthority(lookup: ReplayLookup): Promise<ReplayResult> {

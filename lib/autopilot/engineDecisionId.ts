@@ -80,7 +80,7 @@ export function canonicalJsonStringify(value: unknown): string {
 }
 
 function normalizeObjectiveWeights(raw: unknown): Record<string, number> | null {
-  if (raw === null || raw === undefined || typeof raw !== 'object') return null;
+  if (typeof raw !== 'object' || raw === null) return null;
 
   const weights: Record<string, number> = {};
   const allowedKeys = ['rewards', 'runway', 'debtRelief'];

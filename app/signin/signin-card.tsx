@@ -53,63 +53,54 @@ export function SignInCard({
     ? errorMessages[errorCode] ?? 'Something went wrong while signing you in.'
     : null;
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setStatus(null);
-    if (usesEmailLink) {
-      if (!hasText(email.trim())) {
-        setStatus('Email is required.');
-        return;
-      }
-      setSubmitting(true);
-      const sent = await signIn('email', { email: email.trim(), callbackUrl, redirect: false });
-      setSubmitting(false);
-      if (hasText(sent?.error)) {
-        setStatus('We could not send a sign-in link. Check the address and try again.');
-        return;
-      }
-      setLinkSentTo(email.trim());
-      return;
-    }
-
-    const emailTrimmed = email.trim();
-    const passwordTrimmed = password.trim();
-    if (!hasText(emailTrimmed) || !hasText(passwordTrimmed)) {
-      setStatus('Email and password are required.');
-      logGuardrailEvent({
-        userId: null,
-        surface: 'signin',
-        outcome: 'STOP',
-        reason: 'MISSING_CREDENTIALS',
-        timestamp: getTimestamp(),
-        timestampSource: 'client',
-      });
-      return;
-    }
-
-    setSubmitting(true);
-    const result = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-      callbackUrl,
+  const logStop = (reason: string): void => {
+    logGuardrailEvent({
+      userId: null,
+      surface: 'signin',
+      outcome: 'STOP',
+      reason,
+      timestamp: getTimestamp(),
+      timestampSource: 'client',
     });
+  };
 
+  async function submitEmailLink(): Promise<void> {
+    const address = email.trim();
+    if (!hasText(address)) {
+      setStatus('Email is required.');
+      return;
+    }
+    setSubmitting(true);
+    const sent = await signIn('email', { email: address, callbackUrl, redirect: false });
+    setSubmitting(false);
+    if (hasText(sent?.error)) {
+      setStatus('We could not send a sign-in link. Check the address and try again.');
+      return;
+    }
+    setLinkSentTo(address);
+  }
+
+  async function submitCredentials(): Promise<void> {
+    if (!hasText(email.trim()) || !hasText(password.trim())) {
+      setStatus('Email and password are required.');
+      logStop('MISSING_CREDENTIALS');
+      return;
+    }
+    setSubmitting(true);
+    const result = await signIn('credentials', { redirect: false, email, password, callbackUrl });
     if (hasText(result?.error)) {
-      logGuardrailEvent({
-        userId: null,
-        surface: 'signin',
-        outcome: 'STOP',
-        reason: `AUTH_${result.error}`,
-        timestamp: getTimestamp(),
-        timestampSource: 'client',
-      });
+      logStop(`AUTH_${result.error}`);
       setStatus(errorMessages[result.error] ?? 'Invalid email or password. Please try again.');
       setSubmitting(false);
       return;
     }
-
     window.location.href = hasText(result?.url) ? result.url : callbackUrl;
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus(null);
+    await (usesEmailLink ? submitEmailLink() : submitCredentials());
   }
 
   return (

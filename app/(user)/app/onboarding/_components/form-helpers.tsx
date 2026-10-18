@@ -1,7 +1,40 @@
 'use client';
 
+import * as React from 'react';
+
 import type { JSX, ReactNode } from 'react';
 import { cn } from '../../../../../lib/ui/cn.js';
+import type { ActionState } from '../_lib/form-state.js';
+import { initialActionState } from '../_lib/form-state.js';
+
+// Field errors for one input, or none.
+export function errorsFor(state: { fieldErrors?: Record<string, string[] | undefined> | undefined }, key: string): string[] {
+  return state.fieldErrors?.[key] ?? [];
+}
+
+// Hidden id field, rendered only when editing an existing record.
+export function OptionalHidden({ name, value }: { name: string; value: unknown }): JSX.Element | null {
+  return typeof value === 'string' ? <input type="hidden" name={name} value={value} /> : null;
+}
+
+type FormAction = (state: ActionState, formData: FormData) => Promise<ActionState | void>;
+
+// Shared action wiring for onboarding forms. With stampNow, the submit time is added as `now`: server
+// actions need an explicit time and this wrapper runs on the client, the time boundary.
+export function useFormAction(
+  action: FormAction,
+  stampNow = false
+): [ActionState, (formData: FormData) => void, boolean] {
+  return React.useActionState<ActionState, FormData>(async (prevState, formData) => {
+    if (stampNow) formData.set('now', String(Math.round(performance.timeOrigin + performance.now())));
+    return (await action(prevState, formData)) ?? initialActionState;
+  }, initialActionState);
+}
+
+// Integer cents as an input's default text ("" when absent), e.g. 12345 -> "123.45".
+export function centsToInput(cents: number | null | undefined, digits: number): string {
+  return hasNumber(cents) ? (cents / 100).toFixed(digits) : '';
+}
 
 export const inputClasses =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff4d6d]';

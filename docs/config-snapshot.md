@@ -206,6 +206,9 @@ api_inventory.md
 architecture_map.md
 workspace_audit.md
 repo_index.json
+
+# Claude Code agent worktrees (each has its own checkout and node_modules)
+.claude/worktrees/
 ```
 
 ```text
@@ -325,6 +328,8 @@ export default defineConfig([
   globalIgnores([
     '.tmp/**',
     '.next/**',
+    // Agent worktrees are other checkouts of this repo, linted in their own checkout.
+    '.claude/worktrees/**',
     'out/**',
     'build/**',
     'tests/fixtures/**',

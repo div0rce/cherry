@@ -5,8 +5,14 @@ import { getServerConfig } from '../config/store.js';
 import type { VineSignatureMode } from '../config/server.js';
 import { logWarn } from '../logger.js';
 
+const VINE_SIGNATURE_MODES: readonly VineSignatureMode[] = ['warn', 'enforce', 'off'];
+
+function isVineSignatureMode(mode?: VineSignatureMode): mode is VineSignatureMode {
+  return mode !== undefined && VINE_SIGNATURE_MODES.includes(mode);
+}
+
 export function getVineSignatureMode(mode?: VineSignatureMode): VineSignatureMode {
-  if (mode === 'warn' || mode === 'enforce' || mode === 'off') return mode;
+  if (isVineSignatureMode(mode)) return mode;
   return getServerConfig().vineSignatureMode;
 }
 
@@ -39,6 +45,37 @@ export function buildVineSignatureMessage(ctx: VineSignatureContext): string {
   ].join('|');
 }
 
+function isMissingSignature(signature: string | null | undefined): signature is null | undefined | '' {
+  return signature === null || signature === undefined || signature === '';
+}
+
+function rejectOrWarn(
+  ctx: VineSignatureContext,
+  mode: VineSignatureMode,
+  event: string,
+  reason: string
+): VineSignatureVerificationResult {
+  if (mode === 'warn') {
+    logWarn(event, { ctx, reason, mode });
+    return { ok: true, mode, reason };
+  }
+  return { ok: false, mode, reason };
+}
+
+function deviceInvalidReason(device: VineDevice | null): string | null {
+  if (device === null) return 'unknown_device';
+  if (device.isActive !== true) return 'inactive_device';
+  return null;
+}
+
+function signatureMatches(ctx: VineSignatureContext, secret: string, providedSignature: string): boolean {
+  const message = buildVineSignatureMessage(ctx);
+  const expected = crypto.createHmac('sha256', secret).update(message).digest('hex');
+  const normalizedProvided = providedSignature.trim().toLowerCase();
+  const normalizedExpected = expected.toLowerCase();
+  return normalizedProvided === normalizedExpected;
+}
+
 export async function verifyVineSignature(
   ctx: VineSignatureContext,
   providedSignature: string | null | undefined,
@@ -47,40 +84,21 @@ export async function verifyVineSignature(
   const mode = getVineSignatureMode(modeOverride);
   if (mode === 'off') return { ok: true, mode };
 
-  if (providedSignature === null || providedSignature === undefined || providedSignature === '') {
-    const reason = 'missing_signature';
-    if (mode === 'warn') {
-      logWarn('vine_signature_missing', { ctx, reason, mode });
-      return { ok: true, mode, reason };
-    }
-    return { ok: false, mode, reason };
+  if (isMissingSignature(providedSignature)) {
+    return rejectOrWarn(ctx, mode, 'vine_signature_missing', 'missing_signature');
   }
 
   const db: PrismaClient = prisma;
   const device: VineDevice | null = await db.vineDevice.findUnique({
     where: { deviceId: ctx.deviceId },
   });
-  if (!device || !device.isActive) {
-    const reason = !device ? 'unknown_device' : 'inactive_device';
-    if (mode === 'warn') {
-      logWarn('vine_device_invalid', { ctx, reason, mode });
-      return { ok: true, mode, reason };
-    }
-    return { ok: false, mode, reason };
+  const invalidReason = deviceInvalidReason(device);
+  if (device === null || invalidReason !== null) {
+    return rejectOrWarn(ctx, mode, 'vine_device_invalid', invalidReason ?? 'unknown_device');
   }
 
-  const message = buildVineSignatureMessage(ctx);
-  const expected = crypto.createHmac('sha256', device.secret).update(message).digest('hex');
-  const normalizedProvided = providedSignature.trim().toLowerCase();
-  const normalizedExpected = expected.toLowerCase();
-
-  if (normalizedProvided !== normalizedExpected) {
-    const reason = 'signature_mismatch';
-    if (mode === 'warn') {
-      logWarn('vine_signature_mismatch', { ctx, reason, mode });
-      return { ok: true, mode, reason };
-    }
-    return { ok: false, mode, reason };
+  if (!signatureMatches(ctx, device.secret, providedSignature)) {
+    return rejectOrWarn(ctx, mode, 'vine_signature_mismatch', 'signature_mismatch');
   }
 
   return { ok: true, mode };

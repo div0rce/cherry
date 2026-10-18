@@ -38,6 +38,8 @@ type ScheduledPaydownModel = {
   }) => Promise<ScheduledPaydownRow[]>;
 };
 
+type LoadContext = { userId: string; nowMs: number; runtime: EngineRuntime };
+
 export async function fromPrismaUserToEngineState(
   userId: string,
   nowMs: number,
@@ -48,21 +50,22 @@ export async function fromPrismaUserToEngineState(
   }
   assertPrismaReady(prisma);
 
+  const ctx: LoadContext = { userId, nowMs, runtime };
   const [cards, buckets, debts, constraints, world, preferences] = await Promise.all([
-    loadNormalizedCards(userId),
-    loadBuckets(userId, nowMs),
-    loadDebts(userId),
-    loadUserConstraints(userId),
+    loadNormalizedCards(ctx),
+    loadBuckets(ctx),
+    loadDebts(),
+    loadUserConstraints(),
     loadWorldParams(),
-    loadUserPreferences(userId, runtime),
+    loadUserPreferences(ctx),
   ]);
 
   const capabilities: EngineCapabilityMap = createUnavailableEngineCapabilities();
-  const cash: EngineState['cash'] = await loadCashSnapshot(userId).catch((_error: unknown) =>
+  const cash: EngineState['cash'] = await loadCashSnapshot().catch((_error: unknown) =>
     unavailable<UserLiquidityState>()
   );
   const scheduledPaydowns: EngineState['scheduledPaydowns'] =
-    await loadScheduledPaydowns(userId).catch((_error: unknown) =>
+    await loadScheduledPaydowns(ctx).catch((_error: unknown) =>
       unavailable<ScheduledPaydown[]>()
     );
 
@@ -80,7 +83,7 @@ export async function fromPrismaUserToEngineState(
   };
 }
 
-async function loadNormalizedCards(userId: string): Promise<NormalizedCard[]> {
+async function loadNormalizedCards({ userId }: LoadContext): Promise<NormalizedCard[]> {
   const cards = await prisma.card.findMany({
     where: { userId },
     include: { rewardRules: true },
@@ -104,15 +107,16 @@ async function loadNormalizedCards(userId: string): Promise<NormalizedCard[]> {
     isCredit: card.isCredit,
     isActive: true,
     isVirtual: false,
-    rewardRules: mapRewardRules(card.rewardRules, card.id),
+    rewardRules: mapRewardRules(card),
     linkedDebtId: null,
     creditLimitCents: null,
     currentBalanceCents: null,
   }));
 }
 
-function mapRewardRules(
-  rules: {
+function mapRewardRules(card: {
+  id: string;
+  rewardRules: {
     id: string;
     category: string;
     multiplier: number | null;
@@ -120,10 +124,10 @@ function mapRewardRules(
     capAmount: number | null;
     promoStart: Date | null;
     promoEnd: Date | null;
-  }[],
-  cardId: string
-): RewardRule[] {
-  return rules.map((rule) => {
+  }[];
+}): RewardRule[] {
+  const cardId = card.id;
+  return card.rewardRules.map((rule) => {
     const rateType = rule.multiplier != null ? 'POINTS_PER_DOLLAR' : 'CASHBACK';
     const rateValue =
       rateType === 'POINTS_PER_DOLLAR'
@@ -147,7 +151,7 @@ function mapRewardRules(
   });
 }
 
-async function loadBuckets(userId: string, nowMs: number): Promise<Bucket[]> {
+async function loadBuckets({ userId, nowMs }: LoadContext): Promise<Bucket[]> {
   const buckets = await prisma.bucket.findMany({
     where: { userId },
     orderBy: { createdAt: 'asc' },
@@ -173,11 +177,11 @@ async function loadBuckets(userId: string, nowMs: number): Promise<Bucket[]> {
   });
 }
 
-async function loadDebts(_userId: string): Promise<EngineState['debts']> {
+async function loadDebts(): Promise<EngineState['debts']> {
   return unavailable<DebtAccount[]>();
 }
 
-async function loadUserConstraints(_userId: string): Promise<UserConstraints> {
+async function loadUserConstraints(): Promise<UserConstraints> {
   return {
     hard: {
       minEssentialCoverageDays: 0,
@@ -197,11 +201,11 @@ async function loadWorldParams(): Promise<WorldParams> {
   };
 }
 
-async function loadCashSnapshot(_userId: string): Promise<EngineState['cash']> {
+async function loadCashSnapshot(): Promise<EngineState['cash']> {
   return unavailable();
 }
 
-async function loadScheduledPaydowns(userId: string): Promise<EngineState['scheduledPaydowns']> {
+async function loadScheduledPaydowns({ userId }: LoadContext): Promise<EngineState['scheduledPaydowns']> {
   const model = (prisma as unknown as { scheduledPaydown?: ScheduledPaydownModel })
     .scheduledPaydown;
   if (model === undefined || typeof model.findMany !== 'function') {
@@ -225,7 +229,9 @@ async function loadScheduledPaydowns(userId: string): Promise<EngineState['sched
   );
 }
 
-function logPreferencesWarning(runtime: EngineRuntime, message: string, meta?: unknown) {
+type PreferencesWarning = { message: string; meta?: unknown };
+
+function logPreferencesWarning(runtime: EngineRuntime, { message, meta }: PreferencesWarning) {
   if (!runtime.enableLogs) return;
   const logger = runtime.logger;
   if (logger === undefined) return;
@@ -248,10 +254,7 @@ function coerceObjectiveWeights(raw: unknown): Partial<ObjectiveWeights> | undef
   return Object.values(partial).length > 0 ? partial : undefined;
 }
 
-async function loadUserPreferences(
-  userId: string,
-  runtime: EngineRuntime
-): Promise<EngineUserPreferences> {
+async function loadUserPreferences({ userId, runtime }: LoadContext): Promise<EngineUserPreferences> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -263,7 +266,10 @@ async function loadUserPreferences(
     });
 
     if (user === null) {
-      logPreferencesWarning(runtime, 'User missing while loading preferences; using defaults', { userId });
+      logPreferencesWarning(runtime, {
+        message: 'User missing while loading preferences; using defaults',
+        meta: { userId },
+      });
       return { ...DEFAULT_ENGINE_USER_PREFERENCES };
     }
 
@@ -276,9 +282,9 @@ async function loadUserPreferences(
       customWeights = coerceObjectiveWeights(user.engineObjectiveWeights ?? undefined);
     } catch (err: unknown) {
       const appError = asAppError(err);
-      logPreferencesWarning(runtime, 'Failed to parse engineObjectiveWeights; ignoring overrides', {
-        userId,
-        err: appError,
+      logPreferencesWarning(runtime, {
+        message: 'Failed to parse engineObjectiveWeights; ignoring overrides',
+        meta: { userId, err: appError },
       });
     }
 
@@ -289,9 +295,9 @@ async function loadUserPreferences(
     return preferences;
   } catch (err: unknown) {
     const appError = asAppError(err);
-    logPreferencesWarning(runtime, 'Unexpected error loading preferences; using defaults', {
-      userId,
-      err: appError,
+    logPreferencesWarning(runtime, {
+      message: 'Unexpected error loading preferences; using defaults',
+      meta: { userId, err: appError },
     });
     return { ...DEFAULT_ENGINE_USER_PREFERENCES };
   }

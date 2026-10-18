@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import Link from 'next/link';
 import { fetchFromApi, requireUserContext } from '../../_lib/api.js';
 import type { AutopilotOnboardingState, AutopilotPrereqs } from '../../../../lib/autopilot/prereq-types.js';
@@ -12,10 +12,30 @@ type OnboardingSearchParams = {
   missing?: string | string[] | undefined;
 };
 
+const MISSING_KEYS: ReadonlyArray<string> = ['cards', 'rules', 'buckets'];
+
+const MISSING_LABELS = {
+  cards: 'cards',
+  rules: 'reward rules',
+  buckets: 'buckets',
+} as const;
+
+// States in which each step counts as complete.
+const COMPLETE_STATES: Record<'cards' | 'rules' | 'buckets' | 'ready', ReadonlyArray<AutopilotOnboardingState>> = {
+  cards: ['NEED_RULES', 'NEED_BUCKETS', 'READY'],
+  rules: ['NEED_BUCKETS', 'READY'],
+  buckets: ['READY'],
+  ready: ['READY'],
+};
+
+const ROW_CLASS =
+  'flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 md:flex-row md:items-center md:justify-between';
+const ROW_LINK_CLASS =
+  'rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[#0f172a] hover:border-[#ff4d6d]/40 hover:text-[#ff4d6d]';
+
 function toMissingKey(raw: string | string[] | undefined): MissingKey {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === 'cards' || value === 'rules' || value === 'buckets') return value;
-  return null;
+  return value !== undefined && MISSING_KEYS.includes(value) ? (value as MissingKey) : null;
 }
 
 function statusTone(state: AutopilotOnboardingState, step: MissingKey | 'ready'): {
@@ -23,11 +43,7 @@ function statusTone(state: AutopilotOnboardingState, step: MissingKey | 'ready')
   color: string;
   pill: string;
 } {
-  const complete =
-    (step === 'cards' && state !== 'EMPTY') ||
-    (step === 'rules' && (state === 'NEED_BUCKETS' || state === 'READY')) ||
-    (step === 'buckets' && state === 'READY') ||
-    (step === 'ready' && state === 'READY');
+  const complete = step !== null && COMPLETE_STATES[step].includes(state);
 
   return {
     label: complete ? 'Ready' : 'Missing',
@@ -84,6 +100,7 @@ function StepList({
     { key: 'buckets', title: 'Create a bucket', helper: 'Budget to evaluate constraints' },
     { key: 'ready', title: 'Preview ready', helper: 'Run Autopilot preview' },
   ];
+  const activeKey = highlightedMissing ?? 'ready';
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -92,7 +109,7 @@ function StepList({
       <ul className="mt-4 space-y-3">
         {steps.map((step, index) => {
           const tone = statusTone(prereqs.state, step.key);
-          const isActive = highlightedMissing === step.key || (highlightedMissing === null && step.key === 'ready');
+          const isActive = activeKey === step.key;
           return (
             <li
               key={step.key}
@@ -123,103 +140,161 @@ function StepList({
   );
 }
 
-function CardsPanel({ prereqs }: { prereqs: AutopilotPrereqs }): JSX.Element {
+type PrereqPanelProps = {
+  title: string;
+  helper: string;
+  addHref: string;
+  addLabel: string;
+  emptyText: string;
+  isEmpty: boolean;
+  children: ReactNode;
+};
+
+function PrereqPanel({ title, helper, addHref, addLabel, emptyText, isEmpty, children }: PrereqPanelProps): JSX.Element {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[#0f172a]">Cards & reward rules</h2>
-          <p className="text-sm text-slate-600">At least one card and one rule are required.</p>
+          <h2 className="text-lg font-semibold text-[#0f172a]">{title}</h2>
+          <p className="text-sm text-slate-600">{helper}</p>
         </div>
-        <Link href="/app/onboarding/cards/new" className="text-sm font-semibold text-[#ff4d6d]">
-          Add card →
+        <Link href={addHref} className="text-sm font-semibold text-[#ff4d6d]">
+          {addLabel}
         </Link>
       </div>
 
-      {prereqs.cards.length === 0 ? (
+      {isEmpty ? (
         <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-700">
-          No cards yet. Add one to unlock reward rules and Autopilot previews.
+          {emptyText}
         </div>
       ) : (
-        <ul className="mt-4 space-y-3">
-          {prereqs.cards.map((card) => (
-            <li
-              key={card.id}
-              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 md:flex-row md:items-center md:justify-between"
-            >
-              <div className="space-y-1">
-                <p className="text-base font-semibold text-[#0f172a]">{card.nickname}</p>
-                <p className="text-sm text-slate-600">
-                  {card.issuer} · {card.network} · {card.rewardRuleCount} rule
-                  {card.rewardRuleCount === 1 ? '' : 's'}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                <Link
-                  href={`/app/onboarding/cards/${card.id}/edit`}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[#0f172a] hover:border-[#ff4d6d]/40 hover:text-[#ff4d6d]"
-                >
-                  Edit card
-                </Link>
-                <Link
-                  href={`/app/onboarding/cards/${card.id}/rules/new`}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[#0f172a] hover:border-[#ff4d6d]/40 hover:text-[#ff4d6d]"
-                >
-                  Add rule
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <ul className="mt-4 space-y-3">{children}</ul>
       )}
     </div>
   );
 }
 
+function CardsPanel({ prereqs }: { prereqs: AutopilotPrereqs }): JSX.Element {
+  return (
+    <PrereqPanel
+      title="Cards & reward rules"
+      helper="At least one card and one rule are required."
+      addHref="/app/onboarding/cards/new"
+      addLabel="Add card →"
+      emptyText="No cards yet. Add one to unlock reward rules and Autopilot previews."
+      isEmpty={prereqs.cards.length === 0}
+    >
+      {prereqs.cards.map((card) => (
+        <li key={card.id} className={ROW_CLASS}>
+          <div className="space-y-1">
+            <p className="text-base font-semibold text-[#0f172a]">{card.nickname}</p>
+            <p className="text-sm text-slate-600">
+              {card.issuer} · {card.network} · {card.rewardRuleCount} rule
+              {card.rewardRuleCount === 1 ? '' : 's'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+            <Link href={`/app/onboarding/cards/${card.id}/edit`} className={ROW_LINK_CLASS}>
+              Edit card
+            </Link>
+            <Link href={`/app/onboarding/cards/${card.id}/rules/new`} className={ROW_LINK_CLASS}>
+              Add rule
+            </Link>
+          </div>
+        </li>
+      ))}
+    </PrereqPanel>
+  );
+}
+
 function BucketsPanel({ prereqs }: { prereqs: AutopilotPrereqs }): JSX.Element {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-[#0f172a]">Buckets</h2>
-          <p className="text-sm text-slate-600">Buckets let Autopilot evaluate budget guardrails.</p>
-        </div>
-        <Link href="/app/onboarding/buckets/new" className="text-sm font-semibold text-[#ff4d6d]">
-          Create bucket →
-        </Link>
-      </div>
+    <PrereqPanel
+      title="Buckets"
+      helper="Buckets let Autopilot evaluate budget guardrails."
+      addHref="/app/onboarding/buckets/new"
+      addLabel="Create bucket →"
+      emptyText="No buckets yet. Add at least one to enable budget constraints."
+      isEmpty={prereqs.buckets.length === 0}
+    >
+      {prereqs.buckets.map((bucket) => (
+        <li key={bucket.id} className={ROW_CLASS}>
+          <div className="space-y-1">
+            <p className="text-base font-semibold text-[#0f172a]">{bucket.name}</p>
+            <p className="text-sm text-slate-600">
+              {bucket.category} · {bucket.period.toLowerCase()}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Link href={`/app/onboarding/buckets/${bucket.id}/edit`} className={ROW_LINK_CLASS}>
+              Edit bucket
+            </Link>
+          </div>
+        </li>
+      ))}
+    </PrereqPanel>
+  );
+}
 
-      {prereqs.buckets.length === 0 ? (
-        <div className="mt-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-700">
-          No buckets yet. Add at least one to enable budget constraints.
-        </div>
-      ) : (
-        <ul className="mt-4 space-y-3">
-          {prereqs.buckets.map((bucket) => (
-            <li
-              key={bucket.id}
-              className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 md:flex-row md:items-center md:justify-between"
-            >
-              <div className="space-y-1">
-                <p className="text-base font-semibold text-[#0f172a]">{bucket.name}</p>
-                <p className="text-sm text-slate-600">
-                  {bucket.category} · {bucket.period.toLowerCase()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Link
-                  href={`/app/onboarding/buckets/${bucket.id}/edit`}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[#0f172a] hover:border-[#ff4d6d]/40 hover:text-[#ff4d6d]"
-                >
-                  Edit bucket
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+function MissingBanner({ chosenMissing }: { chosenMissing: MissingKey }): JSX.Element {
+  if (chosenMissing !== null) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Autopilot can’t run yet. Add {MISSING_LABELS[chosenMissing]} to continue.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+      You’re ready to preview Autopilot. Run a simulation to move into commit flow.
     </div>
   );
+}
+
+function NextActionPanel({
+  primaryCta,
+  showDemoDataset,
+}: {
+  primaryCta: { href: string; label: string };
+  showDemoDataset: boolean;
+}): JSX.Element {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-lg font-semibold text-[#0f172a]">Next action</h2>
+      <p className="text-sm text-slate-600">
+        We gate Autopilot until the blocking prerequisites are satisfied.
+      </p>
+      <div className="mt-4 flex flex-col gap-3">
+        <Link
+          href={primaryCta.href}
+          className="inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#111827]"
+        >
+          {primaryCta.label}
+        </Link>
+        {showDemoDataset ? (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="text-sm font-semibold text-[#0f172a]">Need a fast start?</p>
+            <p className="text-sm text-slate-600">
+              Load a small lab dataset (cards, rules, buckets). Idempotent while you stay in this
+              session.
+            </p>
+            <div className="mt-2">
+              <DemoDatasetButton action={loadDemoDataset} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+async function resolveHighlightedMissing(
+  searchParams: Promise<OnboardingSearchParams> | OnboardingSearchParams | undefined
+): Promise<MissingKey> {
+  const resolvedSearchParams =
+    searchParams instanceof Promise ? await searchParams : (searchParams ?? {});
+  const rawMissing = resolvedSearchParams.missing;
+  return toMissingKey(typeof rawMissing === 'string' ? rawMissing : '');
 }
 
 export default async function OnboardingPage({
@@ -227,11 +302,7 @@ export default async function OnboardingPage({
 }: {
   searchParams?: Promise<OnboardingSearchParams> | OnboardingSearchParams;
 }): Promise<JSX.Element> {
-  const resolvedSearchParams =
-    searchParams instanceof Promise ? await searchParams : (searchParams ?? {});
-  const rawMissing = resolvedSearchParams.missing;
-  const missingParam = typeof rawMissing === 'string' ? rawMissing : '';
-  const highlightedMissing = toMissingKey(missingParam);
+  const highlightedMissing = await resolveHighlightedMissing(searchParams);
 
   const userContext = await requireUserContext('/app/onboarding');
   const prereqResponse = await fetchFromApi<{
@@ -241,21 +312,9 @@ export default async function OnboardingPage({
   if (prereqResponse.ok !== true) {
     throw new Error(prereqResponse.message);
   }
-  const prereqPayload = prereqResponse.data;
-  const prereqs = prereqPayload.prereqs;
-  const missing = prereqPayload.missing;
+  const { prereqs, missing } = prereqResponse.data;
   const primaryCta = buildPrimaryCta(prereqs, missing);
-
-  const chosenMissing = highlightedMissing !== null ? highlightedMissing : missing;
-  const hasMissingKey = chosenMissing !== null;
-  const missingLabel = hasMissingKey
-    ? ({
-        cards: 'cards',
-        rules: 'reward rules',
-        buckets: 'buckets',
-      } as const)[chosenMissing]
-    : null;
-  const hasMissingLabel = typeof missingLabel === 'string' && missingLabel.length > 0;
+  const chosenMissing = highlightedMissing ?? missing;
 
   return (
     <div className="bg-linear-to-b from-[#f8fafc] to-[#e2e8f0]">
@@ -271,15 +330,7 @@ export default async function OnboardingPage({
           </p>
         </header>
 
-        {hasMissingLabel ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Autopilot can’t run yet. Add {missingLabel} to continue.
-          </div>
-        ) : (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            You’re ready to preview Autopilot. Run a simulation to move into commit flow.
-          </div>
-        )}
+        <MissingBanner chosenMissing={chosenMissing} />
 
         <section className="grid gap-6 lg:grid-cols-[1.25fr_0.85fr]">
           <div className="space-y-4">
@@ -289,32 +340,10 @@ export default async function OnboardingPage({
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-lg font-semibold text-[#0f172a]">Next action</h2>
-              <p className="text-sm text-slate-600">
-                We gate Autopilot until the blocking prerequisites are satisfied.
-              </p>
-              <div className="mt-4 flex flex-col gap-3">
-                <Link
-                  href={primaryCta.href}
-                  className="inline-flex items-center justify-center rounded-lg bg-[#0f172a] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#111827]"
-                >
-                  {primaryCta.label}
-                </Link>
-                {userContext.mode === 'LAB_DEMO' && missing !== null ? (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-sm font-semibold text-[#0f172a]">Need a fast start?</p>
-                    <p className="text-sm text-slate-600">
-                      Load a small lab dataset (cards, rules, buckets). Idempotent while you stay in this
-                      session.
-                    </p>
-                    <div className="mt-2">
-                      <DemoDatasetButton action={loadDemoDataset} />
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
+            <NextActionPanel
+              primaryCta={primaryCta}
+              showDemoDataset={userContext.mode === 'LAB_DEMO' && missing !== null}
+            />
 
             <Warnings warnings={prereqs.warnings} />
           </div>

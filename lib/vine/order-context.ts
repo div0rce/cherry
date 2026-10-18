@@ -18,6 +18,8 @@ function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
+const OPTIONAL_STRING_FIELDS = ['storeId', 'terminalId', 'orderId', 'merchantName', 'nonce'] as const;
+
 export function mapTerminalEventToOrderContext(event: {
   amountCents: number;
   currency?: string | null;
@@ -40,11 +42,10 @@ export function mapTerminalEventToOrderContext(event: {
     source: (event.source ?? 'VINE_SIM') as VineOrderSource,
   };
 
-  if (hasNonEmptyString(event.storeId)) ctx.storeId = event.storeId;
-  if (hasNonEmptyString(event.terminalId)) ctx.terminalId = event.terminalId;
-  if (hasNonEmptyString(event.orderId)) ctx.orderId = event.orderId;
-  if (hasNonEmptyString(event.merchantName)) ctx.merchantName = event.merchantName;
-  if (hasNonEmptyString(event.nonce)) ctx.nonce = event.nonce;
+  for (const field of OPTIONAL_STRING_FIELDS) {
+    const value = event[field];
+    if (hasNonEmptyString(value)) ctx[field] = value;
+  }
 
   return ctx;
 }

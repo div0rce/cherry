@@ -1,10 +1,8 @@
 'use client';
 
-import * as React from 'react';
 import type { JSX, ReactNode } from 'react';
 import type { ActionState } from '../_lib/form-state.js';
-import { initialActionState } from '../_lib/form-state.js';
-import { FieldError, FormMessage, SubmitButton, hasNumber, inputClasses } from './form-helpers.js';
+import { FieldError, OptionalHidden, errorsFor, useFormAction, FormMessage, SubmitButton, centsToInput, inputClasses } from './form-helpers.js';
 
 type CardFormProps = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState | void>;
@@ -20,19 +18,32 @@ type CardFormProps = {
   footerSlot?: ReactNode;
 };
 
-export function CardForm({ action, defaultValues, submitLabel, footerSlot }: CardFormProps): JSX.Element {
-  const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
-    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
-    initialActionState
-  );
+const RADIO_LABEL =
+  'flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#0f172a]';
 
-  const hasAnnualFee = hasNumber(defaultValues?.annualFeeCents);
-  const annualFeeDefault = hasAnnualFee ? ((defaultValues?.annualFeeCents ?? 0) / 100).toFixed(2) : '';
-  const cardIdValue = typeof defaultValues?.cardId === 'string' ? defaultValues.cardId : null;
+function CardTypeRadios({ isDebit }: { isDebit: boolean }): JSX.Element {
+  return (
+    <div role="radiogroup" aria-labelledby="group-card-type" className="grid grid-cols-2 gap-2">
+      <label className={RADIO_LABEL}>
+        <input type="radio" name="cardType" value="credit" defaultChecked={!isDebit} />
+        Credit
+      </label>
+      <label className={RADIO_LABEL}>
+        <input type="radio" name="cardType" value="debit" defaultChecked={isDebit} />
+        Debit
+      </label>
+    </div>
+  );
+}
+
+export function CardForm({ action, defaultValues, submitLabel, footerSlot }: CardFormProps): JSX.Element {
+  const [state, formAction, pending] = useFormAction(action);
+
+  const annualFeeDefault = centsToInput(defaultValues?.annualFeeCents, 2);
 
   return (
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      {cardIdValue !== null ? <input type="hidden" name="cardId" value={cardIdValue} /> : null}
+      <OptionalHidden name="cardId" value={defaultValues?.cardId} />
       <div className="space-y-2">
         <label htmlFor="field-nickname" className="block text-sm font-semibold text-[#0f172a]">Nickname</label>
         <input
@@ -43,7 +54,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
           required
           className={inputClasses}
         />
-        <FieldError errors={state.fieldErrors?.['nickname'] ?? []} />
+        <FieldError errors={errorsFor(state, 'nickname')} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -56,7 +67,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
             placeholder="AMEX, Chase, Local credit union"
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.['issuer'] ?? []} />
+          <FieldError errors={errorsFor(state, 'issuer')} />
         </div>
         <div className="space-y-2">
           <label htmlFor="field-network" className="block text-sm font-semibold text-[#0f172a]">Network</label>
@@ -72,34 +83,15 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
             <option value="DISCOVER">Discover</option>
             <option value="OTHER">Other</option>
           </select>
-          <FieldError errors={state.fieldErrors?.['network'] ?? []} />
+          <FieldError errors={errorsFor(state, 'network')} />
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <span id="group-card-type" className="block text-sm font-semibold text-[#0f172a]">Card type</span>
-          <div role="radiogroup" aria-labelledby="group-card-type" className="grid grid-cols-2 gap-2">
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#0f172a]">
-              <input
-                type="radio"
-                name="cardType"
-                value="credit"
-                defaultChecked={defaultValues?.isCredit !== false}
-              />
-              Credit
-            </label>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#0f172a]">
-              <input
-                type="radio"
-                name="cardType"
-                value="debit"
-                defaultChecked={defaultValues?.isCredit === false}
-              />
-              Debit
-            </label>
-          </div>
-          <FieldError errors={state.fieldErrors?.['cardType'] ?? []} />
+          <CardTypeRadios isDebit={defaultValues?.isCredit === false} />
+          <FieldError errors={errorsFor(state, 'cardType')} />
         </div>
         <div className="space-y-2">
           <label htmlFor="field-annualFee" className="block text-sm font-semibold text-[#0f172a]">Annual fee (USD)</label>
@@ -113,7 +105,7 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
             defaultValue={annualFeeDefault}
             className={inputClasses}
           />
-          <FieldError errors={state.fieldErrors?.['annualFee'] ?? []} />
+          <FieldError errors={errorsFor(state, 'annualFee')} />
         </div>
       </div>
 

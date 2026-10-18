@@ -39,7 +39,8 @@ export type BucketTemplateDraft = {
   band: BucketBand;
 };
 
-function normalizeAmountMinor(amountMinor: number): number {
+function normalizeAmountMinor(tx: Pick<ClassifiedBankTransaction, 'amountMinor'>): number {
+  const amountMinor = tx.amountMinor;
   if (typeof amountMinor !== 'number' || Number.isNaN(amountMinor)) return 0;
   return Math.abs(Math.trunc(amountMinor));
 }
@@ -50,7 +51,17 @@ function directionOf(tx: Pick<ClassifiedBankTransaction, 'direction'>): 'credit'
   return normalized.toLowerCase() === 'credit' ? 'credit' : 'debit';
 }
 
-function normalizeText(value: string | null | undefined): string {
+function firstPresent<T>(values: Array<T | null | undefined>): T | null {
+  for (const value of values) {
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function descriptionTextOf(
+  tx: Pick<ClassifiedBankTransaction, 'description' | 'rawDescription' | 'merchantName'>,
+): string {
+  const value = firstPresent([tx.description, tx.rawDescription, tx.merchantName]);
   const normalized = typeof value === 'string' ? value : '';
   return normalized.toUpperCase();
 }
@@ -59,60 +70,61 @@ function contains(text: string, needles: string[]): boolean {
   return needles.some((needle) => text.includes(needle));
 }
 
+const PERSONAL_CARE_WORDS = ['HAIR', 'BARBER', 'NAIL', 'CUT'];
+
+const MCC_BUCKETS = new Map<number, string>([
+  [5411, REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES],
+  [5422, REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES],
+  [5441, REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES],
+  [5451, REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES],
+  [5541, REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT],
+  [5542, REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT],
+  [4111, REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT],
+  [4121, REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT],
+  [5812, REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL],
+  [5813, REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL],
+  [5814, REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL],
+  [7230, REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE],
+  [7298, REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE],
+]);
+
+const DESCRIPTION_RULES: Array<[string[], string]> = [
+  [['GROCERY', 'SUPERMARKET', 'MARKET', 'SAFEWAY', 'TRADER'], REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES],
+  [['UBER', 'LYFT', 'GAS', 'SHELL', 'CHEVRON'], REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT],
+  [PERSONAL_CARE_WORDS, REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE],
+  [['DINER', 'DINING', 'CAFE', 'COFFEE', 'RESTAURANT'], REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL],
+];
+
+function inferPseudoMerchantBucket(tx: ClassifiedBankTransaction): string {
+  const desc = descriptionTextOf(tx);
+  if (contains(desc, PERSONAL_CARE_WORDS)) return REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE;
+  if (contains(desc, ['RENT'])) return REGIME_BUCKET_KEYS.FIXED;
+  return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
+}
+
+function inferBucketFromDescription(tx: ClassifiedBankTransaction): string {
+  const desc = descriptionTextOf(tx);
+  const rule = DESCRIPTION_RULES.find(([needles]) => contains(desc, needles));
+  return rule === undefined ? REGIME_BUCKET_KEYS.DISCRETIONARY_SHOPPING : rule[1];
+}
+
 function inferBucketKeyForTransaction(tx: ClassifiedBankTransaction): string {
-  let descValue = tx.description;
-  if (descValue == null) {
-    descValue = tx.rawDescription;
-  }
-  if (descValue == null) {
-    descValue = tx.merchantName;
-  }
-  const desc = normalizeText(descValue);
-  const mcc = typeof tx.mcc === 'number' ? tx.mcc : null;
-  const p2pKind = tx.p2pKind;
-
-  if (p2pKind === 'P2P_REPAYMENT_OUT') return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
-  if (p2pKind === 'P2P_PSEUDO_MERCHANT_OUT') {
-    if (contains(desc, ['HAIR', 'BARBER', 'NAIL', 'CUT'])) {
-      return REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE;
-    }
-    if (contains(desc, ['RENT'])) return REGIME_BUCKET_KEYS.FIXED;
-    return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
-  }
-
-  if (mcc != null) {
-    if (mcc === 5411 || mcc === 5422 || mcc === 5441 || mcc === 5451) {
-      return REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES;
-    }
-    if (mcc === 5541 || mcc === 5542 || mcc === 4111 || mcc === 4121) {
-      return REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT;
-    }
-    if (mcc === 5812 || mcc === 5813 || mcc === 5814) {
-      return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
-    }
-    if (mcc === 7230 || mcc === 7298) {
-      return REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE;
-    }
-  }
-
-  if (contains(desc, ['GROCERY', 'SUPERMARKET', 'MARKET', 'SAFEWAY', 'TRADER'])) {
-    return REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES;
-  }
-  if (contains(desc, ['UBER', 'LYFT', 'GAS', 'SHELL', 'CHEVRON'])) {
-    return REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT;
-  }
-  if (contains(desc, ['HAIR', 'BARBER', 'NAIL', 'CUT'])) {
-    return REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE;
-  }
-  if (contains(desc, ['DINER', 'DINING', 'CAFE', 'COFFEE', 'RESTAURANT'])) {
-    return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
-  }
-
-  return REGIME_BUCKET_KEYS.DISCRETIONARY_SHOPPING;
+  if (tx.p2pKind === 'P2P_REPAYMENT_OUT') return REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL;
+  if (tx.p2pKind === 'P2P_PSEUDO_MERCHANT_OUT') return inferPseudoMerchantBucket(tx);
+  const mccBucket = typeof tx.mcc === 'number' ? MCC_BUCKETS.get(tx.mcc) : undefined;
+  return mccBucket !== undefined ? mccBucket : inferBucketFromDescription(tx);
 }
 
 function monthStart(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function bucketMonthMap(spend: Map<string, Map<string, number>>, bucketKey: string): Map<string, number> {
+  const existing = spend.get(bucketKey);
+  if (existing !== undefined) return existing;
+  const created = new Map<string, number>();
+  spend.set(bucketKey, created);
+  return created;
 }
 
 function bucketSpendByMonth(
@@ -120,42 +132,20 @@ function bucketSpendByMonth(
   regime: IncomeRegimeDraft,
 ): Map<string, Map<string, number>> {
   const monthKeys = new Set(regime.months.map((m) => monthStart(m).toISOString()));
-  let fallbackDate: Date | null = null;
-  if (regime.startMonth != null) {
-    fallbackDate = regime.startMonth;
-  } else if (regime.months[0] != null) {
-    fallbackDate = regime.months[0];
-  } else if (regime.endMonth != null) {
-    fallbackDate = regime.endMonth;
-  }
+  const fallbackDate = firstPresent([regime.startMonth, regime.months[0], regime.endMonth]);
   if (fallbackDate == null) {
     throw new Error('bucket-regime: missing fallback date');
   }
-  const fallbackDateValue = fallbackDate;
   const spend = new Map<string, Map<string, number>>();
   for (const tx of txs) {
     const delta = deriveBucketDeltaCents(tx);
     if (delta === 0) continue;
-    let timestamp: Date | null = tx.postedAt;
-    if (timestamp == null) {
-      timestamp = tx.occurredAt;
-    }
-    if (timestamp == null) {
-      timestamp = fallbackDateValue;
-    }
-    if (timestamp == null) continue;
-    const aligned = monthStart(timestamp);
-    const alignedKey = aligned.toISOString();
+    const timestamp = firstPresent([tx.postedAt, tx.occurredAt]);
+    const alignedKey = monthStart(timestamp === null ? fallbackDate : timestamp).toISOString();
     if (!monthKeys.has(alignedKey)) continue;
     const bucketKey = inferBucketKeyForTransaction(tx);
-    let bucketMap = spend.get(bucketKey);
-    if (bucketMap === undefined) {
-      bucketMap = new Map<string, number>();
-    }
-    const currentValue = bucketMap.get(alignedKey);
-    const current = typeof currentValue === 'number' ? currentValue : 0;
-    bucketMap.set(alignedKey, current + delta);
-    spend.set(bucketKey, bucketMap);
+    const bucketMap = bucketMonthMap(spend, bucketKey);
+    bucketMap.set(alignedKey, getMapNumberOrZero(bucketMap, alignedKey) + delta);
   }
   return spend;
 }
@@ -170,115 +160,194 @@ function getMapNumberOrZero(map: Map<string, number>, key: string): number {
   return typeof value === 'number' ? value : 0;
 }
 
+function averageSpendByBucket(
+  spendMap: Map<string, Map<string, number>>,
+  regime: IncomeRegimeDraft,
+): Map<string, number> {
+  const months = Math.max(regime.months.length, 1);
+  const avgSpendByBucket = new Map<string, number>();
+  for (const def of BUCKET_DEFINITIONS) {
+    const monthSpend = spendMap.get(def.key);
+    const total = monthSpend === undefined ? 0 : Array.from(monthSpend.values()).reduce((acc, v) => acc + v, 0);
+    avgSpendByBucket.set(def.key, Math.max(0, Math.round(total / months)));
+  }
+  return avgSpendByBucket;
+}
+
+function sumBand(avgSpendByBucket: Map<string, number>, band: BucketBand): number {
+  return BUCKET_DEFINITIONS.filter((def) => def.band === band).reduce(
+    (acc, def) => acc + getMapNumberOrZero(avgSpendByBucket, def.key),
+    0,
+  );
+}
+
+function shareOrDefault(raw: number, fallback: number): number {
+  return !Number.isNaN(raw) && raw !== 0 ? raw : fallback;
+}
+
+function targetShareBps(limit: number, regime: IncomeRegimeDraft): number | null {
+  const avgNetIncomeCents = regime.avgNetIncomeCents;
+  return avgNetIncomeCents > 0 ? Math.round((limit / Math.max(avgNetIncomeCents, 1)) * 10000) : null;
+}
+
+type BandPlan = {
+  bandBudgets: Record<BucketBand, number>;
+  bandSpend: Record<BucketBand, number>;
+  minPerBucket: number;
+  cap: number;
+};
+
+function planBands(regime: IncomeRegimeDraft, avgSpendByBucket: Map<string, number>): BandPlan {
+  const essentialSpend = sumBand(avgSpendByBucket, 'essentials');
+  const discretionarySpend = sumBand(avgSpendByBucket, 'discretionary');
+  const totalVariable = Math.max(essentialSpend + discretionarySpend, 1);
+  const essentialShare = clamp(shareOrDefault(essentialSpend / totalVariable, 0.5), 0.4, 0.6);
+  const discretionaryShare = clamp(shareOrDefault(discretionarySpend / totalVariable, 0.3), 0.2, 0.4);
+  const savingsShare = clamp(1 - essentialShare - discretionaryShare, 0.05, 0.4);
+
+  const usableFreeCash = Math.max(regime.avgFreeCashCents, Math.round(regime.avgNetIncomeCents * 0.2), 0);
+  return {
+    bandBudgets: {
+      fixed: clamp(regime.avgFixedCostsCents, 0, Math.round(regime.avgNetIncomeCents * 0.9)),
+      essentials: Math.round(usableFreeCash * essentialShare),
+      discretionary: Math.round(usableFreeCash * discretionaryShare),
+      savings: Math.round(usableFreeCash * savingsShare),
+    },
+    bandSpend: { fixed: 0, essentials: essentialSpend, discretionary: discretionarySpend, savings: 0 },
+    minPerBucket: Math.min(2000, Math.round(usableFreeCash * 0.1)),
+    cap: Math.round(Math.max(regime.avgNetIncomeCents, usableFreeCash) * 1.2),
+  };
+}
+
+function limitForBucket(def: BucketDefinition, avgSpendByBucket: Map<string, number>, plan: BandPlan): number {
+  const avgSpend = getMapNumberOrZero(avgSpendByBucket, def.key);
+  // savings is provisional; finalized after allocations to other bands
+  if (def.band === 'fixed' || def.band === 'savings') return plan.bandBudgets[def.band];
+  const bandSpend = plan.bandSpend[def.band];
+  const siblings = BUCKET_DEFINITIONS.filter((b) => b.band === def.band && b.key !== REGIME_BUCKET_KEYS.SAVINGS_BUFFER);
+  const shareWithinBand = bandSpend > 0 ? avgSpend / bandSpend : 1 / Math.max(siblings.length, 1);
+  return Math.max(plan.minPerBucket, Math.round(plan.bandBudgets[def.band] * shareWithinBand));
+}
+
+function finalizeSavings(drafts: BucketTemplateDraft[], regime: IncomeRegimeDraft, plan: BandPlan): void {
+  // Savings buffer gets whatever is left after essentials+discretionary+fixed
+  const allocated = drafts
+    .filter((d) => d.bucketKey !== REGIME_BUCKET_KEYS.SAVINGS_BUFFER)
+    .reduce((acc, d) => acc + d.monthlyLimitCents, 0);
+  const availableForSavings = Math.max(0, Math.min(plan.cap - allocated, plan.bandBudgets.savings));
+  const savingsDraft = drafts.find((d) => d.bucketKey === REGIME_BUCKET_KEYS.SAVINGS_BUFFER);
+  if (savingsDraft === undefined) return;
+  savingsDraft.monthlyLimitCents = availableForSavings;
+  savingsDraft.targetShareBps = targetShareBps(availableForSavings, regime);
+}
+
+function scaleToCap(drafts: BucketTemplateDraft[], plan: BandPlan): void {
+  const cap = plan.cap;
+  const totalAfterSavings = drafts.reduce((acc, d) => acc + d.monthlyLimitCents, 0);
+  if (totalAfterSavings <= cap) return;
+  const scale = cap / totalAfterSavings;
+  for (const draft of drafts) {
+    if (draft.bucketKey === REGIME_BUCKET_KEYS.FIXED) continue;
+    draft.monthlyLimitCents = Math.max(0, Math.round(draft.monthlyLimitCents * scale));
+  }
+}
+
 function synthesizeTemplatesForRegime(
   regime: IncomeRegimeDraft,
   txs: ClassifiedBankTransaction[],
 ): BucketTemplateDraft[] {
   const spendMap = bucketSpendByMonth(txs, regime);
-  const months = Math.max(regime.months.length, 1);
-  const avgSpendByBucket = new Map<string, number>();
-  for (const def of BUCKET_DEFINITIONS) {
-    const monthSpend = spendMap.get(def.key);
-    if (monthSpend === undefined) {
-      avgSpendByBucket.set(def.key, 0);
-      continue;
-    }
-    const total = Array.from(monthSpend.values()).reduce((acc, v) => acc + v, 0);
-    avgSpendByBucket.set(def.key, Math.max(0, Math.round(total / months)));
-  }
+  const avgSpendByBucket = averageSpendByBucket(spendMap, regime);
+  const plan = planBands(regime, avgSpendByBucket);
 
-  const essentialSpend =
-    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.ESSENTIALS_GROCERIES) +
-    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.ESSENTIALS_TRANSPORT) +
-    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.ESSENTIALS_PERSONAL_CARE);
-  const discretionarySpend =
-    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.DISCRETIONARY_SOCIAL) +
-    getMapNumberOrZero(avgSpendByBucket, REGIME_BUCKET_KEYS.DISCRETIONARY_SHOPPING);
-
-  const totalVariable = Math.max(essentialSpend + discretionarySpend, 1);
-  const essentialShareRaw = essentialSpend / totalVariable;
-  const essentialShare = clamp(
-    !Number.isNaN(essentialShareRaw) && essentialShareRaw !== 0 ? essentialShareRaw : 0.5,
-    0.4,
-    0.6
-  );
-  const discretionaryShareRaw = discretionarySpend / totalVariable;
-  const discretionaryShare = clamp(
-    !Number.isNaN(discretionaryShareRaw) && discretionaryShareRaw !== 0 ? discretionaryShareRaw : 0.3,
-    0.2,
-    0.4
-  );
-  const savingsShare = clamp(1 - essentialShare - discretionaryShare, 0.05, 0.4);
-
-  const usableFreeCash = Math.max(regime.avgFreeCashCents, Math.round(regime.avgNetIncomeCents * 0.2), 0);
-  const bandBudgets: Record<BucketBand, number> = {
-    fixed: clamp(regime.avgFixedCostsCents, 0, Math.round(regime.avgNetIncomeCents * 0.9)),
-    essentials: Math.round(usableFreeCash * essentialShare),
-    discretionary: Math.round(usableFreeCash * discretionaryShare),
-    savings: Math.round(usableFreeCash * savingsShare),
-  };
-
-  const minPerBucket = Math.min(2000, Math.round(usableFreeCash * 0.1));
-
-  const drafts: BucketTemplateDraft[] = [];
-
-  for (const def of BUCKET_DEFINITIONS) {
+  const drafts: BucketTemplateDraft[] = BUCKET_DEFINITIONS.map((def) => {
     const avgSpend = getMapNumberOrZero(avgSpendByBucket, def.key);
-    let limit = 0;
-    if (def.band === 'fixed') {
-      limit = bandBudgets.fixed;
-    } else if (def.band === 'savings') {
-      // provisional; finalized after allocations to other bands
-      limit = bandBudgets.savings;
-    } else {
-      const bandSpend = def.band === 'essentials' ? essentialSpend : discretionarySpend;
-      const siblings = BUCKET_DEFINITIONS.filter((b) => b.band === def.band && b.key !== REGIME_BUCKET_KEYS.SAVINGS_BUFFER);
-      const shareWithinBand =
-        bandSpend > 0 ? avgSpend / bandSpend : 1 / Math.max(siblings.length, 1);
-      const bandBudget = bandBudgets[def.band];
-      limit = Math.max(minPerBucket, Math.round(bandBudget * shareWithinBand));
-    }
-
-    drafts.push({
+    const limit = limitForBucket(def, avgSpendByBucket, plan);
+    return {
       bucketKey: def.key,
       monthlyLimitCents: Math.max(0, Math.round(limit)),
       avgSpendCents: Math.max(0, Math.round(avgSpend)),
-      targetShareBps:
-        regime.avgNetIncomeCents > 0
-          ? Math.round((limit / Math.max(regime.avgNetIncomeCents, 1)) * 10000)
-          : null,
+      targetShareBps: targetShareBps(limit, regime),
       band: def.band,
-    });
-  }
+    };
+  });
 
-  // Savings buffer gets whatever is left after essentials+discretionary+fixed
-  const allocated = drafts
-    .filter((d) => d.bucketKey !== REGIME_BUCKET_KEYS.SAVINGS_BUFFER)
-    .reduce((acc, d) => acc + d.monthlyLimitCents, 0);
-  const cap = Math.round(Math.max(regime.avgNetIncomeCents, usableFreeCash) * 1.2);
-  const availableForSavings = Math.max(0, Math.min(cap - allocated, bandBudgets.savings));
-  const savingsDraft = drafts.find((d) => d.bucketKey === REGIME_BUCKET_KEYS.SAVINGS_BUFFER);
-  if (savingsDraft !== undefined) {
-    savingsDraft.monthlyLimitCents = availableForSavings;
-    if (savingsDraft.avgSpendCents == null) {
-      savingsDraft.avgSpendCents = 0;
-    }
-    savingsDraft.targetShareBps =
-      regime.avgNetIncomeCents > 0
-        ? Math.round((availableForSavings / Math.max(regime.avgNetIncomeCents, 1)) * 10000)
-        : null;
-  }
-
-  const totalAfterSavings = drafts.reduce((acc, d) => acc + d.monthlyLimitCents, 0);
-  if (totalAfterSavings > cap) {
-    const scale = cap / totalAfterSavings;
-    for (const draft of drafts) {
-      if (draft.bucketKey === REGIME_BUCKET_KEYS.FIXED) continue;
-      draft.monthlyLimitCents = Math.max(0, Math.round(draft.monthlyLimitCents * scale));
-    }
-  }
-
+  finalizeSavings(drafts, regime, plan);
+  scaleToCap(drafts, plan);
   return drafts;
+}
+
+const BANK_TRANSACTION_SELECT = {
+  id: true,
+  userId: true,
+  amountMinor: true,
+  direction: true,
+  description: true,
+  rawDescription: true,
+  merchantName: true,
+  merchantCity: true,
+  merchantRegion: true,
+  merchantCountry: true,
+  mcc: true,
+  postedAt: true,
+  occurredAt: true,
+  source: true,
+  section: true,
+  incomeKind: true,
+  p2pKind: true,
+} as const;
+
+function monthsBetween(start: Date, end: Date): Date[] {
+  const months: Date[] = [];
+  const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+  while (cursor <= end) {
+    months.push(new Date(cursor));
+    cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+  }
+  return months;
+}
+
+function regimeToDraft(regime: HistoricalIncomeRegime): IncomeRegimeDraft {
+  const start = new Date(regime.startMonth);
+  const end = new Date(regime.endMonth);
+  return {
+    startMonth: start,
+    endMonth: end,
+    avgNetIncomeCents: regime.avgNetIncomeCents,
+    avgFixedCostsCents: regime.avgFixedCostsCents,
+    avgFreeCashCents: regime.avgFreeCashCents,
+    regimeLabel: regime.regimeLabel,
+    months: monthsBetween(start, end),
+  };
+}
+
+function draftsFor(
+  templatesByRegime: Record<string, BucketTemplateDraft[]>,
+  regime: HistoricalIncomeRegime,
+): BucketTemplateDraft[] {
+  const drafts = templatesByRegime[regime.id];
+  return drafts == null ? [] : drafts;
+}
+
+function buildTemplateCreations(
+  userId: string,
+  regimes: HistoricalIncomeRegime[],
+  templatesByRegime: Record<string, BucketTemplateDraft[]>,
+) {
+  return regimes.flatMap((regime) =>
+    draftsFor(templatesByRegime, regime).map((draft) =>
+      prisma.historicalBucketTemplate.create({
+        data: {
+          userId,
+          regimeId: regime.id,
+          bucketKey: draft.bucketKey,
+          monthlyLimitCents: draft.monthlyLimitCents,
+          avgSpendCents: draft.avgSpendCents,
+          targetShareBps: draft.targetShareBps,
+        },
+      }),
+    ),
+  );
 }
 
 export async function synthesizeBucketTemplatesForUser(
@@ -291,74 +360,19 @@ export async function synthesizeBucketTemplatesForUser(
   const txs = await prisma.bankTransaction.findMany({
     where: { userId, source: { in: ['csv_dev'] } },
     orderBy: { postedAt: 'asc' },
-    select: {
-      id: true,
-      userId: true,
-      amountMinor: true,
-      direction: true,
-      description: true,
-      rawDescription: true,
-      merchantName: true,
-      merchantCity: true,
-      merchantRegion: true,
-      merchantCountry: true,
-      mcc: true,
-      postedAt: true,
-      occurredAt: true,
-      source: true,
-      section: true,
-      incomeKind: true,
-      p2pKind: true,
-    },
+    select: BANK_TRANSACTION_SELECT,
   });
 
   const templatesByRegime: Record<string, BucketTemplateDraft[]> = {};
   for (const regime of regimes) {
-    const start = new Date(regime.startMonth);
-    const end = new Date(regime.endMonth);
-    const months: Date[] = [];
-    const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
-    while (cursor <= end) {
-      months.push(new Date(cursor));
-      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-    }
-
-    const draft: IncomeRegimeDraft = {
-      startMonth: start,
-      endMonth: end,
-      avgNetIncomeCents: regime.avgNetIncomeCents,
-      avgFixedCostsCents: regime.avgFixedCostsCents,
-      avgFreeCashCents: regime.avgFreeCashCents,
-      regimeLabel: regime.regimeLabel,
-      months,
-    };
     templatesByRegime[regime.id] = synthesizeTemplatesForRegime(
-      draft,
+      regimeToDraft(regime),
       txs as unknown as ClassifiedBankTransaction[],
     );
   }
 
   await prisma.historicalBucketTemplate.deleteMany({ where: { userId } });
-  const creations = [];
-  for (const regime of regimes) {
-    const drafts = templatesByRegime[regime.id];
-    const resolvedDrafts = drafts == null ? [] : drafts;
-    for (const draft of resolvedDrafts) {
-      creations.push(
-        prisma.historicalBucketTemplate.create({
-          data: {
-            userId,
-            regimeId: regime.id,
-            bucketKey: draft.bucketKey,
-            monthlyLimitCents: draft.monthlyLimitCents,
-            avgSpendCents: draft.avgSpendCents,
-            targetShareBps: draft.targetShareBps,
-          },
-        }),
-      );
-    }
-  }
-
+  const creations = buildTemplateCreations(userId, regimes, templatesByRegime);
   if (creations.length > 0) {
     await prisma.$transaction(creations);
   }
@@ -377,7 +391,7 @@ export async function rebuildIncomeRegimesAndBuckets(userId: string): Promise<Hi
 }
 
 export function deriveBucketDeltaCents(tx: ClassifiedBankTransaction): number {
-  const abs = normalizeAmountMinor(tx.amountMinor);
+  const abs = normalizeAmountMinor(tx);
   const direction = directionOf(tx);
   if (direction === 'debit') return abs;
   if (isRefundLike(tx.incomeKind, tx.p2pKind)) return -abs;

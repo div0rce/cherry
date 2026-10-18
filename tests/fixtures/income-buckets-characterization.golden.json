@@ -1,0 +1,1096 @@
+{
+  "classify": [
+    {
+      "txId": "tx-1",
+      "incomeKind": "PAYROLL",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-2",
+      "incomeKind": "ALLOWANCE",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-3",
+      "incomeKind": "REFUND",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-4",
+      "incomeKind": "INTERNAL_TRANSFER",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-5",
+      "incomeKind": "SIDE_GIG",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-6",
+      "incomeKind": "OTHER",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-7",
+      "incomeKind": "SIDE_GIG",
+      "p2pKind": "NONE"
+    },
+    {
+      "txId": "tx-8",
+      "incomeKind": "OTHER",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+    },
+    {
+      "txId": "tx-9",
+      "incomeKind": "OTHER",
+      "p2pKind": "P2P_REPAYMENT_IN"
+    },
+    {
+      "txId": "tx-10",
+      "incomeKind": "ALLOWANCE",
+      "p2pKind": "P2P_ALLOWANCE"
+    },
+    {
+      "txId": "tx-11",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_REPAYMENT_OUT"
+    },
+    {
+      "txId": "tx-12",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_REPAYMENT_OUT"
+    },
+    {
+      "txId": "tx-13",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+    },
+    {
+      "txId": "tx-14",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_REPAYMENT_IN"
+    },
+    {
+      "txId": "tx-15",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_REPAYMENT_OUT"
+    },
+    {
+      "txId": "tx-16",
+      "incomeKind": "ALLOWANCE",
+      "p2pKind": "P2P_ALLOWANCE"
+    },
+    {
+      "txId": "tx-17",
+      "incomeKind": "ALLOWANCE",
+      "p2pKind": "P2P_ALLOWANCE"
+    },
+    {
+      "txId": "tx-18",
+      "incomeKind": "ALLOWANCE",
+      "p2pKind": "P2P_ALLOWANCE"
+    },
+    {
+      "txId": "tx-19",
+      "incomeKind": "OTHER",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+    },
+    {
+      "txId": "tx-20",
+      "incomeKind": "OTHER",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+    },
+    {
+      "txId": "tx-21",
+      "incomeKind": "OTHER",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+    },
+    {
+      "txId": "tx-22",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+    },
+    {
+      "txId": "tx-23",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+    },
+    {
+      "txId": "tx-24",
+      "incomeKind": "NONE",
+      "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+    }
+  ],
+  "netEarned": [
+    123,
+    50,
+    0,
+    70,
+    0
+  ],
+  "refundLike": [
+    true,
+    true,
+    false
+  ],
+  "bucketKeys": [
+    "essentials_groceries",
+    "essentials_groceries",
+    "essentials_groceries",
+    "essentials_groceries",
+    "essentials_transport",
+    "essentials_transport",
+    "essentials_transport",
+    "essentials_transport",
+    "discretionary_social",
+    "discretionary_social",
+    "discretionary_social",
+    "essentials_personal_care",
+    "essentials_personal_care",
+    "discretionary_shopping",
+    "essentials_groceries",
+    "essentials_transport",
+    "essentials_personal_care",
+    "discretionary_social",
+    "discretionary_shopping",
+    "essentials_groceries",
+    "discretionary_social",
+    "essentials_transport",
+    "discretionary_social",
+    "discretionary_social",
+    "essentials_personal_care",
+    "fixed_obligations",
+    "discretionary_social"
+  ],
+  "deltas": [
+    3000,
+    4000,
+    2500,
+    6000,
+    12345,
+    -1000,
+    0,
+    500
+  ],
+  "monthly": [
+    {
+      "monthStart": "2024-01-01T00:00:00.000Z",
+      "totalCreditsCents": 28777,
+      "payrollCents": 1000,
+      "allowanceCents": 2777,
+      "sideGigCents": 3000,
+      "refundCents": 4000,
+      "internalTransferCents": 5000,
+      "otherCents": 13777,
+      "netEarnedIncomeCents": 7554
+    },
+    {
+      "monthStart": "2024-03-01T00:00:00.000Z",
+      "totalCreditsCents": 5000,
+      "payrollCents": 5000,
+      "allowanceCents": 0,
+      "sideGigCents": 0,
+      "refundCents": 0,
+      "internalTransferCents": 0,
+      "otherCents": 0,
+      "netEarnedIncomeCents": 5000
+    }
+  ],
+  "regimesDefault": [
+    {
+      "startMonth": "2024-01-01T00:00:00.000Z",
+      "endMonth": "2024-04-01T00:00:00.000Z",
+      "avgNetIncomeCents": 2000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 2000,
+      "regimeLabel": "Regime 1",
+      "months": [
+        "2024-01-01T00:00:00.000Z",
+        "2024-02-01T00:00:00.000Z",
+        "2024-03-01T00:00:00.000Z",
+        "2024-04-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-05-01T00:00:00.000Z",
+      "endMonth": "2024-07-01T00:00:00.000Z",
+      "avgNetIncomeCents": 3667,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 3667,
+      "regimeLabel": "Regime 2",
+      "months": [
+        "2024-05-01T00:00:00.000Z",
+        "2024-06-01T00:00:00.000Z",
+        "2024-07-01T00:00:00.000Z"
+      ]
+    }
+  ],
+  "regimesMergeTail": [
+    {
+      "startMonth": "2024-01-01T00:00:00.000Z",
+      "endMonth": "2024-06-01T00:00:00.000Z",
+      "avgNetIncomeCents": 5000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 5000,
+      "regimeLabel": "Regime 1",
+      "months": [
+        "2024-01-01T00:00:00.000Z",
+        "2024-02-01T00:00:00.000Z",
+        "2024-03-01T00:00:00.000Z",
+        "2024-04-01T00:00:00.000Z",
+        "2024-05-01T00:00:00.000Z",
+        "2024-06-01T00:00:00.000Z"
+      ]
+    }
+  ],
+  "regimesWindow1": [
+    {
+      "startMonth": "2024-01-01T00:00:00.000Z",
+      "endMonth": "2024-01-01T00:00:00.000Z",
+      "avgNetIncomeCents": 0,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 0,
+      "regimeLabel": "Regime 1",
+      "months": [
+        "2024-01-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-02-01T00:00:00.000Z",
+      "endMonth": "2024-02-01T00:00:00.000Z",
+      "avgNetIncomeCents": 0,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 0,
+      "regimeLabel": "Regime 2",
+      "months": [
+        "2024-02-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-03-01T00:00:00.000Z",
+      "endMonth": "2024-04-01T00:00:00.000Z",
+      "avgNetIncomeCents": 8000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 8000,
+      "regimeLabel": "Regime 3",
+      "months": [
+        "2024-03-01T00:00:00.000Z",
+        "2024-04-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-05-01T00:00:00.000Z",
+      "endMonth": "2024-07-01T00:00:00.000Z",
+      "avgNetIncomeCents": 100,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 100,
+      "regimeLabel": "Regime 4",
+      "months": [
+        "2024-05-01T00:00:00.000Z",
+        "2024-06-01T00:00:00.000Z",
+        "2024-07-01T00:00:00.000Z"
+      ]
+    }
+  ],
+  "regimesZeroMin": [
+    {
+      "startMonth": "2024-01-01T00:00:00.000Z",
+      "endMonth": "2024-01-01T00:00:00.000Z",
+      "avgNetIncomeCents": 1000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 1000,
+      "regimeLabel": "Regime 1",
+      "months": [
+        "2024-01-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-02-01T00:00:00.000Z",
+      "endMonth": "2024-02-01T00:00:00.000Z",
+      "avgNetIncomeCents": 9000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 9000,
+      "regimeLabel": "Regime 2",
+      "months": [
+        "2024-02-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-03-01T00:00:00.000Z",
+      "endMonth": "2024-03-01T00:00:00.000Z",
+      "avgNetIncomeCents": 1000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 1000,
+      "regimeLabel": "Regime 3",
+      "months": [
+        "2024-03-01T00:00:00.000Z"
+      ]
+    }
+  ],
+  "regimesEmpty": [],
+  "templates": [
+    {
+      "bucketKey": "fixed_obligations",
+      "monthlyLimitCents": 50000,
+      "avgSpendCents": 0,
+      "targetShareBps": 2500,
+      "band": "fixed"
+    },
+    {
+      "bucketKey": "essentials_groceries",
+      "monthlyLimitCents": 44214,
+      "avgSpendCents": 2333,
+      "targetShareBps": 2211,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_transport",
+      "monthlyLimitCents": 15786,
+      "avgSpendCents": 833,
+      "targetShareBps": 789,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_personal_care",
+      "monthlyLimitCents": 2000,
+      "avgSpendCents": 0,
+      "targetShareBps": 100,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "discretionary_social",
+      "monthlyLimitCents": 20754,
+      "avgSpendCents": 2000,
+      "targetShareBps": 1038,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "discretionary_shopping",
+      "monthlyLimitCents": 39246,
+      "avgSpendCents": 3782,
+      "targetShareBps": 1962,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "savings_buffer",
+      "monthlyLimitCents": 30000,
+      "avgSpendCents": 0,
+      "targetShareBps": 1500,
+      "band": "savings"
+    }
+  ],
+  "templatesEmpty": [
+    {
+      "bucketKey": "fixed_obligations",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "fixed"
+    },
+    {
+      "bucketKey": "essentials_groceries",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_transport",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_personal_care",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "discretionary_social",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "discretionary_shopping",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "savings_buffer",
+      "monthlyLimitCents": 0,
+      "avgSpendCents": 0,
+      "targetShareBps": null,
+      "band": "savings"
+    }
+  ],
+  "templatesOverCap": [
+    {
+      "bucketKey": "fixed_obligations",
+      "monthlyLimitCents": 9000,
+      "avgSpendCents": 0,
+      "targetShareBps": 9000,
+      "band": "fixed"
+    },
+    {
+      "bucketKey": "essentials_groceries",
+      "monthlyLimitCents": 26528,
+      "avgSpendCents": 2333,
+      "targetShareBps": 26528,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_transport",
+      "monthlyLimitCents": 9472,
+      "avgSpendCents": 833,
+      "targetShareBps": 9472,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_personal_care",
+      "monthlyLimitCents": 2000,
+      "avgSpendCents": 0,
+      "targetShareBps": 2000,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "discretionary_social",
+      "monthlyLimitCents": 12452,
+      "avgSpendCents": 2000,
+      "targetShareBps": 12452,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "discretionary_shopping",
+      "monthlyLimitCents": 23548,
+      "avgSpendCents": 3782,
+      "targetShareBps": 23548,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "savings_buffer",
+      "monthlyLimitCents": 18000,
+      "avgSpendCents": 0,
+      "targetShareBps": 18000,
+      "band": "savings"
+    }
+  ],
+  "templatesNoStart": [
+    {
+      "bucketKey": "fixed_obligations",
+      "monthlyLimitCents": 50000,
+      "avgSpendCents": 0,
+      "targetShareBps": 2500,
+      "band": "fixed"
+    },
+    {
+      "bucketKey": "essentials_groceries",
+      "monthlyLimitCents": 36923,
+      "avgSpendCents": 4000,
+      "targetShareBps": 1846,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_transport",
+      "monthlyLimitCents": 23077,
+      "avgSpendCents": 2500,
+      "targetShareBps": 1154,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "essentials_personal_care",
+      "monthlyLimitCents": 2000,
+      "avgSpendCents": 0,
+      "targetShareBps": 100,
+      "band": "essentials"
+    },
+    {
+      "bucketKey": "discretionary_social",
+      "monthlyLimitCents": 2000,
+      "avgSpendCents": 0,
+      "targetShareBps": 100,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "discretionary_shopping",
+      "monthlyLimitCents": 60000,
+      "avgSpendCents": 12345,
+      "targetShareBps": 3000,
+      "band": "discretionary"
+    },
+    {
+      "bucketKey": "savings_buffer",
+      "monthlyLimitCents": 30000,
+      "avgSpendCents": 0,
+      "targetShareBps": 1500,
+      "band": "savings"
+    }
+  ],
+  "missingFallback": "bucket-regime: missing fallback date",
+  "computedRegimes": [
+    {
+      "startMonth": "2024-01-01T00:00:00.000Z",
+      "endMonth": "2024-04-01T00:00:00.000Z",
+      "avgNetIncomeCents": 525000,
+      "avgFixedCostsCents": 158000,
+      "avgFreeCashCents": 367000,
+      "regimeLabel": "Regime 1",
+      "months": [
+        "2024-01-01T00:00:00.000Z",
+        "2024-02-01T00:00:00.000Z",
+        "2024-03-01T00:00:00.000Z",
+        "2024-04-01T00:00:00.000Z"
+      ]
+    },
+    {
+      "startMonth": "2024-05-01T00:00:00.000Z",
+      "endMonth": "2024-06-01T00:00:00.000Z",
+      "avgNetIncomeCents": 900000,
+      "avgFixedCostsCents": 0,
+      "avgFreeCashCents": 900000,
+      "regimeLabel": "Regime 2",
+      "months": [
+        "2024-05-01T00:00:00.000Z",
+        "2024-06-01T00:00:00.000Z"
+      ]
+    }
+  ],
+  "computedKinds": [
+    [
+      "tx-104",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-105",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-106",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-107",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-108",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-109",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-110",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-111",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-112",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-113",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-114",
+      "NONE",
+      "NONE"
+    ],
+    [
+      "tx-115",
+      "NONE",
+      "P2P_REPAYMENT_OUT"
+    ],
+    [
+      "tx-116",
+      "NONE",
+      "P2P_REPAYMENT_OUT"
+    ],
+    [
+      "tx-117",
+      "PAYROLL",
+      "NONE"
+    ],
+    [
+      "tx-118",
+      "PAYROLL",
+      "NONE"
+    ],
+    [
+      "tx-119",
+      "PAYROLL",
+      "NONE"
+    ],
+    [
+      "tx-120",
+      "PAYROLL",
+      "NONE"
+    ],
+    [
+      "tx-121",
+      "PAYROLL",
+      "NONE"
+    ],
+    [
+      "tx-122",
+      "PAYROLL",
+      "NONE"
+    ]
+  ],
+  "persist": {
+    "log": [
+      {
+        "op": "$transaction",
+        "ops": [
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-123"
+              },
+              "data": {
+                "incomeKind": "PAYROLL",
+                "p2pKind": "NONE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-124"
+              },
+              "data": {
+                "incomeKind": "ALLOWANCE",
+                "p2pKind": "NONE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-125"
+              },
+              "data": {
+                "incomeKind": "REFUND",
+                "p2pKind": "NONE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-126"
+              },
+              "data": {
+                "incomeKind": "INTERNAL_TRANSFER",
+                "p2pKind": "NONE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-127"
+              },
+              "data": {
+                "incomeKind": "SIDE_GIG",
+                "p2pKind": "NONE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-128"
+              },
+              "data": {
+                "incomeKind": "OTHER",
+                "p2pKind": "NONE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-130"
+              },
+              "data": {
+                "incomeKind": "OTHER",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-131"
+              },
+              "data": {
+                "incomeKind": "OTHER",
+                "p2pKind": "P2P_REPAYMENT_IN"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-132"
+              },
+              "data": {
+                "incomeKind": "ALLOWANCE",
+                "p2pKind": "P2P_ALLOWANCE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-133"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_REPAYMENT_OUT"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-134"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_REPAYMENT_OUT"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-135"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-137"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_REPAYMENT_OUT"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-138"
+              },
+              "data": {
+                "incomeKind": "ALLOWANCE",
+                "p2pKind": "P2P_ALLOWANCE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-139"
+              },
+              "data": {
+                "incomeKind": "ALLOWANCE",
+                "p2pKind": "P2P_ALLOWANCE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-140"
+              },
+              "data": {
+                "incomeKind": "ALLOWANCE",
+                "p2pKind": "P2P_ALLOWANCE"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-141"
+              },
+              "data": {
+                "incomeKind": "OTHER",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-142"
+              },
+              "data": {
+                "incomeKind": "OTHER",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-143"
+              },
+              "data": {
+                "incomeKind": "OTHER",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_IN"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-144"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-145"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+              }
+            }
+          },
+          {
+            "op": "update",
+            "args": {
+              "where": {
+                "id": "tx-146"
+              },
+              "data": {
+                "incomeKind": "NONE",
+                "p2pKind": "P2P_PSEUDO_MERCHANT_OUT"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "warnings": [
+      "Income classification persisted 22 updates across 1 batches"
+    ]
+  },
+  "userTemplates": {
+    "reg-1": [
+      {
+        "bucketKey": "fixed_obligations",
+        "monthlyLimitCents": 50000,
+        "avgSpendCents": 0,
+        "targetShareBps": 2500,
+        "band": "fixed"
+      },
+      {
+        "bucketKey": "essentials_groceries",
+        "monthlyLimitCents": 44214,
+        "avgSpendCents": 2333,
+        "targetShareBps": 2211,
+        "band": "essentials"
+      },
+      {
+        "bucketKey": "essentials_transport",
+        "monthlyLimitCents": 15786,
+        "avgSpendCents": 833,
+        "targetShareBps": 789,
+        "band": "essentials"
+      },
+      {
+        "bucketKey": "essentials_personal_care",
+        "monthlyLimitCents": 2000,
+        "avgSpendCents": 0,
+        "targetShareBps": 100,
+        "band": "essentials"
+      },
+      {
+        "bucketKey": "discretionary_social",
+        "monthlyLimitCents": 20754,
+        "avgSpendCents": 2000,
+        "targetShareBps": 1038,
+        "band": "discretionary"
+      },
+      {
+        "bucketKey": "discretionary_shopping",
+        "monthlyLimitCents": 39246,
+        "avgSpendCents": 3782,
+        "targetShareBps": 1962,
+        "band": "discretionary"
+      },
+      {
+        "bucketKey": "savings_buffer",
+        "monthlyLimitCents": 30000,
+        "avgSpendCents": 0,
+        "targetShareBps": 1500,
+        "band": "savings"
+      }
+    ]
+  },
+  "userTemplateLog": [
+    {
+      "op": "deleteMany",
+      "args": {
+        "where": {
+          "userId": "user-char"
+        }
+      }
+    },
+    {
+      "op": "$transaction",
+      "ops": [
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "fixed_obligations",
+              "monthlyLimitCents": 50000,
+              "avgSpendCents": 0,
+              "targetShareBps": 2500
+            }
+          }
+        },
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "essentials_groceries",
+              "monthlyLimitCents": 44214,
+              "avgSpendCents": 2333,
+              "targetShareBps": 2211
+            }
+          }
+        },
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "essentials_transport",
+              "monthlyLimitCents": 15786,
+              "avgSpendCents": 833,
+              "targetShareBps": 789
+            }
+          }
+        },
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "essentials_personal_care",
+              "monthlyLimitCents": 2000,
+              "avgSpendCents": 0,
+              "targetShareBps": 100
+            }
+          }
+        },
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "discretionary_social",
+              "monthlyLimitCents": 20754,
+              "avgSpendCents": 2000,
+              "targetShareBps": 1038
+            }
+          }
+        },
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "discretionary_shopping",
+              "monthlyLimitCents": 39246,
+              "avgSpendCents": 3782,
+              "targetShareBps": 1962
+            }
+          }
+        },
+        {
+          "op": "create",
+          "args": {
+            "data": {
+              "userId": "user-char",
+              "regimeId": "reg-1",
+              "bucketKey": "savings_buffer",
+              "monthlyLimitCents": 30000,
+              "avgSpendCents": 0,
+              "targetShareBps": 1500
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

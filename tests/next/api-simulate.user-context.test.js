@@ -535,6 +535,48 @@ async function runSimulationsInvalidStatus() {
   assert.equal(res.status, 400);
 }
 
+async function runSimulationsFiltersAndPagination() {
+  process.env.NODE_ENV = 'development';
+  setServerEnvironment('development');
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { GET } = require('../../app/api/simulations/route');
+
+  const fallback = await GET({ url: 'http://localhost/api/simulations?page=0&pageSize=abc' });
+  assert.equal(fallback.status, 200);
+  const fallbackJson = await fallback.json();
+  assert.equal(fallbackJson.page, 1);
+  assert.equal(fallbackJson.pageSize, 10);
+
+  const clamped = await GET({
+    url: 'http://localhost/api/simulations?page=3&pageSize=500&status=declined&category=DINING',
+  });
+  assert.equal(clamped.status, 200);
+  const clampedJson = await clamped.json();
+  assert.equal(clampedJson.page, 3);
+  assert.equal(clampedJson.pageSize, 50);
+
+  const badCategory = await GET({ url: 'http://localhost/api/simulations?status=APPROVED&category=NOPE' });
+  assert.equal(badCategory.status, 400);
+}
+
+async function runSimulateInvalidMcc() {
+  process.env.NODE_ENV = 'development';
+  mockNextAuth(null);
+  mockNextServer();
+  mockModule('../../app/api/auth/[...nextauth]/route', { authOptions: {}, auth: async () => null });
+  setupSimulationMocks();
+  resetRouteCache();
+  const { POST } = require('../../app/api/simulate/route');
+  const res = await POST({
+    json: async () => ({ amountCents: 1000, category: 'DINING', merchantName: 'Test', mccCode: 12 }),
+  });
+  assert.equal(res.status, 400);
+}
+
 async function runSimulationsGetProdUnauthorized() {
   process.env.NODE_ENV = 'production';
   setServerEnvironment('production');
@@ -566,6 +608,8 @@ async function run() {
   await runSimulateProdUnauthorized();
   await runSimulationsGetDev();
   await runSimulationsInvalidStatus();
+  await runSimulationsFiltersAndPagination();
+  await runSimulateInvalidMcc();
   await runSimulationsGetProdUnauthorized();
   process.env.NODE_ENV = originalEnv;
   console.warn('api-simulate/simulations user-context: ok');

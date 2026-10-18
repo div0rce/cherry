@@ -8,8 +8,12 @@ export function deriveStableId(namespace: string, payload: unknown): StableId {
   return `${namespace}_${hash.slice(0, 24)}` as StableId;
 }
 
+function isMissingId(id: unknown): boolean {
+  return typeof id !== 'string' || id === '';
+}
+
 export function assertStableId(id: string): void {
-  if (id === undefined || id === null || typeof id !== 'string' || id === '') {
+  if (isMissingId(id)) {
     throw new Error('StableId assertion failed: missing id');
   }
   if (!/^[a-z0-9_-]+_[a-f0-9]{24}$/i.test(id)) {

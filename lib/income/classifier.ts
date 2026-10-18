@@ -43,7 +43,6 @@ const INTERNAL_TRANSFER_KEYWORDS = ['TRANSFER', 'XFER', 'MOVE MONEY', 'TO SAVING
 const SIDE_GIG_KEYWORDS = ['UBER', 'LYFT', 'ETSY', 'SHOPIFY', 'SQUARE', 'CASH APP', 'TASKRABBIT', 'DOORDASH', 'INSTACART'];
 const P2P_KEYWORDS = ['ZELLE', 'VENMO', 'VEN MO', 'CASH APP', 'CASHAPP', 'APPLE CASH', 'PAYPAL', 'PAY PAL'];
 const SERVICE_MEMO_KEYWORDS = ['CUT', 'HAIR', 'BARBER', 'NAIL', 'NAILS', 'WAX', 'CLEAN', 'RENT', 'LESSON', 'TUTOR', 'TRAINING'];
-const REPAYMENT_MEMO_KEYWORDS = ['UBER', 'DINNER', 'FOOD', 'REIMBURSE', 'PAYBACK', 'SPLIT', 'VENMO REQUEST'];
 
 function toIncomeEnum(kind: IncomeKind): BankTransactionIncomeKind {
   switch (kind) {
@@ -135,10 +134,12 @@ function normalizeCounterpartyKey(tx: ClassifiableTx): string {
   return base.replace(/\s+/g, ' ').trim();
 }
 
+function txMentions(tx: ClassifiableTx, keywords: string[]): boolean {
+  return containsKeyword(normalizeText(tx.description), keywords) || containsKeyword(normalizeText(tx.rawDescription), keywords);
+}
+
 function isP2P(tx: ClassifiableTx): boolean {
-  const desc = normalizeText(tx.description);
-  const raw = normalizeText(tx.rawDescription);
-  return containsKeyword(desc, P2P_KEYWORDS) || containsKeyword(raw, P2P_KEYWORDS);
+  return txMentions(tx, P2P_KEYWORDS);
 }
 
 function buildCounterpartyStats(txs: ClassifiableTx[]): Map<string, CounterpartyStats> {
@@ -189,54 +190,37 @@ function looksLikePseudoMerchant(stats: CounterpartyStats | undefined, direction
   return gap != null && gap >= 21 && gap <= 40 && spread <= 0.35;
 }
 
+const INCOME_KEYWORD_RULES: Array<[string[], IncomeKind]> = [
+  [PAYROLL_KEYWORDS, 'PAYROLL'],
+  [ALLOWANCE_KEYWORDS, 'ALLOWANCE'],
+  [REFUND_KEYWORDS, 'REFUND'],
+  [INTERNAL_TRANSFER_KEYWORDS, 'INTERNAL_TRANSFER'],
+];
+
+function directionOf(tx: ClassifiableTx): 'credit' | 'debit' {
+  return (tx.direction ?? '').toLowerCase() === 'credit' ? 'credit' : 'debit';
+}
+
 function classifyIncomeKind(tx: ClassifiableTx, stats?: CounterpartyStats): IncomeKind {
-  const direction = (tx.direction ?? '').toLowerCase();
-  if (direction !== 'credit') return 'NONE';
-
-  const desc = normalizeText(tx.description);
-  const raw = normalizeText(tx.rawDescription);
-
-  if (containsKeyword(desc, PAYROLL_KEYWORDS) || containsKeyword(raw, PAYROLL_KEYWORDS)) return 'PAYROLL';
-  if (containsKeyword(desc, ALLOWANCE_KEYWORDS) || containsKeyword(raw, ALLOWANCE_KEYWORDS)) return 'ALLOWANCE';
-  if (containsKeyword(desc, REFUND_KEYWORDS) || containsKeyword(raw, REFUND_KEYWORDS)) return 'REFUND';
-  if (containsKeyword(desc, INTERNAL_TRANSFER_KEYWORDS) || containsKeyword(raw, INTERNAL_TRANSFER_KEYWORDS))
-    return 'INTERNAL_TRANSFER';
-
+  if (directionOf(tx) !== 'credit') return 'NONE';
+  const rule = INCOME_KEYWORD_RULES.find(([keywords]) => txMentions(tx, keywords));
+  if (rule !== undefined) return rule[1];
   if (looksLikeAllowanceP2P(stats)) return 'ALLOWANCE';
+  return txMentions(tx, SIDE_GIG_KEYWORDS) ? 'SIDE_GIG' : 'OTHER';
+}
 
-  if (containsKeyword(desc, SIDE_GIG_KEYWORDS) || containsKeyword(raw, SIDE_GIG_KEYWORDS)) return 'SIDE_GIG';
-
-  return 'OTHER';
+function classifyP2PCredit(tx: ClassifiableTx, stats: CounterpartyStats | undefined, serviceLike: boolean): P2PKind {
+  if (looksLikeAllowanceP2P(stats) || txMentions(tx, ALLOWANCE_KEYWORDS)) return 'P2P_ALLOWANCE';
+  return serviceLike ? 'P2P_PSEUDO_MERCHANT_IN' : 'P2P_REPAYMENT_IN';
 }
 
 function classifyP2PKind(tx: ClassifiableTx, stats?: CounterpartyStats): P2PKind {
   if (!isP2P(tx)) return 'NONE';
-  const direction = (tx.direction ?? '').toLowerCase() === 'credit' ? 'credit' : 'debit';
-  const desc = normalizeText(tx.description);
-  const raw = normalizeText(tx.rawDescription);
-
-  const allowance = looksLikeAllowanceP2P(stats);
-  const pseudoMerchant = looksLikePseudoMerchant(stats, direction);
-
-  if (direction === 'credit') {
-    if (allowance || containsKeyword(desc, ALLOWANCE_KEYWORDS) || containsKeyword(raw, ALLOWANCE_KEYWORDS)) {
-      return 'P2P_ALLOWANCE';
-    }
-    if (pseudoMerchant || containsKeyword(desc, SERVICE_MEMO_KEYWORDS) || containsKeyword(raw, SERVICE_MEMO_KEYWORDS)) {
-      return 'P2P_PSEUDO_MERCHANT_IN';
-    }
-    return 'P2P_REPAYMENT_IN';
-  }
-
-  if (pseudoMerchant || containsKeyword(desc, SERVICE_MEMO_KEYWORDS) || containsKeyword(raw, SERVICE_MEMO_KEYWORDS)) {
-    return 'P2P_PSEUDO_MERCHANT_OUT';
-  }
-
-  if (containsKeyword(desc, REPAYMENT_MEMO_KEYWORDS) || containsKeyword(raw, REPAYMENT_MEMO_KEYWORDS)) {
-    return 'P2P_REPAYMENT_OUT';
-  }
-
-  return 'P2P_REPAYMENT_OUT';
+  const direction = directionOf(tx);
+  const serviceLike = looksLikePseudoMerchant(stats, direction) || txMentions(tx, SERVICE_MEMO_KEYWORDS);
+  if (direction === 'credit') return classifyP2PCredit(tx, stats, serviceLike);
+  // repayment memos (UBER, DINNER, SPLIT, ...) and the default both resolve to P2P_REPAYMENT_OUT
+  return serviceLike ? 'P2P_PSEUDO_MERCHANT_OUT' : 'P2P_REPAYMENT_OUT';
 }
 
 function normalizeClassification(tx: ClassifiableTx, statsMap: Map<string, CounterpartyStats>): ClassificationResult {
@@ -264,83 +248,104 @@ type ClassificationOpts = {
   sourceFilter?: string[];
 };
 
+const CLASSIFIABLE_SELECT = {
+  id: true,
+  userId: true,
+  amountMinor: true,
+  direction: true,
+  description: true,
+  rawDescription: true,
+  merchantName: true,
+  merchantCity: true,
+  merchantRegion: true,
+  merchantCountry: true,
+  mcc: true,
+  postedAt: true,
+  occurredAt: true,
+  source: true,
+  section: true,
+  incomeKind: true,
+  p2pKind: true,
+} as const;
+
+function buildClassificationUpdates(
+  txs: ClassifiableTx[],
+  classifications: ClassificationResult[],
+): Prisma.BankTransactionUpdateArgs[] {
+  const updates: Prisma.BankTransactionUpdateArgs[] = [];
+  for (const classification of classifications) {
+    const tx = txs.find((t) => t.id === classification.txId);
+    if (tx === undefined) continue;
+    const changed = tx.incomeKind !== classification.incomeKind || tx.p2pKind !== classification.p2pKind;
+    if (!changed) continue;
+    updates.push({
+      where: { id: tx.id },
+      data: {
+        incomeKind: toIncomeEnum(classification.incomeKind),
+        p2pKind: toP2PEnum(classification.p2pKind),
+      },
+    });
+  }
+  return updates;
+}
+
+async function persistClassificationUpdates(updates: Prisma.BankTransactionUpdateArgs[]): Promise<void> {
+  if (updates.length === 0) return;
+  let batches = 0;
+  for (let i = 0; i < updates.length; i += 25) {
+    const slice = updates.slice(i, i + 25);
+    await prisma.$transaction(slice.map((args) => prisma.bankTransaction.update(args)));
+    batches += 1;
+  }
+  console.warn(`Income classification persisted ${updates.length} updates across ${batches} batches`);
+}
+
+function applyClassifications<T extends { id: string }>(
+  txs: T[],
+  classifications: ClassificationResult[],
+): Array<T & { incomeKind: IncomeKind; p2pKind: P2PKind }> {
+  const classificationMap = new Map(classifications.map((c) => [c.txId, c]));
+  return txs.map((tx) => {
+    const classification = classificationMap.get(tx.id);
+    return {
+      ...tx,
+      incomeKind: classification?.incomeKind ?? 'NONE',
+      p2pKind: classification?.p2pKind ?? 'NONE',
+    };
+  });
+}
+
+function sourceWhere(opts?: ClassificationOpts) {
+  return opts?.sourceFilter ? { source: { in: opts.sourceFilter } } : {};
+}
+
 export async function classifyIncomeAndP2PForUser(
   userId: string,
   opts?: ClassificationOpts,
 ): Promise<ClassifiedBankTransaction[]> {
   const txs = await prisma.bankTransaction.findMany({
-    where: { userId, ...(opts?.sourceFilter ? { source: { in: opts.sourceFilter } } : {}) },
+    where: { userId, ...sourceWhere(opts) },
     orderBy: { postedAt: 'asc' },
-    select: {
-      id: true,
-      userId: true,
-      amountMinor: true,
-      direction: true,
-      description: true,
-      rawDescription: true,
-      merchantName: true,
-      merchantCity: true,
-      merchantRegion: true,
-      merchantCountry: true,
-      mcc: true,
-      postedAt: true,
-      occurredAt: true,
-      source: true,
-      section: true,
-      incomeKind: true,
-      p2pKind: true,
-    },
+    select: CLASSIFIABLE_SELECT,
   });
 
   const classifications = classifyTransactionsInMemory(txs);
 
-  const updates: Prisma.BankTransactionUpdateArgs[] = [];
   if (opts?.persist === true) {
     if (isProduction()) {
       throw new Error('Income/P2P classification persistence is disabled in production');
     }
-    for (const classification of classifications) {
-      const tx = txs.find((t) => t.id === classification.txId);
-      if (tx === undefined) continue;
-      const incomeKindChanged = tx.incomeKind !== classification.incomeKind;
-      const p2pKindChanged = tx.p2pKind !== classification.p2pKind;
-      if (!incomeKindChanged && !p2pKindChanged) continue;
-      updates.push({
-        where: { id: tx.id },
-        data: {
-          incomeKind: toIncomeEnum(classification.incomeKind),
-          p2pKind: toP2PEnum(classification.p2pKind),
-        },
-      });
-    }
+    await persistClassificationUpdates(buildClassificationUpdates(txs, classifications));
   }
 
-  if (updates.length > 0) {
-    let batches = 0;
-    for (let i = 0; i < updates.length; i += 25) {
-      const slice = updates.slice(i, i + 25);
-      await prisma.$transaction(slice.map((args) => prisma.bankTransaction.update(args)));
-      batches += 1;
-    }
-    console.warn(`Income classification persisted ${updates.length} updates across ${batches} batches`);
-  }
-
-  const classificationMap = new Map(classifications.map((c) => [c.txId, c]));
-  return txs.map((tx) => {
-    const classification = classificationMap.get(tx.id);
-    const incomeKind = classification?.incomeKind ?? 'NONE';
-    const p2pKind = classification?.p2pKind ?? 'NONE';
-    return {
-      ...tx,
-      incomeKind,
-      p2pKind,
-    };
-  });
+  return applyClassifications(txs, classifications);
 }
+
+const EARNED_INCOME_KINDS = new Set<IncomeKind>(['PAYROLL', 'ALLOWANCE', 'SIDE_GIG']);
 
 export function getNetEarnedIncomeCents(kind: IncomeKind, p2pKind: P2PKind, amountMinor: number): number {
   const cents = Math.abs(Number.isFinite(amountMinor) ? Math.trunc(amountMinor) : 0);
-  if (kind === 'PAYROLL' || kind === 'ALLOWANCE' || kind === 'SIDE_GIG') return cents;
+  if (EARNED_INCOME_KINDS.has(kind)) return cents;
   if (p2pKind === 'P2P_ALLOWANCE') return cents;
   return 0;
 }

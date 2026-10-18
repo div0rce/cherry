@@ -286,6 +286,30 @@ function buildPreviewPayload(summary: AutopilotPurchaseSummary, now: Date) {
   };
 }
 
+function extractErrorCode(details: unknown): string | undefined {
+  if (!isRecord(details)) return undefined;
+  const code = details['code'];
+  return typeof code === 'string' ? code : undefined;
+}
+
+function resolveErrorMessage(message: unknown): string {
+  if (typeof message !== 'string') return 'PREVIEW_ERROR';
+  return message.length > 0 ? message : 'PREVIEW_ERROR';
+}
+
+function buildPreviewErrorPayload(error: unknown, nowIso: string) {
+  const appError = asAppError(error);
+  const code = extractErrorCode(appError.details);
+  const errorPayload: { message: string; errorTimestamp: string; code?: string } = {
+    message: resolveErrorMessage(appError.message),
+    errorTimestamp: nowIso,
+  };
+  if (code !== undefined && code !== '') {
+    errorPayload.code = code;
+  }
+  return errorPayload;
+}
+
 // NOTE: Ensure output shape remains stable for AutopilotDecisionPanel consumption.
 export async function runSimulation(
   summary: AutopilotPurchaseSummary,
@@ -313,22 +337,7 @@ export async function runSimulation(
       body: JSON.stringify(payload),
     });
   } catch (error: unknown) {
-    const appError = asAppError(error);
-    const details = appError.details;
-    const code =
-      isRecord(details) && typeof details['code'] === 'string' ? details['code'] : undefined;
-    const message =
-      typeof appError.message === 'string' && appError.message.length > 0
-        ? appError.message
-        : 'PREVIEW_ERROR';
-    const errorPayload: { message: string; errorTimestamp: string; code?: string } = {
-      message,
-      errorTimestamp: nowIso,
-    };
-    if (code !== undefined && code !== '') {
-      errorPayload.code = code;
-    }
-    throw errorPayload;
+    throw buildPreviewErrorPayload(error, nowIso);
   }
   const parsed = AutopilotPreviewOutputSchema.safeParse(raw);
   if (!parsed.success) {

@@ -9,6 +9,16 @@ function hasNonEmptyString(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
+const REQUIRED_WALLET_FIELDS = [
+  'teamId',
+  'passTypeId',
+  'orgName',
+  'passDescription',
+  'certPassword',
+  'certPath',
+  'wwdrCertPath',
+] as const satisfies readonly (keyof WalletCertificateConfig)[];
+
 export function getWalletPassConfigStatus(
   walletConfig?: WalletCertificateConfig
 ): WalletPassConfigStatus {
@@ -18,15 +28,7 @@ export function getWalletPassConfigStatus(
     return { ok: false, reason: 'wallet_pass_disabled' };
   }
 
-  if (
-    !hasNonEmptyString(config.teamId) ||
-    !hasNonEmptyString(config.passTypeId) ||
-    !hasNonEmptyString(config.orgName) ||
-    !hasNonEmptyString(config.passDescription) ||
-    !hasNonEmptyString(config.certPassword) ||
-    !hasNonEmptyString(config.certPath) ||
-    !hasNonEmptyString(config.wwdrCertPath)
-  ) {
+  if (!REQUIRED_WALLET_FIELDS.every((field) => hasNonEmptyString(config[field]))) {
     return { ok: false, reason: 'missing_env' };
   }
 
