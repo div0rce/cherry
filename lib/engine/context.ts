@@ -3,6 +3,16 @@ import type { EngineContext, EngineSurface } from './types.js';
 // Bump when core decision behavior or payload shapes materially change.
 export const ENGINE_VERSION = 'v0.2.0';
 
+function nullIfMissing<T>(value: T | null | undefined): T | null {
+  return value == null ? null : value;
+}
+
+function assertNowMs(nowMs: number): void {
+  if (nowMs == null || Number.isNaN(nowMs)) {
+    throw new Error('EngineContext requires explicit `nowMs`');
+  }
+}
+
 export function fromExternalContextToEngineContext(input: {
   surface?: EngineSurface;
   nowMs: number;
@@ -14,21 +24,18 @@ export function fromExternalContextToEngineContext(input: {
   locationCity?: string | null;
   locationCountry?: string | null;
 }): EngineContext {
-  if (input.nowMs == null || Number.isNaN(input.nowMs)) {
-    throw new Error('EngineContext requires explicit `nowMs`');
-  }
+  assertNowMs(input.nowMs);
 
   return {
     surface: input.surface == null ? 'unknown' : input.surface,
     nowMs: input.nowMs,
-    merchantName: input.merchantName == null ? null : input.merchantName,
-    merchantDomain: input.merchantDomain == null ? null : input.merchantDomain,
-    merchantCategoryKey:
-      input.merchantCategoryKey == null ? null : input.merchantCategoryKey,
-    mcc: input.mcc == null ? null : input.mcc,
-    amountCents: input.amountCents == null ? null : input.amountCents,
-    locationCity: input.locationCity == null ? null : input.locationCity,
-    locationCountry: input.locationCountry == null ? null : input.locationCountry,
+    merchantName: nullIfMissing(input.merchantName),
+    merchantDomain: nullIfMissing(input.merchantDomain),
+    merchantCategoryKey: nullIfMissing(input.merchantCategoryKey),
+    mcc: nullIfMissing(input.mcc),
+    amountCents: nullIfMissing(input.amountCents),
+    locationCity: nullIfMissing(input.locationCity),
+    locationCountry: nullIfMissing(input.locationCountry),
     payPeriodDayOfCycle: null,
   };
 }

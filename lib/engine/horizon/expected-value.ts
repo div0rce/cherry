@@ -35,7 +35,7 @@ export type ExpectedValueHorizonRollout<TState, TAction, TObjective> = {
   firstSampleRollout: HorizonRollout<TState, TAction, TObjective>;
 };
 
-export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args: {
+export type ExpectedValueHorizonArgs<TState, TAction, TObjective> = {
   initialState: TState;
   config: HorizonConfig;
   evaluatePolicy: PolicyEvaluator<TState, TAction, TObjective>;
@@ -45,7 +45,30 @@ export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args
   seed: UncertaintySeed;
   riskLambda?: number;
   snapshotState?: SnapshotStateFn<TState>;
-}): ExpectedValueHorizonRollout<TState, TAction, TObjective> {
+};
+
+function runSampleRollout<TState, TAction, TObjective>(
+  args: ExpectedValueHorizonArgs<TState, TAction, TObjective>,
+  rng: ReturnType<typeof createSeededRng>
+): { rollout: HorizonRollout<TState, TAction, TObjective>; utility: number } {
+  const realizedState = realizeState(args.initialState, rng);
+  const rollout = runHorizonRollout<TState, TAction, TObjective>({
+    initialState: realizedState,
+    config: args.config,
+    evaluatePolicy: args.evaluatePolicy,
+    applyAction: args.applyAction,
+    ...(args.snapshotState === undefined ? {} : { snapshotState: args.snapshotState }),
+  });
+  const utility = args.utilityOfRollout(rollout);
+  if (!Number.isFinite(utility)) {
+    throw new Error('Expected-value rollout utility must be finite');
+  }
+  return { rollout, utility };
+}
+
+export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(
+  args: ExpectedValueHorizonArgs<TState, TAction, TObjective>
+): ExpectedValueHorizonRollout<TState, TAction, TObjective> {
   const samples = normalizeExpectedValueSamples(
     args.samples === undefined ? DEFAULT_EXPECTED_VALUE_SAMPLES : args.samples
   );
@@ -60,18 +83,7 @@ export function runExpectedValueHorizonRollout<TState, TAction, TObjective>(args
 
   // Expected-value rollout cost is O(samples * horizon * transition cost).
   for (let sampleIndex = 0; sampleIndex < samples; sampleIndex += 1) {
-    const realizedState = realizeState(args.initialState, rng);
-    const rollout = runHorizonRollout<TState, TAction, TObjective>({
-      initialState: realizedState,
-      config: args.config,
-      evaluatePolicy: args.evaluatePolicy,
-      applyAction: args.applyAction,
-      ...(args.snapshotState === undefined ? {} : { snapshotState: args.snapshotState }),
-    });
-    const utility = args.utilityOfRollout(rollout);
-    if (!Number.isFinite(utility)) {
-      throw new Error('Expected-value rollout utility must be finite');
-    }
+    const { rollout, utility } = runSampleRollout(args, rng);
     utilities.push(utility);
     if (firstSampleRollout === null) {
       firstSampleRollout = rollout;

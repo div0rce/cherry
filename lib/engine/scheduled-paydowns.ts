@@ -41,49 +41,77 @@ function buildMissingDebtDiagnostic(count: number): EngineTraceDiagnostic[] {
     : [];
 }
 
+function emptyEvaluation(sourceStatus: ScheduledPaydownSourceStatus): ScheduledPaydownEvaluation {
+  return {
+    sourceStatus,
+    presentEffective: [],
+    futureEligible: [],
+    diagnostics: [],
+  };
+}
+
+type PaydownClassification =
+  | { kind: 'SKIP' }
+  | { kind: 'MISSING_DEBT' }
+  | { kind: 'ELIGIBLE'; debtId: DebtAccountId };
+
+function classifyPaydown(paydown: ScheduledPaydown, debtIds: Set<string>): PaydownClassification {
+  if (paydown.status !== 'SCHEDULED') return { kind: 'SKIP' };
+  if (!hasPositiveNumber(paydown.amountCents)) return { kind: 'SKIP' };
+  if (!hasNonEmptyString(paydown.debtId)) return { kind: 'MISSING_DEBT' };
+  if (!debtIds.has(paydown.debtId)) return { kind: 'MISSING_DEBT' };
+  return { kind: 'ELIGIBLE', debtId: paydown.debtId };
+}
+
+type PartitionedPaydowns = {
+  presentEffective: EvaluatedScheduledPaydown[];
+  futureEligible: EvaluatedScheduledPaydown[];
+  missingDebtIdCount: number;
+};
+
+function partitionScheduledPaydowns(
+  paydowns: readonly ScheduledPaydown[],
+  debtIds: Set<string>,
+  decisionTimeMs: number
+): PartitionedPaydowns {
+  const result: PartitionedPaydowns = { presentEffective: [], futureEligible: [], missingDebtIdCount: 0 };
+
+  for (const [sourceOrder, paydown] of paydowns.entries()) {
+    const classification = classifyPaydown(paydown, debtIds);
+    if (classification.kind === 'SKIP') continue;
+    if (classification.kind === 'MISSING_DEBT') {
+      result.missingDebtIdCount += 1;
+      continue;
+    }
+
+    const evaluated = { ...paydown, debtId: classification.debtId, sourceOrder };
+    const target =
+      paydown.effectiveAtMs <= decisionTimeMs ? result.presentEffective : result.futureEligible;
+    target.push(evaluated);
+  }
+
+  return result;
+}
+
 export function evaluateScheduledPaydowns(
   state: EngineState,
   decisionTimeMs: number
 ): ScheduledPaydownEvaluation {
   const scheduledPaydowns = state.scheduledPaydowns;
   if (scheduledPaydowns == null || !hasAvailableValue(scheduledPaydowns)) {
-    return {
-      sourceStatus: 'UNAVAILABLE',
-      presentEffective: [],
-      futureEligible: [],
-      diagnostics: [],
-    };
+    return emptyEvaluation('UNAVAILABLE');
   }
 
   if (scheduledPaydowns.value.length === 0) {
-    return {
-      sourceStatus: 'AVAILABLE_EMPTY',
-      presentEffective: [],
-      futureEligible: [],
-      diagnostics: [],
-    };
+    return emptyEvaluation('AVAILABLE_EMPTY');
   }
 
-  const debtIds = new Set(getDebtAccounts(state.debts).map((debt) => debt.id));
-  const presentEffective: EvaluatedScheduledPaydown[] = [];
-  const futureEligible: EvaluatedScheduledPaydown[] = [];
-  let missingDebtIdCount = 0;
-
-  for (const [sourceOrder, paydown] of scheduledPaydowns.value.entries()) {
-    if (paydown.status !== 'SCHEDULED') continue;
-    if (!hasPositiveNumber(paydown.amountCents)) continue;
-    if (!hasNonEmptyString(paydown.debtId) || !debtIds.has(paydown.debtId)) {
-      missingDebtIdCount += 1;
-      continue;
-    }
-
-    const evaluated = { ...paydown, debtId: paydown.debtId, sourceOrder };
-    if (paydown.effectiveAtMs <= decisionTimeMs) {
-      presentEffective.push(evaluated);
-    } else {
-      futureEligible.push(evaluated);
-    }
-  }
+  const debtIds = new Set<string>(getDebtAccounts(state.debts).map((debt) => debt.id));
+  const { presentEffective, futureEligible, missingDebtIdCount } = partitionScheduledPaydowns(
+    scheduledPaydowns.value,
+    debtIds,
+    decisionTimeMs
+  );
 
   return {
     sourceStatus: futureEligible.length > 0 ? 'AVAILABLE_ACTIVE' : 'AVAILABLE_NO_ACTIVE',

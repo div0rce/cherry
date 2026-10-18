@@ -24,60 +24,105 @@ export type EngineRunInput = {
   options?: SolveDecisionOptions;
 };
 
-export async function runEngine(world: World, input: EngineRunInput): Promise<SolveDecisionResult> {
-  const runtime =
-    input.options && input.options.runtime != null
-      ? input.options.runtime
-      : DEFAULT_ENGINE_RUNTIME;
-  const runtimeWithLogger = runtime.logger ? runtime : { ...runtime, logger: world.logger };
+type EngineRuntimeOption = SolveDecisionOptions['runtime'];
 
-  const adapterOptions =
-    input.options !== undefined
-      ? {
-          maxCandidates:
-            input.options.maxCandidates !== undefined ? input.options.maxCandidates : null,
-          weightsOverride:
-            input.options.weights !== undefined ? input.options.weights : null,
-        }
-      : null;
+function resolveRuntimeWithLogger(world: World, runtimeOption: EngineRuntimeOption) {
+  const runtime = runtimeOption != null ? runtimeOption : DEFAULT_ENGINE_RUNTIME;
+  return runtime.logger ? runtime : { ...runtime, logger: world.logger };
+}
+
+function adapterOptionsFrom(options: SolveDecisionOptions) {
+  return {
+    maxCandidates: options.maxCandidates !== undefined ? options.maxCandidates : null,
+    weightsOverride: options.weights !== undefined ? options.weights : null,
+  };
+}
+
+function applySolverOptions(
+  overrides: SolveDecisionOptions,
+  solverOptions: ReturnType<typeof buildSolverOptionsFromInput>
+): SolveDecisionOptions {
+  if (solverOptions.weights !== null) {
+    overrides.weights = solverOptions.weights;
+  }
+  if (solverOptions.maxCandidates !== null) {
+    overrides.maxCandidates = solverOptions.maxCandidates;
+  }
+  return overrides;
+}
+
+type PreparedSolverOptions =
+  | { ok: true; solverOptions: ReturnType<typeof buildSolverOptionsFromInput> }
+  | { ok: false; issueCount: number };
+
+function prepareSolverOptions(
+  state: EngineState,
+  context: EngineContext,
+  adapterOptions: ReturnType<typeof adapterOptionsFrom> | null
+): PreparedSolverOptions {
   const engineInput = fromLegacy({
-    state: input.state,
-    context: input.context,
+    state,
+    context,
     options: adapterOptions,
   });
   const inputIssues = validateEngineInput(engineInput);
   if (inputIssues.length > 0) {
-    throw new EngineError(`EngineInput validation failed: ${inputIssues.length} issues`);
+    return { ok: false, issueCount: inputIssues.length };
   }
-  const solverOptions = buildSolverOptionsFromInput(engineInput);
-  const safeOptionsBase = input.options !== undefined ? input.options : {};
+  return { ok: true, solverOptions: buildSolverOptionsFromInput(engineInput) };
+}
+
+type LegacyDecisionProvider = NonNullable<SolveDecisionOptions['legacyDecisionProvider']>;
+
+function requireLegacyProvider(provider: LegacyDecisionProvider | undefined): LegacyDecisionProvider {
+  if (provider === undefined) {
+    throw new EngineError('legacyDecisionProvider required when includeLegacyDecision is true');
+  }
+  return provider;
+}
+
+async function attachLegacyDecision<T extends object>(
+  result: T,
+  provider: LegacyDecisionProvider,
+  userId: string,
+  ctx: EngineContext
+) {
+  const legacyInput = buildLegacyEngineInput(userId, ctx);
+  const legacyDecision = await provider(legacyInput);
+  return { ...result, legacyDecision };
+}
+
+export async function runEngine(world: World, input: EngineRunInput): Promise<SolveDecisionResult> {
+  const runtimeWithLogger = resolveRuntimeWithLogger(world, input.options?.runtime);
+
+  const adapterOptions = input.options !== undefined ? adapterOptionsFrom(input.options) : null;
+  const prepared = prepareSolverOptions(input.state, input.context, adapterOptions);
+  if (!prepared.ok) {
+    throw new EngineError(`EngineInput validation failed: ${prepared.issueCount} issues`);
+  }
+  const solverOptions = prepared.solverOptions;
+  const safeOptionsBase: SolveDecisionOptions = input.options !== undefined ? input.options : {};
   const { legacyDecisionProvider, ...safeOptions } = safeOptionsBase;
   const includeLegacyDecision = safeOptionsBase.includeLegacyDecision === true;
 
-  const solverOverrides: SolveDecisionOptions = {
-    ...safeOptions,
-    includeLegacyDecision: false,
-    runtime: runtimeWithLogger,
-  };
-  if (solverOptions.weights !== null) {
-    solverOverrides.weights = solverOptions.weights;
-  }
-  if (solverOptions.maxCandidates !== null) {
-    solverOverrides.maxCandidates = solverOptions.maxCandidates;
-  }
+  const solverOverrides = applySolverOptions(
+    {
+      ...safeOptions,
+      includeLegacyDecision: false,
+      runtime: runtimeWithLogger,
+    },
+    solverOptions
+  );
 
   const result = await solveDecision(input.state, input.context, solverOverrides);
 
-  if (includeLegacyDecision) {
-    if (legacyDecisionProvider === undefined) {
-      throw new EngineError('legacyDecisionProvider required when includeLegacyDecision is true');
-    }
-    const legacyInput = buildLegacyEngineInput(input.state.userId, input.context);
-    const legacyDecision = await legacyDecisionProvider(legacyInput);
-    return { ...result, legacyDecision };
-  }
-
-  return result;
+  if (!includeLegacyDecision) return result;
+  return attachLegacyDecision(
+    result,
+    requireLegacyProvider(legacyDecisionProvider),
+    input.state.userId,
+    input.context
+  );
 }
 
 export async function safeSolveDecisionForWorld(
@@ -96,27 +141,18 @@ export async function safeSolveDecisionForWorld(
     };
   }
 
-  const runtime = options.runtime != null ? options.runtime : DEFAULT_ENGINE_RUNTIME;
-  const runtimeWithLogger = runtime.logger ? runtime : { ...runtime, logger: world.logger };
-  const adapterOptions = {
-    maxCandidates: options.maxCandidates !== undefined ? options.maxCandidates : null,
-    weightsOverride: options.weights !== undefined ? options.weights : null,
-  };
-  const engineInput = fromLegacy({
-    state: options.stateOverride,
-    context,
-    options: adapterOptions,
-  });
-  const inputIssues = validateEngineInput(engineInput);
-  if (inputIssues.length > 0) {
+  const runtimeWithLogger = resolveRuntimeWithLogger(world, options.runtime);
+  const adapterOptions = adapterOptionsFrom(options);
+  const prepared = prepareSolverOptions(options.stateOverride, context, adapterOptions);
+  if (!prepared.ok) {
     return {
       ok: false,
       reason: 'VALIDATION_ERROR',
-      message: `EngineInput validation failed: ${inputIssues.length} issues`,
+      message: `EngineInput validation failed: ${prepared.issueCount} issues`,
       ...runtimeMetadata,
     };
   }
-  const solverOptions = buildSolverOptionsFromInput(engineInput);
+  const solverOptions = prepared.solverOptions;
   const { legacyDecisionProvider, ...safeOptions } = options;
   const includeLegacyDecision =
     options.includeLegacyDecision == null ? true : options.includeLegacyDecision;
@@ -130,27 +166,22 @@ export async function safeSolveDecisionForWorld(
     };
   }
 
-  const solverOverrides: SolveDecisionOptions = {
-    ...safeOptions,
-    includeLegacyDecision: false,
-    runtime: runtimeWithLogger,
-    stateOverride: options.stateOverride,
-  };
-  if (solverOptions.weights !== null) {
-    solverOverrides.weights = solverOptions.weights;
-  }
-  if (solverOptions.maxCandidates !== null) {
-    solverOverrides.maxCandidates = solverOptions.maxCandidates;
-  }
+  const solverOverrides = applySolverOptions(
+    {
+      ...safeOptions,
+      includeLegacyDecision: false,
+      runtime: runtimeWithLogger,
+      stateOverride: options.stateOverride,
+    },
+    solverOptions
+  );
 
   const result = await safeSolveDecisionForUser(userId, context, solverOverrides);
 
   if (result.ok !== true) return result;
 
   if (includeLegacyDecision && legacyDecisionProvider !== undefined) {
-    const legacyInput = buildLegacyEngineInput(userId, context);
-    const legacyDecision = await legacyDecisionProvider(legacyInput);
-    return { ...result, legacyDecision };
+    return attachLegacyDecision(result, legacyDecisionProvider, userId, context);
   }
 
   return result;

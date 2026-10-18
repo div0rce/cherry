@@ -11,24 +11,28 @@ function hasText(value?: string | null): value is string {
   return value !== undefined && value !== null && value !== '';
 }
 
+const FALLBACK_CATEGORY_KEYS: readonly string[] = ['GENERAL_MERCHANDISE', 'OTHER', 'ALL'];
+
 function chooseRewardRule(
   rewardRules: RewardRule[],
   merchantCategoryKey?: string | null
 ): RewardRule | null {
-  const preferredCategoryKey = hasText(merchantCategoryKey) ? merchantCategoryKey : null;
-  const fallbackCategoryKeys = ['GENERAL_MERCHANDISE', 'OTHER', 'ALL'];
+  const categoryKeys = hasText(merchantCategoryKey)
+    ? [merchantCategoryKey, ...FALLBACK_CATEGORY_KEYS]
+    : FALLBACK_CATEGORY_KEYS;
 
-  if (preferredCategoryKey !== null) {
-    const direct = rewardRules.find((rule) => rule.categoryKey === preferredCategoryKey);
-    if (direct !== undefined) return direct;
-  }
-
-  for (const categoryKey of fallbackCategoryKeys) {
-    const fallback = rewardRules.find((rule) => rule.categoryKey === categoryKey);
-    if (fallback !== undefined) return fallback;
+  for (const categoryKey of categoryKeys) {
+    const rule = rewardRules.find((candidate) => candidate.categoryKey === categoryKey);
+    if (rule !== undefined) return rule;
   }
 
   return null;
+}
+
+function isPositiveFiniteAmount(amountCents: number | null | undefined): amountCents is number {
+  if (typeof amountCents !== 'number') return false;
+  if (!Number.isFinite(amountCents)) return false;
+  return amountCents > 0;
 }
 
 export function getRewardSemanticsForRule(
@@ -64,9 +68,7 @@ export function getRewardSemanticsForCardSpend(params: {
   const { card, amountCents, merchantCategoryKey } = params;
 
   if (card == null) return null;
-  if (typeof amountCents !== 'number' || !Number.isFinite(amountCents) || amountCents <= 0) {
-    return null;
-  }
+  if (!isPositiveFiniteAmount(amountCents)) return null;
 
   const rewardRule = chooseRewardRule(card.rewardRules, merchantCategoryKey);
   if (rewardRule === null) return null;

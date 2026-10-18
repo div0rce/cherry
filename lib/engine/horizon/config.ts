@@ -16,6 +16,11 @@ export type HorizonConfigInput = {
   futureJustification?: FutureJustification;
 };
 
+function isValidHorizonSteps(steps: number): boolean {
+  if (!Number.isInteger(steps)) return false;
+  return steps >= 1 && steps <= MAX_HORIZON_STEPS;
+}
+
 export function normalizeHorizonConfig(
   input?: HorizonConfigInput
 ): HorizonConfig {
@@ -24,7 +29,7 @@ export function normalizeHorizonConfig(
       ? DEFAULT_HORIZON_STEPS
       : input.steps;
 
-  if (!Number.isInteger(steps) || steps < 1 || steps > MAX_HORIZON_STEPS) {
+  if (!isValidHorizonSteps(steps)) {
     throw new Error(`Invalid horizon length: ${steps}`);
   }
 

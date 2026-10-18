@@ -13,6 +13,29 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return false;
 }
 
+function locationOf(segments: readonly string[]): string {
+  return segments.length === 0 ? '$' : segments.join('.');
+}
+
+function realizeRecord(
+  value: Record<string, unknown>,
+  rng: () => number,
+  segments: readonly string[]
+): Record<string, unknown> {
+  if (hasUncertaintyShapeIntent(value)) {
+    throw new Error(`Invalid uncertain number at ${locationOf(segments)}`);
+  }
+  if (!isPlainObject(value)) {
+    throw new Error(`Expected JSON-plain object at ${locationOf(segments)}`);
+  }
+
+  const realized: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    realized[key] = realizeValue(entry, rng, [...segments, key]);
+  }
+  return realized;
+}
+
 function realizeValue(value: unknown, rng: () => number, segments: readonly string[]): unknown {
   if (isUncertainNumber(value)) {
     return sample(value.distribution, rng);
@@ -23,20 +46,7 @@ function realizeValue(value: unknown, rng: () => number, segments: readonly stri
   }
 
   if (isRecord(value)) {
-    if (hasUncertaintyShapeIntent(value)) {
-      const location = segments.length === 0 ? '$' : segments.join('.');
-      throw new Error(`Invalid uncertain number at ${location}`);
-    }
-    if (!isPlainObject(value)) {
-      const location = segments.length === 0 ? '$' : segments.join('.');
-      throw new Error(`Expected JSON-plain object at ${location}`);
-    }
-
-    const realized: Record<string, unknown> = {};
-    for (const [key, entry] of Object.entries(value)) {
-      realized[key] = realizeValue(entry, rng, [...segments, key]);
-    }
-    return realized;
+    return realizeRecord(value, rng, segments);
   }
 
   return value;

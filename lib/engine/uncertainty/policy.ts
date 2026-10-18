@@ -56,22 +56,24 @@ function isNonnegativeDomain(segments: readonly string[]): boolean {
   return last !== undefined && NONNEGATIVE_PATH_PATTERN.test(last);
 }
 
+type DistributionOf<K extends NumericDistribution['kind']> = Extract<NumericDistribution, { kind: K }>;
+
+const CAN_PRODUCE_NEGATIVE: { [K in NumericDistribution['kind']]: (d: DistributionOf<K>) => boolean } = {
+  point: (d) => d.value < 0,
+  lognormal: () => false,
+  normal: (d) => {
+    if (d.std > 0) return true;
+    return d.mean < 0;
+  },
+  discrete: (d) => d.values.some((value) => value < 0),
+};
+
 function distributionCanProduceNegative(d: NumericDistribution): boolean {
-  switch (d.kind) {
-    case 'point':
-      return d.value < 0;
-    case 'lognormal':
-      return false;
-    case 'normal':
-      if (d.std > 0) return true;
-      return d.mean < 0;
-    case 'discrete':
-      return d.values.some((value) => value < 0);
-    default: {
-      const exhaustive: never = d;
-      throw new Error(`Unsupported distribution: ${JSON.stringify(exhaustive)}`);
-    }
+  if (!Object.prototype.hasOwnProperty.call(CAN_PRODUCE_NEGATIVE, d.kind)) {
+    throw new Error(`Unsupported distribution: ${JSON.stringify(d)}`);
   }
+  const check = CAN_PRODUCE_NEGATIVE[d.kind] as (distribution: NumericDistribution) => boolean;
+  return check(d);
 }
 
 function validateUncertainNumber(value: UncertainNumber, segments: readonly string[]): void {
@@ -85,6 +87,20 @@ function validateUncertainNumber(value: UncertainNumber, segments: readonly stri
     throw new Error(
       `Uncertain number at ${pathString(segments)} uses a distribution that can produce negative values for a nonnegative domain`
     );
+  }
+}
+
+type Visit = (current: unknown, segments: string[]) => void;
+
+function visitRecord(current: Record<string, unknown>, segments: string[], visit: Visit): void {
+  if (hasUncertaintyShapeIntent(current)) {
+    throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
+  }
+  if (!isPlainObject(current)) {
+    throw new Error(`Expected JSON-plain object at ${pathString(segments)}`);
+  }
+  for (const [key, entry] of Object.entries(current)) {
+    visit(entry, [...segments, key]);
   }
 }
 
@@ -108,15 +124,7 @@ export function collectUncertaintyAssumptions(value: unknown): UncertaintyAssump
     }
 
     if (isRecord(current)) {
-      if (hasUncertaintyShapeIntent(current)) {
-        throw new Error(`Invalid uncertain number at ${pathString(segments)}`);
-      }
-      if (!isPlainObject(current)) {
-        throw new Error(`Expected JSON-plain object at ${pathString(segments)}`);
-      }
-      for (const [key, entry] of Object.entries(current)) {
-        visit(entry, [...segments, key]);
-      }
+      visitRecord(current, segments, visit);
     }
   }
 

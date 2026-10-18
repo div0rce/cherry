@@ -91,36 +91,58 @@ function buildFutureRiskContext(
   };
 }
 
+function latestEffectiveAtMs(paydowns: EvaluatedScheduledPaydown[]): number {
+  return Math.max(...paydowns.map((paydown) => paydown.effectiveAtMs));
+}
+
+function contingencyFor(
+  contingentRecommendation: ContingentRecommendation,
+  futureRiskContext: FutureRiskContext
+): TemporalContext['contingency'] {
+  if (contingentRecommendation !== null) return 'REQUIRES_FUTURE_EVENTS';
+  return futureRiskContext !== null ? 'REQUIRES_FUTURE_EVENTS' : 'NONE';
+}
+
+function buildPresentOnlyShape(
+  evaluation: ScheduledPaydownEvaluation,
+  decisionTimeMs: number
+): TemporalResponseShape {
+  return {
+    temporalContext: {
+      modelMode: 'PRESENT_ONLY',
+      decisionTimeMs,
+      horizonEndMs: null,
+      includesScheduledPaydowns: false,
+      contingency: 'NONE',
+      scheduledPaydownSourceStatus: evaluation.sourceStatus,
+    },
+    contingentRecommendation: null,
+    futureRiskContext: null,
+  };
+}
+
 export function buildTemporalResponseShape(
   evaluation: ScheduledPaydownEvaluation,
   decisionTimeMs: number
 ): TemporalResponseShape {
-  const hasFutureEvents = evaluation.futureEligible.length > 0;
-  const contingentRecommendation = hasFutureEvents
-    ? buildContingentRecommendation(evaluation.futureEligible)
-    : null;
-  const futureRiskContext = hasFutureEvents
-    ? buildFutureRiskContext(evaluation.futureEligible)
-    : null;
-  const contingency =
-    contingentRecommendation !== null || futureRiskContext !== null
-      ? 'REQUIRES_FUTURE_EVENTS'
-      : 'NONE';
+  if (evaluation.futureEligible.length === 0) {
+    return buildPresentOnlyShape(evaluation, decisionTimeMs);
+  }
+
+  // Both are null when contingency is NONE, so they pass through unchanged.
+  const contingentRecommendation = buildContingentRecommendation(evaluation.futureEligible);
+  const futureRiskContext = buildFutureRiskContext(evaluation.futureEligible);
 
   return {
     temporalContext: {
-      modelMode: hasFutureEvents ? 'PRESENT_PLUS_FUTURE_EVENTS' : 'PRESENT_ONLY',
+      modelMode: 'PRESENT_PLUS_FUTURE_EVENTS',
       decisionTimeMs,
-      horizonEndMs: hasFutureEvents
-        ? Math.max(...evaluation.futureEligible.map((paydown) => paydown.effectiveAtMs))
-        : null,
-      includesScheduledPaydowns: hasFutureEvents,
-      contingency,
+      horizonEndMs: latestEffectiveAtMs(evaluation.futureEligible),
+      includesScheduledPaydowns: true,
+      contingency: contingencyFor(contingentRecommendation, futureRiskContext),
       scheduledPaydownSourceStatus: evaluation.sourceStatus,
     },
-    contingentRecommendation:
-      contingency === 'REQUIRES_FUTURE_EVENTS' ? contingentRecommendation : null,
-    futureRiskContext:
-      contingency === 'REQUIRES_FUTURE_EVENTS' ? futureRiskContext : null,
+    contingentRecommendation,
+    futureRiskContext,
   };
 }
