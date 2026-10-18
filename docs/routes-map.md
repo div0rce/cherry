@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-10-16
+Last updated: 2026-10-17
 
 # Routes Map
 
@@ -9,7 +9,7 @@ Canonical map of key routes, aligned to `docs/information-architecture.md`. Curr
 
 | Path | Surface | Purpose | Owner | Notes |
 | --- | --- | --- | --- | --- |
-| / | User | Root entry | Product | Redirects to `/app` until a marketing page exists. |
+| / | Public | Landing page | Product | `app/page.tsx`: what Cherry is, how it works, what it does not do; CTA to `/signin`. Signed-in visitors are redirected to `/app`. |
 | /signin | User | Auth entry for user + dev shells | Auth/Product | NextAuth `pages.signIn` target. Signed-in visitors are redirected to `/app`; default `callbackUrl` is `/app`. |
 | /app | User | User shell for advisory entry | Product | Primary user shell. Signed-out visitors to user pages are redirected to `/signin`. |
 | /app/onboarding | User | Onboarding hub | Product | Buckets/cards creation flows. |
