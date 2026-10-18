@@ -18,16 +18,15 @@ if (globalForConfig.__cherryConfigState === undefined) {
 }
 const state: ConfigState = globalForConfig.__cherryConfigState;
 
+function isUnfrozenObject(value: unknown): value is object {
+  return typeof value === 'object' && value !== null && !Object.isFrozen(value);
+}
+
 function deepFreeze<T>(obj: T): T {
   Object.freeze(obj);
   for (const key of Object.getOwnPropertyNames(obj)) {
     const value = (obj as Record<string, unknown>)[key];
-    if (
-      value !== undefined &&
-      value !== null &&
-      typeof value === 'object' &&
-      !Object.isFrozen(value)
-    ) {
+    if (isUnfrozenObject(value)) {
       deepFreeze(value);
     }
   }
@@ -42,17 +41,21 @@ export function lockServerConfig(): void {
   state.serverLocked = true;
 }
 
-export function setServerConfig(
-  config: ServerConfig,
-  options?: { lock?: boolean; allowOverwrite?: boolean }
-): ServerConfig {
+function assertServerConfigWritable(allowOverwrite: boolean | undefined): void {
   if (state.serverLocked) {
     throw new Error('Server config is locked. Config must be set before execution.');
   }
 
-  if (state.server !== null && options?.allowOverwrite !== true) {
+  if (state.server !== null && allowOverwrite !== true) {
     throw new Error('Server config already set.');
   }
+}
+
+export function setServerConfig(
+  config: ServerConfig,
+  options?: { lock?: boolean; allowOverwrite?: boolean }
+): ServerConfig {
+  assertServerConfigWritable(options?.allowOverwrite);
 
   state.server = deepFreeze({ ...config });
   if (options?.lock ?? true) {
