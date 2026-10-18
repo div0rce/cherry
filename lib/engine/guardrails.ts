@@ -38,6 +38,38 @@ export class EngineError extends Error {
   }
 }
 
+function expectedRemainingCents(
+  bucket: EngineState['buckets'][number],
+  expectedCommitted: number
+): number {
+  return bucket.limitCents != null ? Math.max(0, bucket.limitCents - expectedCommitted) : 0;
+}
+
+function bucketIssueMessages(bucket: EngineState['buckets'][number]): string[] {
+  const messages: string[] = [];
+  if (bucket.postedSpendCents < 0) messages.push('Negative bucket postedSpendCents');
+  if (bucket.pendingSpendCents < 0) messages.push('Negative bucket pendingSpendCents');
+  if (bucket.limitCents != null && bucket.limitCents < 0) messages.push('Negative bucket limitCents');
+  const expectedCommitted = bucket.postedSpendCents + bucket.pendingSpendCents;
+  if (bucket.committedCents !== expectedCommitted) messages.push('Bucket committedCents mismatch');
+  const expectedRemaining = expectedRemainingCents(bucket, expectedCommitted);
+  if (bucket.limitCents != null && bucket.remainingCents !== expectedRemaining) {
+    messages.push('Bucket remainingCents mismatch');
+  }
+  return messages;
+}
+
+function pushCardIssues(issues: EngineValidationIssue[], card: EngineState['cards'][number]): void {
+  if (!hasNonEmptyString(card.id)) {
+    issues.push({ field: 'card.id', message: 'Card is missing id' });
+  }
+  for (const rule of card.rewardRules) {
+    if (!Number.isFinite(rule.rateValue)) {
+      issues.push({ field: `card:${card.id}:reward`, message: 'Non-finite reward rate' });
+    }
+  }
+}
+
 export function validateEngineState(state: EngineState): EngineValidationIssue[] {
   const issues: EngineValidationIssue[] = [];
 
@@ -46,35 +78,13 @@ export function validateEngineState(state: EngineState): EngineValidationIssue[]
   }
 
   for (const bucket of state.buckets) {
-    if (bucket.postedSpendCents < 0) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket postedSpendCents' });
-    }
-    if (bucket.pendingSpendCents < 0) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket pendingSpendCents' });
-    }
-    if (bucket.limitCents != null && bucket.limitCents < 0) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Negative bucket limitCents' });
-    }
-    const expectedCommitted = bucket.postedSpendCents + bucket.pendingSpendCents;
-    if (bucket.committedCents !== expectedCommitted) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Bucket committedCents mismatch' });
-    }
-    const expectedRemaining =
-      bucket.limitCents != null ? Math.max(0, bucket.limitCents - expectedCommitted) : 0;
-    if (bucket.limitCents != null && bucket.remainingCents !== expectedRemaining) {
-      issues.push({ field: `bucket:${bucket.id}`, message: 'Bucket remainingCents mismatch' });
+    for (const message of bucketIssueMessages(bucket)) {
+      issues.push({ field: `bucket:${bucket.id}`, message });
     }
   }
 
   for (const card of state.cards) {
-    if (!hasNonEmptyString(card.id)) {
-      issues.push({ field: 'card.id', message: 'Card is missing id' });
-    }
-    for (const rule of card.rewardRules) {
-      if (!Number.isFinite(rule.rateValue)) {
-        issues.push({ field: `card:${card.id}:reward`, message: 'Non-finite reward rate' });
-      }
-    }
+    pushCardIssues(issues, card);
   }
 
   return issues;

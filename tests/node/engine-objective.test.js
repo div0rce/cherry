@@ -171,12 +171,12 @@ function testWeightsShiftRanking() {
   const maxRewardWeights = OBJECTIVE_PROFILES.MAX_REWARDS.weights;
   const killDebtWeights = OBJECTIVE_PROFILES.KILL_DEBT.weights;
 
-  const rewardFirst = scoreAction(state, ctx, rewardAction, rewardProjections, maxRewardWeights);
-  const debtFirst = scoreAction(state, ctx, debtAction, debtProjections, maxRewardWeights);
+  const rewardFirst = scoreAction({ state, ctx, action: rewardAction, projections: rewardProjections }, maxRewardWeights);
+  const debtFirst = scoreAction({ state, ctx, action: debtAction, projections: debtProjections }, maxRewardWeights);
   assert.ok(rewardFirst.score > debtFirst.score);
 
-  const rewardUnderDebt = scoreAction(state, ctx, rewardAction, rewardProjections, killDebtWeights);
-  const debtUnderDebt = scoreAction(state, ctx, debtAction, debtProjections, killDebtWeights);
+  const rewardUnderDebt = scoreAction({ state, ctx, action: rewardAction, projections: rewardProjections }, killDebtWeights);
+  const debtUnderDebt = scoreAction({ state, ctx, action: debtAction, projections: debtProjections }, killDebtWeights);
   assert.ok(debtUnderDebt.score > rewardUnderDebt.score);
 }
 

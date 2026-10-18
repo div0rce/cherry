@@ -42,7 +42,7 @@ export function scoreVector(
   const action = normalizeCandidateToAction(normalized);
   const projections = simulateAction(state, ctx, action);
   const weights = getObjectiveWeightsForState(state);
-  const { score } = scoreAction(state, ctx, action, projections, weights);
+  const { score } = scoreAction({ state, ctx, action, projections }, weights);
 
   return {
     scoreKey: scoreToOrderedKey(score),

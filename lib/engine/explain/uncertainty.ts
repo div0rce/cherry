@@ -45,21 +45,26 @@ export function formatNumericDistribution(d: NumericDistribution): string {
   }
 }
 
+function isUsableVariance(variance: number | undefined): variance is number {
+  if (variance === undefined) return false;
+  if (variance < 0) return false;
+  return Number.isFinite(variance);
+}
+
+function isUsableExpectedUtility(expectedUtility: number): boolean {
+  if (!Number.isFinite(expectedUtility)) return false;
+  return expectedUtility !== 0;
+}
+
 export function classifyRelativeUncertainty(params: {
   expectedUtility: number;
   variance?: number;
 }): UncertaintyLevel {
-  if (
-    params.variance === undefined ||
-    params.variance < 0 ||
-    !Number.isFinite(params.variance) ||
-    !Number.isFinite(params.expectedUtility) ||
-    params.expectedUtility === 0
-  ) {
-    return 'unknown';
-  }
+  const variance = params.variance;
+  if (!isUsableVariance(variance)) return 'unknown';
+  if (!isUsableExpectedUtility(params.expectedUtility)) return 'unknown';
 
-  const cv = Math.sqrt(params.variance) / Math.abs(params.expectedUtility);
+  const cv = Math.sqrt(variance) / Math.abs(params.expectedUtility);
   if (cv < 0.1) return 'low';
   if (cv <= 0.3) return 'medium';
   return 'high';

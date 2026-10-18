@@ -162,7 +162,7 @@ export async function solveDecision(
       scoreComponents,
       reasons,
       components,
-    } = scoreDecision(state, ctx, action, projections, weights);
+    } = scoreDecision({ state, ctx, action, projections }, weights);
     const constraintTags = evaluateConstraintsForDecision(state, ctx, action, projections);
 
     for (const constraint of hardConstraints) {
