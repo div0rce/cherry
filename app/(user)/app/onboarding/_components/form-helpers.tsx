@@ -9,7 +9,7 @@ export const inputClasses =
 export function FieldError({ errors }: { errors?: string[] }): JSX.Element | null {
   const hasErrors = Array.isArray(errors) && errors.length > 0;
   if (!hasErrors) return null;
-  return <p className="text-sm text-rose-600">{errors[0]}</p>;
+  return <p role="alert" className="text-sm text-rose-600">{errors[0]}</p>;
 }
 
 export function FormMessage({

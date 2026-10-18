@@ -616,6 +616,8 @@
         "app/\\(user\\)/**",
         "app/page.tsx",
         "app/layout.tsx",
+        "app/error.tsx",
+        "app/not-found.tsx",
         "app/providers.tsx",
         "components/**",
         "lib/ui/**",

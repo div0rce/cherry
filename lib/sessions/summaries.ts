@@ -68,13 +68,20 @@ export function deriveDisplayStatus(
   return 'OPEN';
 }
 
+export function clampInt(value: number | undefined, min: number, max: number, fallback: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
 export async function fetchSessionSummaries(
   userId: string,
   filters: SessionListFilters = {},
   options: { now: Date }
 ): Promise<{ items: SessionSummary[]; hasMore: boolean; limit: number; offset: number }> {
-  const limit = Math.min(filters.limit ?? 20, 100);
-  const offset = Math.max(filters.offset ?? 0, 0);
+  // Clamp here so every caller gets a sane page: a missing or zero limit used to return nothing,
+  // and a negative one reached Prisma's take.
+  const limit = clampInt(filters.limit, 1, 100, 20);
+  const offset = clampInt(filters.offset, 0, Number.MAX_SAFE_INTEGER, 0);
   const now = options.now;
 
   const createdAtFilter: { gte?: Date; lte?: Date } = {};

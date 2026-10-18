@@ -71,6 +71,7 @@ function LeftPanel(): JSX.Element {
 function PseudoDashboard(): JSX.Element {
   return (
     <div className="mt-6 space-y-3 rounded-2xl bg-white/5 p-4 shadow-inner ring-1 ring-white/10">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Illustrative example, not your data</p>
       <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-slate-800 to-slate-900 p-4 ring-1 ring-white/10">
         <div className="flex items-center justify-between">
           <div>

@@ -12,7 +12,11 @@ type DemoDatasetButtonProps = {
 
 export function DemoDatasetButton({ action }: DemoDatasetButtonProps): JSX.Element {
   const [state, formAction, pending] = React.useActionState<ActionState, FormData>(
-    async (prevState, formData) => (await action(prevState, formData)) ?? initialActionState,
+    async (prevState, formData) => {
+      // Server actions take an explicit `now`; this wrapper runs on the client, the time boundary.
+      formData.set('now', String(Math.round(performance.timeOrigin + performance.now())));
+      return (await action(prevState, formData)) ?? initialActionState;
+    },
     initialActionState
   );
 

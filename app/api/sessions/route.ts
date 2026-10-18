@@ -265,10 +265,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     assertUserId(userId, 'api/sessions GET');
     const params = request.nextUrl.searchParams;
-    const limitRaw = Number(params.get('limit'));
-    const limit = Number.isFinite(limitRaw) ? Math.min(limitRaw, 100) : 20;
-    const offsetRaw = Number(params.get('offset'));
-    const offset = Number.isFinite(offsetRaw) ? Math.max(offsetRaw, 0) : 0;
+    const limitParam = params.get('limit');
+    const offsetParam = params.get('offset');
 
     const statusParamRaw = params.get('status');
     const statusParam = hasText(statusParamRaw) ? statusParamRaw : 'all';
@@ -292,11 +290,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const fromDate = hasText(fromParam) ? new Date(fromParam) : null;
     const toDate = hasText(toParam) ? new Date(toParam) : null;
 
-    const { items, hasMore } = await fetchSessionSummaries(
+    const { items, hasMore, limit, offset } = await fetchSessionSummaries(
       userId,
       {
-        limit,
-        offset,
+        ...(hasText(limitParam) ? { limit: Number(limitParam) } : {}),
+        ...(hasText(offsetParam) ? { offset: Number(offsetParam) } : {}),
         status: (statusParam as 'all' | 'active' | 'expired' | 'confirmed') ?? 'all',
         verdict: verdicts.length > 0 ? (verdicts as RecommendationSession['verdict'][]) : null,
         from: fromDate,

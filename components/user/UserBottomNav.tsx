@@ -25,7 +25,7 @@ function isActive(pathname: string, href: string): boolean {
 export function UserBottomNav(): JSX.Element {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 shadow-[0_-6px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 shadow-[0_-6px_30px_rgba(15,23,42,0.08)] backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
         {navItems.map((item) => {
           const active = isActive(pathname, item.href);
@@ -33,6 +33,7 @@ export function UserBottomNav(): JSX.Element {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex flex-1 flex-col items-center gap-1 text-xs font-semibold transition-colors',
                 active ? 'text-[#C21733]' : 'text-[#475569]'
@@ -49,7 +50,7 @@ export function UserBottomNav(): JSX.Element {
               >
                 ●
               </span>
-              {item.label}
+              <span className={active ? 'underline underline-offset-4' : undefined}>{item.label}</span>
             </Link>
           );
         })}

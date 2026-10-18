@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { redirect } from 'next/navigation';
 import { RewardCategory } from '@prisma/client';
 import type { BucketPeriod } from '@prisma/client';
-import { resolveExplicitNow } from '../../../../_lib/clock.js';
 import { fetchFromApi, requireUserContext } from '../../../../_lib/api.js';
 import type { ActionState } from '../../_lib/form-state.js';
 
@@ -53,7 +52,6 @@ export async function createBucket(
   }
 
   await requireUserContext('/app/onboarding');
-  const now = resolveExplicitNow(formData.get('now'));
   const response = await fetchFromApi<unknown>('/api/buckets', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -61,10 +59,8 @@ export async function createBucket(
       name: parsed.data.name,
       period: parsed.data.period as BucketPeriod,
       budgetAmountCents: cents,
-      currentAmountCents: null,
       strictMode: true,
       category: parsed.data.category,
-      nowMs: now.getTime(),
     }),
   });
 

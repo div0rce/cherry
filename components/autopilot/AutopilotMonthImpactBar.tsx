@@ -8,12 +8,6 @@ type Segment = {
   color: string;
 };
 
-const defaultSegments: Segment[] = [
-  { label: "Essentials", percentage: 45, color: "bg-[#BBF7D0]" },
-  { label: "Lifestyle", percentage: 30, color: "bg-[#FED7E2]" },
-  { label: "Other", percentage: 25, color: "bg-[#E5E7EB]" },
-];
-
 type NormalizedSegment = Segment & { share: number };
 
 function clampPercent(value: number): number {
@@ -24,11 +18,10 @@ function clampPercent(value: number): number {
 }
 
 function normalizeSegments(segments: Segment[]): NormalizedSegment[] {
-  const safeSegments = segments.length > 0 ? segments : defaultSegments;
-  const clamped = safeSegments.map((segment, index) => ({
+  const clamped = segments.map((segment) => ({
     label: segment.label,
     percentage: clampPercent(segment.percentage),
-    color: segment.color ?? defaultSegments[index % defaultSegments.length]?.color ?? "bg-[#E5E7EB]",
+    color: segment.color,
   }));
 
   const total = clamped.reduce((acc, segment) => acc + segment.percentage, 0);
@@ -41,9 +34,9 @@ function normalizeSegments(segments: Segment[]): NormalizedSegment[] {
 }
 
 export function AutopilotMonthImpactBar({
-  segments = defaultSegments,
+  segments,
 }: {
-  segments?: Segment[];
+  segments: Segment[];
 }): JSX.Element {
   const normalized = normalizeSegments(segments);
 

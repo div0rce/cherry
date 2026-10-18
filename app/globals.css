@@ -4,6 +4,9 @@
   color-scheme: light;
 }
 
+/* Element defaults live in the base layer so Tailwind utilities (text-white, bg-*) win. Unlayered,
+   `a { color: inherit }` overrode every link's text color, e.g. hiding white text on dark buttons. */
+@layer base {
 * {
   box-sizing: border-box;
 }
@@ -19,6 +22,7 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
 }
 
 ::selection {

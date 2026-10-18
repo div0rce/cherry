@@ -34,8 +34,9 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
     <form action={formAction} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       {cardIdValue !== null ? <input type="hidden" name="cardId" value={cardIdValue} /> : null}
       <div className="space-y-2">
-        <label className="block text-sm font-semibold text-[#0f172a]">Nickname</label>
+        <label htmlFor="field-nickname" className="block text-sm font-semibold text-[#0f172a]">Nickname</label>
         <input
+          id="field-nickname"
           name="nickname"
           defaultValue={defaultValues?.nickname ?? ''}
           placeholder="Amex Gold"
@@ -47,8 +48,9 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Issuer</label>
+          <label htmlFor="field-issuer" className="block text-sm font-semibold text-[#0f172a]">Issuer</label>
           <input
+            id="field-issuer"
             name="issuer"
             defaultValue={defaultValues?.issuer ?? ''}
             placeholder="AMEX, Chase, Local credit union"
@@ -57,8 +59,9 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
           <FieldError errors={state.fieldErrors?.['issuer'] ?? []} />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Network</label>
+          <label htmlFor="field-network" className="block text-sm font-semibold text-[#0f172a]">Network</label>
           <select
+            id="field-network"
             name="network"
             defaultValue={defaultValues?.network ?? 'VISA'}
             className={inputClasses}
@@ -75,8 +78,8 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Card type</label>
-          <div className="grid grid-cols-2 gap-2">
+          <span id="group-card-type" className="block text-sm font-semibold text-[#0f172a]">Card type</span>
+          <div role="radiogroup" aria-labelledby="group-card-type" className="grid grid-cols-2 gap-2">
             <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-[#0f172a]">
               <input
                 type="radio"
@@ -99,8 +102,9 @@ export function CardForm({ action, defaultValues, submitLabel, footerSlot }: Car
           <FieldError errors={state.fieldErrors?.['cardType'] ?? []} />
         </div>
         <div className="space-y-2">
-          <label className="block text-sm font-semibold text-[#0f172a]">Annual fee (USD)</label>
+          <label htmlFor="field-annualFee" className="block text-sm font-semibold text-[#0f172a]">Annual fee (USD)</label>
           <input
+            id="field-annualFee"
             type="number"
             name="annualFee"
             min="0"
