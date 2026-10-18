@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-09-22
+Last updated: 2026-10-17
 
 # CI and guardrails
 
@@ -60,7 +60,7 @@ Last updated: 2026-09-22
 ### Ordering invariant
 - Guardrails execute before env-specific correctness and build.
 - `check:guardrails` runs core (env-free) guardrails; `check:env` runs env-dependent guardrails plus DB requirements.
-- Inside `check:node` and `check:next`, lint runs before typecheck and typecheck runs before tests.
+- Inside `check:node` and `check:next`, lint runs before typecheck. `check` runs no tests; `test` runs them after `check`.
 - Build executes after `check` completes.
 
 ### Guardrails enforced

@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-09-22
+Last updated: 2026-10-17
 
 # Cherry Agents — Operating Contract
 
@@ -64,7 +64,7 @@ export CHERRY_VINE_SIGNATURE_MODE=enforce   # build asserts production config wi
 | FULL | `npm run check && npm test && npm run build` | required before every commit you push; identical to `npm run ci:verify` |
 | DB | `npm run test:db` (real Postgres) | schema or migration changes |
 
-`check` = core guardrails + lint + typecheck + `tests/node` + `tests/next`. `npm test` runs every `tests/**/*.test.*` except `tests/db`. Tests run with Prisma mocked; CI green does not prove DB behavior. CI (`.github/workflows/ci.yml`) runs `check:guardrails`, `check:tests:node`, `check:tests:next`, then `ci:verify`; `env-checks.yml` adds Postgres, migrations, `check:env`, `test:db`.
+`check` = core guardrails + lint + typecheck; it runs no tests. `npm test` runs every `tests/**/*.test.*` except `tests/db`. Tests run with Prisma mocked; CI green does not prove DB behavior. CI (`.github/workflows/ci.yml`) runs `check:guardrails`, `check:tests:node`, `check:tests:next` (TZ=UTC, LC_ALL=C), then `ci:verify` (so each test runs twice: once there, once in `npm test`); `env-checks.yml` adds Postgres, migrations, `check:env`, `test:db`.
 
 ## Schema changes
 `npx prisma format && npx prisma migrate dev --name <desc> && npx prisma generate`, then FULL and DB levels. Follow `docs/schema-evolution.md` (`check:schema-evolution`, `check:schema-breaking-plan`). Coordinate migrations; two agents must not add migrations in parallel.

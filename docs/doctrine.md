@@ -1,6 +1,6 @@
 Version: doctrine_v1
 Status: Active
-Last updated: 2026-01-29
+Last updated: 2026-10-17
 
 # Cherry Zero-Competition Hardening Doctrine
 
@@ -179,19 +179,19 @@ Doctrine acknowledgement is incomplete unless it includes:
 - doctrine file exists
 - guardrails registered
 - guardrails pass
-- npm run check passes
+- npm run check && npm test && npm run build passes
 
 ## 10) Addendum: Mandatory execution hooks
 
 ### 10.1 Definition of done for any change
 
 1. git status --short is empty
-2. npm run check passes
+2. npm run check && npm test && npm run build passes (check runs no tests)
 3. npm run check:guardrails passes twice (second run catches nondeterministic flakes)
 4. git log -n <N> --pretty=%B shows commit messages obeying commit taxonomy
 5. If any freeze baseline bumped: commit message includes the cause, and baseline bump is isolated
 
-Exit criteria: npm run check green + clean tree
+Exit criteria: npm run check && npm test && npm run build green + clean tree
 
 ### 10.2 Auto-triage protocol when a guardrail fails
 
@@ -239,7 +239,7 @@ If any invariant is violated, fix takes priority over feature work.
 - Acknowledged doctrine vX
 - Active invariants: list 3–6
 - Next action: one line
-- Exit criteria: npm run check green + clean tree
+- Exit criteria: npm run check && npm test && npm run build green + clean tree
 
 ### 10.6 Stand-by response ban
 
