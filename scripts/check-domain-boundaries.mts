@@ -22,6 +22,7 @@ const SCAN_GLOBS = [
   'components/**/*.{ts,tsx,js,jsx,mjs,cjs}',
   'types/**/*.{ts,tsx,d.ts}',
   'proxy.ts',
+  'instrumentation.ts',
 ];
 const IGNORE_GLOBS = ['**/node_modules/**', '**/.next/**', '**/__mocks__/**', '**/.tmp/**'];
 const RESOLVE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];

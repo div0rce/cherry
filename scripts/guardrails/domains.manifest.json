@@ -157,14 +157,16 @@
       "description": "Typed, frozen server/public config loaded once at the boundary.",
       "owns": [
         "lib/config/**",
-        "lib/base-url.ts"
+        "lib/base-url.ts",
+        "instrumentation.ts"
       ],
       "mayImport": [
         "shared"
       ],
       "tests": [
         "tests/node/config-injection.test.ts",
-        "tests/node/no-env-smoke.test.ts"
+        "tests/node/no-env-smoke.test.ts",
+        "tests/node/config-store-process-wide.test.ts"
       ],
       "docs": [
         "docs/env-policy.md"

@@ -11580,6 +11580,7 @@ export default config;
     "data/**/*.ts",
     "data/**/*.json",
     "proxy.ts",
+    "instrumentation.ts",
     "next-env.d.ts",
     "next.config.ts",
     "tailwind.config.ts"
@@ -11693,7 +11694,8 @@ export default config;
     "scripts",
     "tests",
     "types",
-    "prisma"
+    "prisma",
+    "instrumentation.ts"
   ],
   "exclude": [
     "node_modules",
@@ -11722,7 +11724,8 @@ export default config;
     "scripts",
     "tests",
     "types",
-    "prisma"
+    "prisma",
+    "instrumentation.ts"
   ],
   "exclude": [
     "node_modules",

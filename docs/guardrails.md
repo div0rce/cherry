@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-10-16
+Last updated: 2026-10-17
 
 # Guardrails
 
@@ -98,6 +98,7 @@ Last updated: 2026-10-16
 - `setServerConfig()` throws after lock even with `allowOverwrite`; loaders cannot be registered once locked.
 - Public and runtime configs are also deep-frozen on set to block incidental mutation during a request/job.
 - Boundaries should call `initConfigFromEnv()` (app/api routes, scripts, test bootstrap) before doing work; this sets the config and locks it by default outside tests.
+- In the Next.js server the boundary is the root `instrumentation.ts` `register()` hook, which runs once per server instance (each `next start` process and each Vercel function) before requests; `next.config.ts` never runs inside Vercel functions. The store's state is process-wide (`globalThis`), because Next compiles `lib/config/store.ts` into every bundle layer as a separate module copy.
 - Tests may inject configs with `allowOverwrite: true, lock: false` before calling `lockServerConfig()` to mimic boundary assembly; no fallback-to-env is permitted after lock.
 - Guardrail check: `check:config-lock` asserts locking, immutability, and loader rejection.
 

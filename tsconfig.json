@@ -12,7 +12,8 @@
     "scripts",
     "tests",
     "types",
-    "prisma"
+    "prisma",
+    "instrumentation.ts"
   ],
   "exclude": [
     "node_modules",
