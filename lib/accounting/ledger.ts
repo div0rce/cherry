@@ -167,27 +167,33 @@ export function asNonZeroAmount(value: number): NonZeroAmount {
 
 // A1/A3: balanced, multi-posting transactions enforce conservation and double-entry.
 export function balancePostings(postings: ReadonlyArray<Posting>): BalancedPostings {
-  if (postings.length < 2) {
-    throw new Error('Transactions require at least two postings');
-  }
-  let total = 0;
-  const currency = postings[0]?.currency;
-  if (currency === undefined) {
-    throw new Error('Postings require a currency');
-  }
-  for (const posting of postings) {
-    if (!Number.isInteger(posting.amount) || posting.amount === 0) {
-      throw new Error('Postings must be non-zero integer amounts');
-    }
-    if (posting.currency !== currency) {
-      throw new Error('Postings must share a single currency');
-    }
-    total += posting.amount;
-  }
+  const currency = sharedCurrency(postings);
+  postings.forEach((posting) => assertPostingShape(posting, currency));
+  const total = postings.reduce((sum, posting) => sum + posting.amount, 0);
   if (total !== 0) {
     throw new Error(`Unbalanced postings sum to ${total}`);
   }
   return postings as BalancedPostings;
+}
+
+function sharedCurrency(postings: ReadonlyArray<Posting>): Currency {
+  if (postings.length < 2) {
+    throw new Error('Transactions require at least two postings');
+  }
+  const currency = postings[0]?.currency;
+  if (currency === undefined) {
+    throw new Error('Postings require a currency');
+  }
+  return currency;
+}
+
+function assertPostingShape(posting: Posting, currency: Currency): void {
+  if (!Number.isInteger(posting.amount) || posting.amount === 0) {
+    throw new Error('Postings must be non-zero integer amounts');
+  }
+  if (posting.currency !== currency) {
+    throw new Error('Postings must share a single currency');
+  }
 }
 
 export function createLedgerState(accounts: Account[], currency: Currency): LedgerState {
@@ -224,16 +230,7 @@ export function createTransaction(
   }
   const balanced = balancePostings(input.postings);
   for (const posting of balanced) {
-    const account = ledger.accounts.get(posting.accountId);
-    if (account === undefined) {
-      throw new Error(`Unknown account: ${posting.accountId}`);
-    }
-    if (posting.currency !== ledger.currency || posting.currency !== account.currency) {
-      throw new Error(`Currency mismatch for account: ${posting.accountId}`);
-    }
-    if (!isAllowedPosting(account.type, posting.amount, input.type, posting.role)) {
-      throw new Error(`Disallowed posting for ${posting.accountId} in ${input.type}`);
-    }
+    assertPostingAllowed(posting, input.type, ledger);
   }
   return {
     id: input.id,
@@ -242,6 +239,23 @@ export function createTransaction(
     effectiveAtMs: input.effectiveAtMs,
     externalId: input.externalId ?? null,
   };
+}
+
+function assertPostingAllowed(
+  posting: Posting,
+  txnType: TxnType,
+  ledger: { accounts: Map<AccountId, Account>; currency: Currency }
+): void {
+  const account = ledger.accounts.get(posting.accountId);
+  if (account === undefined) {
+    throw new Error(`Unknown account: ${posting.accountId}`);
+  }
+  if (posting.currency !== ledger.currency || posting.currency !== account.currency) {
+    throw new Error(`Currency mismatch for account: ${posting.accountId}`);
+  }
+  if (!isAllowedPosting(account.type, posting.amount, txnType, posting.role)) {
+    throw new Error(`Disallowed posting for ${posting.accountId} in ${txnType}`);
+  }
 }
 
 export function reverseTransaction(
@@ -324,16 +338,35 @@ export function computeBalances(
 }
 
 export function balanceAt(txns: Transaction[], accountId: AccountId, atMs: number): number {
+  return txns
+    .filter((txn) => txn.effectiveAtMs <= atMs)
+    .flatMap((txn) => txn.postings)
+    .filter((posting) => posting.accountId === accountId)
+    .reduce((total, posting) => total + posting.amount, 0);
+}
+
+// I7 (currency), I5 (posting sign), then I1 (balance) for one transaction, in that order.
+function postingViolations(
+  txn: TransactionLike,
+  currency: Currency,
+  accounts: Map<AccountId, Account>
+): LedgerViolation[] {
+  const violations: LedgerViolation[] = [];
   let total = 0;
-  for (const txn of txns) {
-    if (txn.effectiveAtMs > atMs) continue;
-    for (const posting of txn.postings) {
-      if (posting.accountId === accountId) {
-        total += posting.amount;
-      }
+  for (const posting of txn.postings) {
+    total += posting.amount;
+    if (posting.currency !== currency) {
+      violations.push({ invariant: 'I7', message: `Currency mismatch in txn ${txn.id}` });
+    }
+    const account = accounts.get(posting.accountId);
+    if (account !== undefined && !isAllowedPosting(account.type, posting.amount, txn.type, posting.role)) {
+      violations.push({ invariant: 'I5', message: `Sign not allowed for ${posting.accountId} in ${txn.type}` });
     }
   }
-  return total;
+  if (total !== 0) {
+    violations.push({ invariant: 'I1', message: `Unbalanced txn ${txn.id} sum=${total}` });
+  }
+  return violations;
 }
 
 // A1/A3/A6/A9: validate transaction shape against ledger invariants.
@@ -341,116 +374,52 @@ export function validateTransactionLike(
   ledger: Pick<LedgerState, 'currency' | 'accounts' | 'externalIndex'>,
   txn: TransactionLike
 ): LedgerViolation[] {
-  const violations: LedgerViolation[] = [];
-  let total = 0;
-  for (const posting of txn.postings) {
-    total += posting.amount;
-    if (posting.currency !== ledger.currency) {
-      violations.push({
-        invariant: 'I7',
-        message: `Currency mismatch in txn ${txn.id}`,
-      });
-    }
-    const account = ledger.accounts.get(posting.accountId);
-    if (account !== undefined) {
-      if (!isAllowedPosting(account.type, posting.amount, txn.type, posting.role)) {
-        violations.push({
-          invariant: 'I5',
-          message: `Sign not allowed for ${posting.accountId} in ${txn.type}`,
-        });
-      }
-    }
-  }
-  if (total !== 0) {
+  const violations = postingViolations(txn, ledger.currency, ledger.accounts);
+  if (txn.externalId !== null && ledger.externalIndex.get(txn.externalId) !== txn.id) {
     violations.push({
-      invariant: 'I1',
-      message: `Unbalanced txn ${txn.id} sum=${total}`,
+      invariant: 'I9',
+      message: `External id ${txn.externalId} mismatched on txn ${txn.id}`,
     });
-  }
-  if (txn.externalId !== null) {
-    const mapped = ledger.externalIndex.get(txn.externalId);
-    if (mapped !== txn.id) {
-      violations.push({
-        invariant: 'I9',
-        message: `External id ${txn.externalId} mismatched on txn ${txn.id}`,
-      });
-    }
   }
   return violations;
 }
 
 // A1/A3/A4/A6/A9: validate materialized ledger invariants.
 export function validateLedgerState(state: LedgerState): LedgerViolation[] {
+  return [
+    ...state.txns.flatMap((txn) => postingViolations(txn, state.currency, state.accounts)),
+    ...overdraftViolations(state),
+    ...externalIndexViolations(state),
+    ...missingExternalIndexViolations(state),
+  ];
+}
+
+// I4: accounts flagged noOverdraft must not be negative.
+function overdraftViolations(state: LedgerState): LedgerViolation[] {
+  return [...state.accounts.entries()]
+    .filter(([accountId, account]) => account.noOverdraft && (state.balances.get(accountId) ?? 0) < 0)
+    .map(([accountId]) => ({ invariant: 'I4', message: `Account ${accountId} is negative` }));
+}
+
+// I9: every external-index entry points at an existing txn carrying that external id.
+function externalIndexViolations(state: LedgerState): LedgerViolation[] {
   const violations: LedgerViolation[] = [];
-  for (const txn of state.txns) {
-    let total = 0;
-    for (const posting of txn.postings) {
-      total += posting.amount;
-      if (posting.currency !== state.currency) {
-        violations.push({
-          invariant: 'I7',
-          message: `Currency mismatch in txn ${txn.id}`,
-        });
-      }
-      const account = state.accounts.get(posting.accountId);
-      if (account !== undefined) {
-        if (!isAllowedPosting(account.type, posting.amount, txn.type, posting.role)) {
-          violations.push({
-            invariant: 'I5',
-            message: `Sign not allowed for ${posting.accountId} in ${txn.type}`,
-          });
-        }
-      }
-    }
-    if (total !== 0) {
-      violations.push({
-        invariant: 'I1',
-        message: `Unbalanced txn ${txn.id} sum=${total}`,
-      });
-    }
-  }
-
-  const balances = state.balances;
-  for (const [accountId, account] of state.accounts.entries()) {
-    if (!account.noOverdraft) continue;
-    const balance = balances.get(accountId) ?? 0;
-    if (balance < 0) {
-      violations.push({
-        invariant: 'I4',
-        message: `Account ${accountId} is negative`,
-      });
-    }
-  }
-
   for (const [externalId, txnId] of state.externalIndex.entries()) {
     const txn = state.txns.find((candidate) => candidate.id === txnId);
     if (txn === undefined) {
-      violations.push({
-        invariant: 'I9',
-        message: `External id ${externalId} maps to missing txn ${txnId}`,
-      });
-      continue;
-    }
-    if (txn.externalId !== externalId) {
-      violations.push({
-        invariant: 'I9',
-        message: `External id ${externalId} mismatched on txn ${txnId}`,
-      });
+      violations.push({ invariant: 'I9', message: `External id ${externalId} maps to missing txn ${txnId}` });
+    } else if (txn.externalId !== externalId) {
+      violations.push({ invariant: 'I9', message: `External id ${externalId} mismatched on txn ${txnId}` });
     }
   }
-
-  for (const txn of state.txns) {
-    if (txn.externalId === null) continue;
-    const mapped = state.externalIndex.get(txn.externalId);
-    if (mapped !== txn.id) {
-      violations.push({
-        invariant: 'I9',
-        message: `External id ${txn.externalId} missing for txn ${txn.id}`,
-      });
-    }
-  }
-
   return violations;
+}
+
+// I9: every txn with an external id is indexed under it.
+function missingExternalIndexViolations(state: LedgerState): LedgerViolation[] {
+  return state.txns
+    .filter((txn) => txn.externalId !== null && state.externalIndex.get(txn.externalId) !== txn.id)
+    .map((txn) => ({ invariant: 'I9', message: `External id ${String(txn.externalId)} missing for txn ${txn.id}` }));
 }
 
 export function getTxnByExternalId(state: LedgerState, externalId: string): Transaction {
@@ -494,20 +463,24 @@ function isAllowedPosting(
 function validatePostingRules(rules: PostingRuleMatrix): boolean {
   for (const [txnType, roleMap] of Object.entries(rules)) {
     for (const [role, entries] of Object.entries(roleMap)) {
-      const seen = new Set<string>();
-      for (const entry of entries) {
-        const key = `${entry.accountType}:${entry.sign}`;
-        if (seen.has(key)) {
-          throw new Error(`Duplicate posting rule for ${txnType}/${role}: ${key}`);
-        }
-        if (entry.sign !== 1 && entry.sign !== -1) {
-          throw new Error(`Invalid sign for ${txnType}/${role}: ${entry.sign}`);
-        }
-        seen.add(key);
-      }
+      assertRuleEntries(`${txnType}/${role}`, entries);
     }
   }
   return true;
+}
+
+function assertRuleEntries(scope: string, entries: ReadonlyArray<{ accountType: AccountType; sign: number }>): void {
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    const key = `${entry.accountType}:${entry.sign}`;
+    if (seen.has(key)) {
+      throw new Error(`Duplicate posting rule for ${scope}: ${key}`);
+    }
+    if (entry.sign !== 1 && entry.sign !== -1) {
+      throw new Error(`Invalid sign for ${scope}: ${entry.sign}`);
+    }
+    seen.add(key);
+  }
 }
 
 void POSTING_RULES_OK;
