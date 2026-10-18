@@ -14,9 +14,9 @@ canonical unit, not a true global utility function.
 ### Proven (bounded)
 
 - Bounded exact optimality is proven for `(objective_v1, candidates_v1)` under
-  the bounds **B** defined in `tests/engine/optimality/exhaustive.optimality.spec.ts`.
+  the bounds **B** defined in `tests/node/engine/optimality/exhaustive.optimality.spec.ts`.
 - Admissibility equivalence is enforced by
-  `tests/engine/optimality/admissibility-equivalence.spec.ts`.
+  `tests/node/engine/optimality/admissibility-equivalence.spec.ts`.
 
 ### Not proven
 

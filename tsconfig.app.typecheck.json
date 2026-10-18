@@ -37,9 +37,7 @@
     "scripts/**",
     "prisma/scripts/**",
     "tests/fixtures/**",
-    "tests/engine/optimality/**",
     "tests/node/**",
-    "tests/guardrails/**",
     "lib/engine/optimality/**"
   ]
 }

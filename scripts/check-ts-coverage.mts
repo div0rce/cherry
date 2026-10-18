@@ -69,7 +69,6 @@ function listProjectFiles(tsconfigPath: string, sourceSet: Set<string>): Set<str
 function expectedOwner(relativePath: string): Owner {
   if (
     relativePath.startsWith('lib/engine/optimality/') ||
-    relativePath.startsWith('tests/engine/optimality/') ||
     relativePath.startsWith('tests/node/engine/optimality/')
   ) {
     return 'engine-optimality';
@@ -79,7 +78,6 @@ function expectedOwner(relativePath: string): Owner {
   }
   if (
     relativePath.startsWith('tests/node/') ||
-    relativePath.startsWith('tests/guardrails/') ||
     relativePath.startsWith('lib/engine/optimality/')
   ) {
     return 'scripts';

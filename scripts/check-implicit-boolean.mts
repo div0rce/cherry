@@ -21,7 +21,7 @@ const TARGET_PREFIXES = [
   'app',
   'lib',
   'scripts',
-  path.join('tests', 'guardrails'),
+  path.join('tests', 'node', 'guardrails'),
 ];
 const FIXTURE_MODE = process.env['CHERRY_IMPLICIT_BOOLEAN_FIXTURE'] === '1';
 const FIXTURE_PATH = path.join(ROOT, 'tests', 'fixtures', 'guardrails', 'no-implicit-boolean.ts');

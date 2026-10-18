@@ -37,7 +37,7 @@ Last updated: 2026-01-26
 | 5 | Exhaustive switches | eslint, ci | none | yes | enforced via ESLint `switch-exhaustiveness-check` |
 | 6 | Engine purity (no side effects) | scripts (`check:engine-date`, `check:engine-prisma`), repo backstop, tests, ci | pos+neg | yes | enforced (no side effects; pure compute) |
 | 7 | Engine must not import Prisma | script (`check:engine-prisma`), repo backstop, ci | neg only | yes | enforced |
-| 8 | Idempotent writes | tests (`tests/idempotency*.test.*`), ci | neg only | yes | partial (session/ledger coverage pending) |
+| 8 | Idempotent writes | tests (`tests/node/idempotency*.test.*`), ci | neg only | yes | partial (session/ledger coverage pending) |
 | 9 | Time-free tests | script (`check:determinism`), tests, ci | neg only | yes | partial (no global fake timers) |
 | 10 | SSR/user-page runtime purity | script (`check:user-pages-runtime`), repo backstop, tests, ci | pos+neg | yes | enforced for `app/(user)` boundaries |
 | 11 | Migration safety | repo script, tests, ci | pos+neg | yes | enforced |

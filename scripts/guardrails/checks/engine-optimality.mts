@@ -19,8 +19,8 @@ const PRISMA_MOCK_LOADER = path.join(
 );
 
 const TEST_FILES = [
-  path.join('tests', 'engine', 'optimality', 'admissibility-equivalence.spec.ts'),
-  path.join('tests', 'engine', 'optimality', 'exhaustive.optimality.spec.ts'),
+  path.join('tests', 'node', 'engine', 'optimality', 'admissibility-equivalence.spec.ts'),
+  path.join('tests', 'node', 'engine', 'optimality', 'exhaustive.optimality.spec.ts'),
 ];
 
 const deterministicEnv = buildDeterministicEnv();

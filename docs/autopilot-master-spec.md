@@ -14,7 +14,7 @@ Governed subsystems: Autopilot UI (`/app/autopilot`), Autopilot adapter (`runSim
 - UI remains render-only; mapping lives in `lib/autopilot/runSimulation.ts`.
 
 ## Implementation status
-- Phase 1 — Autopilot preview wiring (UI ↔ adapter ↔ /preview ↔ engine): **COMPLETE**. Implemented in `app/api/autopilot/preview/route.ts`, `lib/autopilot/service.ts`, `lib/autopilot/runSimulation.ts`, `lib/validation/autopilot/preview.ts`, with coverage in `tests/api-autopilot-preview.test.js`, `tests/api-autopilot.user-context.test.ts`, and `tests/autopilot-runSimulation.test.js`.
+- Phase 1 — Autopilot preview wiring (UI ↔ adapter ↔ /preview ↔ engine): **COMPLETE**. Implemented in `app/api/autopilot/preview/route.ts`, `lib/autopilot/service.ts`, `lib/autopilot/runSimulation.ts`, `lib/validation/autopilot/preview.ts`, with coverage in `tests/next/api-autopilot-preview.test.js`, `tests/next/api-autopilot.user-context.test.ts`, and `tests/node/autopilot-runSimulation.test.js`.
 - Phase 2 — Autopilot preview reliability/observability: **COMPLETE**. Structured errors `{ error, code }`, engine timeout (503/`ENGINE_TIMEOUT`), metrics (request counts, status breakdown, latencies, bucket pressure/warnings) added to `/api/autopilot/preview` and `lib/autopilot/service.ts`, with adapter-aware error handling in `lib/autopilot/runSimulation.ts`.
 - Phase 3 — Autopilot commit re-spec (sessions/ledger alignment): **NOT COMPLETE**. Target contract is defined in §17; implementation is gated behind `AUTOPILOT_COMMIT_V2` and pending migration/backfill off the transitional simulated-transaction-only commit.
 
@@ -158,7 +158,7 @@ Currently, Autopilot uses the same solver as `/api/scan` and `/api/sessions` (`s
   - Target: Optional handoff to sessions/ledger while respecting advisory boundaries and avoiding double counting.
 
 ## 13. Testing and Observability
-- Required tests: unit test for `runSimulation` mapping (exists: `tests/autopilot-runSimulation.test.js`); backend preview tests for happy/error/auth paths (exists: `tests/api-autopilot-preview.test.js`, `tests/api-autopilot.user-context.test.ts`); reliability tests for error codes/timeouts (e.g., `tests/autopilot-service-timeout.test.js`). Tests should import schemas from `lib/validation/autopilot/preview.ts` to avoid divergence. Metrics expectations: preview call counts, error codes, distribution of `state`/`rewardStrength`, bucket-pressure incidence, and latency histograms.
+- Required tests: unit test for `runSimulation` mapping (exists: `tests/node/autopilot-runSimulation.test.js`); backend preview tests for happy/error/auth paths (exists: `tests/next/api-autopilot-preview.test.js`, `tests/next/api-autopilot.user-context.test.ts`); reliability tests for error codes/timeouts (e.g., `tests/node/autopilot-service-timeout.test.js`). Tests should import schemas from `lib/validation/autopilot/preview.ts` to avoid divergence. Metrics expectations: preview call counts, error codes, distribution of `state`/`rewardStrength`, bucket-pressure incidence, and latency histograms.
 
 ## 14. Constraints and Guardrails
 - Advisory-only: no payment rails, no card/proxy semantics, no bucket/session mutation on preview.

@@ -577,14 +577,6 @@ export default defineConfig([
       ],
     },
   },
-  {
-    files: [
-      'tests/api-rewards.validation.test.js',
-    ],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-    },
-  },
 ]);
 ```
 
@@ -11679,9 +11671,7 @@ export default config;
     "scripts/**",
     "prisma/scripts/**",
     "tests/fixtures/**",
-    "tests/engine/optimality/**",
     "tests/node/**",
-    "tests/guardrails/**",
     "lib/engine/optimality/**"
   ]
 }
@@ -11762,7 +11752,6 @@ export default config;
   ],
   "include": [
     "lib/engine/optimality/**/*.ts",
-    "tests/engine/optimality/**/*.ts",
     "tests/node/engine/optimality/**/*.ts"
   ]
 }
@@ -11838,7 +11827,6 @@ export default config;
     "scripts/**/*",
     "prisma/scripts/**/*",
     "tests/node/**/*",
-    "tests/guardrails/**/*",
     "lib/engine/optimality/**/*"
   ]
 }
@@ -11869,8 +11857,7 @@ export default config;
     "scripts/**/*.mts",
     "scripts/**/*.cts",
     "prisma/scripts/**/*.ts",
-    "tests/node/**/*",
-    "tests/guardrails/**/*"
+    "tests/node/**/*"
   ],
   "exclude": [
     "tests/node/engine/optimality/**"

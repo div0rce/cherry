@@ -471,6 +471,24 @@ async function testSafeSolveDecisionAccountingContract() {
   }
 }
 
+// Ported from the removed legacy root-level engine-solver test: the accounting
+// contract must hold across all candidate types, not only card actions.
+async function testSafeSolveDecisionAccountingContractAllCandidates() {
+  const state = buildStubState();
+  const ctx = buildStubContext();
+  const outcome = await safeSolveDecisionForUser('user-1', ctx, {
+    stateOverride: state,
+    includeLegacyDecision: false,
+  });
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) {
+    assertAccountingDecisions(outcome.decisions);
+    const unsafe = outcome.decisions.filter((decision) => decision.accounting.proof.length > 0);
+    assert.equal(unsafe.length, 0);
+  }
+}
+
 async function testSafeSolveDecisionAccountingDeterministic() {
   const state = buildStubState();
   const ctx = buildStubContext();
@@ -1393,6 +1411,7 @@ async function run() {
   await testSolveDecisionValidation();
   await testSafeSolveDecisionSuccess();
   await testSafeSolveDecisionAccountingContract();
+  await testSafeSolveDecisionAccountingContractAllCandidates();
   await testSafeSolveDecisionAccountingDeterministic();
   await testSafeSolveDecisionFailure();
   await testSafeSolveDecisionForUserPreservesExclusionsOnEmptyRankedResults();

@@ -33,7 +33,7 @@ Repo/location primers:
 6) Adapter validates the JSON again with `AutopilotPreviewOutputSchema`, maps to `AutopilotSimulationResult` (state, cards, impact bar, badges, CTAs), and hands it to the pure UI renderers.
 
 ### Semantics ownership (current and target)
-- **AdapterSemantics v1 (current reality):** `lib/autopilot/runSimulation.ts` still authors user-facing strings (card labels, reward strength labels, badge copy, impact segment labels). Guardrail tests (`tests/autopilot-*-literals.test.ts`) snapshot current literals to prevent silent drift.
+- **AdapterSemantics v1 (current reality):** `lib/autopilot/runSimulation.ts` still authors user-facing strings (card labels, reward strength labels, badge copy, impact segment labels). Guardrail tests (`tests/node/autopilot-runsimulation-literals.test.ts`, `tests/next/autopilot-{decisionpanel,purchaseform}-literals.test.ts`) snapshot current literals to prevent silent drift.
 - **EngineSemantics v2 (target):** `/api/autopilot/preview` should return a complete UI bundle (badge labels/tones, card labels/sentences, section headers, segment labels, reward strength label, CTA labels, action note, idle/loading/error copy, timestamp fallback). When v2 exists, the adapter becomes formatting-only and the UI remains a pure renderer. Keep v1 stable until v2 is implemented and adopted.
 
 ## Shape quick reference (with validation hooks)
@@ -107,11 +107,11 @@ Repo/location primers:
 2) Read this file end to end.  
 3) If you change the contract, edit `lib/autopilot/runSimulation.ts` (adapter) and keep `AutopilotDecisionPanel` untouched.  
 4) Keep `/api/autopilot/preview` shape in sync; update `AutopilotPreviewOutputSchema` if backend changes.  
-5) Run `npm test` (includes `tests/autopilot-runSimulation.test.js`) to validate the mapping.  
+5) Run `npm test` (includes `tests/node/autopilot-runSimulation.test.js`) to validate the mapping.  
 6) Never move business logic into UI components; adjust the adapter or backend instead.
 
 ## Tests
-- `tests/autopilot-runSimulation.test.js` covers happy-path mapping: payload sent to preview, state resolution, reward strength bounds, and 3-segment impact bar padding.
+- `tests/node/autopilot-runSimulation.test.js` covers happy-path mapping: payload sent to preview, state resolution, reward strength bounds, and 3-segment impact bar padding.
 
 ## Future/Target behavior (explicitly speculative)
 - Replace AdapterSemantics v1 with EngineSemantics v2 once the backend returns a full UI bundle.

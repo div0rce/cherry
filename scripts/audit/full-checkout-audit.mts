@@ -942,7 +942,7 @@ function main(): void {
     packageManager?: string;
   };
 
-  const testFiles = entries.filter((entry) => entry.path.startsWith('tests/') && entry.path !== 'tests/__mocks__/next/server.js');
+  const testFiles = entries.filter((entry) => entry.path.startsWith('tests/') && entry.path !== 'tests/next/__mocks__/next/server.js');
   const sourceFiles = entries.filter(
     (entry) =>
       (entry.path.startsWith('app/') ||
@@ -954,7 +954,7 @@ function main(): void {
   );
   const testsByCategory = {
     db: testFiles.filter((entry) => entry.path.startsWith('tests/db/')).length,
-    guardrails: testFiles.filter((entry) => entry.path.startsWith('tests/guardrails/')).length,
+    guardrails: testFiles.filter((entry) => entry.path.startsWith('tests/node/guardrails/')).length,
     engine: testFiles.filter((entry) => entry.path.includes('/engine') || entry.path.includes('engine-')).length,
     api: testFiles.filter((entry) => entry.path.includes('api-') || entry.path.includes('/api')).length,
     next: testFiles.filter((entry) => entry.path.startsWith('tests/next/')).length,

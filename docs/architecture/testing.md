@@ -1,5 +1,5 @@
 Status: Active
-Last updated: 2026-09-22
+Last updated: 2026-10-17
 
 # Testing and Verification
 
@@ -9,8 +9,7 @@ Last updated: 2026-09-22
 | `tests/node/**` | Pure unit, contract, accounting, determinism, migration-SQL, guardrail self-tests (`tests/node/guardrails/**` run each `check:<name>` guardrail against `tests/fixtures/guardrails/**`) | `npm run check:tests:node` (inside `npm run check`), `npm test` |
 | `tests/next/**` | API route handlers and UI contracts with `next/server` mocked and Prisma mocked | `npm run check:tests:next` (inside `npm run check`), `npm test` |
 | `tests/db/**` | Real PostgreSQL: constraint existence, impossibility, conservation only (`AGENTS.md` DB truth surface) | `npm run test:db` (needs `DATABASE_URL`; CI `env-checks.yml`) |
-| `tests/node/accounting/*.spec.ts`, `tests/engine/optimality/*.spec.ts` | Property/oracle proofs | guardrails `check:accounting-invariants`, `check:no-mutation`, `check:replay-equals-materialized`, `check:engine-optimality` |
-| `tests/*.test.*`, `tests/guardrails/**`, `tests/authority/**`, `tests/migrations/**`, `tests/type/**` | Legacy copies of the `tests/node` / `tests/next` files (see Known issues) | `npm test` only |
+| `tests/node/accounting/*.spec.ts`, `tests/node/engine/optimality/*.spec.ts` | Property/oracle proofs | guardrails `check:accounting-invariants`, `check:no-mutation`, `check:replay-equals-materialized`, `check:engine-optimality` |
 
 No test framework. Files are plain scripts using `node:assert/strict`; a file passes if it exits 0.
 Prisma is replaced by the mock in `scripts/lib/` through a loader, so nothing under `tests/node` or `tests/next` proves database behaviour.
@@ -29,7 +28,6 @@ Required environment for FULL locally: `CHERRY_TMP_ROOT` (an existing dir, mode 
 `scripts/guardrails/domains.manifest.json` `tests` field, rendered in `domains.md`, printed by `report:domain-impact`. Adding a test for a domain means adding it under `tests/node` or `tests/next` and, if it introduces a new file pattern, adding the glob to the manifest (the guardrail fails on globs that match nothing, so the list stays real).
 
 ## Known issues (verified 2026-09-22)
-- 110 legacy test files at `tests/*.test.*`, `tests/guardrails`, `tests/authority`, `tests/migrations`, `tests/type` duplicate files in `tests/node` / `tests/next`; 2 pairs have diverged in logic (`engine-solver`, `api-sessions.user-context`). `check:guardrails-core` requires several of the legacy paths to exist, so removing them needs a guardrail update in the same change. `check:engine-optimality` runs the legacy `tests/engine/optimality` copy; `tests/node/engine/optimality` and `tests/accounting` run nowhere.
 - CI runs node and next tests three times (`check:tests:*`, then `ci:verify` -> `check` and `test`).
 
 ## Related docs

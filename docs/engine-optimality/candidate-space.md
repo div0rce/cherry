@@ -68,7 +68,7 @@ No claim is made outside **B**.
 
 - `candidateSpaceVersion` is `candidates_v1`.
 - Any change to candidate axes or enumeration rules must bump
-  `candidateSpaceVersion` and update the tests in `tests/engine/optimality`.
+  `candidateSpaceVersion` and update the tests in `tests/node/engine/optimality`.
 
 ## Future/Target behavior
 

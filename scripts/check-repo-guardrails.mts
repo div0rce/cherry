@@ -716,7 +716,7 @@ if (fs.existsSync(migrationsDir)) {
     if (!touchesGuardedModel) continue;
     if (hasMigrationEscapeHatch(sql)) continue;
 
-    const migrationTestDir = path.join(root, 'tests', 'migrations');
+    const migrationTestDir = path.join(root, 'tests', 'node', 'migrations');
     const migrationTestCandidates = [
       path.join(migrationTestDir, `${dirName}.test.ts`),
       path.join(migrationTestDir, `${dirName}.test.js`),
